@@ -1,0 +1,58 @@
+# CTD section definitions for odb2026 (MIXSED cruise 2).
+#
+# cast_numbers: inclusive ranges or individual cast numbers.
+# Ranges are written as [first, last].  Individual casts are single integers.
+# Mixed lists are allowed: [[10, 23], 45, [50, 60]]
+#
+# Verify positions by running notebooks/ctd_odb2026.ipynb section map cell.
+
+sections:
+  KTout:
+    description: Kögur Transect outer slope
+    cast_numbers: [[10, 23]]
+    color: "#1f77b4"
+
+  FARDWO:
+    description: FARDWO section
+    cast_numbers: [[23, 37]]
+    color: "#ff7f0e"
+
+  KTin:
+    description: Kögur Transect inner / channel
+    cast_numbers: [[39, 49]]
+    color: "#2ca02c"
+
+  yoyo1:
+    description: YoYo station 1
+    cast_numbers: [[50, 81]]
+    color: "#d62728"
+
+  LB:
+    description: Látrabjarg section
+    cast_numbers: [[82, 97]]
+    color: "#9467bd"
+
+  dunes:
+    description: Dunes area
+    cast_numbers: [[98, 111]]
+    color: "#8c564b"
+
+  yoyo2:
+    description: YoYo station 2
+    cast_numbers: [[114, 121]]
+    color: "#e377c2"
+
+  TeddyN:
+    description: Teddy North transect
+    cast_numbers: [[122, 127]]
+    color: "#7f7f7f"
+
+  TeddyS700:
+    description: Teddy South ~700 m isobath
+    cast_numbers: [128, 129, 130, 132, 135, 137]
+    color: "#bcbd22"
+
+  TeddyS1000:
+    description: Teddy South ~1000 m isobath
+    cast_numbers: [131, 133, 134, 136, 163]
+    color: "#17becf"

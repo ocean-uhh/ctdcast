@@ -1,0 +1,14 @@
+"""CTD HTML report system — three-tier architecture.
+
+Tier-1 (_plots.py):    base64 PNG helpers, one function per figure type.
+Tier-2 (_station, _section, _timeseries): per-page orchestrators.
+Tier-3 (_index.py):    entry point, generates index / stations / sections pages.
+
+Public API
+----------
+generate_ctd_report(nc_dir, profiles_path, section_yaml, out_dir, force=False)
+"""
+
+from ctd_report._index import generate_ctd_report
+
+__all__ = ["generate_ctd_report"]

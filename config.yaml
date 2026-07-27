@@ -1,0 +1,28 @@
+# ctd_report configuration
+# Run: python -m ctd_report config.yaml
+
+data:
+  # Directory containing per-cast netCDF files (mixsed2_NNN.nc or similar)
+  nc_dir: /Volumes/T9ifmeo/odb2026/CTD/cnv_nc
+
+  # Compiled 1-dbar profiles grid (built by cnv_build_profiles.py)
+  profiles_nc: /Volumes/T9ifmeo/odb2026/CTD/profiles.nc
+
+  # Section definitions YAML (ctd_sections.yaml)
+  section_yaml: config/ctd_sections.yaml
+
+  # GEBCO bathymetry file — omit or leave blank to skip bathymetry on maps
+  gebco_nc: /path/to/GEBCO_2025.nc
+
+output:
+  # All HTML files are written here; subdirs stations/ and sections/ created automatically
+  dir: /path/to/outputs/ctd_report
+
+# Which report types to generate (set false to skip)
+generate:
+  stations: true
+  sections: true
+  timeseries: true
+
+# Overwrite existing HTML files
+force: false

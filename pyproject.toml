@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "ctd_report"
+description = "Self-contained HTML report generator for shipboard CTD data"
+requires-python = ">=3.10"
+dynamic = ["version"]
+dependencies = [
+    "gsw>=3.6",
+    "matplotlib>=3.7",
+    "numpy>=1.24",
+    "xarray>=2023.1",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ctd_report*"]
+
+[tool.setuptools.package-data]
+ctd_report = ["*.mplstyle"]
+
+[tool.setuptools_scm]
