@@ -10,8 +10,8 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
+from ctd_report._analysis import _add_teos10
 from ctd_report._plots import (
-    _add_teos10,
     _make_aux_profiles_b64,
     _make_profile_b64,
     _make_stability_b64,
