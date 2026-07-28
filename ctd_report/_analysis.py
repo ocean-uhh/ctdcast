@@ -208,6 +208,43 @@ def _interpolate_bathy_at_casts(
         return None
 
 
+def _dense_bathy_along_track(
+    lats: list[float],
+    lons: list[float],
+    x_vals: np.ndarray,
+    path: Optional[Path] = None,
+    n_per_segment: int = 20,
+) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    """Return ``(dense_x, dense_depths)`` interpolated between cast positions.
+
+    Generates *n_per_segment* equally-spaced points along each segment between
+    consecutive casts, giving a smooth GEBCO bathymetry fill rather than the
+    stepped appearance produced by one sample per cast.  Returns ``(None, None)``
+    when GEBCO is unavailable or fewer than two cast positions are supplied.
+    """
+    if path is None or not Path(path).exists() or len(lats) < 2:
+        return None, None
+    try:
+        dense_lats: list[float] = []
+        dense_lons: list[float] = []
+        dense_x: list[float] = []
+        for i in range(len(lats) - 1):
+            t = np.linspace(0.0, 1.0, n_per_segment, endpoint=False)
+            dense_lats.extend((lats[i] + t * (lats[i + 1] - lats[i])).tolist())
+            dense_lons.extend((lons[i] + t * (lons[i + 1] - lons[i])).tolist())
+            dense_x.extend((x_vals[i] + t * (x_vals[i + 1] - x_vals[i])).tolist())
+        dense_lats.append(lats[-1])
+        dense_lons.append(lons[-1])
+        dense_x.append(float(x_vals[-1]))
+
+        depths = _interpolate_bathy_at_casts(dense_lats, dense_lons, path=path)
+        if depths is None:
+            return None, None
+        return np.array(dense_x), depths
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
 def _compact_cast_list(nums: list[int]) -> str:
     """Format a cast number list compactly, collapsing consecutive runs into ranges.
 

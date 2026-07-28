@@ -8,8 +8,8 @@
 
 sections:
   KTout:
-    description: Kögur Transect outer slope
-    cast_numbers: [[10, 23]]
+    description: Kangerlussuaq Trough outer slope
+    cast_numbers: [[11, 23]]
     color: "#1f77b4"
 
   FARDWO:
@@ -18,7 +18,7 @@ sections:
     color: "#ff7f0e"
 
   KTin:
-    description: Kögur Transect inner / channel
+    description: Kangerlussuaq Trough inner / channel
     cast_numbers: [[39, 49]]
     color: "#2ca02c"
 
@@ -59,3 +59,8 @@ timeseries:
     description: Teddy South ~1000 m isobath
     cast_numbers: [131, 133, 134, 136, 163]
     color: "#17becf"
+
+  dunes_mini:
+    description: Dunes mini-section
+    cast_numbers: [[143, 160]]
+    color: "#8c564b"

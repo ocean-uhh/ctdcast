@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
@@ -78,9 +79,26 @@ def main() -> None:
     gebco = data.get("gebco_nc", "")
     if gebco:
         plots.GEBCO_PATH = Path(gebco)
+
+    ladcp_dir: Optional[Path] = None
+    ladcp_raw = data.get("ladcp_dir", "")
+    if ladcp_raw:
+        ladcp_dir = Path(ladcp_raw)
     plots.CLEAN_SPINES = bool(display.get("clean_spines", True))
     pf = display.get("profile_figsize", [7, 10])
     plots.PROFILE_FIGSIZE = (float(pf[0]), float(pf[1]))
+    ov = display.get("overview_figsize", [12, 4])
+    plots.OVERVIEW_FIGSIZE = (float(ov[0]), float(ov[1]))
+
+    ci = cfg.get("cruise_info", {})
+    if ci.get("map_lat_min") is not None:
+        plots.MAP_LAT_MIN = float(ci["map_lat_min"])
+    if ci.get("map_lat_max") is not None:
+        plots.MAP_LAT_MAX = float(ci["map_lat_max"])
+    if ci.get("map_lon_min") is not None:
+        plots.MAP_LON_MIN = float(ci["map_lon_min"])
+    if ci.get("map_lon_max") is not None:
+        plots.MAP_LON_MAX = float(ci["map_lon_max"])
 
     # Import here so GEBCO_PATH is set before any plotting
     from ctd_report._index import (
@@ -125,6 +143,7 @@ def main() -> None:
                 prev_num=prev_num,
                 next_num=next_num,
                 force=force,
+                ladcp_dir=ladcp_dir,
             )
             print(f"  station cast_{meta['cast_num']:03d}: {'ok' if out else 'FAILED'}")
 
@@ -147,6 +166,7 @@ def main() -> None:
                 section_style=section_style,
                 vmin_override=vmin_override,
                 vmax_override=vmax_override,
+                ladcp_dir=ladcp_dir,
             )
             status = "ok" if out else "skipped"
             print(f"  section {sec_name}: {status}")
@@ -186,9 +206,14 @@ def main() -> None:
         out_dir,
         sections_cfg=sections_cfg,
         timeseries_cfg=timeseries_cfg,
+        ladcp_dir=ladcp_dir,
     )
-    _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta)
-    _write_timeseries_list(timeseries_cfg, cruise, out_dir, all_meta=all_meta)
+    _write_sections_list(
+        sections_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+    )
+    _write_timeseries_list(
+        timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+    )
     print(f"\nReport written to {out_dir}/index.html")
 
 
