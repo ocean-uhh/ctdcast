@@ -12,9 +12,9 @@ import yaml
 from jinja2 import Environment
 
 from ctd_report._plots import _make_station_map_b64
+from ctd_report._analysis import _compact_cast_list
 from ctd_report._section import _expand_cast_numbers, generate_section_page
 from ctd_report._station import generate_station_page
-from ctd_report._timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -294,8 +294,8 @@ def generate_ctd_report(
         status = "ok" if out else "skipped (profiles.nc missing or no matching casts)"
         print(f"  section {sec_name}: {status}")
 
-    out = generate_timeseries_page(profiles_path, out_dir, force=force)
-    print(f"  timeseries: {'ok' if out else 'skipped (profiles.nc missing)'}")
+    # Phase 2: stacked overview plots (all casts, station-number x-axis) will be
+    # embedded directly on index.html — not a separate page.
 
     _write_index(all_meta_sorted, sections_cfg, cruise, out_dir, force)
     _write_stations_list(all_meta_sorted, cruise, out_dir)
@@ -317,14 +317,15 @@ def _write_index(
     """Write index.html with header card, stats, and overview map."""
     times = [m["time_start"] for m in all_meta if m.get("time_start")]
     times_str = sorted(str(t)[:10] for t in times if t)
-    date_range = f"{times_str[-1]} – {times_str[0]}" if len(times_str) >= 2 else "—"
+    # times_str[0] = earliest, times_str[-1] = latest
+    date_range = f"{times_str[0]} – {times_str[-1]}" if len(times_str) >= 2 else "—"
 
     n_days = 0
     if len(times_str) >= 2:
         from datetime import date
         try:
-            d0 = date.fromisoformat(times_str[-1])
-            d1 = date.fromisoformat(times_str[0])
+            d0 = date.fromisoformat(times_str[0])   # earliest
+            d1 = date.fromisoformat(times_str[-1])  # latest
             n_days = (d1 - d0).days + 1
         except ValueError:
             pass
@@ -402,7 +403,7 @@ def _write_sections_list(
             "description": cfg.get("description", ""),
             "color": cfg.get("color", "#1a3a5c"),
             "n_casts": len(cast_nums),
-            "cast_range": f"{min(cast_nums)}–{max(cast_nums)}" if cast_nums else "—",
+            "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
             "report_exists": report_path.exists(),
         })
 

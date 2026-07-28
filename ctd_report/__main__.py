@@ -25,7 +25,9 @@ def main() -> None:
     data = cfg.get("data", {})
     output = cfg.get("output", {})
     gen = cfg.get("generate", {})
+    display = cfg.get("display", {})
     force = bool(cfg.get("force", False))
+    section_style = display.get("section_style", "pcolormesh")
 
     nc_dir = Path(data["nc_dir"])
     profiles_path = Path(data["profiles_nc"])
@@ -48,7 +50,6 @@ def main() -> None:
     )
     from ctd_report._section import generate_section_page
     from ctd_report._station import generate_station_page
-    from ctd_report._timeseries import generate_timeseries_page
 
     import numpy as np
     import yaml as _yaml
@@ -87,13 +88,12 @@ def main() -> None:
 
     if gen.get("sections", True):
         for sec_name, sec_cfg in sections_cfg.items():
-            out = generate_section_page(sec_name, sec_cfg, profiles_path, out_dir, force=force)
+            out = generate_section_page(sec_name, sec_cfg, profiles_path, out_dir,
+                                        force=force, section_style=section_style)
             status = "ok" if out else "skipped"
             print(f"  section {sec_name}: {status}")
 
-    if gen.get("timeseries", True):
-        out = generate_timeseries_page(profiles_path, out_dir, force=force)
-        print(f"  timeseries: {'ok' if out else 'skipped'}")
+    # Phase 2: stacked overview plots embedded on index.html — not a separate page.
 
     _write_index(all_meta, sections_cfg, cruise, out_dir, force)
     _write_stations_list(all_meta, cruise, out_dir)

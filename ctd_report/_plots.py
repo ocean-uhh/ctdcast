@@ -14,12 +14,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from ctd_report._analysis import (
+    _add_teos10,
+    _load_gebco,
+    _split_cast,
+)
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 # Path to GEBCO_2025.nc — set this before generating maps, e.g.:
-#   import ctd_report; ctd_report._plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
+#   import ctd_report._plots as plots
+#   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
 GEBCO_PATH: Optional[Path] = None
 
@@ -55,7 +62,7 @@ _VAR_LABELS: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# Internal utilities (self-contained, no external package dependencies)
+# Internal utilities (rendering helpers, no external science dependencies)
 # ---------------------------------------------------------------------------
 
 def _fig_to_base64(fig: Any) -> str:
@@ -69,86 +76,26 @@ def _fig_to_base64(fig: Any) -> str:
 def _nice_colorbar_bounds(vmin: float, vmax: float, n: int = 20) -> np.ndarray:
     """Return a boundary array for a discrete colorbar with approximately *n* levels.
 
-    The step is rounded to 1 significant figure so tick labels land on clean values.
-    The range is centred on the midpoint of [vmin, vmax].
+    Steps are chosen from the "nice" ladder [1, 2, 2.5, 5, 10] scaled to the
+    appropriate decade, so ticks land on clean values (e.g. 1.0 rather than 0.8,
+    0.5 rather than 0.4). The range is centred on the midpoint of [vmin, vmax].
     """
     span = vmax - vmin
     if span <= 0:
         return np.linspace(vmin - 1, vmin + 1, n + 1)
     raw_step = span / n
     mag = 10.0 ** math.floor(math.log10(raw_step))
-    rounded = round(raw_step / mag)
-    if rounded == 0:
-        rounded = 1
-    elif rounded >= 10:
-        mag *= 10
-        rounded = 1
-    nice_step = rounded * mag
+    normalized = raw_step / mag  # in [1, 10)
+    # Pick the smallest nice multiplier >= normalized
+    nice_step = 10.0 * mag  # fallback
+    for factor in (1.0, 2.0, 2.5, 5.0, 10.0):
+        if factor >= normalized:
+            nice_step = factor * mag
+            break
     mid = (vmin + vmax) / 2
     mid_aligned = round(mid / nice_step) * nice_step
     lo = mid_aligned - (n / 2) * nice_step
     return np.array([lo + i * nice_step for i in range(n + 1)])
-
-
-def _add_teos10(ds: xr.Dataset) -> xr.Dataset:
-    """Return *ds* with CT, SA, sigma0 added (computed via gsw if absent)."""
-    if "CT" in ds and "SA" in ds and "sigma0" in ds:
-        return ds
-    ds = ds.copy()
-    p = ds["pressure"].values.astype(float)
-    t = ds["temperature_1"].values.astype(float)
-    sp = ds["salinity_1"].values.astype(float)
-    lat = float(np.nanmedian(ds["latitude"].values))
-    lon = float(np.nanmedian(ds["longitude"].values))
-    sa = gsw.SA_from_SP(sp, p, lon, lat)
-    ct = gsw.CT_from_t(sa, t, p)
-    sig0 = gsw.sigma0(sa, ct)
-    dim = ds["pressure"].dims[0]
-    ds["SA"] = xr.DataArray(sa.astype(np.float32), dims=[dim],
-                             attrs={"long_name": "Absolute Salinity", "units": "g kg-1"})
-    ds["CT"] = xr.DataArray(ct.astype(np.float32), dims=[dim],
-                             attrs={"long_name": "Conservative Temperature", "units": "degC"})
-    ds["sigma0"] = xr.DataArray(sig0.astype(np.float32), dims=[dim],
-                                 attrs={"long_name": "Potential density anomaly",
-                                        "units": "kg m-3"})
-    return ds
-
-
-def _split_cast(ds: xr.Dataset) -> tuple[xr.Dataset, xr.Dataset]:
-    """Split *ds* (individual cast file, dim=time) into (downcast, upcast).
-
-    Uses the turnaround convention: last index where pressure is within 2 dbar
-    of its maximum.
-    """
-    p = ds["pressure"].values
-    p_max = float(np.nanmax(p))
-    near = np.where(p >= p_max - 2)[0]
-    i_turn = int(near[-1]) if len(near) else len(p) // 2
-    return ds.isel(time=slice(0, i_turn + 1)), ds.isel(time=slice(i_turn, None))
-
-
-def _load_gebco(
-    lat_lo: float, lat_hi: float, lon_lo: float, lon_hi: float, margin: float = 0.05
-) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
-    """Load a GEBCO subset; return (lons, lats, depth_m) or None if unavailable."""
-    path = GEBCO_PATH
-    if path is None or not Path(path).exists():
-        return None
-    try:
-        bathy = xr.open_dataset(path)
-        lon_dim = "lon" if "lon" in bathy.coords else "longitude"
-        lat_dim = "lat" if "lat" in bathy.coords else "latitude"
-        sub = bathy.sel({
-            lon_dim: slice(lon_lo - margin, lon_hi + margin),
-            lat_dim: slice(lat_lo - margin, lat_hi + margin),
-        })
-        lons = sub[lon_dim].values
-        lats = sub[lat_dim].values
-        depth = -sub["elevation"].values  # GEBCO: negative = below sea level
-        bathy.close()
-        return lons, lats, depth
-    except Exception:  # noqa: BLE001
-        return None
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +326,7 @@ def _make_station_map_b64(
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=margin)
+        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH)
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
             d_fin = depth_b[depth_b > 0]
@@ -416,8 +363,15 @@ def _make_section_b64(
     x_vals: np.ndarray,
     x_label: str,
     title: str,
+    style: str = "pcolormesh",
 ) -> Optional[str]:
-    """Return a base64 PNG pcolormesh of *var* vs pressure × *x_vals*."""
+    """Return a base64 PNG of *var* vs pressure × *x_vals*.
+
+    Parameters
+    ----------
+    style:
+        ``"pcolormesh"`` (default) or ``"contourf"``.
+    """
     if var not in ds_prof:
         return None
     try:
@@ -443,11 +397,18 @@ def _make_section_b64(
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
         fig, ax = plt.subplots(figsize=(9, 5))
-        pc = ax.pcolormesh(x_vals, p_trim, data_trim.T, cmap=cmap, norm=norm,
-                           shading="nearest")
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds, pad=0.02)
-        cb.set_label(label)
 
+        if style == "contourf":
+            X, Y = np.meshgrid(x_vals, p_trim)
+            Z = np.ma.masked_invalid(data_trim.T)
+            cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
+            cb = fig.colorbar(cf, ax=ax, ticks=bounds, pad=0.02)
+        else:
+            pc = ax.pcolormesh(x_vals, p_trim, data_trim.T, cmap=cmap, norm=norm,
+                               shading="nearest")
+            cb = fig.colorbar(pc, ax=ax, ticks=bounds, pad=0.02)
+
+        cb.set_label(label)
         ax.set_ylim(float(p_trim[-1]), 0)
         ax.set_ylabel("Pressure (dbar)")
         ax.set_xlabel(x_label)
@@ -483,7 +444,7 @@ def _make_section_map_b64(
 
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=margin)
+        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH)
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
             d_fin = depth_b[depth_b > 0]
@@ -499,7 +460,7 @@ def _make_section_map_b64(
         ax.plot(lons_arr, lats_arr, "-", color="white", lw=1.2, zorder=3)
         ax.scatter(lons_arr, lats_arr, s=20, color="white", zorder=4)
         for x, y, n in zip(lons_arr, lats_arr, cast_nums):
-            ax.annotate(str(n), (x, y), fontsize=6, color="white",
+            ax.annotate(str(n), (x, y), fontsize=6, color="black",
                         xytext=(3, 3), textcoords="offset points")
 
         ax.set_xlabel("Longitude (°E)")
@@ -522,8 +483,15 @@ def _make_timeseries_b64(
     var: str,
     label: str,
     title: str,
+    style: str = "pcolormesh",
 ) -> Optional[str]:
-    """Return a base64 PNG pcolormesh of *var* vs cast time × pressure."""
+    """Return a base64 PNG of *var* vs cast time × pressure.
+
+    Parameters
+    ----------
+    style:
+        ``"pcolormesh"`` (default) or ``"contourf"``.
+    """
     if var not in ds_prof or "time_start" not in ds_prof:
         return None
     try:

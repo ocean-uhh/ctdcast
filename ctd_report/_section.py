@@ -5,11 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional
 
-import gsw
 import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
+from ctd_report._analysis import (
+    _add_teos10_profiles,
+    _along_track_km,
+    _compact_cast_list,
+)
 from ctd_report._plots import (
     _make_section_b64,
     _make_section_map_b64,
@@ -20,8 +24,8 @@ from ctd_report._plots import (
 # ---------------------------------------------------------------------------
 
 _SECTION_VARS: list[tuple[str, str]] = [
-    ("temperature_1", "Temperature (°C)"),
-    ("salinity_1", "Salinity (PSU)"),
+    ("CT", "Conservative Temperature (°C)"),
+    ("SA", "Absolute Salinity (g kg⁻¹)"),
     ("oxygen_1", "O₂ saturation (%)"),
     ("fluorescence", "Fluorescence (mg m⁻³)"),
     ("turbidity", "Turbidity (NTU)"),
@@ -136,6 +140,7 @@ def generate_section_page(
     profiles_path: Path,
     out_dir: Path,
     force: bool = False,
+    section_style: str = "pcolormesh",
 ) -> Optional[Path]:
     """Generate a section HTML report page.
 
@@ -151,6 +156,8 @@ def generate_section_page(
         Root output directory.
     force:
         Overwrite existing file if True.
+    section_style:
+        ``"pcolormesh"`` or ``"contourf"`` — passed through to each section figure.
 
     Returns
     -------
@@ -182,6 +189,7 @@ def generate_section_page(
         return None
 
     ds_sec = ds_all.isel(N_PROF=mask)
+    ds_sec = _add_teos10_profiles(ds_sec)
 
     lats = ds_sec["latitude"].values.tolist()
     lons = ds_sec["longitude"].values.tolist()
@@ -198,6 +206,7 @@ def generate_section_page(
         b64 = _make_section_b64(
             ds_sec, var, label, x_vals, x_label,
             title=f"{section_name} — {label}",
+            style=section_style,
         )
         panels.append({"title": label, "b64": b64})
 
@@ -208,7 +217,7 @@ def generate_section_page(
         "cruise": cruise,
         "n_casts": len(sec_cast_nums),
         "dist_str": dist_str,
-        "cast_list_str": f"{min(cast_nums)}–{max(cast_nums)}",
+        "cast_list_str": _compact_cast_list([int(c) for c in sec_cast_nums]),
         "cast_nums": [f"{n:03d}" for n in cast_nums_int],
         "fig_map_b64": _make_section_map_b64(lats, lons, cast_nums_int,
                                               title=section_name),
@@ -237,15 +246,3 @@ def _expand_cast_numbers(cast_numbers: list) -> list[int]:
     return sorted(set(result))
 
 
-def _along_track_km(
-    lats: list[float], lons: list[float]
-) -> tuple[np.ndarray, str]:
-    """Return (cumulative_distance_km, x_axis_label) for a list of positions."""
-    if len(lats) < 2:
-        return np.arange(len(lats), dtype=float), "Cast index"
-    try:
-        dists_m = gsw.distance(np.array(lons), np.array(lats))
-        x_km = np.concatenate([[0.0], np.cumsum(dists_m / 1000.0)])
-        return x_km, "Along-track distance (km)"
-    except Exception:  # noqa: BLE001
-        return np.arange(len(lats), dtype=float), "Cast index"

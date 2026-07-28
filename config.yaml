@@ -18,11 +18,17 @@ output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
   dir: /path/to/outputs/ctd_report
 
+display:
+  # Rendering style for section and overview pcolormesh figures.
+  # "pcolormesh" — fast, exact cell boundaries, handles irregular grids well.
+  # "contourf"   — smooth interpolated contours, better for publication figures.
+  section_style: pcolormesh
+
 # Which report types to generate (set false to skip)
 generate:
   stations: true
   sections: true
-  timeseries: true
+  timeseries: true    # per-group repeat-station pages (timeseries/<name>.html) — Phase 2
 
 # Overwrite existing HTML files
 force: false
