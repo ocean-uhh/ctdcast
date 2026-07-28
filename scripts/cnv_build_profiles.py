@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-NC_DIR   = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
+NC_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
 OUT_PATH = Path("/Volumes/T9ifmeo/odb2026/CTD/profiles.nc")
 
 # Variables to skip — time bookkeeping columns, not physical data
@@ -60,11 +60,7 @@ def _bin_cast(ds_cast: xr.Dataset, p_grid: np.ndarray) -> dict[str, np.ndarray]:
     p_raw = ds_cast["pressure"].values
     p_bin = np.round(p_raw).astype(int)
 
-    data_cols = {
-        v: ds_cast[v].values
-        for v in ds_cast.data_vars
-        if v not in _SKIP_VARS
-    }
+    data_cols = {v: ds_cast[v].values for v in ds_cast.data_vars if v not in _SKIP_VARS}
     df = pd.DataFrame(data_cols)
     df["_p"] = p_bin
     grouped = df.groupby("_p").mean()
@@ -84,19 +80,20 @@ def _bin_cast(ds_cast: xr.Dataset, p_grid: np.ndarray) -> dict[str, np.ndarray]:
 def _profile_meta(ds_cast: xr.Dataset) -> dict:
     """Extract scalar metadata for one cast direction."""
     return {
-        "latitude":  float(np.nanmedian(ds_cast["latitude"].values)),
+        "latitude": float(np.nanmedian(ds_cast["latitude"].values)),
         "longitude": float(np.nanmedian(ds_cast["longitude"].values)),
         "time_start": pd.Timestamp(ds_cast["time"].values[0]),
-        "time_end":   pd.Timestamp(ds_cast["time"].values[-1]),
+        "time_end": pd.Timestamp(ds_cast["time"].values[-1]),
     }
 
 
 def main() -> None:
     """Run cast splitting and 2D profile assembly."""
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--in-dir",  type=Path, default=NC_DIR)
-    parser.add_argument("--out",     type=Path, default=OUT_PATH)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--in-dir", type=Path, default=NC_DIR)
+    parser.add_argument("--out", type=Path, default=OUT_PATH)
     args = parser.parse_args()
 
     cast_list = _select_files(args.in_dir)
@@ -109,18 +106,18 @@ def main() -> None:
     # ---- First pass: determine common pressure grid -------------------------
     p_max_global = 0
     for _, path in cast_list:
-        ds = xr.open_dataset(path)
+        ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
     p_grid = np.arange(1, int(p_max_global) + 1, dtype=np.float32)
     print(f"Pressure grid: 1–{int(p_max_global)} dbar ({len(p_grid)} levels)")
 
     # ---- Second pass: split and bin each cast --------------------------------
-    n_profiles = len(cast_list) * 2   # downcast + upcast each
+    n_profiles = len(cast_list) * 2  # downcast + upcast each
     n_pressure = len(p_grid)
 
     # Collect variable names from the first file
-    ds0 = xr.open_dataset(cast_list[0][1])
+    ds0 = xr.open_dataset(cast_list[0][1], engine="netcdf4", decode_timedelta=False)
     var_names = [v for v in ds0.data_vars if v not in _SKIP_VARS]
     ds0.close()
 
@@ -129,80 +126,111 @@ def main() -> None:
         v: np.full((n_profiles, n_pressure), np.nan, dtype=np.float32)
         for v in var_names
     }
-    n_prof_vals  = np.full(n_profiles, np.nan, dtype=np.float64)
-    cast_nums    = np.full(n_profiles, -1, dtype=np.int32)
-    cast_types   = np.empty(n_profiles, dtype="U4")
-    lats         = np.full(n_profiles, np.nan, dtype=np.float64)
-    lons         = np.full(n_profiles, np.nan, dtype=np.float64)
-    time_starts  = np.empty(n_profiles, dtype="datetime64[ns]")
-    time_ends    = np.empty(n_profiles, dtype="datetime64[ns]")
+    n_prof_vals = np.full(n_profiles, np.nan, dtype=np.float64)
+    cast_nums = np.full(n_profiles, -1, dtype=np.int32)
+    cast_types = np.empty(n_profiles, dtype="U4")
+    lats = np.full(n_profiles, np.nan, dtype=np.float64)
+    lons = np.full(n_profiles, np.nan, dtype=np.float64)
+    time_starts = np.empty(n_profiles, dtype="datetime64[ns]")
+    time_ends = np.empty(n_profiles, dtype="datetime64[ns]")
 
     prof_idx = 0
     for rank, (cast_num, path) in enumerate(cast_list, start=1):
-        ds = xr.open_dataset(path)
+        ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
-        for direction, sl in [("down", slice(0, i_turn + 1)),
-                               ("up",   slice(i_turn, None))]:
+        for direction, sl in [
+            ("down", slice(0, i_turn + 1)),
+            ("up", slice(i_turn, None)),
+        ]:
             ds_half = ds.isel(time=sl)
             binned = _bin_cast(ds_half, p_grid)
-            meta   = _profile_meta(ds_half)
+            meta = _profile_meta(ds_half)
 
             for v in var_names:
                 if v in binned:
                     data_2d[v][prof_idx] = binned[v]
 
             n_prof_vals[prof_idx] = rank + (0.0 if direction == "down" else 0.5)
-            cast_nums[prof_idx]   = cast_num
-            cast_types[prof_idx]  = direction
-            lats[prof_idx]        = meta["latitude"]
-            lons[prof_idx]        = meta["longitude"]
+            cast_nums[prof_idx] = cast_num
+            cast_types[prof_idx] = direction
+            lats[prof_idx] = meta["latitude"]
+            lons[prof_idx] = meta["longitude"]
             time_starts[prof_idx] = np.datetime64(meta["time_start"], "ns")
-            time_ends[prof_idx]   = np.datetime64(meta["time_end"],   "ns")
+            time_ends[prof_idx] = np.datetime64(meta["time_end"], "ns")
             prof_idx += 1
 
         ds.close()
-        print(f"  [{rank:3d}/{len(cast_list)}] cast {cast_num:03d} "
-              f"({path.name}): {i_turn+1} down + {len(pressure)-i_turn} up samples")
+        print(
+            f"  [{rank:3d}/{len(cast_list)}] cast {cast_num:03d} "
+            f"({path.name}): {i_turn + 1} down + {len(pressure) - i_turn} up samples"
+        )
 
     # ---- Build xarray Dataset -----------------------------------------------
     coords = {
-        "N_PROF":   ("N_PROF",   n_prof_vals),
+        "N_PROF": ("N_PROF", n_prof_vals),
         "pressure": ("pressure", p_grid),
     }
     data_vars: dict = {
-        v: (["N_PROF", "pressure"], data_2d[v],
-            {"long_name": v, "coordinates": "latitude longitude"})
+        v: (
+            ["N_PROF", "pressure"],
+            data_2d[v],
+            {"long_name": v, "coordinates": "latitude longitude"},
+        )
         for v in var_names
     }
-    data_vars.update({
-        "cast_number": (["N_PROF"], cast_nums,
-                        {"long_name": "original cast number from filename"}),
-        "cast_type":   (["N_PROF"], cast_types,
-                        {"long_name": "downcast or upcast", "flag_values": "down up"}),
-        "latitude":    (["N_PROF"], lats,
-                        {"units": "degrees_north", "long_name": "median latitude"}),
-        "longitude":   (["N_PROF"], lons,
-                        {"units": "degrees_east",  "long_name": "median longitude"}),
-        "time_start":  (["N_PROF"], time_starts,
-                        {"long_name": "start time of cast direction"}),
-        "time_end":    (["N_PROF"], time_ends,
-                        {"long_name": "end time of cast direction"}),
-    })
+    data_vars.update(
+        {
+            "cast_number": (
+                ["N_PROF"],
+                cast_nums,
+                {"long_name": "original cast number from filename"},
+            ),
+            "cast_type": (
+                ["N_PROF"],
+                cast_types,
+                {"long_name": "downcast or upcast", "flag_values": "down up"},
+            ),
+            "latitude": (
+                ["N_PROF"],
+                lats,
+                {"units": "degrees_north", "long_name": "median latitude"},
+            ),
+            "longitude": (
+                ["N_PROF"],
+                lons,
+                {"units": "degrees_east", "long_name": "median longitude"},
+            ),
+            "time_start": (
+                ["N_PROF"],
+                time_starts,
+                {"long_name": "start time of cast direction"},
+            ),
+            "time_end": (
+                ["N_PROF"],
+                time_ends,
+                {"long_name": "end time of cast direction"},
+            ),
+        }
+    )
     attrs = {
-        "title":       "MIXSED-2 CTD profiles — all casts, downcast + upcast",
-        "cruise":      "odb2026",
-        "source":      f"{len(cast_list)} CNV files converted via seasenselib",
+        "title": "MIXSED-2 CTD profiles — all casts, downcast + upcast",
+        "cruise": "odb2026",
+        "source": f"{len(cast_list)} CNV files converted via seasenselib",
         "pressure_units": "dbar",
         "pressure_spacing_dbar": 1,
         "Conventions": "CF-1.13",
     }
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-    ds_out["pressure"].attrs = {"units": "dbar", "long_name": "Sea water pressure",
-                                "positive": "down", "axis": "Z"}
-    ds_out["N_PROF"].attrs   = {"long_name": "Profile number (int=downcast, .5=upcast)"}
+    ds_out["pressure"].attrs = {
+        "units": "dbar",
+        "long_name": "Sea water pressure",
+        "positive": "down",
+        "axis": "Z",
+    }
+    ds_out["N_PROF"].attrs = {"long_name": "Profile number (int=downcast, .5=upcast)"}
 
     tmp = Path(str(args.out) + ".tmp")
     ds_out.to_netcdf(tmp)

@@ -13,11 +13,15 @@ from jinja2 import Environment
 from ctd_report._analysis import _add_teos10
 from ctd_report._plots import (
     _make_aux_profiles_b64,
-    _make_profile_b64,
+    _make_ct_sa_sigma0_b64,
+    _make_pressure_time_b64,
+    _make_sensor_diff_b64,
     _make_stability_b64,
     _make_station_map_b64,
     _make_ts_density_b64,
     _make_ts_diagram_b64,
+    _make_ts_updown_b64,
+    _make_updown_diff_b64,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,10 +49,18 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
   }
   header h1 { font-size: 1.3rem; }
   header .meta { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
-  nav { background: var(--seafoam); padding: 0.6rem 1.5rem; border-bottom: 1px solid #cdd8e3; }
-  nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav a:hover { text-decoration: underline; }
-  nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
+  nav { background: var(--seafoam); padding: 0.5rem 1.5rem; border-bottom: 1px solid #cdd8e3;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }
+  nav .breadcrumb a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.3rem; }
+  nav .breadcrumb a:hover { text-decoration: underline; }
+  nav .breadcrumb span { color: #888; font-size: 0.9rem; margin-right: 0.3rem; }
+  nav .quicklinks { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  nav .quicklinks a {
+    color: var(--ocean); text-decoration: none; font-size: 0.8rem;
+    border: 1px solid #cdd8e3; border-radius: 999px; padding: 0.15rem 0.6rem;
+    background: #fff;
+  }
+  nav .quicklinks a:hover { background: var(--seafoam); }
   .btn {
     display: inline-block; background: var(--ocean); color: #fff;
     padding: 0.3rem 0.85rem; border-radius: 999px; text-decoration: none;
@@ -61,21 +73,26 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
     background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     padding: 1.25rem; margin: 1rem 1.5rem;
   }
-  .card h2 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.75rem; }
-  .meta-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.5rem; font-size: 0.9rem;
+  .card-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 0.75rem;
   }
-  .meta-item { display: flex; flex-direction: column; }
-  .meta-item .label { font-size: 0.75rem; color: #888; }
-  .meta-item .value { font-weight: 600; }
-  .plots { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
-  .plots img { max-height: 480px; width: auto; border-radius: 4px; }
-  .plot-wide img { max-width: 100%; height: auto; }
+  .card-header h2 { font-size: 1rem; color: var(--ocean); }
+  .jump { font-size: 0.75rem; color: #888; text-decoration: none; }
+  .jump:hover { color: var(--ocean); }
+  .plots { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.25rem; align-items: flex-start; }
+  .plots img { width: auto; border-radius: 4px; }
+  /* Row 1: profile gets 50% of row width; map and T–S share the rest */
+  .fig-profile { width: 40%; height: auto; flex-shrink: 0; }
+  .fig-map { max-height: 340px; }
+  .fig-updown { max-height: 280px; }
+  /* Shared constraint for all multi-panel figures (aux, CT/SA/σ₀, diagnostics) */
+  .fig-panel { max-height: 420px; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
 </style>
 </head>
 <body>
+<div id="top"></div>
 
 <header>
   <div>
@@ -89,64 +106,102 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 </header>
 
 <nav>
-  <a href="../index.html">Index</a> <span>›</span>
-  <a href="../station_index.html">Stations</a> <span>›</span>
-  <span>Cast {{ cast_num }}</span>
+  <div class="breadcrumb">
+    <a href="../index.html">Index</a> <span>›</span>
+    <a href="../station_index.html">Stations</a> <span>›</span>
+    <span>Cast {{ cast_num }}</span>
+  </div>
+  <div class="quicklinks">
+    <a href="#s-overview">Overview</a>
+    <a href="#s-profiles">CT · SA · σ₀</a>
+    <a href="#s-aux">O₂ · Fluor · Turb</a>
+    <a href="#s-ts">T–S diagram</a>
+    <a href="#s-stability">Stability</a>
+    <a href="#s-diagnostics">Diagnostics</a>
+  </div>
 </nav>
 
-<!-- Metadata card -->
-<div class="card">
-  <h2>Cast metadata</h2>
-  <div class="meta-grid">
-    <div class="meta-item"><span class="label">Cast</span><span class="value">{{ cast_num }}</span></div>
-    <div class="meta-item"><span class="label">Date/time (UTC)</span><span class="value">{{ datetime_str }}</span></div>
-    <div class="meta-item"><span class="label">Latitude</span><span class="value">{{ lat_str }}</span></div>
-    <div class="meta-item"><span class="label">Longitude</span><span class="value">{{ lon_str }}</span></div>
-    <div class="meta-item"><span class="label">Max depth</span><span class="value">{{ max_depth_str }}</span></div>
+<!-- Row 1: triple-axis profile | station map | TS up/down -->
+<div class="card" id="s-overview">
+  <div class="card-header">
+    <h2>Overview</h2>
+    <a class="jump" href="#top">↑ top</a>
   </div>
-</div>
-
-<!-- Profiles: CT and T/S/sigma -->
-<div class="card">
-  <h2>Temperature · Salinity · Density profiles</h2>
   <div class="plots">
-    {% if fig_ct_b64 %}<img src="data:image/png;base64,{{ fig_ct_b64 }}" alt="CT profile">{% endif %}
-    {% if fig_ts_density_b64 %}<img src="data:image/png;base64,{{ fig_ts_density_b64 }}" alt="T/S/density profile">{% endif %}
-    {% if fig_station_map_b64 %}<img src="data:image/png;base64,{{ fig_station_map_b64 }}" alt="Station map">{% endif %}
+    {% if fig_ts_density_b64 %}<img class="fig-profile" src="data:image/png;base64,{{ fig_ts_density_b64 }}" alt="CT/SA/σ₀ profile">{% endif %}
+    {% if fig_ts_updown_b64 %}<img class="fig-updown" src="data:image/png;base64,{{ fig_ts_updown_b64 }}" alt="T–S down vs up">{% endif %}
+    {% if fig_station_map_b64 %}<img class="fig-map" src="data:image/png;base64,{{ fig_station_map_b64 }}" alt="Station map">{% endif %}
   </div>
 </div>
 
-<!-- T-S diagram -->
+<!-- Row 2: CT | SA | σ₀ triple-panel profiles -->
+{% if fig_ct_sa_sigma0_b64 %}
+<div class="card" id="s-profiles">
+  <div class="card-header">
+    <h2>CT · SA · σ₀ profiles</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
+  <div class="plots">
+    <img class="fig-panel" src="data:image/png;base64,{{ fig_ct_sa_sigma0_b64 }}" alt="CT · SA · σ₀ profiles">
+  </div>
+</div>
+{% endif %}
+
+<!-- Row 3: O2, fluorescence, turbidity -->
+{% if fig_aux_b64 %}
+<div class="card" id="s-aux">
+  <div class="card-header">
+    <h2>O₂ · Fluorescence · Turbidity</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
+  <div class="plots">
+    <img class="fig-panel" src="data:image/png;base64,{{ fig_aux_b64 }}" alt="Auxiliary profiles">
+  </div>
+</div>
+{% endif %}
+
+<!-- Row 4: T-S diagram coloured by O2 saturation -->
 {% if fig_ts_diagram_b64 %}
-<div class="card">
-  <h2>T-S diagram (colored by O₂ saturation)</h2>
+<div class="card" id="s-ts">
+  <div class="card-header">
+    <h2>T–S diagram (coloured by O₂ saturation)</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
   <div class="plots">
     <img src="data:image/png;base64,{{ fig_ts_diagram_b64 }}" alt="T-S diagram">
   </div>
 </div>
 {% endif %}
 
-<!-- Auxiliary profiles -->
-{% if fig_aux_b64 %}
-<div class="card">
-  <h2>O₂ · Fluorescence · Turbidity</h2>
-  <div class="plots">
-    <img src="data:image/png;base64,{{ fig_aux_b64 }}" alt="Auxiliary profiles">
-  </div>
-</div>
-{% endif %}
-
-<!-- Stability -->
+<!-- Row 5: stability -->
 {% if fig_stability_b64 %}
-<div class="card">
-  <h2>Stability (N² and Turner angle)</h2>
+<div class="card" id="s-stability">
+  <div class="card-header">
+    <h2>Stability (N² and Turner angle)</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
   <div class="plots">
     <img src="data:image/png;base64,{{ fig_stability_b64 }}" alt="Stability">
   </div>
 </div>
 {% endif %}
 
-<footer>Generated by ctd_report &nbsp;·&nbsp; {{ cruise }}</footer>
+<!-- Row 6: diagnostic figures -->
+{% if fig_sensor_diff_b64 or fig_pressure_time_b64 or fig_updown_diff_b64 %}
+<div class="card" id="s-diagnostics">
+  <div class="card-header">
+    <h2>Diagnostics</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
+  <div class="plots">
+    {% if fig_pressure_time_b64 %}<img src="data:image/png;base64,{{ fig_pressure_time_b64 }}" alt="Pressure vs time">{% endif %}
+    {% if fig_sensor_diff_b64 %}<img class="fig-panel" src="data:image/png;base64,{{ fig_sensor_diff_b64 }}" alt="Sensor 1 − Sensor 2">{% endif %}
+    {% if fig_updown_diff_b64 %}<img class="fig-panel" src="data:image/png;base64,{{ fig_updown_diff_b64 }}" alt="Down − up cast differences">{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<footer>Generated by ctd_report &nbsp;·&nbsp; {{ cruise }} &nbsp;·&nbsp; cast start: {{ datetime_str }} UTC</footer>
 </body>
 </html>"""
 
@@ -154,6 +209,7 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 # ---------------------------------------------------------------------------
 # Public function
 # ---------------------------------------------------------------------------
+
 
 def generate_station_page(
     nc_path: Path,
@@ -192,7 +248,7 @@ def generate_station_page(
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        ds = xr.open_dataset(nc_path, decode_timedelta=False).load()
+        ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4").load()
         ds = _add_teos10(ds)
     except Exception:  # noqa: BLE001
         return None
@@ -215,12 +271,22 @@ def generate_station_page(
         "max_depth_str": f"{max_depth:.0f} dbar",
         "prev_num": prev_str,
         "next_num": next_str,
-        "fig_ct_b64": _make_profile_b64(ds, "CT", "Conservative Temperature (°C)"),
+        # Row 1
         "fig_ts_density_b64": _make_ts_density_b64(ds),
-        "fig_ts_diagram_b64": _make_ts_diagram_b64(ds),
-        "fig_aux_b64": _make_aux_profiles_b64(ds),
-        "fig_stability_b64": _make_stability_b64(ds),
         "fig_station_map_b64": _make_station_map_b64(lat, lon, all_meta),
+        "fig_ts_updown_b64": _make_ts_updown_b64(ds),
+        # Row 2
+        "fig_ct_sa_sigma0_b64": _make_ct_sa_sigma0_b64(ds),
+        # Row 3
+        "fig_aux_b64": _make_aux_profiles_b64(ds),
+        # Row 4
+        "fig_ts_diagram_b64": _make_ts_diagram_b64(ds),
+        # Row 5
+        "fig_stability_b64": _make_stability_b64(ds),
+        # Row 6: diagnostics
+        "fig_pressure_time_b64": _make_pressure_time_b64(ds),
+        "fig_sensor_diff_b64": _make_sensor_diff_b64(ds),
+        "fig_updown_diff_b64": _make_updown_diff_b64(ds),
     }
 
     env = Environment(autoescape=True)

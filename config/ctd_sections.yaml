@@ -22,11 +22,6 @@ sections:
     cast_numbers: [[39, 49]]
     color: "#2ca02c"
 
-  yoyo1:
-    description: YoYo station 1
-    cast_numbers: [[50, 81]]
-    color: "#d62728"
-
   LB:
     description: Látrabjarg section
     cast_numbers: [[82, 97]]
@@ -34,18 +29,26 @@ sections:
 
   dunes:
     description: Dunes area
-    cast_numbers: [[98, 111]]
+    cast_numbers: [[98, 112]]
     color: "#8c564b"
-
-  yoyo2:
-    description: YoYo station 2
-    cast_numbers: [[114, 121]]
-    color: "#e377c2"
 
   TeddyN:
     description: Teddy North transect
     cast_numbers: [[122, 127]]
     color: "#7f7f7f"
+
+
+timeseries:
+  yoyo1:
+    description: YoYo station 1 — 32-cast repeat station
+    cast_numbers: [[50, 81]]
+    color: "#d62728"
+
+
+  yoyo2:
+    description: YoYo station 2 — 8-cast repeat station
+    cast_numbers: [[114, 121]]
+    color: "#e377c2"
 
   TeddyS700:
     description: Teddy South ~700 m isobath

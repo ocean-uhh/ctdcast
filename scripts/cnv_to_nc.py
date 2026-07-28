@@ -26,7 +26,7 @@ logging.getLogger("seasenselib").setLevel(logging.ERROR)
 import seasenselib as ssl  # noqa: E402
 
 CNV_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv")
-NC_DIR  = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
+NC_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
 
 
 def convert_one(cnv_path: Path, out_dir: Path, force: bool) -> bool:
@@ -42,18 +42,22 @@ def convert_one(cnv_path: Path, out_dir: Path, force: bool) -> bool:
         print(f"  ok: {cnv_path.name} → {out_path.name}")
         return True
     except Exception as exc:  # noqa: BLE001
-        print(f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})", file=sys.stderr)
+        print(
+            f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})", file=sys.stderr
+        )
         return False
 
 
 def main() -> None:
     """Run CNV → netCDF batch conversion."""
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--in-dir",  type=Path, default=CNV_DIR)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--in-dir", type=Path, default=CNV_DIR)
     parser.add_argument("--out-dir", type=Path, default=NC_DIR)
-    parser.add_argument("--force",   action="store_true",
-                        help="overwrite existing netCDF files")
+    parser.add_argument(
+        "--force", action="store_true", help="overwrite existing netCDF files"
+    )
     args = parser.parse_args()
 
     cnv_files = sorted(args.in_dir.glob("*.cnv"))
