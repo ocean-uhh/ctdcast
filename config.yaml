@@ -14,6 +14,15 @@ data:
   # GEBCO bathymetry file — omit or leave blank to skip bathymetry on maps
   gebco_nc: ../cruiseplan/data/bathymetry/GEBCO_2025.nc
 
+output:
+  # All HTML files are written here; subdirs stations/ and sections/ created automatically
+  dir: outputs/ctd_report
+  #dir: /Volumes/Compartida/MIXSED2/ShareStuff/forAngel/ctd_report
+
+# Overwrite existing HTML files
+force: true
+
+
 cruise_info:
   # Shown in the report header; all fields optional
   ship: "Odon de Buen"            # e.g. "RV Meteor"
@@ -26,22 +35,31 @@ cruise_info:
   map_lon_min: null
   map_lon_max: null
 
-output:
-  # All HTML files are written here; subdirs stations/ and sections/ created automatically
-  dir: outputs/ctd_report
 
 display:
   # Rendering style for section and overview figures.
   # "pcolormesh" — fast, exact cell boundaries, handles irregular grids well.
   # "contourf"   — smooth interpolated contours, better for publication figures.
-  section_style: pcolormesh
+  section_style: contourf
+
+  # Hide top and right spines on profile and scatter figures for a cleaner look.
+  clean_spines: true
+
+  # Figsize [width, height] in inches for the triple-axis (CT/SA/σ₀) profile.
+  # Increase height to show more pressure range with readable labels.
+  profile_figsize: [6, 8]
+
+  # Rendering style for section and timeseries figures separately.
+  # "pcolormesh" — fast, exact cell boundaries.
+  # "contourf"   — smooth interpolated contours (may fail for sparse yoyo data).
+  timeseries_style: pcolormesh
 
   # Per-variable colormap limits (applied to section and overview panels).
   # Leave null to auto-select from 1–99th percentile of the data.
   vmin:
-    SA: null    # e.g. 34.5 to force salinity axis minimum
+    SA: 34.2    # e.g. 34.5 to force salinity axis minimum 
   vmax:
-    SA: null    # e.g. 35.5 to force salinity axis maximum
+    SA: 35.7    # e.g. 35.5 to force salinity axis maximum
 
 # Which report types to generate (set false to skip)
 generate:
@@ -49,5 +67,3 @@ generate:
   sections: true
   timeseries: true    # per-group repeat-station pages (timeseries/<name>.html) — Phase 2
 
-# Overwrite existing HTML files
-force: false

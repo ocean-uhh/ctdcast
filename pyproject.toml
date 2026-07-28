@@ -17,6 +17,9 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.scripts]
+ctdreport = "ctd_report.__main__:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ctd_report*"]
