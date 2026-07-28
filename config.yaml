@@ -24,7 +24,7 @@ output:
   #dir: /Volumes/Compartida/MIXSED2/ShareStuff/forAngel/ctd_report
 
 # Overwrite existing HTML files
-force: false
+force: False
 
 
 cruise_info:

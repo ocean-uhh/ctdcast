@@ -214,6 +214,21 @@ def main() -> None:
     _write_timeseries_list(
         timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
     )
+
+    try:
+        from ctd_report._map_leaflet import generate_leaflet_map  # noqa: PLC0415
+
+        lf_out = generate_leaflet_map(all_meta, sections_cfg, out_dir, force=force)
+        if lf_out:
+            print(f"  leaflet map: ok → {lf_out}")
+        else:
+            print("  leaflet map: skipped (no casts)")
+    except Exception:  # noqa: BLE001
+        import traceback as _tb2
+
+        print("  leaflet map: FAILED")
+        _tb2.print_exc()
+
     print(f"\nReport written to {out_dir}/index.html")
 
 
