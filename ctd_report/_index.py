@@ -12,10 +12,11 @@ import yaml
 from jinja2 import Environment
 
 from ctd_report._plots import (
+    GEBCO_PATH,
     _make_all_sections_map_b64,
+    _make_cruise_map_b64,
     _make_overview_panel_b64,
     _make_station_map_b64,
-    GEBCO_PATH,
 )
 from ctd_report._analysis import (
     _add_aou,
@@ -129,6 +130,11 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
   nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
   nav a:hover { text-decoration: underline; }
   nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
+  .map-card {
+    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    padding: 1.25rem; margin: 1rem 1.5rem; text-align: center;
+  }
+  .map-card img { max-width: 100%; max-height: 400px; width: auto; border-radius: 4px; }
   .card {
     background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     padding: 1.25rem; margin: 1rem 1.5rem; overflow-x: auto;
@@ -138,12 +144,23 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
     background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
     text-align: left; position: sticky; top: 0; z-index: 1;
   }
-  td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; }
+  td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; vertical-align: middle; }
   tbody tr { cursor: pointer; }
   tbody tr:hover td { background: var(--seafoam); }
   .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
   .cast-link:hover { text-decoration: underline; }
   .filename { font-family: monospace; font-size: 0.82rem; color: #444; }
+  .depth-pill {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  }
+  .pill-btn {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.75rem; text-decoration: none; white-space: nowrap; margin: 0.1rem 0.05rem;
+  }
+  .pill-profile { background: #1a3a5c; color: #fff; }
+  .pill-section { background: #2c6e49; color: #fff; }
+  .pill-btn:hover { opacity: 0.85; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
 </style>
 </head>
@@ -156,6 +173,12 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
   <span>Stations</span>
 </nav>
 
+{% if cruise_map_b64 %}
+<div class="map-card">
+  <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
+</div>
+{% endif %}
+
 <div class="card">
   <table>
     <thead>
@@ -163,10 +186,10 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
         <th>Cast</th>
         <th>File</th>
         <th>Start (UTC)</th>
-        <th>End (UTC)</th>
         <th>Latitude</th>
         <th>Longitude</th>
-        <th>Max depth (dbar)</th>
+        <th>Depth</th>
+        <th>Links</th>
       </tr>
     </thead>
     <tbody>
@@ -175,10 +198,15 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
         <td><a class="cast-link" href="stations/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a></td>
         <td class="filename">{{ s.filename }}</td>
         <td>{{ s.time_start_str }}</td>
-        <td>{{ s.time_end_str }}</td>
         <td>{{ s.lat_str }}</td>
         <td>{{ s.lon_str }}</td>
-        <td>{{ s.max_depth_str }}</td>
+        <td><span class="depth-pill" style="background:{{ s.depth_bg }};color:{{ s.depth_fg }};">{{ s.max_depth_str }} dbar</span></td>
+        <td>
+          <a class="pill-btn pill-profile" href="stations/cast_{{ s.cast_num }}.html">Profile</a>
+          {% for sec in s.sections %}
+          <a class="pill-btn pill-section" href="sections/section_{{ sec }}.html">{{ sec }}</a>
+          {% endfor %}
+        </td>
       </tr>
     {% endfor %}
     </tbody>
@@ -270,12 +298,16 @@ _SECTIONS_TEMPLATE = """<!DOCTYPE html>
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def generate_ctd_report(
     nc_dir: Path,
     profiles_path: Path,
     section_yaml: Path,
     out_dir: Path,
     force: bool = False,
+    section_style: str = "pcolormesh",
+    vmin_override: Optional[dict[str, float]] = None,
+    vmax_override: Optional[dict[str, float]] = None,
 ) -> None:
     """Generate the full CTD HTML report suite.
 
@@ -291,6 +323,10 @@ def generate_ctd_report(
         Root output directory (e.g. ``outputs/ctd_report/``).
     force:
         Regenerate all pages even if they already exist.
+    section_style:
+        ``"pcolormesh"`` or ``"contourf"`` for section and overview figures.
+    vmin_override, vmax_override:
+        Per-variable colormap limit overrides applied everywhere.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -306,7 +342,9 @@ def generate_ctd_report(
         key=lambda m: m["time_start"],
         reverse=True,
     )
-    cruise = all_meta_sorted[0].get("cruise", "odb2026") if all_meta_sorted else "odb2026"
+    cruise = (
+        all_meta_sorted[0].get("cruise", "odb2026") if all_meta_sorted else "odb2026"
+    )
 
     cast_nums_sorted = [m["cast_num"] for m in all_meta_sorted]
     for i, meta in enumerate(all_meta_sorted):
@@ -314,8 +352,12 @@ def generate_ctd_report(
         prev_num = cast_nums_sorted[i - 1] if i > 0 else None
         next_num = cast_nums_sorted[i + 1] if i < len(all_meta_sorted) - 1 else None
         out = generate_station_page(
-            nc_path, out_dir, all_meta_sorted,
-            prev_num=prev_num, next_num=next_num, force=force,
+            nc_path,
+            out_dir,
+            all_meta_sorted,
+            prev_num=prev_num,
+            next_num=next_num,
+            force=force,
         )
         status = "ok" if out else "FAILED"
         print(f"  station cast_{meta['cast_num']:03d}: {status}")
@@ -326,13 +368,31 @@ def generate_ctd_report(
             sections_cfg = yaml.safe_load(f).get("sections", {})
 
     for sec_name, sec_cfg in sections_cfg.items():
-        out = generate_section_page(sec_name, sec_cfg, profiles_path, out_dir, force=force)
+        out = generate_section_page(
+            sec_name,
+            sec_cfg,
+            profiles_path,
+            out_dir,
+            force=force,
+            section_style=section_style,
+            vmin_override=vmin_override,
+            vmax_override=vmax_override,
+        )
         status = "ok" if out else "skipped (profiles.nc missing or no matching casts)"
         print(f"  section {sec_name}: {status}")
 
-    _write_index(all_meta_sorted, sections_cfg, cruise, out_dir, force,
-                 profiles_path=profiles_path)
-    _write_stations_list(all_meta_sorted, cruise, out_dir)
+    _write_index(
+        all_meta_sorted,
+        sections_cfg,
+        cruise,
+        out_dir,
+        force,
+        profiles_path=profiles_path,
+        section_style=section_style,
+        vmin_override=vmin_override,
+        vmax_override=vmax_override,
+    )
+    _write_stations_list(all_meta_sorted, cruise, out_dir, sections_cfg=sections_cfg)
     _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta_sorted)
     print(f"\nReport written to {out_dir}/index.html")
 
@@ -371,8 +431,9 @@ def _write_index(
     n_days = 0
     if len(times_str) >= 2:
         from datetime import date
+
         try:
-            d0 = date.fromisoformat(times_str[0])   # earliest
+            d0 = date.fromisoformat(times_str[0])  # earliest
             d1 = date.fromisoformat(times_str[-1])  # latest
             n_days = (d1 - d0).days + 1
         except ValueError:
@@ -381,17 +442,25 @@ def _write_index(
     max_depth = max((m.get("max_depth", 0) for m in all_meta), default=0)
     ci = cruise_info or {}
 
-    fig_map_b64 = _make_station_map_b64(
-        lat=float(np.nanmean([m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))])),
-        lon=float(np.nanmean([m["lon"] for m in all_meta if np.isfinite(m.get("lon", np.nan))])),
-        all_meta=all_meta,
+    _valid_lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
+    _valid_lons = [m["lon"] for m in all_meta if np.isfinite(m.get("lon", np.nan))]
+    fig_map_b64 = (
+        _make_station_map_b64(
+            lat=float(np.nanmean(_valid_lats)),
+            lon=float(np.nanmean(_valid_lons)),
+            all_meta=all_meta,
+        )
+        if _valid_lats
+        else None
     )
 
     # Stacked overview panels from profiles.nc
     overview_panels: list[dict[str, Any]] = []
     if profiles_path is not None and profiles_path.exists():
         try:
-            ds_all = xr.open_dataset(profiles_path, decode_timedelta=False).load()
+            ds_all = xr.open_dataset(
+                profiles_path, decode_timedelta=False, engine="netcdf4"
+            ).load()
             ds_all = _add_teos10_profiles(ds_all)
             ds_all = _add_aou(ds_all)
 
@@ -408,7 +477,9 @@ def _write_index(
             vmax = vmax_override or {}
             for var, label in _OVERVIEW_VARS:
                 b64 = _make_overview_panel_b64(
-                    ds_sorted, var, label,
+                    ds_sorted,
+                    var,
+                    label,
                     bathy_depths=bathy,
                     style=section_style,
                     vmin=vmin.get(var),
@@ -449,26 +520,76 @@ def _dec_min(deg: float, pos_hem: str, neg_hem: str) -> str:
     return f"{d}°{m:06.3f}′{hem}"
 
 
+_DEPTH_PILL_PALETTE: list[tuple[str, str]] = [
+    ("#deebf7", "#1a1a2e"),  # shallowest — very light blue, dark text
+    ("#9ecae1", "#1a1a2e"),  # light blue, dark text
+    ("#4292c6", "#ffffff"),  # medium blue, white text
+    ("#2171b5", "#ffffff"),  # dark blue, white text
+    ("#084594", "#ffffff"),  # deepest — very dark blue, white text
+]
+
+
+def _depth_pill_style(depth: float, rounded_max: float) -> tuple[str, str]:
+    """Return (background_hex, text_hex) for a depth pill based on 5-class scheme."""
+    if rounded_max <= 0 or not np.isfinite(depth):
+        return _DEPTH_PILL_PALETTE[0]
+    cls = min(4, int(depth / rounded_max * 5))
+    return _DEPTH_PILL_PALETTE[cls]
+
+
+def _round_max_depth(max_depth: float) -> float:
+    """Round *max_depth* up to the nearest 100, 500, or 1000 dbar."""
+    if max_depth <= 500:
+        return float(np.ceil(max_depth / 100) * 100)
+    if max_depth <= 2000:
+        return float(np.ceil(max_depth / 500) * 500)
+    return float(np.ceil(max_depth / 1000) * 1000)
+
+
 def _write_stations_list(
     all_meta: list[dict[str, Any]],
     cruise: str,
     out_dir: Path,
+    sections_cfg: Optional[dict[str, Any]] = None,
 ) -> None:
-    """Write station_index.html — latest-first table with filename, times, dec-min position."""
+    """Write station_index.html with cruise map, depth pills, and section links."""
+    # Cast → list of section names
+    cast_to_sections: dict[int, list[str]] = {}
+    for sec_name, sec_cfg in (sections_cfg or {}).items():
+        for cn in _expand_cast_numbers(sec_cfg.get("cast_numbers", [])):
+            cast_to_sections.setdefault(cn, []).append(sec_name)
+
+    all_depths = [
+        m.get("max_depth", 0) for m in all_meta if np.isfinite(m.get("max_depth", 0))
+    ]
+    rounded_max = _round_max_depth(max(all_depths, default=100))
+
     stations = []
     for m in all_meta:
         lat = m.get("lat", np.nan)
         lon = m.get("lon", np.nan)
-        stations.append({
-            "cast_num": f"{m['cast_num']:03d}",
-            "filename": m.get("raw_filename", "—"),
-            "time_start_str": str(m.get("time_start", ""))[:16].replace("T", " "),
-            "time_end_str": str(m.get("time_end", ""))[:16].replace("T", " "),
-            "lat_str": _dec_min(lat, "N", "S"),
-            "lon_str": _dec_min(lon, "E", "W"),
-            "max_depth_str": f"{m.get('max_depth', 0):.0f}",
-        })
-    ctx: dict[str, Any] = {"cruise": cruise, "stations": stations}
+        depth = m.get("max_depth", 0)
+        bg, fg = _depth_pill_style(float(depth), rounded_max)
+        cast_num_int = m["cast_num"]
+        stations.append(
+            {
+                "cast_num": f"{cast_num_int:03d}",
+                "filename": m.get("raw_filename", "—"),
+                "time_start_str": str(m.get("time_start", ""))[:16].replace("T", " "),
+                "lat_str": _dec_min(lat, "N", "S"),
+                "lon_str": _dec_min(lon, "E", "W"),
+                "max_depth_str": f"{depth:.0f}",
+                "depth_bg": bg,
+                "depth_fg": fg,
+                "sections": cast_to_sections.get(cast_num_int, []),
+            }
+        )
+
+    ctx: dict[str, Any] = {
+        "cruise": cruise,
+        "stations": stations,
+        "cruise_map_b64": _make_cruise_map_b64(all_meta),
+    }
     env = Environment(autoescape=True)
     html = env.from_string(_STATIONS_TEMPLATE).render(**ctx)
     (out_dir / "station_index.html").write_text(html, encoding="utf-8")
@@ -486,7 +607,11 @@ def _write_sections_list(
     if all_meta:
         for m in all_meta:
             cn = m.get("cast_num")
-            if cn is not None and np.isfinite(m.get("lat", np.nan)) and np.isfinite(m.get("lon", np.nan)):
+            if (
+                cn is not None
+                and np.isfinite(m.get("lat", np.nan))
+                and np.isfinite(m.get("lon", np.nan))
+            ):
                 cast_pos[int(cn)] = (float(m["lat"]), float(m["lon"]))
 
     sections = []
@@ -494,24 +619,28 @@ def _write_sections_list(
     for name, cfg in sections_cfg.items():
         cast_nums = _expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "sections" / f"section_{name}.html"
-        sections.append({
-            "name": name,
-            "description": cfg.get("description", ""),
-            "color": cfg.get("color", "#1a3a5c"),
-            "n_casts": len(cast_nums),
-            "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
-            "report_exists": report_path.exists(),
-        })
+        sections.append(
+            {
+                "name": name,
+                "description": cfg.get("description", ""),
+                "color": cfg.get("color", "#1a3a5c"),
+                "n_casts": len(cast_nums),
+                "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
+                "report_exists": report_path.exists(),
+            }
+        )
         if cast_pos:
             sec_lats = [cast_pos[c][0] for c in cast_nums if c in cast_pos]
             sec_lons = [cast_pos[c][1] for c in cast_nums if c in cast_pos]
             if sec_lats:
-                sections_data.append({
-                    "name": name,
-                    "color": cfg.get("color", "#555555"),
-                    "lats": sec_lats,
-                    "lons": sec_lons,
-                })
+                sections_data.append(
+                    {
+                        "name": name,
+                        "color": cfg.get("color", "#555555"),
+                        "lats": sec_lats,
+                        "lons": sec_lons,
+                    }
+                )
 
     all_cast_lats = [v[0] for v in cast_pos.values()]
     all_cast_lons = [v[1] for v in cast_pos.values()]
@@ -535,6 +664,7 @@ def _write_sections_list(
 # Metadata helpers
 # ---------------------------------------------------------------------------
 
+
 def _select_cast_files(nc_dir: Path) -> list[Path]:
     """Return sorted list of cast .nc files, preferring _b variants."""
     pattern = re.compile(r"^mixsed2_(\d+)(_b)?$")
@@ -553,7 +683,7 @@ def _select_cast_files(nc_dir: Path) -> list[Path]:
 def _read_cast_meta(nc_path: Path) -> Optional[dict[str, Any]]:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
-        ds = xr.open_dataset(nc_path, decode_timedelta=False)
+        ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
         cast_num = int(re.search(r"_(\d+)(_b)?\.nc$", nc_path.name).group(1))  # type: ignore[union-attr]
         lat = float(np.nanmedian(ds["latitude"].values))
         lon = float(np.nanmedian(ds["longitude"].values))

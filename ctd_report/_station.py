@@ -155,6 +155,7 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 # Public function
 # ---------------------------------------------------------------------------
 
+
 def generate_station_page(
     nc_path: Path,
     out_dir: Path,
@@ -192,7 +193,7 @@ def generate_station_page(
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        ds = xr.open_dataset(nc_path, decode_timedelta=False).load()
+        ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4").load()
         ds = _add_teos10(ds)
     except Exception:  # noqa: BLE001
         return None

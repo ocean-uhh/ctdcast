@@ -27,13 +27,21 @@ def _add_teos10(ds: xr.Dataset) -> xr.Dataset:
     ct = gsw.CT_from_t(sa, t, p)
     sig0 = gsw.sigma0(sa, ct)
     dim = ds["pressure"].dims[0]
-    ds["SA"] = xr.DataArray(sa.astype(np.float32), dims=[dim],
-                             attrs={"long_name": "Absolute Salinity", "units": "g kg-1"})
-    ds["CT"] = xr.DataArray(ct.astype(np.float32), dims=[dim],
-                             attrs={"long_name": "Conservative Temperature", "units": "degC"})
-    ds["sigma0"] = xr.DataArray(sig0.astype(np.float32), dims=[dim],
-                                 attrs={"long_name": "Potential density anomaly",
-                                        "units": "kg m-3"})
+    ds["SA"] = xr.DataArray(
+        sa.astype(np.float32),
+        dims=[dim],
+        attrs={"long_name": "Absolute Salinity", "units": "g kg-1"},
+    )
+    ds["CT"] = xr.DataArray(
+        ct.astype(np.float32),
+        dims=[dim],
+        attrs={"long_name": "Conservative Temperature", "units": "degC"},
+    )
+    ds["sigma0"] = xr.DataArray(
+        sig0.astype(np.float32),
+        dims=[dim],
+        attrs={"long_name": "Potential density anomaly", "units": "kg m-3"},
+    )
     return ds
 
 
@@ -46,23 +54,31 @@ def _add_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
     if "CT" in ds and "SA" in ds and "sigma0" in ds:
         return ds
     ds = ds.copy()
-    p = ds["pressure"].values.astype(float)       # (N_P,)
+    p = ds["pressure"].values.astype(float)  # (N_P,)
     t = ds["temperature_1"].values.astype(float)  # (N_PROF, N_P)
-    sp = ds["salinity_1"].values.astype(float)    # (N_PROF, N_P)
-    lat = ds["latitude"].values.astype(float)     # (N_PROF,)
-    lon = ds["longitude"].values.astype(float)    # (N_PROF,)
+    sp = ds["salinity_1"].values.astype(float)  # (N_PROF, N_P)
+    lat = ds["latitude"].values.astype(float)  # (N_PROF,)
+    lon = ds["longitude"].values.astype(float)  # (N_PROF,)
     # Broadcast pressure along axis-1, lat/lon along axis-0
     sa = gsw.SA_from_SP(sp, p[np.newaxis, :], lon[:, np.newaxis], lat[:, np.newaxis])
     ct = gsw.CT_from_t(sa, t, p[np.newaxis, :])
     sig0 = gsw.sigma0(sa, ct)
     dims = tuple(ds["temperature_1"].dims)
-    ds["SA"] = xr.DataArray(sa.astype(np.float32), dims=dims,
-                             attrs={"long_name": "Absolute Salinity", "units": "g kg-1"})
-    ds["CT"] = xr.DataArray(ct.astype(np.float32), dims=dims,
-                             attrs={"long_name": "Conservative Temperature", "units": "degC"})
-    ds["sigma0"] = xr.DataArray(sig0.astype(np.float32), dims=dims,
-                                 attrs={"long_name": "Potential density anomaly",
-                                        "units": "kg m-3"})
+    ds["SA"] = xr.DataArray(
+        sa.astype(np.float32),
+        dims=dims,
+        attrs={"long_name": "Absolute Salinity", "units": "g kg-1"},
+    )
+    ds["CT"] = xr.DataArray(
+        ct.astype(np.float32),
+        dims=dims,
+        attrs={"long_name": "Conservative Temperature", "units": "degC"},
+    )
+    ds["sigma0"] = xr.DataArray(
+        sig0.astype(np.float32),
+        dims=dims,
+        attrs={"long_name": "Potential density anomaly", "units": "kg m-3"},
+    )
     return ds
 
 
@@ -98,13 +114,15 @@ def _load_gebco(
     if path is None or not Path(path).exists():
         return None
     try:
-        bathy = xr.open_dataset(path)
+        bathy = xr.open_dataset(path, engine="netcdf4")
         lon_dim = "lon" if "lon" in bathy.coords else "longitude"
         lat_dim = "lat" if "lat" in bathy.coords else "latitude"
-        sub = bathy.sel({
-            lon_dim: slice(lon_lo - margin, lon_hi + margin),
-            lat_dim: slice(lat_lo - margin, lat_hi + margin),
-        })
+        sub = bathy.sel(
+            {
+                lon_dim: slice(lon_lo - margin, lon_hi + margin),
+                lat_dim: slice(lat_lo - margin, lat_hi + margin),
+            }
+        )
         lons = sub[lon_dim].values
         lats = sub[lat_dim].values
         depth = -sub["elevation"].values  # GEBCO: negative = below sea level
@@ -114,9 +132,7 @@ def _load_gebco(
         return None
 
 
-def _along_track_km(
-    lats: list[float], lons: list[float]
-) -> tuple[np.ndarray, str]:
+def _along_track_km(lats: list[float], lons: list[float]) -> tuple[np.ndarray, str]:
     """Return (cumulative_distance_km, x_axis_label) for a list of positions."""
     if len(lats) < 2:
         return np.arange(len(lats), dtype=float), "Cast index"

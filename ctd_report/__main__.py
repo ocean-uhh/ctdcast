@@ -29,8 +29,12 @@ def main() -> None:
     cruise_info = cfg.get("cruise_info", {})
     force = bool(cfg.get("force", False))
     section_style = display.get("section_style", "pcolormesh")
-    vmin_override: dict = {k: v for k, v in (display.get("vmin") or {}).items() if v is not None}
-    vmax_override: dict = {k: v for k, v in (display.get("vmax") or {}).items() if v is not None}
+    vmin_override: dict = {
+        k: v for k, v in (display.get("vmin") or {}).items() if v is not None
+    }
+    vmax_override: dict = {
+        k: v for k, v in (display.get("vmax") or {}).items() if v is not None
+    }
 
     nc_dir = Path(data["nc_dir"])
     profiles_path = Path(data["profiles_nc"])
@@ -41,6 +45,7 @@ def main() -> None:
     gebco = data.get("gebco_nc", "")
     if gebco:
         import ctd_report._plots as plots
+
         plots.GEBCO_PATH = Path(gebco)
 
     # Import here so GEBCO_PATH is set before any plotting
@@ -78,8 +83,12 @@ def main() -> None:
             prev_num = cast_nums[i - 1] if i > 0 else None
             next_num = cast_nums[i + 1] if i < len(all_meta) - 1 else None
             out = generate_station_page(
-                meta["path"], out_dir, all_meta,
-                prev_num=prev_num, next_num=next_num, force=force,
+                meta["path"],
+                out_dir,
+                all_meta,
+                prev_num=prev_num,
+                next_num=next_num,
+                force=force,
             )
             print(f"  station cast_{meta['cast_num']:03d}: {'ok' if out else 'FAILED'}")
 
@@ -90,20 +99,32 @@ def main() -> None:
 
     if gen.get("sections", True):
         for sec_name, sec_cfg in sections_cfg.items():
-            out = generate_section_page(sec_name, sec_cfg, profiles_path, out_dir,
-                                        force=force, section_style=section_style)
+            out = generate_section_page(
+                sec_name,
+                sec_cfg,
+                profiles_path,
+                out_dir,
+                force=force,
+                section_style=section_style,
+                vmin_override=vmin_override,
+                vmax_override=vmax_override,
+            )
             status = "ok" if out else "skipped"
             print(f"  section {sec_name}: {status}")
 
     _write_index(
-        all_meta, sections_cfg, cruise, out_dir, force,
+        all_meta,
+        sections_cfg,
+        cruise,
+        out_dir,
+        force,
         profiles_path=profiles_path,
         section_style=section_style,
         vmin_override=vmin_override,
         vmax_override=vmax_override,
         cruise_info=cruise_info,
     )
-    _write_stations_list(all_meta, cruise, out_dir)
+    _write_stations_list(all_meta, cruise, out_dir, sections_cfg=sections_cfg)
     _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta)
     print(f"\nReport written to {out_dir}/index.html")
 
