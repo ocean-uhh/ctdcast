@@ -16,8 +16,8 @@ from ctd_report._analysis import (
     _compact_cast_list,
     _interpolate_bathy_at_casts,
 )
+import ctd_report._plots as _plots
 from ctd_report._plots import (
-    GEBCO_PATH,
     _make_section_b64,
     _make_section_map_b64,
     _make_section_ts_histogram_b64,
@@ -231,7 +231,7 @@ def generate_section_page(
     cruise = ds_all.attrs.get("cruise", "odb2026")
     dist_str = f"{x_vals[-1]:.1f} km" if len(x_vals) > 1 else "—"
 
-    bathy = _interpolate_bathy_at_casts(lats, lons, path=GEBCO_PATH)
+    bathy = _interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
     cast_nums_int = [int(c) for c in sec_cast_nums]
     vmin = vmin_override or {}
     vmax = vmax_override or {}

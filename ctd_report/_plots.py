@@ -435,11 +435,20 @@ def _make_ts_updown_b64(ds: xr.Dataset) -> Optional[str]:
         cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
         ax.clabel(cs, fmt="%.1f", fontsize=7)
         ax.scatter(
-            sa_d[mask_d], ct_d[mask_d], s=6, color="#1f77b4", alpha=0.7, label="down",
+            sa_d[mask_d],
+            ct_d[mask_d],
+            s=6,
+            color="#1f77b4",
+            alpha=0.7,
+            label="down",
         )
         if mask_u.any():
             ax.scatter(
-                sa_u[mask_u], ct_u[mask_u], s=4, color="#d62728", alpha=0.5,
+                sa_u[mask_u],
+                ct_u[mask_u],
+                s=4,
+                color="#d62728",
+                alpha=0.5,
                 label="up",
             )
         ax.set_xlim(sa_lo - sa_pad, sa_hi + sa_pad)
@@ -961,8 +970,13 @@ def _make_section_map_b64(
 
         ax.plot(lons_arr, lats_arr, "-", color="white", lw=1.2, zorder=3)
         ax.scatter(
-            lons_arr, lats_arr, s=20,
-            facecolors="white", edgecolors="black", linewidths=0.5, zorder=4,
+            lons_arr,
+            lats_arr,
+            s=20,
+            facecolors="white",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=4,
         )
         for x, y, n in zip(lons_arr, lats_arr, cast_nums):
             ax.annotate(
@@ -1072,11 +1086,18 @@ def _make_overview_panel_b64(
         if cast_groups:
             cast_num_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
             for color, group_casts in cast_groups.items():
-                gx = [cast_num_to_xpos[cn] for cn in group_casts if cn in cast_num_to_xpos]
+                gx = [
+                    cast_num_to_xpos[cn] for cn in group_casts if cn in cast_num_to_xpos
+                ]
                 if gx:
                     ax.scatter(
-                        gx, np.zeros(len(gx)), marker="v", color=color,
-                        s=18, clip_on=False, zorder=6,
+                        gx,
+                        np.zeros(len(gx)),
+                        marker="v",
+                        color=color,
+                        s=18,
+                        clip_on=False,
+                        zorder=6,
                         transform=ax.get_xaxis_transform(),
                     )
 
@@ -1197,8 +1218,11 @@ def _make_all_sections_map_b64(
         ax.grid(True, alpha=0.3)
         if legend_outside:
             ax.legend(
-                loc="upper left", bbox_to_anchor=(1.01, 1.0),
-                borderaxespad=0, fontsize=7, framealpha=0.9,
+                loc="upper left",
+                bbox_to_anchor=(1.01, 1.0),
+                borderaxespad=0,
+                fontsize=7,
+                framealpha=0.9,
             )
             fig.tight_layout()
             fig.subplots_adjust(right=0.72)
@@ -1278,12 +1302,22 @@ def _make_timeseries_b64(
         if style == "contourf":
             t_idx = np.arange(n_prof, dtype=float)
             pc = ax.contourf(
-                t_idx, p_trim, data_trim.T, levels=bounds, cmap=cmap, norm=norm, extend="both"
+                t_idx,
+                p_trim,
+                data_trim.T,
+                levels=bounds,
+                cmap=cmap,
+                norm=norm,
+                extend="both",
             )
             ax.set_xticks(t_idx[:: max(1, n_prof // 12)])
             ax.set_xticklabels(
-                [mdates.num2date(t).strftime("%d %b\n%H:%M") for t in t_mpl[:: max(1, n_prof // 12)]],
-                rotation=30, ha="right",
+                [
+                    mdates.num2date(t).strftime("%d %b\n%H:%M")
+                    for t in t_mpl[:: max(1, n_prof // 12)]
+                ],
+                rotation=30,
+                ha="right",
             )
         else:
             pc = ax.pcolormesh(
@@ -1301,8 +1335,18 @@ def _make_timeseries_b64(
         # ▼ for downcast, △ for upcast at top edge
         y_top = float(p_trim[0]) - 0.02 * (float(p_trim[-1]) - float(p_trim[0]))
         for t_val, ctype in zip(t_mpl, cast_types):
-            marker, color = ("v", "#1f77b4") if ctype == "down" else ("^", _UPCAST_COLOR)
-            ax.plot(t_val, y_top, marker=marker, color=color, ms=4, clip_on=False, transform=ax.transData)
+            marker, color = (
+                ("v", "#1f77b4") if ctype == "down" else ("^", _UPCAST_COLOR)
+            )
+            ax.plot(
+                t_val,
+                y_top,
+                marker=marker,
+                color=color,
+                ms=4,
+                clip_on=False,
+                transform=ax.transData,
+            )
 
         ax.set_ylim(float(p_trim[-1]), float(p_trim[0]))
         ax.set_ylabel("Pressure (dbar)")
@@ -1436,7 +1480,9 @@ def _make_updown_diff_b64(ds: xr.Dataset) -> Optional[str]:
         if not diffs:
             return None
 
-        fig, axes = plt.subplots(1, len(diffs), figsize=(3.5 * len(diffs), 7), sharey=True)
+        fig, axes = plt.subplots(
+            1, len(diffs), figsize=(3.5 * len(diffs), 7), sharey=True
+        )
         if len(diffs) == 1:
             axes = [axes]
         for ax, diff, label, color in zip(axes, diffs, labels, colors):

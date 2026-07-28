@@ -29,7 +29,7 @@ sections:
 
   dunes:
     description: Dunes area
-    cast_numbers: [[98, 111]]
+    cast_numbers: [[98, 112]]
     color: "#8c564b"
 
   TeddyN:

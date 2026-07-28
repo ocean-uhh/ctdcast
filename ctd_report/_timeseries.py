@@ -219,7 +219,9 @@ def generate_timeseries_page(
     panels: list[dict[str, Any]] = []
     for var, label in _TIMESERIES_VARS:
         b64 = _make_timeseries_b64(
-            ds_ts, var, label,
+            ds_ts,
+            var,
+            label,
             style=section_style,
             vmin=vmin.get(var),
             vmax=vmax.get(var),

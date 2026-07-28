@@ -464,25 +464,37 @@ def _write_index(
             cast_groups[color] = cast_groups.get(color, []) + list(cast_nums_grp)
 
     # For the index map, gather section track positions from all_meta
-    cast_pos = {m["cast_num"]: (m["lat"], m["lon"]) for m in all_meta if np.isfinite(m.get("lat", np.nan))}
+    cast_pos = {
+        m["cast_num"]: (m["lat"], m["lon"])
+        for m in all_meta
+        if np.isfinite(m.get("lat", np.nan))
+    }
     for grp_name, grp_cfg in sections_cfg.items():
         cast_nums_grp = _expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         lats_g = [cast_pos[cn][0] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         lons_g = [cast_pos[cn][1] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         if lats_g:
-            sections_data_map.append({
-                "name": grp_name, "color": grp_cfg.get("color", "#888888"),
-                "lats": lats_g, "lons": lons_g,
-            })
+            sections_data_map.append(
+                {
+                    "name": grp_name,
+                    "color": grp_cfg.get("color", "#888888"),
+                    "lats": lats_g,
+                    "lons": lons_g,
+                }
+            )
     for grp_name, grp_cfg in _ts_cfg.items():
         cast_nums_grp = _expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         lats_g = [cast_pos[cn][0] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         lons_g = [cast_pos[cn][1] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         if lats_g:
-            sections_data_map.append({
-                "name": grp_name, "color": grp_cfg.get("color", "#888888"),
-                "lats": lats_g, "lons": lons_g,
-            })
+            sections_data_map.append(
+                {
+                    "name": grp_name,
+                    "color": grp_cfg.get("color", "#888888"),
+                    "lats": lats_g,
+                    "lons": lons_g,
+                }
+            )
 
     fig_map_b64 = (
         _make_all_sections_map_b64(
@@ -598,8 +610,7 @@ def _write_stations_list(
     """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
     # Section name → YAML color; cast → section names
     section_colors: dict[str, str] = {
-        name: cfg.get("color", "#2c6e49")
-        for name, cfg in (sections_cfg or {}).items()
+        name: cfg.get("color", "#2c6e49") for name, cfg in (sections_cfg or {}).items()
     }
     cast_to_sections: dict[int, list[str]] = {}
     for sec_name, sec_cfg in (sections_cfg or {}).items():

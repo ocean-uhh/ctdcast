@@ -181,7 +181,9 @@ def main() -> None:
         timeseries_cfg=timeseries_cfg,
     )
     _write_stations_list(
-        all_meta, cruise, out_dir,
+        all_meta,
+        cruise,
+        out_dir,
         sections_cfg=sections_cfg,
         timeseries_cfg=timeseries_cfg,
     )

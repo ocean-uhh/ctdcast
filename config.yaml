@@ -12,7 +12,7 @@ data:
   section_yaml: config/ctd_sections.yaml
 
   # GEBCO bathymetry file — omit or leave blank to skip bathymetry on maps
-  gebco_nc: ../cruiseplan/data/bathymetry/GEBCO_2025.nc
+  gebco_nc: /Users/eddifying/Cloudfree/github/cruiseplan/data/bathymetry/GEBCO_2025.nc
 
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
@@ -20,7 +20,7 @@ output:
   #dir: /Volumes/Compartida/MIXSED2/ShareStuff/forAngel/ctd_report
 
 # Overwrite existing HTML files
-force: true
+force: false
 
 
 cruise_info:
