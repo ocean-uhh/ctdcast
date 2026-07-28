@@ -26,8 +26,11 @@ def main() -> None:
     output = cfg.get("output", {})
     gen = cfg.get("generate", {})
     display = cfg.get("display", {})
+    cruise_info = cfg.get("cruise_info", {})
     force = bool(cfg.get("force", False))
     section_style = display.get("section_style", "pcolormesh")
+    vmin_override: dict = {k: v for k, v in (display.get("vmin") or {}).items() if v is not None}
+    vmax_override: dict = {k: v for k, v in (display.get("vmax") or {}).items() if v is not None}
 
     nc_dir = Path(data["nc_dir"])
     profiles_path = Path(data["profiles_nc"])
@@ -51,7 +54,6 @@ def main() -> None:
     from ctd_report._section import generate_section_page
     from ctd_report._station import generate_station_page
 
-    import numpy as np
     import yaml as _yaml
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -93,11 +95,16 @@ def main() -> None:
             status = "ok" if out else "skipped"
             print(f"  section {sec_name}: {status}")
 
-    # Phase 2: stacked overview plots embedded on index.html — not a separate page.
-
-    _write_index(all_meta, sections_cfg, cruise, out_dir, force)
+    _write_index(
+        all_meta, sections_cfg, cruise, out_dir, force,
+        profiles_path=profiles_path,
+        section_style=section_style,
+        vmin_override=vmin_override,
+        vmax_override=vmax_override,
+        cruise_info=cruise_info,
+    )
     _write_stations_list(all_meta, cruise, out_dir)
-    _write_sections_list(sections_cfg, cruise, out_dir)
+    _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta)
     print(f"\nReport written to {out_dir}/index.html")
 
 

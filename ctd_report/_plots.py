@@ -43,6 +43,7 @@ _VAR_CMAPS: dict[str, str] = {
     "SA": "YlGnBu",
     "salinity_1": "YlGnBu",
     "oxygen_1": "RdYlGn",
+    "AOU": "RdBu_r",   # blue = near saturation, red = depleted
     "fluorescence": "YlGn",
     "turbidity": "YlOrBr",
     "sigma0": "Greys_r",
@@ -54,6 +55,7 @@ _VAR_LABELS: dict[str, str] = {
     "temperature_1": "Temperature (°C)",
     "salinity_1": "Salinity (PSU)",
     "oxygen_1": "O₂ saturation (%)",
+    "AOU": "O₂ deficit (% sat)",
     "fluorescence": "Fluorescence (mg m⁻³)",
     "turbidity": "Turbidity (NTU)",
     "sigma0": "σ₀ (kg m⁻³)",
@@ -166,7 +168,7 @@ def _make_ts_density_b64(ds: xr.Dataset) -> Optional[str]:
         ax0.grid(True, alpha=0.3)
 
         lines = [l0, l1, l2]
-        labels = [l.get_label() for l in lines]
+        labels = [ln.get_label() for ln in lines]
         ax0.legend(lines, labels, loc="lower right")
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -469,6 +471,176 @@ def _make_section_map_b64(
         ax.set_ylim(lat_lo - margin, lat_hi + margin)
         if title:
             ax.set_title(title)
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _make_overview_panel_b64(
+    ds_prof: xr.Dataset,
+    var: str,
+    label: str,
+    bathy_depths: Optional[np.ndarray] = None,
+    style: str = "pcolormesh",
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+) -> Optional[str]:
+    """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
+
+    *ds_prof* must already be filtered to downcasts and sorted by cast_number.
+    X-axis positions are evenly spaced (0, 1, …, N-1) with cast numbers as tick labels.
+    *bathy_depths* (m, same length as N_PROF) draws a filled black bathymetry below data.
+
+    Parameters
+    ----------
+    vmin, vmax:
+        Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
+    style:
+        ``"pcolormesh"`` (default) or ``"contourf"``.
+    """
+    if var not in ds_prof:
+        return None
+    try:
+        plt.style.use(str(_MPLSTYLE))
+        pressure = ds_prof["pressure"].values
+        data = ds_prof[var].values                    # (N_PROF, N_P)
+        cast_nums = ds_prof["cast_number"].values.astype(int)
+
+        valid_cols = np.where(np.any(np.isfinite(data), axis=0))[0]
+        if not len(valid_cols):
+            return None
+        p_trim = pressure[: valid_cols[-1] + 1]
+        data_trim = data[:, : valid_cols[-1] + 1]
+
+        d_fin = data_trim[np.isfinite(data_trim)]
+        if not len(d_fin):
+            return None
+
+        cmap_name = _VAR_CMAPS.get(var, "viridis")
+        v0 = vmin if vmin is not None else float(np.percentile(d_fin, 1))
+        v1 = vmax if vmax is not None else float(np.percentile(d_fin, 99))
+        bounds = _nice_colorbar_bounds(v0, v1, n=20)
+        cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
+        norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+
+        x_pos = np.arange(len(cast_nums), dtype=float)
+
+        # Y extent: deeper of data max and bathy
+        p_max_data = float(p_trim[-1])
+        p_max_bathy = (
+            float(np.nanmax(bathy_depths))
+            if bathy_depths is not None and len(bathy_depths)
+            else 0.0
+        )
+        y_bottom = max(p_max_data, p_max_bathy) * 1.05
+
+        fig, ax = plt.subplots(figsize=(12, 4))
+
+        if style == "contourf":
+            X, Y = np.meshgrid(x_pos, p_trim)
+            Z = np.ma.masked_invalid(data_trim.T)
+            cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
+            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02)
+        else:
+            pc = ax.pcolormesh(x_pos, p_trim, data_trim.T, cmap=cmap, norm=norm,
+                               shading="nearest")
+            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
+
+        if bathy_depths is not None:
+            ax.fill_between(x_pos, bathy_depths, y_bottom, color="black", step="mid", lw=0)
+
+        cb.set_label(label)
+        ax.set_ylim(y_bottom, 0)
+        ax.set_ylabel("Pressure (dbar)")
+        ax.set_xlabel("Cast number")
+        ax.grid(True, alpha=0.2, color="white")
+
+        n_casts = len(cast_nums)
+        step = max(1, n_casts // 20)
+        tick_idx = np.arange(0, n_casts, step)
+        ax.set_xticks(x_pos[tick_idx])
+        ax.set_xticklabels([str(cast_nums[i]) for i in tick_idx], rotation=45, ha="right")
+
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _make_all_sections_map_b64(
+    sections_data: list[dict[str, Any]],
+    all_lats: list[float],
+    all_lons: list[float],
+) -> Optional[str]:
+    """Return a base64 PNG showing all section tracks coloured by section.
+
+    Parameters
+    ----------
+    sections_data:
+        List of dicts with keys ``name``, ``color``, ``lats``, ``lons``.
+    all_lats, all_lons:
+        Positions of all casts drawn as a grey background scatter.
+    """
+    if not sections_data:
+        return None
+    try:
+        plt.style.use(str(_MPLSTYLE))
+
+        all_s_lats = [y for s in sections_data for y in s["lats"]] + list(all_lats)
+        all_s_lons = [x for s in sections_data for x in s["lons"]] + list(all_lons)
+        finite_lats = [v for v in all_s_lats if np.isfinite(v)]
+        finite_lons = [v for v in all_s_lons if np.isfinite(v)]
+        if not finite_lats:
+            return None
+
+        lat_lo, lat_hi = min(finite_lats), max(finite_lats)
+        lon_lo, lon_hi = min(finite_lons), max(finite_lons)
+        margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
+
+        fig, ax = plt.subplots(figsize=(7, 6))
+
+        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH)
+        if gebco is not None:
+            lons_b, lats_b, depth_b = gebco
+            d_fin = depth_b[depth_b > 0]
+            if len(d_fin):
+                bounds_b = _nice_colorbar_bounds(
+                    float(d_fin.min()), float(np.percentile(d_fin, 98)), n=12
+                )
+                cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
+                norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
+                LON2, LAT2 = np.meshgrid(lons_b, lats_b)
+                ax.pcolormesh(LON2, LAT2, depth_b, cmap=cmap_b, norm=norm_b,
+                              shading="nearest", rasterized=True)
+
+        if all_lats:
+            fin = [
+                np.isfinite(y) and np.isfinite(x) for y, x in zip(all_lats, all_lons)
+            ]
+            ax.scatter(
+                [x for x, f in zip(all_lons, fin) if f],
+                [y for y, f in zip(all_lats, fin) if f],
+                s=8, color="0.7", zorder=2, alpha=0.5,
+            )
+
+        for sec in sections_data:
+            slats = np.array(sec["lats"])
+            slons = np.array(sec["lons"])
+            color = sec.get("color", "#555555")
+            ax.plot(slons, slats, "-o", color=color, lw=1.5, ms=4, zorder=4,
+                    label=sec["name"])
+
+        ax.set_xlabel("Longitude (°E)")
+        ax.set_ylabel("Latitude (°N)")
+        ax.set_xlim(lon_lo - margin, lon_hi + margin)
+        ax.set_ylim(lat_lo - margin, lat_hi + margin)
+        ax.legend(loc="best", fontsize=7, framealpha=0.7)
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)

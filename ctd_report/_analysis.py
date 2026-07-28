@@ -128,6 +128,70 @@ def _along_track_km(
         return np.arange(len(lats), dtype=float), "Cast index"
 
 
+def _add_aou(ds: xr.Dataset) -> xr.Dataset:
+    """Return *ds* with AOU added as 100 - oxygen_1 (O₂ saturation deficit, % sat).
+
+    Note: this is a saturation-deficit proxy, not the traditional AOU in µmol/kg,
+    because the input data contains only oxygen_1 in % saturation.  When dissolved
+    O₂ in µmol/kg becomes available, replace with
+    ``gsw.O2sol(SA, CT, p, lon, lat) - O2_measured``.
+    Returns *ds* unchanged if ``oxygen_1`` is absent or ``AOU`` already exists.
+    """
+    if "AOU" in ds or "oxygen_1" not in ds:
+        return ds
+    ds = ds.copy()
+    dims = ds["oxygen_1"].dims
+    ds["AOU"] = xr.DataArray(
+        (100.0 - ds["oxygen_1"].values).astype(np.float32),
+        dims=dims,
+        attrs={"long_name": "O₂ saturation deficit", "units": "% sat"},
+    )
+    return ds
+
+
+def _interpolate_bathy_at_casts(
+    lats: list[float],
+    lons: list[float],
+    path: Optional[Path] = None,
+) -> Optional[np.ndarray]:
+    """Return GEBCO water depth (m, positive below sea level) at each cast position.
+
+    Uses bilinear interpolation via xarray.  Returns ``None`` if GEBCO is not
+    available or on any error.  Land points (elevation > 0) are clamped to 0.
+    """
+    if path is None or not Path(path).exists():
+        return None
+    try:
+        lats_arr = np.asarray(lats, dtype=float)
+        lons_arr = np.asarray(lons, dtype=float)
+        finite = np.isfinite(lats_arr) & np.isfinite(lons_arr)
+        if not finite.any():
+            return None
+        lat_lo = float(lats_arr[finite].min())
+        lat_hi = float(lats_arr[finite].max())
+        lon_lo = float(lons_arr[finite].min())
+        lon_hi = float(lons_arr[finite].max())
+        gebco = _load_gebco(lat_lo, lat_hi, lon_lo, lon_hi, margin=0.1, path=path)
+        if gebco is None:
+            return None
+        lons_g, lats_g, depth_g = gebco
+        # depth_g shape: (N_lat, N_lon) — positive = below sea level
+        da = xr.DataArray(
+            depth_g,
+            dims=["lat", "lon"],
+            coords={"lat": lats_g, "lon": lons_g},
+        )
+        da = da.sortby("lat").sortby("lon")
+        result = da.interp(
+            lat=xr.DataArray(lats_arr, dims="n"),
+            lon=xr.DataArray(lons_arr, dims="n"),
+            method="linear",
+        )
+        return np.maximum(result.values.astype(float), 0.0)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _compact_cast_list(nums: list[int]) -> str:
     """Format a cast number list compactly, collapsing consecutive runs into ranges.
 

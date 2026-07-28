@@ -14,15 +14,34 @@ data:
   # GEBCO bathymetry file — omit or leave blank to skip bathymetry on maps
   gebco_nc: /path/to/GEBCO_2025.nc
 
+cruise_info:
+  # Shown in the report header; all fields optional
+  ship: ""            # e.g. "RV Meteor"
+  cruise_id: ""       # e.g. "M200"
+  project: ""         # e.g. "ODB2026"
+  # Optional lat/lon bounds for station maps (overrides data-driven extent).
+  # Useful when test stations or outliers skew the automatic bounding box.
+  map_lat_min: null
+  map_lat_max: null
+  map_lon_min: null
+  map_lon_max: null
+
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
   dir: /path/to/outputs/ctd_report
 
 display:
-  # Rendering style for section and overview pcolormesh figures.
+  # Rendering style for section and overview figures.
   # "pcolormesh" — fast, exact cell boundaries, handles irregular grids well.
   # "contourf"   — smooth interpolated contours, better for publication figures.
   section_style: pcolormesh
+
+  # Per-variable colormap limits (applied to section and overview panels).
+  # Leave null to auto-select from 1–99th percentile of the data.
+  vmin:
+    SA: null    # e.g. 34.5 to force salinity axis minimum
+  vmax:
+    SA: null    # e.g. 35.5 to force salinity axis maximum
 
 # Which report types to generate (set false to skip)
 generate:
