@@ -16,6 +16,7 @@ import xarray as xr
 
 from ctd_report._analysis import (
     _add_teos10,
+    _interpolate_bathy_at_casts,
     _load_gebco,
     _split_cast,
 )
@@ -65,6 +66,14 @@ _VAR_LABELS: dict[str, str] = {
 # Upcast trace color (dark grey).  Downcast uses the native per-variable color.
 _UPCAST_COLOR: str = "#666666"
 
+# LADCP fill colors: red = positive (eastward / northward), blue = negative.
+_LADCP_POS_COLOR: str = "#d62728"
+_LADCP_NEG_COLOR: str = "#1f77b4"
+
+# Component colors for LADCP U/V line plots: U = red, V = green.
+_LADCP_U_COLOR: str = "#d62728"
+_LADCP_V_COLOR: str = "#2ca02c"
+
 # When True, hide top and right spines on profile/scatter figures.
 # Set via config.yaml display.clean_spines; propagated by __main__.py.
 CLEAN_SPINES: bool = True
@@ -72,6 +81,34 @@ CLEAN_SPINES: bool = True
 # Figsize (width, height) in inches for the triple-axis (CT/SA/σ₀) profile.
 # Set via config.yaml display.profile_figsize; propagated by __main__.py.
 PROFILE_FIGSIZE: tuple[float, float] = (7.0, 10.0)
+
+# Figsize (width, height) in inches for the cruise overview stacked panels.
+# Set via config.yaml display.overview_figsize; propagated by __main__.py.
+OVERVIEW_FIGSIZE: tuple[float, float] = (12.0, 4.0)
+
+# Optional lat/lon bounding box applied to all map functions.
+# When set, data-driven extents are overridden by these limits.
+# Set via config.yaml cruise_info.map_lat/lon_min/max; propagated by __main__.py.
+MAP_LAT_MIN: Optional[float] = None
+MAP_LAT_MAX: Optional[float] = None
+MAP_LON_MIN: Optional[float] = None
+MAP_LON_MAX: Optional[float] = None
+
+
+def _map_lim(
+    lat_lo: float,
+    lat_hi: float,
+    lon_lo: float,
+    lon_hi: float,
+    margin: float,
+) -> tuple[float, float, float, float]:
+    """Return (lat_lo, lat_hi, lon_lo, lon_hi) with module-level bound overrides applied."""
+    return (
+        MAP_LAT_MIN if MAP_LAT_MIN is not None else lat_lo - margin,
+        MAP_LAT_MAX if MAP_LAT_MAX is not None else lat_hi + margin,
+        MAP_LON_MIN if MAP_LON_MIN is not None else lon_lo - margin,
+        MAP_LON_MAX if MAP_LON_MAX is not None else lon_hi + margin,
+    )
 
 
 def _hide_outer_spines(*axes: Any) -> None:
@@ -186,6 +223,14 @@ def _make_ts_density_b64(ds: xr.Dataset) -> Optional[str]:
             ax.tick_params(axis="x", colors=line.get_color())
             ax.spines["top"].set_edgecolor(line.get_color())
 
+        # Clip x-axes to 1–99th percentile of downcast to suppress outliers
+        for ax, vals in ((ax0, ct), (ax1, sa), (ax2, sig)):
+            fin = vals[np.isfinite(vals)]
+            if len(fin) > 1:
+                lo, hi = float(np.percentile(fin, 1)), float(np.percentile(fin, 99))
+                pad = max((hi - lo) * 0.05, 1e-6)
+                ax.set_xlim(lo - pad, hi + pad)
+
         ax0.set_ylim(float(np.nanmax(p)), 0)
         ax0.set_ylabel("Pressure (dbar)")
         ax0.set_xlabel("CT (°C)", color=_TS_COLORS[0])
@@ -195,6 +240,106 @@ def _make_ts_density_b64(ds: xr.Dataset) -> Optional[str]:
         # No legend — x-axis labels are colour-coded to identify each variable.
         if CLEAN_SPINES:
             ax0.spines["right"].set_visible(False)
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _make_ts_density_ladcp_b64(
+    ds: xr.Dataset, ladcp_path: Optional[Path]
+) -> Optional[str]:
+    """Return CT/SA/σ₀ profiles alongside LADCP U/V on a shared y-axis.
+
+    When *ladcp_path* is None or the file does not exist, renders the same two-column
+    layout with a "no processed LADCP file" message in the right panel so the cast
+    page keeps a consistent appearance for all LADCP-configured casts.
+    """
+    try:
+        plt.style.use(str(_MPLSTYLE))
+        ds = _add_teos10(ds)
+        ds_down, _ = _split_cast(ds)
+        p = ds_down["pressure"].values
+        ct = ds_down["CT"].values
+        sa = ds_down["SA"].values
+        sig = ds_down["sigma0"].values
+
+        ladcp_available = ladcp_path is not None and ladcp_path.exists()
+        z: Optional[np.ndarray] = None
+        u: Optional[np.ndarray] = None
+        v: Optional[np.ndarray] = None
+        if ladcp_available:
+            import scipy.io  # noqa: PLC0415
+
+            m = scipy.io.loadmat(
+                str(ladcp_path), squeeze_me=True, struct_as_record=False
+            )
+            dr = m["dr"]
+            z = np.asarray(dr.z, dtype=float)
+            u = np.asarray(dr.u, dtype=float)
+            v = np.asarray(dr.v, dtype=float)
+
+        fig, (ax_ctd, ax_ladcp) = plt.subplots(
+            1,
+            2,
+            sharey=True,
+            figsize=(
+                max(3.0, PROFILE_FIGSIZE[0] - 1.5),
+                max(3.0, PROFILE_FIGSIZE[1] - 3.0),
+            ),
+            gridspec_kw={"width_ratios": [2, 1]},
+        )
+
+        # Left panel: CT / SA / σ₀ triple-axis
+        ax1 = ax_ctd.twiny()
+        ax2 = ax_ctd.twiny()
+
+        (l0,) = ax_ctd.plot(ct, p, color=_TS_COLORS[0])
+        (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1])
+        (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2])
+
+        ax2.spines["top"].set_position(("axes", 1.12))
+        ax1.spines["top"].set_visible(True)
+        ax2.spines["top"].set_visible(True)
+
+        for ax, line in zip((ax_ctd, ax1, ax2), (l0, l1, l2)):
+            ax.xaxis.label.set_color(line.get_color())
+            ax.tick_params(axis="x", colors=line.get_color())
+            ax.spines["top"].set_edgecolor(line.get_color())
+
+        ax_ctd.set_ylabel("Pressure (dbar)")
+        ax_ctd.set_xlabel("CT (°C)", color=_TS_COLORS[0])
+        ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
+        ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
+        ax_ctd.grid(True, alpha=0.3)
+        if CLEAN_SPINES:
+            ax_ctd.spines["right"].set_visible(False)
+
+        # Right panel: LADCP data or placeholder text
+        if ladcp_available and u is not None and z is not None and v is not None:
+            ax_ladcp.plot(u, z, color=_LADCP_U_COLOR, lw=1.0, label="U (E+)")
+            ax_ladcp.plot(v, z, color=_LADCP_V_COLOR, lw=1.0, label="V (N+)")
+            ax_ladcp.axvline(0, color="0.5", lw=0.6, ls="--")
+            ax_ladcp.set_xlabel("Velocity (m s⁻¹)")
+            ax_ladcp.legend(loc="upper left", fontsize=7)
+            ax_ladcp.grid(True, alpha=0.3)
+        else:
+            ax_ladcp.text(
+                0.5,
+                0.5,
+                "no processed\nLADCP file",
+                ha="center",
+                va="center",
+                transform=ax_ladcp.transAxes,
+                color="0.6",
+                fontsize=8,
+            )
+            ax_ladcp.set_xlabel("LADCP")
+        _hide_outer_spines(ax_ladcp)
+
+        ax_ctd.set_ylim(float(np.nanmax(p)), 0)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -376,7 +521,9 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> Optional[str]:
         max_p = float(np.nanmax(p_down))
 
         for ax, (var, label), color in zip(axes, available, _TS_COLORS):
-            ax.plot(ds_down[var].values, p_down, color=color, label="downcast")
+            d_vals = ds_down[var].values
+            d_fin = d_vals[np.isfinite(d_vals)]
+            ax.plot(d_vals, p_down, color=color, label="downcast")
             if var in ds_up and len(ds_up["pressure"]) > 2:
                 ax.plot(
                     ds_up[var].values,
@@ -387,6 +534,14 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> Optional[str]:
                 )
             ax.set_xlabel(label)
             ax.grid(True, alpha=0.3)
+            # Lock x-axis to downcast 1–99th percentile so upcast outliers don't stretch the scale
+            if len(d_fin) > 1:
+                p1, p99 = (
+                    float(np.percentile(d_fin, 1)),
+                    float(np.percentile(d_fin, 99)),
+                )
+                pad = max((p99 - p1) * 0.05, 1e-6)
+                ax.set_xlim(p1 - pad, p99 + pad)
 
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(max_p, 0)
@@ -515,8 +670,9 @@ def _make_station_map_b64(
         )
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        ax.set_xlim(lon_lo - margin, lon_hi + margin)
-        ax.set_ylim(lat_lo - margin, lat_hi + margin)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+        ax.set_xlim(xl0, xl1)
+        ax.set_ylim(yl0, yl1)
         mean_lat = 0.5 * (lat_lo + lat_hi)
         ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
@@ -550,7 +706,7 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> Optional[str]:
         lon_lo, lon_hi = min(lons), max(lons)
         margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
 
-        fig, ax = plt.subplots(figsize=(6, 5))
+        fig, ax = plt.subplots(figsize=(4, 3.5))
 
         gebco = _load_gebco(
             lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
@@ -589,8 +745,9 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> Optional[str]:
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        ax.set_xlim(lon_lo - margin, lon_hi + margin)
-        ax.set_ylim(lat_lo - margin, lat_hi + margin)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+        ax.set_xlim(xl0, xl1)
+        ax.set_ylim(yl0, yl1)
         mean_lat = 0.5 * (lat_lo + lat_hi)
         ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
@@ -611,6 +768,7 @@ def _make_section_b64(
     title: str = "",
     style: str = "pcolormesh",
     bathy_depths: Optional[np.ndarray] = None,
+    bathy_x: Optional[np.ndarray] = None,
     cast_labels: Optional[list] = None,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
@@ -624,7 +782,11 @@ def _make_section_b64(
     style:
         ``"pcolormesh"`` (default) or ``"contourf"``.
     bathy_depths:
-        GEBCO water depth (m, same length as N_PROF) drawn as a filled black area below data.
+        GEBCO water depth (m) for the bathymetry fill.  If *bathy_x* is also provided
+        the fill uses that dense along-track x array; otherwise falls back to *x_vals*.
+    bathy_x:
+        Along-track x positions (km) for *bathy_depths* when a denser grid is used.
+        Must be the same length as *bathy_depths*.
     cast_labels:
         Cast numbers shown as ▼ markers and sparse tick labels along the top edge.
     vmin, vmax:
@@ -679,17 +841,24 @@ def _make_section_b64(
             X, Y = np.meshgrid(x_vals, p_trim)
             Z = np.ma.masked_invalid(data_trim.T)
             cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-            cb = fig.colorbar(cf, ax=ax, ticks=bounds, pad=0.02)
+            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02)
         else:
             pc = ax.pcolormesh(
                 x_vals, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
             )
-            cb = fig.colorbar(pc, ax=ax, ticks=bounds, pad=0.02)
+            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
 
-        if bathy_depths is not None and len(bathy_depths) == len(x_vals):
-            ax.fill_between(
-                x_vals, bathy_depths, y_bottom, color="black", step="mid", lw=0
+        if bathy_depths is not None:
+            bx = (
+                bathy_x
+                if (bathy_x is not None and len(bathy_x) == len(bathy_depths))
+                else x_vals
             )
+            if len(bathy_depths) == len(bx):
+                step = "mid" if bathy_x is None else None
+                ax.fill_between(
+                    bx, bathy_depths, y_bottom, color="black", step=step, lw=0
+                )
 
         cb.set_label(label)
         ax.set_ylim(y_bottom, 0)
@@ -733,6 +902,180 @@ def _make_section_b64(
         return None
 
 
+def _make_ladcp_section_b64(
+    cast_nums: list[int],
+    x_vals: np.ndarray,
+    x_label: str,
+    ladcp_dir: Path,
+    lats: Optional[list[float]] = None,
+    lons: Optional[list[float]] = None,
+) -> Optional[str]:
+    """Return a base64 PNG of LADCP U (top) and V (bottom) sections with a shared RdBu_r colorbar.
+
+    Casts without a matching .mat file are omitted.  Data are interpolated to a
+    10 m depth grid.  Positive velocities (eastward / northward) map to red.
+    Bathymetry is drawn when *lats*/*lons* and ``GEBCO_PATH`` are both available.
+    """
+    try:
+        import scipy.io  # noqa: PLC0415
+
+        plt.style.use(str(_MPLSTYLE))
+
+        lat_map = dict(zip(cast_nums, lats)) if lats else {}
+        lon_map = dict(zip(cast_nums, lons)) if lons else {}
+
+        # Load available casts; record x, cast_num, lat, lon, z, u, v
+        loaded: list[
+            tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
+        ] = []
+        for cn, xv in zip(cast_nums, x_vals):
+            mat_path = ladcp_dir / f"{cn:03d}.mat"
+            if not mat_path.exists():
+                continue
+            try:
+                m = scipy.io.loadmat(
+                    str(mat_path), squeeze_me=True, struct_as_record=False
+                )
+                dr = m["dr"]
+                loaded.append(
+                    (
+                        float(xv),
+                        int(cn),
+                        lat_map.get(cn, float("nan")),
+                        lon_map.get(cn, float("nan")),
+                        np.asarray(dr.z, dtype=float),
+                        np.asarray(dr.u, dtype=float),
+                        np.asarray(dr.v, dtype=float),
+                    )
+                )
+            except Exception:  # noqa: BLE001
+                continue
+
+        if len(loaded) < 2:
+            return None
+
+        x_ladcp = np.array([t[0] for t in loaded])
+        cast_nums_ladcp = [t[1] for t in loaded]
+        filt_lats = [t[2] for t in loaded]
+        filt_lons = [t[3] for t in loaded]
+        n_cast = len(loaded)
+
+        # Interpolate to common 10 m depth grid
+        z_max = float(max(t[4].max() for t in loaded))
+        z_grid = np.arange(0.0, z_max + 10.0, 10.0)
+        n_z = len(z_grid)
+
+        u_grid = np.full((n_cast, n_z), np.nan)
+        v_grid = np.full((n_cast, n_z), np.nan)
+        for i, (*_, z, u, v) in enumerate(loaded):
+            idx = np.argsort(z)
+            z_s, u_s, v_s = z[idx], u[idx], v[idx]
+            in_range = (z_grid >= z_s.min()) & (z_grid <= z_s.max())
+            u_grid[i, in_range] = np.interp(z_grid[in_range], z_s, u_s)
+            v_grid[i, in_range] = np.interp(z_grid[in_range], z_s, v_s)
+
+        # Symmetric RdBu_r colormap centred at zero
+        all_fin = np.concatenate(
+            [u_grid[np.isfinite(u_grid)], v_grid[np.isfinite(v_grid)]]
+        )
+        if not len(all_fin):
+            return None
+        vmax_val = float(np.nanpercentile(np.abs(all_fin), 98))
+        vmax_val = max(vmax_val, 1e-4)
+        bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
+        cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
+        norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+
+        # Figsize matches _make_section_b64 formula (per panel), doubled height
+        dist = float(x_ladcp[-1] - x_ladcp[0]) if n_cast > 1 else 10.0
+        if dist > 10.0:
+            fig_w = max(6.0, min(18.0, dist / 50.0))
+            fig_h = max(3.0, min(7.0, fig_w * z_max / max(dist, 1.0) / 40.0))
+        else:
+            fig_w, fig_h = 9.0, 5.0
+
+        # Bathymetry for the subset of casts that have .mat files
+        bathy = _interpolate_bathy_at_casts(filt_lats, filt_lons, path=GEBCO_PATH)
+        bathy_max = float(np.nanmax(bathy)) if bathy is not None and len(bathy) else 0.0
+        y_bottom = max(z_max, bathy_max) * 1.05
+
+        # GridSpec: two data panels + one narrow colorbar column
+        fig = plt.figure(figsize=(fig_w, fig_h * 2), constrained_layout=True)
+        gs = fig.add_gridspec(2, 2, width_ratios=[20, 1], hspace=0.08)
+        ax_u = fig.add_subplot(gs[0, 0])
+        ax_v = fig.add_subplot(gs[1, 0], sharex=ax_u, sharey=ax_u)
+        cax = fig.add_subplot(gs[:, 1])
+
+        pc: Any = None
+        for ax, grid, panel_label in (
+            (ax_u, u_grid, "U  East +"),
+            (ax_v, v_grid, "V  North +"),
+        ):
+            pc = ax.pcolormesh(
+                x_ladcp, z_grid, grid.T, cmap=cmap, norm=norm, shading="nearest"
+            )
+            if bathy is not None and len(bathy) == n_cast:
+                ax.fill_between(
+                    x_ladcp, bathy, y_bottom, color="black", step="mid", lw=0
+                )
+            ax.set_ylim(y_bottom, 0)
+            ax.set_ylabel("Depth (m)")
+            ax.grid(True, alpha=0.2, color="white")
+            ax.text(
+                0.01,
+                0.97,
+                panel_label,
+                transform=ax.transAxes,
+                va="top",
+                ha="left",
+                fontsize=8,
+                bbox={
+                    "facecolor": "white",
+                    "alpha": 0.6,
+                    "pad": 2,
+                    "edgecolor": "none",
+                },
+            )
+
+        # Cast ▼ markers and sparse labels on top panel
+        trans = ax_u.get_xaxis_transform()
+        ax_u.plot(
+            x_ladcp,
+            [1.0] * n_cast,
+            marker="v",
+            ls="none",
+            ms=3,
+            mfc="black",
+            mec="black",
+            transform=trans,
+            clip_on=False,
+            zorder=6,
+        )
+        label_step = max(1, n_cast // 20)
+        for i in range(0, n_cast, label_step):
+            ax_u.text(
+                x_ladcp[i],
+                1.04,
+                str(cast_nums_ladcp[i]),
+                transform=trans,
+                ha="center",
+                va="bottom",
+                fontsize=5,
+                rotation=90,
+            )
+
+        ax_v.set_xlabel(x_label)
+
+        # Shared colorbar in its own GridSpec column — does not steal from data axes
+        fig.colorbar(pc, cax=cax, label="Velocity (m s⁻¹)", ticks=bounds[::2])
+
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _make_section_ts_profiles_b64(
     ds_prof: xr.Dataset,
     x_vals: np.ndarray,
@@ -753,8 +1096,12 @@ def _make_section_ts_profiles_b64(
         if not len(sa_fin) or not len(ct_fin):
             return None
 
-        sa_g = np.linspace(sa_fin.min() - 0.05, sa_fin.max() + 0.05, 80)
-        ct_g = np.linspace(ct_fin.min() - 0.1, ct_fin.max() + 0.1, 80)
+        sa_lo = float(np.nanpercentile(sa_fin, 0.5))
+        sa_hi = float(np.nanpercentile(sa_fin, 99.5))
+        ct_lo = float(np.nanpercentile(ct_fin, 0.5))
+        ct_hi = float(np.nanpercentile(ct_fin, 99.5))
+        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
+        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
         SA_g, CT_g = np.meshgrid(sa_g, ct_g)
         sig0_g = gsw.sigma0(SA_g, CT_g)
 
@@ -786,6 +1133,8 @@ def _make_section_ts_profiles_b64(
         cb = fig.colorbar(sm, ax=ax, ticks=bounds[::2])
         cb.set_label("Along-track distance (km)")
 
+        ax.set_xlim(sa_lo, sa_hi)
+        ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
         ax.grid(True, alpha=0.3)
@@ -810,8 +1159,11 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> Optional[str]:
         if len(sa) < 10:
             return None
 
-        sa_lo, sa_hi = sa.min(), sa.max()
-        ct_lo, ct_hi = ct.min(), ct.max()
+        # Clip to 0.5–99.5th percentile so a single outlier cast doesn't blow out the range.
+        sa_lo = float(np.nanpercentile(sa, 0.5))
+        sa_hi = float(np.nanpercentile(sa, 99.5))
+        ct_lo = float(np.nanpercentile(ct, 0.5))
+        ct_hi = float(np.nanpercentile(ct, 99.5))
         sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
         ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
         SA_g, CT_g = np.meshgrid(sa_g, ct_g)
@@ -829,8 +1181,9 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> Optional[str]:
         if not len(c_fin):
             return None
         bounds_c = _nice_colorbar_bounds(float(c_fin.min()), float(c_fin.max()), n=12)
-        cmap_c = plt.get_cmap("plasma", len(bounds_c) - 1)
-        norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=cmap_c.N)
+        cmap_c = plt.cm.YlOrRd.copy()
+        cmap_c.set_bad("white")
+        norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=256)
 
         fig, ax = plt.subplots(figsize=(5.5, 5))
         cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
@@ -839,6 +1192,8 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> Optional[str]:
         cb = fig.colorbar(pc, ax=ax, ticks=bounds_c)
         cb.set_label("log₁₀(count)")
 
+        ax.set_xlim(sa_lo, sa_hi)
+        ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
         ax.grid(True, alpha=0.3)
@@ -864,8 +1219,10 @@ def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> Optional[str]:
         if len(sa) < 10:
             return None
 
-        sa_lo, sa_hi = sa.min(), sa.max()
-        ct_lo, ct_hi = ct.min(), ct.max()
+        sa_lo = float(np.nanpercentile(sa, 0.5))
+        sa_hi = float(np.nanpercentile(sa, 99.5))
+        ct_lo = float(np.nanpercentile(ct, 0.5))
+        ct_hi = float(np.nanpercentile(ct, 99.5))
         sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
         ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
         SA_g, CT_g = np.meshgrid(sa_g, ct_g)
@@ -912,6 +1269,8 @@ def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> Optional[str]:
         cb = fig.colorbar(pc, ax=ax, ticks=bounds_o[::2])
         cb.set_label("Median O₂ saturation (%)")
 
+        ax.set_xlim(sa_lo, sa_hi)
+        ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
         ax.grid(True, alpha=0.3)
@@ -948,6 +1307,7 @@ def _make_section_map_b64(
         gebco = _load_gebco(
             lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
         )
+        bathy_pc = None
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
             d_fin = depth_b[depth_b > 0]
@@ -958,7 +1318,7 @@ def _make_section_map_b64(
                 cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
                 norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
                 LON2, LAT2 = np.meshgrid(lons_b, lats_b)
-                ax.pcolormesh(
+                bathy_pc = ax.pcolormesh(
                     LON2,
                     LAT2,
                     depth_b,
@@ -967,6 +1327,9 @@ def _make_section_map_b64(
                     shading="nearest",
                     rasterized=True,
                 )
+                cb = fig.colorbar(bathy_pc, ax=ax, pad=0.02, ticks=bounds_b[::2])
+                cb.set_label("Depth (m)", fontsize=7)
+                cb.ax.tick_params(labelsize=6)
 
         ax.plot(lons_arr, lats_arr, "-", color="white", lw=1.2, zorder=3)
         ax.scatter(
@@ -990,10 +1353,23 @@ def _make_section_map_b64(
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        ax.set_xlim(lon_lo - margin, lon_hi + margin)
-        ax.set_ylim(lat_lo - margin, lat_hi + margin)
         mean_lat = 0.5 * (lat_lo + lat_hi)
-        ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
+        cos_lat = np.cos(np.deg2rad(mean_lat))
+
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+
+        # Ensure the map is not too narrow for nearly N-S sections (Mercator)
+        lon_span = xl1 - xl0
+        lat_span = yl1 - yl0
+        # In Mercator (aspect=1/cos_lat), require display width ≥ 0.5 × display height.
+        min_lon_span = 0.5 * lat_span / cos_lat
+        if lon_span < min_lon_span:
+            extra = (min_lon_span - lon_span) / 2
+            ax.set_xlim(xl0 - extra, xl1 + extra)
+        else:
+            ax.set_xlim(xl0, xl1)
+        ax.set_ylim(yl0, yl1)
+        ax.set_aspect(1 / cos_lat)
         if title:
             ax.set_title(title)
         ax.grid(True, alpha=0.3)
@@ -1064,7 +1440,7 @@ def _make_overview_panel_b64(
         )
         y_bottom = max(p_max_data, p_max_bathy) * 1.05
 
-        fig, ax = plt.subplots(figsize=(12, 4))
+        fig, ax = plt.subplots(figsize=OVERVIEW_FIGSIZE)
 
         if style == "contourf":
             X, Y = np.meshgrid(x_pos, p_trim)
@@ -1156,7 +1532,7 @@ def _make_all_sections_map_b64(
         lon_lo, lon_hi = min(finite_lons), max(finite_lons)
         margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
 
-        fig, ax = plt.subplots(figsize=(7, 6))
+        fig, ax = plt.subplots(figsize=(5, 4))
 
         gebco = _load_gebco(
             lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
@@ -1211,8 +1587,9 @@ def _make_all_sections_map_b64(
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        ax.set_xlim(lon_lo - margin, lon_hi + margin)
-        ax.set_ylim(lat_lo - margin, lat_hi + margin)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+        ax.set_xlim(xl0, xl1)
+        ax.set_ylim(yl0, yl1)
         mean_lat = 0.5 * (lat_lo + lat_hi)
         ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
@@ -1261,15 +1638,23 @@ def _make_timeseries_b64(
         plt.style.use(str(_MPLSTYLE))
         pressure = ds_prof["pressure"].values
         data = ds_prof[var].values
-        times = ds_prof["time_start"].values
+        times_start = ds_prof["time_start"].values
         cast_types = (
             ds_prof["cast_type"].values
             if "cast_type" in ds_prof
-            else np.full(len(times), "down")
+            else np.full(len(times_start), "down")
         )
 
-        if not len(times):
+        if not len(times_start):
             return None
+
+        # Use profile midpoint time so down/up pairs of the same deployment
+        # are spread apart rather than stacked at the same time_start.
+        if "time_end" in ds_prof:
+            times_end = ds_prof["time_end"].values
+            times = times_start + (times_end - times_start) // 2
+        else:
+            times = times_start
 
         order = np.argsort(times)
         data = data[order]
@@ -1329,7 +1714,7 @@ def _make_timeseries_b64(
             ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
             plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha="right")
 
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds, pad=0.02)
+        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
         cb.set_label(label)
 
         # ▼ for downcast, △ for upcast at top edge
@@ -1492,6 +1877,95 @@ def _make_updown_diff_b64(ds: xr.Dataset) -> Optional[str]:
             ax.grid(True, alpha=0.3)
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
+        _hide_outer_spines(*axes)
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _make_ladcp_profile_b64(ladcp_path: Path) -> Optional[str]:
+    """Return a base64 PNG of LADCP U and V profiles vs depth.
+
+    Positive velocities (eastward / northward) are filled red; negative (westward /
+    southward) are filled blue.  Returns None if the file cannot be read.
+    """
+    try:
+        import scipy.io  # noqa: PLC0415
+
+        m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
+        dr = m["dr"]
+        z = np.asarray(dr.z, dtype=float)
+        u = np.asarray(dr.u, dtype=float)
+        v = np.asarray(dr.v, dtype=float)
+
+        plt.style.use(str(_MPLSTYLE))
+        fig, axes = plt.subplots(1, 2, sharey=True, figsize=(3.5, PROFILE_FIGSIZE[1]))
+
+        for ax, vel, xlabel in zip(
+            axes,
+            [u, v],
+            ["U (m s⁻¹)\nEast +", "V (m s⁻¹)\nNorth +"],
+        ):
+            pos = np.where(vel > 0, vel, 0.0)
+            neg = np.where(vel < 0, vel, 0.0)
+            ax.fill_betweenx(z, 0, pos, color=_LADCP_POS_COLOR, alpha=0.6)
+            ax.fill_betweenx(z, neg, 0, color=_LADCP_NEG_COLOR, alpha=0.6)
+            ax.plot(vel, z, color="k", lw=0.7)
+            ax.axvline(0, color="0.5", lw=0.6, ls="--")
+            ax.set_xlabel(xlabel)
+            ax.grid(True, alpha=0.3)
+
+        axes[0].set_ylabel("Depth (m)")
+        axes[0].set_ylim(float(z.max()) * 1.02, 0.0)
+        _hide_outer_spines(*axes)
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _make_ladcp_bottomtrack_b64(ladcp_path: Path) -> Optional[str]:
+    """Return a base64 PNG of LADCP bottom-track U and V vs depth.
+
+    Returns None if the .mat file lacks ``zbot``, ``ubot``, or ``vbot`` fields.
+    """
+    try:
+        import scipy.io  # noqa: PLC0415
+
+        m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
+        dr = m["dr"]
+        if not all(hasattr(dr, f) for f in ("zbot", "ubot", "vbot")):
+            return None
+        z = np.asarray(dr.zbot, dtype=float)
+        u = np.asarray(dr.ubot, dtype=float)
+        v = np.asarray(dr.vbot, dtype=float)
+        if not len(z):
+            return None
+
+        plt.style.use(str(_MPLSTYLE))
+        fig, axes = plt.subplots(1, 2, sharey=True, figsize=(3.5, 5))
+
+        for ax, vel, xlabel in zip(
+            axes,
+            [u, v],
+            ["U (m s⁻¹)\nEast +", "V (m s⁻¹)\nNorth +"],
+        ):
+            pos = np.where(vel > 0, vel, 0.0)
+            neg = np.where(vel < 0, vel, 0.0)
+            ax.fill_betweenx(z, 0, pos, color=_LADCP_POS_COLOR, alpha=0.6)
+            ax.fill_betweenx(z, neg, 0, color=_LADCP_NEG_COLOR, alpha=0.6)
+            ax.plot(vel, z, color="k", lw=0.7)
+            ax.axvline(0, color="0.5", lw=0.6, ls="--")
+            ax.set_xlabel(xlabel)
+            ax.grid(True, alpha=0.3)
+
+        axes[0].set_ylabel("Depth (m)")
+        axes[0].set_ylim(float(z.max()) * 1.02, float(z.min()) * 0.98)
         _hide_outer_spines(*axes)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)

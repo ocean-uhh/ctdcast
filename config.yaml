@@ -14,6 +14,10 @@ data:
   # GEBCO bathymetry file — omit or leave blank to skip bathymetry on maps
   gebco_nc: /Users/eddifying/Cloudfree/github/cruiseplan/data/bathymetry/GEBCO_2025.nc
 
+  # Directory containing processed LADCP .mat files (NNN.mat, one per cast).
+  # Omit or leave blank to skip LADCP panels on station pages.
+  ladcp_dir: /Volumes/T9ifmeo/odb2026/LADCP/ladcp_test/data/processed
+
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
   dir: outputs/ctd_report
@@ -45,9 +49,14 @@ display:
   # Hide top and right spines on profile and scatter figures for a cleaner look.
   clean_spines: true
 
-  # Figsize [width, height] in inches for the triple-axis (CT/SA/σ₀) profile.
-  # Increase height to show more pressure range with readable labels.
-  profile_figsize: [6, 8]
+  # Figsize [width, height] in inches for the standalone CT/SA/σ₀ profile (Row 1, no LADCP).
+  # Also controls the CTD panel width inside the combined CTD+LADCP figure (width + 1 in).
+  # Smaller width → larger apparent fonts in the rendered HTML.
+  profile_figsize: [5, 8]
+
+  # Figsize [width, height] in inches for the stacked overview panels on index.html.
+  # Smaller width → larger apparent fonts at the ~100% CSS display width these panels use.
+  overview_figsize: [10, 3.5]
 
   # Rendering style for section and timeseries figures separately.
   # "pcolormesh" — fast, exact cell boundaries.

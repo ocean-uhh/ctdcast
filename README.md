@@ -125,8 +125,8 @@ Steps 1 and 2 skip files that already exist (`--force` to regenerate). Step 4 al
 existing HTML pages by default. To regenerate everything:
 
 ```bash
-python cnv_to_nc.py --force
-python cnv_build_profiles.py
+python scripts/cnv_to_nc.py 
+python scripts/cnv_build_profiles.py
 python -m ctd_report config.yaml  # add force: true in config.yaml to rebuild HTML
 ```
 

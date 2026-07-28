@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -10,15 +11,18 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
+from ctd_report._version import __version__ as _VERSION
 from ctd_report._analysis import _add_teos10
 from ctd_report._plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
+    _make_ladcp_bottomtrack_b64,
     _make_pressure_time_b64,
     _make_sensor_diff_b64,
     _make_stability_b64,
     _make_station_map_b64,
     _make_ts_density_b64,
+    _make_ts_density_ladcp_b64,
     _make_ts_diagram_b64,
     _make_ts_updown_b64,
     _make_updown_diff_b64,
@@ -82,10 +86,12 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
   .jump:hover { color: var(--ocean); }
   .plots { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.25rem; align-items: flex-start; }
   .plots img { width: auto; border-radius: 4px; }
-  /* Row 1: profile gets 50% of row width; map and T–S share the rest */
-  .fig-profile { width: 40%; height: auto; flex-shrink: 0; }
-  .fig-map { max-height: 340px; }
-  .fig-updown { max-height: 280px; }
+  /* Row 1 profile widths */
+  .fig-profile { width: 35%; max-height: 550px; height: auto; flex-shrink: 0; }
+  .fig-profile-ladcp { width: 50%; max-height: 550px; height: auto; flex-shrink: 0; }
+  /* Map + T-S stacked column to the right of the profile */
+  .fig-stack { display: flex; flex-direction: column; gap: 0.75rem; flex: 1; min-width: 0; align-items: flex-start; }
+  .fig-stack img { max-height: 320px; width: auto; border-radius: 4px; }
   /* Shared constraint for all multi-panel figures (aux, CT/SA/σ₀, diagnostics) */
   .fig-panel { max-height: 420px; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
@@ -97,7 +103,10 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 <header>
   <div>
     <h1>Cast {{ cast_num }} — {{ cruise }}</h1>
-    <div class="meta">{{ datetime_str }} &nbsp;·&nbsp; {{ lat_str }}, {{ lon_str }} &nbsp;·&nbsp; max depth {{ max_depth_str }}</div>
+    <div class="meta">
+      {{ datetime_str }} &nbsp;·&nbsp; {{ lat_str }}, {{ lon_str }} &nbsp;·&nbsp; max depth {{ max_depth_str }}
+      {% if ladcp_configured and not ladcp_available %}&nbsp;·&nbsp; <span style="color:#f5a623;font-weight:600;">LADCP not processed</span>{% endif %}
+    </div>
   </div>
   <div>
     {% if prev_num %}<a class="btn btn-prev" href="cast_{{ prev_num }}.html">← {{ prev_num }}</a>{% endif %}
@@ -113,24 +122,30 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
   </div>
   <div class="quicklinks">
     <a href="#s-overview">Overview</a>
-    <a href="#s-profiles">CT · SA · σ₀</a>
-    <a href="#s-aux">O₂ · Fluor · Turb</a>
+    <a href="#s-profiles">Physics</a>
+    <a href="#s-aux">Biogeochemistry</a>
     <a href="#s-ts">T–S diagram</a>
     <a href="#s-stability">Stability</a>
     <a href="#s-diagnostics">Diagnostics</a>
+    {% if fig_ladcp_bottomtrack_b64 %}<a href="#s-ladcp">LADCP ▼</a>{% endif %}
   </div>
 </nav>
 
-<!-- Row 1: triple-axis profile | station map | TS up/down -->
+<!-- Row 1: CT/SA/σ₀ [+ LADCP U/V if available] | T–S up/down | station map -->
 <div class="card" id="s-overview">
   <div class="card-header">
     <h2>Overview</h2>
     <a class="jump" href="#top">↑ top</a>
   </div>
   <div class="plots">
-    {% if fig_ts_density_b64 %}<img class="fig-profile" src="data:image/png;base64,{{ fig_ts_density_b64 }}" alt="CT/SA/σ₀ profile">{% endif %}
-    {% if fig_ts_updown_b64 %}<img class="fig-updown" src="data:image/png;base64,{{ fig_ts_updown_b64 }}" alt="T–S down vs up">{% endif %}
-    {% if fig_station_map_b64 %}<img class="fig-map" src="data:image/png;base64,{{ fig_station_map_b64 }}" alt="Station map">{% endif %}
+    {% if fig_ts_density_b64 %}
+    <img class="{% if ladcp_available %}fig-profile-ladcp{% else %}fig-profile{% endif %}"
+         src="data:image/png;base64,{{ fig_ts_density_b64 }}" alt="CT/SA/σ₀ profile">
+    {% endif %}
+    <div class="fig-stack">
+      {% if fig_station_map_b64 %}<img src="data:image/png;base64,{{ fig_station_map_b64 }}" alt="Station map">{% endif %}
+      {% if fig_ts_updown_b64 %}<img src="data:image/png;base64,{{ fig_ts_updown_b64 }}" alt="T–S down vs up">{% endif %}
+    </div>
   </div>
 </div>
 
@@ -138,7 +153,7 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 {% if fig_ct_sa_sigma0_b64 %}
 <div class="card" id="s-profiles">
   <div class="card-header">
-    <h2>CT · SA · σ₀ profiles</h2>
+    <h2>Physics</h2>
     <a class="jump" href="#top">↑ top</a>
   </div>
   <div class="plots">
@@ -151,7 +166,7 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 {% if fig_aux_b64 %}
 <div class="card" id="s-aux">
   <div class="card-header">
-    <h2>O₂ · Fluorescence · Turbidity</h2>
+    <h2>Biogeochemistry</h2>
     <a class="jump" href="#top">↑ top</a>
   </div>
   <div class="plots">
@@ -201,7 +216,20 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 </div>
 {% endif %}
 
-<footer>Generated by ctd_report &nbsp;·&nbsp; {{ cruise }} &nbsp;·&nbsp; cast start: {{ datetime_str }} UTC</footer>
+<!-- Row 7: LADCP bottom track -->
+{% if fig_ladcp_bottomtrack_b64 %}
+<div class="card" id="s-ladcp">
+  <div class="card-header">
+    <h2>LADCP bottom track</h2>
+    <a class="jump" href="#top">↑ top</a>
+  </div>
+  <div class="plots">
+    <img class="fig-panel" src="data:image/png;base64,{{ fig_ladcp_bottomtrack_b64 }}" alt="LADCP bottom track">
+  </div>
+</div>
+{% endif %}
+
+<footer>Generated by ctd_report v{{ version }} &nbsp;·&nbsp; {{ cruise }} &nbsp;·&nbsp; {{ generated_at }}</footer>
 </body>
 </html>"""
 
@@ -218,6 +246,7 @@ def generate_station_page(
     prev_num: Optional[int] = None,
     next_num: Optional[int] = None,
     force: bool = False,
+    ladcp_dir: Optional[Path] = None,
 ) -> Optional[Path]:
     """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
 
@@ -235,6 +264,9 @@ def generate_station_page(
         Cast number of the next cast for nav links (or None).
     force:
         Overwrite existing file if True.
+    ladcp_dir:
+        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``.
+        If None or if the matching file does not exist, LADCP panels are omitted.
 
     Returns
     -------
@@ -262,6 +294,9 @@ def generate_station_page(
     prev_str = f"{prev_num:03d}" if prev_num is not None else ""
     next_str = f"{next_num:03d}" if next_num is not None else ""
 
+    ladcp_path = ladcp_dir / f"{cast_num:03d}.mat" if ladcp_dir is not None else None
+    ladcp_exists = ladcp_path is not None and ladcp_path.exists()
+
     ctx: dict[str, Any] = {
         "cast_num": f"{cast_num:03d}",
         "cruise": cruise,
@@ -271,8 +306,16 @@ def generate_station_page(
         "max_depth_str": f"{max_depth:.0f} dbar",
         "prev_num": prev_str,
         "next_num": next_str,
-        # Row 1
-        "fig_ts_density_b64": _make_ts_density_b64(ds),
+        "ladcp_configured": ladcp_dir is not None,
+        "ladcp_available": ladcp_exists,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "version": _VERSION,
+        # Row 1 — use LADCP layout whenever LADCP is configured (file may be absent)
+        "fig_ts_density_b64": (
+            _make_ts_density_ladcp_b64(ds, ladcp_path)
+            if ladcp_dir is not None
+            else _make_ts_density_b64(ds)
+        ),
         "fig_station_map_b64": _make_station_map_b64(lat, lon, all_meta),
         "fig_ts_updown_b64": _make_ts_updown_b64(ds),
         # Row 2
@@ -287,6 +330,10 @@ def generate_station_page(
         "fig_pressure_time_b64": _make_pressure_time_b64(ds),
         "fig_sensor_diff_b64": _make_sensor_diff_b64(ds),
         "fig_updown_diff_b64": _make_updown_diff_b64(ds),
+        # Row 7: LADCP bottom track
+        "fig_ladcp_bottomtrack_b64": _make_ladcp_bottomtrack_b64(ladcp_path)
+        if ladcp_exists
+        else None,
     }
 
     env = Environment(autoescape=True)
