@@ -215,10 +215,17 @@ def main() -> None:
         timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
     )
 
+    ship_track_nc: Optional[Path] = None
+    ship_track_raw = data.get("ship_track", "")
+    if ship_track_raw:
+        ship_track_nc = Path(ship_track_raw)
+
     try:
         from ctd_report._map_leaflet import generate_leaflet_map  # noqa: PLC0415
 
-        lf_out = generate_leaflet_map(all_meta, sections_cfg, out_dir, force=force)
+        lf_out = generate_leaflet_map(
+            all_meta, sections_cfg, out_dir, force=force, ship_track_nc=ship_track_nc
+        )
         if lf_out:
             print(f"  leaflet map: ok → {lf_out}")
         else:

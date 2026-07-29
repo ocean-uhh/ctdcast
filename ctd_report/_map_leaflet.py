@@ -47,7 +47,7 @@ _LEAFLET_JS_URL = _LEAFLET_JS_URLS[0]
 _LEAFLET_CSS_URL = _LEAFLET_CSS_URLS[0]
 
 _LEAFLET_DIR = Path(__file__).parent / "leaflet"
-_GEBCO_PAD = 0.5  # degrees of context beyond data extent
+_GEBCO_PAD = 2.0  # degrees of context beyond data extent
 
 # Discrete depth levels (metres, positive down).  Bin i spans [levels[i], levels[i+1]).
 _DEPTH_LEVELS = np.array(
@@ -109,6 +109,85 @@ def _section_panel_html(
 
 
 # ---------------------------------------------------------------------------
+# Ship track loader
+# ---------------------------------------------------------------------------
+
+
+def _load_ship_track(
+    ship_track_nc: Path,
+    max_points: int = 2000,
+) -> Optional[list]:
+    """Subsample a ship-track netCDF and return ``[[lat, lon], ...]``.
+
+    Filters invalid positions and returns None if the file is unreadable or
+    contains no valid positions.  ``max_points`` caps the output size so the
+    embedded GeoJSON stays small.
+    """
+    try:
+        import xarray as xr  # noqa: PLC0415
+
+        ds = xr.open_dataset(str(ship_track_nc), engine="netcdf4")
+        lats = ds["latitude"].values.astype(float)
+        lons = ds["longitude"].values.astype(float)
+        ds.close()
+
+        valid = (
+            np.isfinite(lats)
+            & np.isfinite(lons)
+            & (np.abs(lats) <= 90)
+            & (np.abs(lons) <= 180)
+        )
+        lats, lons = lats[valid], lons[valid]
+        if len(lats) == 0:
+            return None
+
+        step = max(1, len(lats) // max_points)
+        lats = lats[::step]
+        lons = lons[::step]
+        return [
+            [round(float(la), 5), round(float(lo), 5)] for la, lo in zip(lats, lons)
+        ]
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Depth legend HTML builder
+# ---------------------------------------------------------------------------
+
+
+def _depth_legend_html() -> str:
+    """Return pre-rendered HTML rows for the depth-band legend panel.
+
+    Colours match the Blues LUT used in ``_make_gebco_layers``:
+    ``Blues(linspace(0.15, 0.95, n_bins))`` where bin 0 is shallowest.
+    """
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    n_bins = len(_DEPTH_LEVELS) - 1
+    blues = plt.cm.Blues(np.linspace(0.15, 0.95, n_bins))
+    parts = ['<div class="dl-title">Depth&nbsp;(m)</div>']
+    for i in range(n_bins):
+        d0 = int(_DEPTH_LEVELS[i])
+        d1 = int(_DEPTH_LEVELS[i + 1])
+        r, g, b = (int(blues[i, k] * 255) for k in range(3))
+        hex_c = f"#{r:02x}{g:02x}{b:02x}"
+        label = f"{d0}–{d1}" if d1 < 6000 else f"&gt;{d0}"
+        parts.append(
+            f'<div class="dl-row">'
+            f'<span class="dl-swatch" style="background:{hex_c}"></span>'
+            f"{label}</div>"
+        )
+    # Land swatch — colour must match rgba[~ocean_merc] assignment in _make_gebco_layers.
+    parts.append(
+        '<div class="dl-row">'
+        '<span class="dl-swatch" style="background:#afb99b"></span>'
+        "Land</div>"
+    )
+    return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # Leaflet bundled asset loader
 # ---------------------------------------------------------------------------
 
@@ -141,9 +220,10 @@ def _load_leaflet() -> tuple[str, str]:
 # GEBCO rendering — discrete depth bands + vector contours
 # ---------------------------------------------------------------------------
 
-# Max pixels in either dimension for the contour grid.  Smaller than the
-# raster max_px to keep the embedded GeoJSON compact (~400–500 KB).
-_CONTOUR_MAX_PX = 400
+# Max pixels in either dimension for the shared fill+contour grid.
+# Both the raster fill and the GeoJSON contours use this same grid,
+# guaranteeing that fill-band edges and contour lines are co-located.
+_CONTOUR_MAX_PX = 600
 
 
 def _make_gebco_layers(
@@ -151,24 +231,30 @@ def _make_gebco_layers(
     lat_max: float,
     lon_min: float,
     lon_max: float,
-    raster_max_px: int = 1024,
-) -> tuple[Optional[str], Optional[str]]:
-    """Load GEBCO once and return (raster_b64, contour_geojson).
+) -> tuple[Optional[str], Optional[str], Optional[list]]:
+    """Load GEBCO once and return (raster_b64, contour_geojson, bounds).
 
-    ``raster_b64`` — base64 PNG with discrete depth-band fill (Blues colormap,
-    levels from ``_DEPTH_LEVELS``).
+    ``raster_b64`` — base64 PNG of discrete depth bands, reprojected to Web
+    Mercator.  ``L.imageOverlay`` stretches images linearly in Mercator pixel
+    space, so without reprojection a geographic (equirectangular) image appears
+    shifted northward relative to GeoJSON features at 60 °N by ~0.035 °
+    (~4 km) — visible on screen.  We fix this by building the image on a grid
+    that is uniformly spaced in Mercator Y, so each row maps directly to its
+    correct Mercator pixel position.
 
     ``contour_geojson`` — GeoJSON FeatureCollection of LineString features at
     100 m intervals.  Each feature has properties ``depth`` (positive metres)
-    and ``major`` (True for multiples of 500 m).  The Leaflet style function
-    uses ``major`` to set line weight and opacity.
+    and ``major`` (True for multiples of 500 m).
 
-    Either value is None when GEBCO is unavailable or rendering fails.
+    ``bounds`` — ``[[south, west], [north, east]]`` geographic degrees for the
+    Leaflet ``imageOverlay``.
+
+    Any returned value is None when GEBCO is unavailable or rendering fails.
     """
     from ctd_report import _plots as plots  # noqa: PLC0415
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
-        return None, None
+        return None, None, None
 
     try:
         import matplotlib.pyplot as plt  # noqa: PLC0415
@@ -180,37 +266,62 @@ def _make_gebco_layers(
             lon=slice(lon_min - _GEBCO_PAD, lon_max + _GEBCO_PAD),
         )
         elev = ds_region["elevation"].values.astype(np.float32)  # +up, (lat, lon)
-        lat_vals = ds_region["lat"].values
-        lon_vals = ds_region["lon"].values
+        lat_vals = ds_region["lat"].values  # ascending S→N
+        lon_vals = ds_region["lon"].values  # ascending W→E
         ds.close()
 
         if elev.size == 0:
-            return None, None
+            return None, None, None
 
         ny, nx = elev.shape
 
-        # --- Raster: discrete depth-band PNG ---
-        ocean = elev < 0
-        land = ~ocean
+        # Geographic pixel-edge bounds (cell centres ± half cell).
+        dlat = abs(float(lat_vals[1] - lat_vals[0])) if ny > 1 else 1 / 240
+        dlon = abs(float(lon_vals[1] - lon_vals[0])) if nx > 1 else 1 / 240
+        south_b = float(lat_vals[0]) - dlat / 2
+        north_b = float(lat_vals[-1]) + dlat / 2
+        west_b = float(lon_vals[0]) - dlon / 2
+        east_b = float(lon_vals[-1]) + dlon / 2
+        actual_bounds: list = [[south_b, west_b], [north_b, east_b]]
 
+        # --- Raster: Mercator-reprojected discrete depth-band PNG ---
+        # Build output image on a grid that is UNIFORMLY SPACED in Mercator Y
+        # so each row maps to its correct Mercator screen position.
+        n_rows = min(ny, 1024)
+        n_cols = min(nx, 1024)
+
+        y_n = float(np.log(np.tan(np.pi / 4 + np.radians(north_b) / 2)))
+        y_s = float(np.log(np.tan(np.pi / 4 + np.radians(south_b) / 2)))
+
+        # Row 0 = northernmost (image top), row n_rows-1 = southernmost.
+        merc_y_rows = np.linspace(y_n, y_s, n_rows)
+        # Inverse-project each row's Mercator Y back to geographic latitude.
+        geo_lats_rows = np.degrees(2 * np.arctan(np.exp(merc_y_rows)) - np.pi / 2)
+        # Longitude is linear in Mercator, so cols stay geographic.
+        geo_lons_cols = np.linspace(west_b, east_b, n_cols)
+
+        # Nearest-neighbour lookup of GEBCO elevation on the Mercator grid.
+        row_idx = np.clip(
+            np.searchsorted(lat_vals, geo_lats_rows, side="right") - 1, 0, ny - 1
+        )
+        col_idx = np.clip(
+            np.searchsorted(lon_vals, geo_lons_cols, side="right") - 1, 0, nx - 1
+        )
+        # elev_merc[i, j] = GEBCO elevation at (geo_lats_rows[i], geo_lons_cols[j])
+        elev_merc = elev[np.ix_(row_idx, col_idx)]  # (n_rows, n_cols)
+
+        ocean_merc = elev_merc < 0
+        depth_merc = np.where(ocean_merc, -elev_merc, 0.0).astype(np.float32)
         n_bins = len(_DEPTH_LEVELS) - 1
         lut = (plt.cm.Blues(np.linspace(0.15, 0.95, n_bins)) * 255).astype(np.uint8)
-
-        depth_px = np.where(ocean, -elev, 0.0).astype(np.float32)
         bin_idx = np.clip(
-            np.searchsorted(_DEPTH_LEVELS[1:], depth_px), 0, n_bins - 1
+            np.searchsorted(_DEPTH_LEVELS[1:], depth_merc), 0, n_bins - 1
         ).astype(np.intp)
-
-        rgba = lut[bin_idx]  # (ny, nx, 4)
-        rgba[land] = [175, 185, 155, 255]
-
-        rgba_png = rgba[::-1, :, :] if lat_vals[0] < lat_vals[-1] else rgba
-        step_y = max(1, ny // raster_max_px)
-        step_x = max(1, nx // raster_max_px)
-        rgba_png = np.ascontiguousarray(rgba_png[::step_y, ::step_x])
+        rgba = lut[bin_idx]  # (n_rows, n_cols, 4)
+        rgba[~ocean_merc] = [175, 185, 155, 255]  # land colour
 
         buf = io.BytesIO()
-        plt.imsave(buf, rgba_png, format="png")
+        plt.imsave(buf, rgba, format="png")
         raster_b64: Optional[str] = base64.b64encode(buf.getvalue()).decode("ascii")
 
         # --- Contours: vector GeoJSON at 100 m intervals ---
@@ -240,9 +351,7 @@ def _make_gebco_layers(
                     if len(seg) < 2:
                         continue
                     seg = seg[::2]  # thin by 2× for compactness
-                    coords = [
-                        [round(float(x), 4), round(float(y), 4)] for x, y in seg
-                    ]
+                    coords = [[round(float(x), 4), round(float(y), 4)] for x, y in seg]
                     features.append(
                         {
                             "type": "Feature",
@@ -255,10 +364,10 @@ def _make_gebco_layers(
                 {"type": "FeatureCollection", "features": features}
             )
 
-        return raster_b64, contour_geojson
+        return raster_b64, contour_geojson, actual_bounds
 
     except Exception:  # noqa: BLE001
-        return None, None
+        return None, None, None
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +410,6 @@ _LEAFLET_TEMPLATE = """\
   header a { color: #aed6f1; text-decoration: none; font-size: 0.85rem; }
   header a:hover { text-decoration: underline; }
   #map { width: 100%; height: calc(100vh - 74px); }
-  .gebco-layer { image-rendering: pixelated; image-rendering: crisp-edges; }
   #info-panel {
     position: fixed; bottom: 50px; left: 12px; z-index: 1500;
     background: #fff; border-radius: 8px; padding: 0.8rem 1rem;
@@ -312,6 +420,20 @@ _LEAFLET_TEMPLATE = """\
   #info-panel a { display: block; margin-top: 0.3rem; color: #1a3a5c; font-weight: 600; text-decoration: none; }
   #info-panel a:hover { text-decoration: underline; }
   footer { text-align: center; padding: 0.35rem; font-size: 0.72rem; color: #999; background: #fff; border-top: 1px solid #e0e0e0; }
+  .cast-label {
+    font-size: 8px; font-weight: 600; color: #111; white-space: nowrap;
+    pointer-events: none; line-height: 1;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  }
+  #depth-legend {
+    position: fixed; bottom: 50px; right: 12px; z-index: 1500;
+    background: #fff; border-radius: 6px; padding: 0.5rem 0.7rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18); font-size: 0.72rem; color: #1a1a2e;
+    line-height: 1.4;
+  }
+  #depth-legend .dl-title { font-weight: 700; margin-bottom: 0.25rem; }
+  #depth-legend .dl-row { display: flex; align-items: center; gap: 5px; margin: 1px 0; }
+  #depth-legend .dl-swatch { width: 12px; height: 9px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.12); }
 </style>
 </head>
 <body>
@@ -326,6 +448,7 @@ _LEAFLET_TEMPLATE = """\
 
 <div id="map"></div>
 <div id="info-panel" class="empty">Hover over a cast or section.</div>
+{% if depth_legend_html %}<div id="depth-legend">{{ depth_legend_html }}</div>{% endif %}
 <footer>Generated by ctd_report v{{ version }} &nbsp;·&nbsp; {{ cruise | e }} &nbsp;·&nbsp; {{ generated_at }}</footer>
 
 {% if leaflet_inline %}
@@ -339,6 +462,7 @@ var SECTIONS = {{ sections_json }};
 var GEBCO_B64    = {{ gebco_b64_json }};
 var GEBCO_BOUNDS = {{ gebco_bounds_json }};
 var CONTOURS     = {{ contours_json }};
+var SHIP_TRACK   = {{ ship_track_json }};
 var DATA_BOUNDS  = [[{{ lat_min }}, {{ lon_min }}], [{{ lat_max }}, {{ lon_max }}]];
 
 var map = L.map('map', { zoomSnap: 0.25, zoomControl: false });
@@ -347,7 +471,7 @@ map.fitBounds(DATA_BOUNDS, { padding: [40, 40] });
 
 if (GEBCO_B64) {
   L.imageOverlay('data:image/png;base64,' + GEBCO_B64, GEBCO_BOUNDS, {
-    opacity: 1.0, interactive: false, className: 'gebco-layer'
+    opacity: 1.0, interactive: false
   }).addTo(map);
 }
 
@@ -362,6 +486,12 @@ if (CONTOURS) {
         opacity: major ? 0.6 : 0.35,
       };
     }
+  }).addTo(map);
+}
+
+if (SHIP_TRACK && SHIP_TRACK.length > 1) {
+  L.polyline(SHIP_TRACK, {
+    color: '#888', weight: 1.5, opacity: 0.45, interactive: false
   }).addTo(map);
 }
 
@@ -385,6 +515,17 @@ CASTS.forEach(function(c) {
     .on('mouseover', function() { showPanel(c.info); })
     .on('click',     function() { window.location.href = c.url; })
     .addTo(map);
+
+  // Cast number label offset just to the right of the dot
+  L.marker([c.lat, c.lon], {
+    icon: L.divIcon({
+      className: '',
+      html: '<span class="cast-label">' + c.num + '</span>',
+      iconAnchor: [-9, 4],
+    }),
+    interactive: false,
+    keyboard: false,
+  }).addTo(map);
 });
 </script>
 </body>
@@ -401,10 +542,13 @@ def generate_leaflet_map(
     sections_cfg: dict[str, Any],
     out_dir: Path,
     force: bool = False,  # noqa: ARG001
+    ship_track_nc: Optional[Path] = None,
 ) -> Optional[Path]:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
 
     Always regenerates (force is accepted for API symmetry but ignored).
+    If ``ship_track_nc`` is provided and the file exists, the ship track is
+    loaded, subsampled, and rendered as a grey polyline behind cast markers.
     Returns the output path, or None if all_meta is empty.
     """
     if not all_meta:
@@ -472,19 +616,37 @@ def generate_leaflet_map(
                 "lat": lat_f,
                 "lon": lon_f,
                 "color": color_c,
+                "num": cn,
                 "url": f"stations/cast_{cn:03d}.html",
                 "info": _cast_panel_html(m, sname_c, section_url),
             }
         )
 
     print("  leaflet: rendering GEBCO...", end=" ", flush=True)
-    gebco_b64 = _make_gebco_b64(lat_min, lat_max, lon_min, lon_max)
-    print("ok" if gebco_b64 else "unavailable (no bathymetry layer)")
+    gebco_b64, contour_geojson, actual_bounds = _make_gebco_layers(
+        lat_min, lat_max, lon_min, lon_max
+    )
+    if gebco_b64:
+        n_features = contour_geojson.count('"Feature"') if contour_geojson else 0
+        print(f"ok ({n_features} contour segments)")
+    else:
+        print("unavailable (no bathymetry layer)")
 
-    gebco_bounds = [
+    gebco_bounds = actual_bounds or [
         [lat_min - _GEBCO_PAD, lon_min - _GEBCO_PAD],
         [lat_max + _GEBCO_PAD, lon_max + _GEBCO_PAD],
     ]
+
+    ship_track: Optional[list] = None
+    if ship_track_nc is not None and ship_track_nc.exists():
+        print("  leaflet: loading ship track...", end=" ", flush=True)
+        ship_track = _load_ship_track(ship_track_nc)
+        if ship_track:
+            print(f"ok ({len(ship_track)} points)")
+        else:
+            print("failed (no valid positions)")
+
+    depth_legend: str = _depth_legend_html() if gebco_b64 else ""
 
     leaflet_js, leaflet_css = _load_leaflet()
     if not leaflet_js:
@@ -505,6 +667,11 @@ def generate_leaflet_map(
         sections_json=_safe_json(sections_data),
         gebco_b64_json=_safe_json(gebco_b64),
         gebco_bounds_json=_safe_json(gebco_bounds),
+        contours_json=contour_geojson.replace("</", "<\\/")
+        if contour_geojson
+        else "null",
+        ship_track_json=_safe_json(ship_track or []),
+        depth_legend_html=depth_legend,
         lat_min=lat_min,
         lat_max=lat_max,
         lon_min=lon_min,
