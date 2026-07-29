@@ -97,6 +97,7 @@ _INDEX_TEMPLATE = """<!DOCTYPE html>
         <a class="btn" href="station_index.html">All stations</a>
         <a class="btn btn-sec" href="sections.html">Sections</a>
         <a class="btn btn-ts" href="timeseries.html">Time series</a>
+        <a class="btn" style="background:#1a6b8a;" href="leaflet.html">Interactive map</a>
       </div>
     </div>
   </div>
@@ -426,6 +427,7 @@ def generate_ctd_report(
     )
     _write_stations_list(all_meta_sorted, cruise, out_dir, sections_cfg=sections_cfg)
     _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta_sorted)
+
     print(f"\nReport written to {out_dir}/index.html")
 
 

@@ -26,5 +26,5 @@ where = ["."]
 include = ["ctd_report*"]
 
 [tool.setuptools.package-data]
-ctd_report = ["*.mplstyle"]
+ctd_report = ["*.mplstyle", "leaflet/*"]
 

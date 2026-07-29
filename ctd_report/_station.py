@@ -88,7 +88,7 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
   .plots img { width: auto; border-radius: 4px; }
   /* Row 1 profile widths */
   .fig-profile { width: 35%; max-height: 550px; height: auto; flex-shrink: 0; }
-  .fig-profile-ladcp { width: 50%; max-height: 550px; height: auto; flex-shrink: 0; }
+  .fig-profile-ladcp { width: 65%; max-height: 900px; height: auto; flex-shrink: 0; }
   /* Map + T-S stacked column to the right of the profile */
   .fig-stack { display: flex; flex-direction: column; gap: 0.75rem; flex: 1; min-width: 0; align-items: flex-start; }
   .fig-stack img { max-height: 320px; width: auto; border-radius: 4px; }

@@ -18,13 +18,17 @@ data:
   # Omit or leave blank to skip LADCP panels on station pages.
   ladcp_dir: /Volumes/T9ifmeo/odb2026/LADCP/ladcp_test/data/processed
 
+  # Ship track netCDF — shown as grey polyline on the Leaflet map.
+  # Omit or leave blank to skip.
+  ship_track: /Volumes/T9ifmeo/odb2026/SADO/ship_track_odb2026_20260701_20260729.nc
+
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
-  dir: outputs/ctd_report
-  #dir: /Volumes/Compartida/MIXSED2/ShareStuff/forAngel/ctd_report
+  #dir: outputs/ctd_report
+  dir: /Volumes/Compartida/MIXSED2/ShareStuff/forAngel/ctd_report
 
 # Overwrite existing HTML files
-force: false
+force: False
 
 
 cruise_info:
@@ -52,7 +56,7 @@ display:
   # Figsize [width, height] in inches for the standalone CT/SA/σ₀ profile (Row 1, no LADCP).
   # Also controls the CTD panel width inside the combined CTD+LADCP figure (width + 1 in).
   # Smaller width → larger apparent fonts in the rendered HTML.
-  profile_figsize: [5, 8]
+  profile_figsize: [7, 9.5]
 
   # Figsize [width, height] in inches for the stacked overview panels on index.html.
   # Smaller width → larger apparent fonts at the ~100% CSS display width these panels use.
