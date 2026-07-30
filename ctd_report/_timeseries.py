@@ -70,6 +70,13 @@ _TIMESERIES_TEMPLATE = """<!DOCTYPE html>
     padding: 1.25rem; margin: 1rem 1.5rem;
   }
   .card h2 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.75rem; }
+  .meta-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.5rem; font-size: 0.9rem;
+  }
+  .meta-item { display: flex; flex-direction: column; }
+  .meta-item .label { font-size: 0.75rem; color: #888; }
+  .meta-item .value { font-weight: 600; }
   .plot-wide { margin-top: 0.5rem; }
   .plot-wide img { max-width: 100%; height: auto; border-radius: 4px; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
@@ -90,6 +97,8 @@ _TIMESERIES_TEMPLATE = """<!DOCTYPE html>
     <span>{{ ts_name }}</span>
   </div>
   <div class="quicklinks">
+    <a href="#s-meta">Metadata</a>
+    {% if fig_location_b64 %}<a href="#s-map">Map</a>{% endif %}
     {% for panel in panels %}
     <a href="#s-panel-{{ loop.index }}">{{ panel.short }}</a>
     {% endfor %}
@@ -97,15 +106,27 @@ _TIMESERIES_TEMPLATE = """<!DOCTYPE html>
   </div>
 </nav>
 
-{% if fig_location_b64 %}
-<div class="card" style="display:flex;align-items:flex-start;gap:1rem;">
-  <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map" style="max-height:260px;width:auto;border-radius:4px;flex-shrink:0;">
-  <div style="font-size:0.85rem;color:#555;padding-top:0.5rem;">
-    <strong>{{ ts_name }}</strong><br>
-    {{ ts_description }}<br><br>
-    {{ n_casts }} casts &nbsp;·&nbsp; casts {{ cast_list_str }}<br>
-    {{ time_range }}
+<div class="card" id="s-meta">
+  <h2>Timeseries metadata</h2>
+  <div class="meta-grid">
+    <div class="meta-item"><span class="label">Group</span><span class="value">{{ ts_name }}</span></div>
+    <div class="meta-item"><span class="label">Description</span><span class="value">{{ ts_description }}</span></div>
+    <div class="meta-item"><span class="label">Casts</span><span class="value">{{ cast_list_str }}</span></div>
+    <div class="meta-item"><span class="label">Time range</span><span class="value">{{ time_range }}</span></div>
   </div>
+  <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+    {% for cn in cast_nums %}
+    <a style="display:inline-block; background:#4a6fa5; color:#fff; padding:0.2rem 0.6rem;
+       border-radius:999px; font-size:0.78rem; text-decoration:none;"
+       href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if fig_location_b64 %}
+<div class="card" id="s-map">
+  <h2>Station location</h2>
+  <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map" style="max-height:260px;width:auto;border-radius:4px;">
 </div>
 {% endif %}
 
@@ -247,6 +268,7 @@ def generate_timeseries_page(
         "n_profiles": n_profiles,
         "time_range": f"{time_start_str} – {time_end_str}",
         "cast_list_str": _compact_cast_list(cast_nums),
+        "cast_nums": [f"{n:03d}" for n in sorted(cast_nums)],
         "panels": panels,
         "fig_location_b64": fig_location_b64,
         "version": _VERSION,

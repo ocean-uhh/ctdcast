@@ -30,6 +30,7 @@ from ctd_report._analysis import (
 )
 from ctd_report._section import _expand_cast_numbers, generate_section_page
 from ctd_report._station import generate_station_page
+from ctd_report._timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -334,33 +335,81 @@ _SECTIONS_TEMPLATE = """<!DOCTYPE html>
 
 def generate_ctd_report(
     nc_dir: Path,
-    profiles_path: Path,
-    section_yaml: Path,
     out_dir: Path,
+    *,
+    profiles_path: Optional[Path] = None,
+    section_yaml: Optional[Path] = None,
+    ladcp_dir: Optional[Path] = None,
+    ship_track_nc: Optional[Path] = None,
+    generate: Optional[dict[str, bool]] = None,
     force: bool = False,
+    skip_existing: bool = False,  # noqa: ARG001
     section_style: str = "pcolormesh",
+    timeseries_style: str = "pcolormesh",
     vmin_override: Optional[dict[str, float]] = None,
     vmax_override: Optional[dict[str, float]] = None,
+    cruise_info: Optional[dict[str, Any]] = None,
+    cast_filter: Optional[int] = None,
 ) -> None:
-    """Generate the full CTD HTML report suite.
+    """Generate the full oceancast HTML report suite.
 
     Parameters
     ----------
     nc_dir:
         Directory containing per-cast ``.nc`` files.
-    profiles_path:
-        Path to compiled ``profiles.nc`` (built by ``cnv_build_profiles.py``).
-    section_yaml:
-        Path to ``ctd_sections.yaml``.
     out_dir:
-        Root output directory (e.g. ``outputs/ctd_report/``).
+        Root output directory.
+    profiles_path:
+        Path to compiled ``profiles.nc``. Required for section and time series pages.
+    section_yaml:
+        Path to the sections/timeseries YAML file (``ctd_sections.yaml``).
+    ladcp_dir:
+        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``.
+    ship_track_nc:
+        Path to a ship-track netCDF for the Leaflet map background line.
+    generate:
+        Dict of booleans controlling which page types to build.
+        Keys: ``"stations"``, ``"sections"``, ``"timeseries"``, ``"index"``, ``"map"``.
+        Missing keys default to ``True``.
     force:
-        Regenerate all pages even if they already exist.
+        Regenerate all pages regardless of file modification times.
+    skip_existing:
+        Reserved for future mtime-based smart update; currently treated the same
+        as ``force=False`` (skip if output exists).
     section_style:
-        ``"pcolormesh"`` or ``"contourf"`` for section and overview figures.
+        ``"pcolormesh"`` or ``"contourf"`` for section figures.
+    timeseries_style:
+        ``"pcolormesh"`` or ``"contourf"`` for time series figures.
     vmin_override, vmax_override:
-        Per-variable colormap limit overrides applied everywhere.
+        Per-variable colormap limit overrides (e.g. ``{"SA": 34.5}``).
+    cruise_info:
+        Cruise metadata dict (from the ``cruise_info:`` block in ``config.yaml``).
+    cast_filter:
+        If set, rebuild only the station page for this cast number
+        (implies ``generate={"stations": True, rest False}``).
     """
+    gen: dict[str, bool] = {
+        "stations": True,
+        "sections": True,
+        "timeseries": True,
+        "index": True,
+        "map": True,
+    }
+    if generate is not None:
+        gen.update(generate)
+    if cast_filter is not None:
+        gen = {
+            "stations": True,
+            "sections": False,
+            "timeseries": False,
+            "index": False,
+            "map": False,
+        }
+
+    vmin_override = vmin_override or {}
+    vmax_override = vmax_override or {}
+    cruise_info = cruise_info or {}
+
     out_dir.mkdir(parents=True, exist_ok=True)
 
     cast_files = _select_cast_files(nc_dir)
@@ -369,64 +418,115 @@ def generate_ctd_report(
         return
 
     print(f"Found {len(cast_files)} cast files")
-    all_meta = [_read_cast_meta(path) for path in cast_files]
-    all_meta_sorted = sorted(
-        [m for m in all_meta if m is not None],
+    all_meta_raw = [_read_cast_meta(p) for p in cast_files]
+    all_meta = sorted(
+        [m for m in all_meta_raw if m is not None],
         key=lambda m: m["time_start"],
         reverse=True,
     )
-    cruise = (
-        all_meta_sorted[0].get("cruise", "odb2026") if all_meta_sorted else "odb2026"
-    )
+    cruise = all_meta[0].get("cruise", "UNK") if all_meta else "UNK"
 
-    cast_nums_sorted = [m["cast_num"] for m in all_meta_sorted]
-    for i, meta in enumerate(all_meta_sorted):
-        nc_path = meta["path"]
-        prev_num = cast_nums_sorted[i - 1] if i > 0 else None
-        next_num = cast_nums_sorted[i + 1] if i < len(all_meta_sorted) - 1 else None
-        out = generate_station_page(
-            nc_path,
-            out_dir,
-            all_meta_sorted,
-            prev_num=prev_num,
-            next_num=next_num,
-            force=force,
-        )
-        status = "ok" if out else "FAILED"
-        print(f"  station cast_{meta['cast_num']:03d}: {status}")
+    if gen["stations"]:
+        cast_nums = [m["cast_num"] for m in all_meta]
+        targets = [m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter]
+        if cast_filter is not None and not targets:
+            print(f"Cast {cast_filter} not found in {nc_dir}")
+            return
+        for meta in targets:
+            orig_i = all_meta.index(meta)
+            prev_num = cast_nums[orig_i - 1] if orig_i > 0 else None
+            next_num = cast_nums[orig_i + 1] if orig_i < len(all_meta) - 1 else None
+            out_page = generate_station_page(
+                meta["path"],
+                out_dir,
+                all_meta,
+                prev_num=prev_num,
+                next_num=next_num,
+                force=force,
+                ladcp_dir=ladcp_dir,
+            )
+            print(f"  station cast_{meta['cast_num']:03d}: {'ok' if out_page else 'FAILED'}")
 
-    sections_cfg: dict[str, Any] = {}
-    if section_yaml.exists():
+    yaml_data: dict[str, Any] = {}
+    if section_yaml and section_yaml.exists():
         with open(section_yaml) as f:
-            sections_cfg = yaml.safe_load(f).get("sections", {})
+            yaml_data = yaml.safe_load(f) or {}
 
-    for sec_name, sec_cfg in sections_cfg.items():
-        out = generate_section_page(
-            sec_name,
-            sec_cfg,
-            profiles_path,
+    sections_cfg: dict[str, Any] = yaml_data.get("sections", {})
+    timeseries_cfg: dict[str, Any] = yaml_data.get("timeseries", {})
+
+    if gen["sections"]:
+        for sec_name, sec_cfg in sections_cfg.items():
+            out_page = generate_section_page(
+                sec_name,
+                sec_cfg,
+                profiles_path,
+                out_dir,
+                force=force,
+                section_style=section_style,
+                vmin_override=vmin_override,
+                vmax_override=vmax_override,
+                ladcp_dir=ladcp_dir,
+            )
+            print(f"  section {sec_name}: {'ok' if out_page else 'skipped'}")
+
+    if gen["timeseries"] and timeseries_cfg:
+        for ts_name, ts_cfg in timeseries_cfg.items():
+            out_page = generate_timeseries_page(
+                ts_name,
+                ts_cfg,
+                profiles_path,
+                out_dir,
+                force=force,
+                section_style=timeseries_style,
+                vmin_override=vmin_override,
+                vmax_override=vmax_override,
+                all_meta=all_meta,
+            )
+            print(f"  timeseries {ts_name}: {'ok' if out_page else 'skipped'}")
+
+    if gen["index"]:
+        _write_index(
+            all_meta,
+            sections_cfg,
+            cruise,
             out_dir,
-            force=force,
+            force,
+            profiles_path=profiles_path,
             section_style=section_style,
             vmin_override=vmin_override,
             vmax_override=vmax_override,
+            cruise_info=cruise_info,
+            timeseries_cfg=timeseries_cfg,
         )
-        status = "ok" if out else "skipped (profiles.nc missing or no matching casts)"
-        print(f"  section {sec_name}: {status}")
+        _write_stations_list(
+            all_meta,
+            cruise,
+            out_dir,
+            sections_cfg=sections_cfg,
+            timeseries_cfg=timeseries_cfg,
+            ladcp_dir=ladcp_dir,
+        )
+        _write_sections_list(
+            sections_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+        )
+        _write_timeseries_list(
+            timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+        )
 
-    _write_index(
-        all_meta_sorted,
-        sections_cfg,
-        cruise,
-        out_dir,
-        force,
-        profiles_path=profiles_path,
-        section_style=section_style,
-        vmin_override=vmin_override,
-        vmax_override=vmax_override,
-    )
-    _write_stations_list(all_meta_sorted, cruise, out_dir, sections_cfg=sections_cfg)
-    _write_sections_list(sections_cfg, cruise, out_dir, all_meta=all_meta_sorted)
+    if gen["map"]:
+        try:
+            from ctd_report._map_leaflet import generate_leaflet_map
+
+            lf_out = generate_leaflet_map(
+                all_meta, sections_cfg, out_dir, force=force, ship_track_nc=ship_track_nc
+            )
+            print(f"  leaflet map: {'ok' if lf_out else 'skipped (no casts)'}")
+        except Exception:  # noqa: BLE001
+            import traceback
+
+            print("  leaflet map: FAILED")
+            traceback.print_exc()
 
     print(f"\nReport written to {out_dir}/index.html")
 

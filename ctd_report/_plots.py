@@ -41,8 +41,8 @@ _TS_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 _VAR_CMAPS: dict[str, str] = {
     "CT": "RdYlBu_r",
     "temperature_1": "RdYlBu_r",
-    "SA": "YlGnBu",
-    "salinity_1": "YlGnBu",
+    "SA": "YlGnBu_r",
+    "salinity_1": "YlGnBu_r",
     "oxygen_1": "RdYlGn",
     "AOU": "RdBu_r",  # blue = near saturation, red = depleted
     "fluorescence": "YlGn",
@@ -133,12 +133,21 @@ def _fig_to_base64(fig: Any) -> str:
     return base64.b64encode(buf.read()).decode("ascii")
 
 
-def _nice_colorbar_bounds(vmin: float, vmax: float, n: int = 20) -> np.ndarray:
+def _nice_colorbar_bounds(
+    vmin: float,
+    vmax: float,
+    n: int = 20,
+    hard_min: Optional[float] = None,
+    hard_max: Optional[float] = None,
+) -> np.ndarray:
     """Return a boundary array for a discrete colorbar with approximately *n* levels.
 
     Steps are chosen from the "nice" ladder [1, 2, 2.5, 5, 10] scaled to the
     appropriate decade, so ticks land on clean values (e.g. 1.0 rather than 0.8,
     0.5 rather than 0.4). The range is centred on the midpoint of [vmin, vmax].
+
+    If *hard_min* or *hard_max* are given, the returned bounds are clipped to
+    those values so user-specified colormap limits are honoured exactly.
     """
     span = vmax - vmin
     if span <= 0:
@@ -155,7 +164,18 @@ def _nice_colorbar_bounds(vmin: float, vmax: float, n: int = 20) -> np.ndarray:
     mid = (vmin + vmax) / 2
     mid_aligned = round(mid / nice_step) * nice_step
     lo = mid_aligned - (n / 2) * nice_step
-    return np.array([lo + i * nice_step for i in range(n + 1)])
+    bounds = np.array([lo + i * nice_step for i in range(n + 1)])
+    if hard_min is not None or hard_max is not None:
+        lo_clip = hard_min if hard_min is not None else bounds[0]
+        hi_clip = hard_max if hard_max is not None else bounds[-1]
+        bounds = bounds[(bounds >= lo_clip) & (bounds <= hi_clip)]
+        if len(bounds) < 2:
+            bounds = np.linspace(lo_clip, hi_clip, n + 1)
+        if bounds[0] > lo_clip:
+            bounds = np.concatenate([[lo_clip], bounds])
+        if bounds[-1] < hi_clip:
+            bounds = np.concatenate([bounds, [hi_clip]])
+    return bounds
 
 
 # ---------------------------------------------------------------------------
@@ -814,7 +834,7 @@ def _make_section_b64(
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
         if v0 >= v1:
             v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20)
+        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -1425,7 +1445,7 @@ def _make_overview_panel_b64(
         cmap_name = _VAR_CMAPS.get(var, "viridis")
         v0 = vmin if vmin is not None else float(np.percentile(d_fin, 1))
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 99))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20)
+        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -1675,7 +1695,7 @@ def _make_timeseries_b64(
         cmap_name = _VAR_CMAPS.get(var, "viridis")
         v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20)
+        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
