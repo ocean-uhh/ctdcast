@@ -1,0 +1,157 @@
+.. _quickstart:
+
+================
+Quickstart guide
+================
+
+This guide walks through generating an oceancast report from a set of processed CTD netCDF
+files.  It assumes you already have per-cast netCDF files and, optionally, a compiled
+``profiles.nc``.
+
+----
+
+Prerequisites
+-------------
+
+Python 3.10 or later is required.  Create a virtual environment and install from source:
+
+.. code-block:: bash
+
+   git clone https://github.com/eleanorfrajka/ctd_report
+   cd ctd_report
+   python -m venv venv
+   source venv/bin/activate        # macOS / Linux
+   pip install -e .
+
+----
+
+Prepare your input files
+-------------------------
+
+oceancast needs at minimum a directory of per-cast netCDF files (one per CTD cast).
+Section and time series pages additionally require a compiled ``profiles.nc``.
+
+.. code-block:: text
+
+   /data/cruise/CTD/
+       cnv_nc/
+           cast_001.nc
+           cast_002.nc
+           ...
+       profiles.nc          # compiled 2D profiles (optional but recommended)
+
+See :doc:`config_reference` for a description of what each file must contain.
+
+----
+
+Edit config.yaml
+----------------
+
+Copy the example ``config.yaml`` from the repository and adjust the paths:
+
+.. code-block:: yaml
+
+   data:
+     nc_dir:       /data/cruise/CTD/cnv_nc
+     profiles_nc:  /data/cruise/CTD/profiles.nc
+     section_yaml: /data/cruise/config/ctd_sections.yaml
+     gebco_nc:     /data/GEBCO_2025.nc   # optional
+
+   output:
+     dir: /data/cruise/report
+
+   generate:
+     stations:   true
+     sections:   true    # requires profiles.nc and section_yaml
+     timeseries: true    # requires profiles.nc
+
+Leave ``gebco_nc`` blank or omit it entirely if you do not have a GEBCO file — maps will
+render without bathymetry.
+
+----
+
+Define your sections
+--------------------
+
+If ``generate.sections`` is ``true``, create a ``ctd_sections.yaml`` file that groups
+casts into named transects:
+
+.. code-block:: yaml
+
+   sections:
+     KTout:
+       description: "Kögur Transect outflow"
+       color: "#e41a1c"
+       cast_numbers: [[1, 12], 15]   # ranges and/or individual cast numbers
+     FARDWO:
+       description: "FARDWO mooring array"
+       color: "#377eb8"
+       cast_numbers: [[20, 35]]
+
+See :doc:`config_reference` for the full section YAML specification.
+
+----
+
+Generate the report
+-------------------
+
+.. code-block:: bash
+
+   oceancast config.yaml
+
+To force regeneration of all pages (including ones that already exist):
+
+.. code-block:: bash
+
+   oceancast config.yaml --force
+
+Or set ``force: true`` in ``config.yaml`` under the ``generate`` key.
+
+----
+
+Open the report
+---------------
+
+Open ``<output.dir>/index.html`` in any browser.  The file is fully self-contained —
+copy the entire output directory anywhere and it works offline.
+
+.. code-block:: text
+
+   <output.dir>/
+       index.html              front page — map, cast count, navigation
+       station_index.html      sortable table of all casts
+       sections.html           section cards with links
+       timeseries.html         T, S, O₂ hovmöller diagrams
+       stations/
+           cast_001.html
+           ...
+       sections/
+           section_KTout.html
+           ...
+
+See :doc:`output_structure` for a description of what each page contains.
+
+----
+
+Updating mid-cruise
+-------------------
+
+All three steps are incremental by default — already-generated HTML pages are skipped.
+After adding new casts, rebuild ``profiles.nc`` if needed, then re-run:
+
+.. code-block:: bash
+
+   oceancast config.yaml
+
+Only pages for new casts will be written.  Existing section and time series pages are
+**not** automatically updated when new casts arrive; add ``--force`` or set
+``force: true`` to rebuild them.
+
+----
+
+Where to go next
+----------------
+
+- :doc:`config_reference` — all ``config.yaml`` and ``ctd_sections.yaml`` fields.
+- :doc:`output_structure` — what each report page contains.
+- :doc:`api` — Python API for calling oceancast from your own scripts.

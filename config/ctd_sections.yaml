@@ -7,60 +7,68 @@
 # Verify positions by running notebooks/ctd_odb2026.ipynb section map cell.
 
 sections:
-  KTout:
+  Kangerlussuaq Outer (KO):
     description: Kangerlussuaq Trough outer slope
     cast_numbers: [[11, 23]]
     color: "#1f77b4"
 
-  FARDWO:
+  Fardwo (FD):
     description: FARDWO section
     cast_numbers: [[23, 37]]
     color: "#ff7f0e"
 
-  KTin:
-    description: Kangerlussuaq Trough inner / channel
+  Kangerlussuaq Mid (KM):
+    description: Kangerlussuaq Trough middle
     cast_numbers: [[39, 49]]
     color: "#2ca02c"
 
-  LB:
-    description: Látrabjarg section
+  Latrabjarg (LB2):
+    description: Latrabjarg section
     cast_numbers: [[82, 97]]
     color: "#9467bd"
 
-  dunes:
-    description: Dunes area
+  Vesturdjup (VD1):
+    description: Vesturdjup 
     cast_numbers: [[98, 112]]
     color: "#8c564b"
 
-  TeddyN:
-    description: Teddy North transect
+  Vesturdjup (VD2):
+    description: Vesturdjup mini
     cast_numbers: [[122, 127]]
     color: "#7f7f7f"
 
+  Vesturdjup (VD3):
+    description: Vesturdjup 
+    cast_numbers: [[162, 169]]
+    color: "#8c564b"
 
 timeseries:
-  yoyo1:
-    description: YoYo station 1 — 32-cast repeat station
+  Fardwo yoyo (FDYY):
+    description: Fardwo— 32-cast repeat station
     cast_numbers: [[50, 81]]
     color: "#d62728"
 
 
-  yoyo2:
-    description: YoYo station 2 — 8-cast repeat station
+  Triangle yoyo (TRYY):
+    description: Triangle yoyo — 8-cast repeat station
     cast_numbers: [[114, 121]]
     color: "#e377c2"
 
-  TeddyS700:
-    description: Teddy South ~700 m isobath
+  Triangle yoyo (TR700):
+    description: Triangle ~700 m isobath
     cast_numbers: [128, 129, 130, 132, 135, 137]
     color: "#bcbd22"
 
-  TeddyS1000:
-    description: Teddy South ~1000 m isobath
-    cast_numbers: [131, 133, 134, 136, 163]
+  Triangle yoyo (TR1000):
+    description: Triangle ~1000 m isobath
+    cast_numbers: [131, 133, 134, 136]
     color: "#17becf"
 
-  dunes_mini:
+  Dunes (DU1):
     description: Dunes mini-section
     cast_numbers: [[143, 160]]
     color: "#8c564b"
+
+#  DU2:
+#    description: Dunes eastwest mini
+#    cast_numbers: [[169]]

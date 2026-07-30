@@ -5,13 +5,12 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctd_report._version import __version__ as _VERSION
 from ctd_report._analysis import _add_teos10
 from ctd_report._plots import (
     _make_aux_profiles_b64,
@@ -27,6 +26,7 @@ from ctd_report._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
+from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # HTML template
@@ -243,11 +243,11 @@ def generate_station_page(
     nc_path: Path,
     out_dir: Path,
     all_meta: list[dict[str, Any]],
-    prev_num: Optional[int] = None,
-    next_num: Optional[int] = None,
+    prev_num: int | None = None,
+    next_num: int | None = None,
     force: bool = False,
-    ladcp_dir: Optional[Path] = None,
-) -> Optional[Path]:
+    ladcp_dir: Path | None = None,
+) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
 
     Parameters

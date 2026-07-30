@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctd_report._version import __version__ as _VERSION
+from ctd_report import _plots
 from ctd_report._analysis import (
     _add_aou,
     _add_teos10_profiles,
@@ -19,7 +19,6 @@ from ctd_report._analysis import (
     _dense_bathy_along_track,
     _interpolate_bathy_at_casts,
 )
-import ctd_report._plots as _plots
 from ctd_report._plots import (
     _make_ladcp_section_b64,
     _make_section_b64,
@@ -28,6 +27,7 @@ from ctd_report._plots import (
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
 )
+from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # Section variables to plot (in order)
@@ -196,10 +196,10 @@ def generate_section_page(
     out_dir: Path,
     force: bool = False,
     section_style: str = "pcolormesh",
-    vmin_override: Optional[dict[str, float]] = None,
-    vmax_override: Optional[dict[str, float]] = None,
-    ladcp_dir: Optional[Path] = None,
-) -> Optional[Path]:
+    vmin_override: dict[str, float] | None = None,
+    vmax_override: dict[str, float] | None = None,
+    ladcp_dir: Path | None = None,
+) -> Path | None:
     """Generate a section HTML report page.
 
     Parameters

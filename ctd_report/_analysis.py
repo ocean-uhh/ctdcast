@@ -6,7 +6,6 @@ No matplotlib. No HTML. Imported by _plots.py (Tier 1) and Tier-2 orchestrators.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import gsw
 import numpy as np
@@ -101,7 +100,7 @@ def _load_gebco(
     lon_lo: float,
     lon_hi: float,
     margin: float = 0.05,
-    path: Optional[Path] = None,
+    path: Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
     """Load a GEBCO subset; return (lons, lats, depth_m) or None if unavailable.
 
@@ -168,8 +167,8 @@ def _add_aou(ds: xr.Dataset) -> xr.Dataset:
 def _interpolate_bathy_at_casts(
     lats: list[float],
     lons: list[float],
-    path: Optional[Path] = None,
-) -> Optional[np.ndarray]:
+    path: Path | None = None,
+) -> np.ndarray | None:
     """Return GEBCO water depth (m, positive below sea level) at each cast position.
 
     Uses bilinear interpolation via xarray.  Returns ``None`` if GEBCO is not
@@ -212,9 +211,9 @@ def _dense_bathy_along_track(
     lats: list[float],
     lons: list[float],
     x_vals: np.ndarray,
-    path: Optional[Path] = None,
+    path: Path | None = None,
     n_per_segment: int = 20,
-) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+) -> tuple[np.ndarray | None, np.ndarray | None]:
     """Return ``(dense_x, dense_depths)`` interpolated between cast positions.
 
     Generates *n_per_segment* equally-spaced points along each segment between

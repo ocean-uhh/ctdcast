@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.ERROR)
 logging.getLogger("pycnv").setLevel(logging.ERROR)
 logging.getLogger("seasenselib").setLevel(logging.ERROR)
 
-import seasenselib as ssl  # noqa: E402
+import seasenselib as ssl
 
 CNV_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv")
 NC_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
