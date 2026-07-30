@@ -25,7 +25,7 @@ import json
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from jinja2 import Environment
@@ -63,7 +63,7 @@ _DEPTH_LEVELS = np.array(
 def _cast_panel_html(
     m: dict[str, Any],
     section_name: str,
-    section_url: Optional[str],
+    section_url: str | None,
 ) -> str:
     """Return HTML for the info panel when a cast marker is hovered."""
     cn = int(m["cast_num"])
@@ -116,7 +116,7 @@ def _section_panel_html(
 def _load_ship_track(
     ship_track_nc: Path,
     max_points: int = 2000,
-) -> Optional[list]:
+) -> list | None:
     """Subsample a ship-track netCDF and return ``[[lat, lon], ...]``.
 
     Filters invalid positions and returns None if the file is unreadable or
@@ -124,7 +124,7 @@ def _load_ship_track(
     embedded GeoJSON stays small.
     """
     try:
-        import xarray as xr  # noqa: PLC0415
+        import xarray as xr
 
         ds = xr.open_dataset(str(ship_track_nc), engine="netcdf4")
         lats = ds["latitude"].values.astype(float)
@@ -162,7 +162,7 @@ def _depth_legend_html() -> str:
     Colours match the Blues LUT used in ``_make_gebco_layers``:
     ``Blues(linspace(0.15, 0.95, n_bins))`` where bin 0 is shallowest.
     """
-    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import matplotlib.pyplot as plt
 
     n_bins = len(_DEPTH_LEVELS) - 1
     blues = plt.cm.Blues(np.linspace(0.15, 0.95, n_bins))
@@ -231,7 +231,7 @@ def _make_gebco_layers(
     lat_max: float,
     lon_min: float,
     lon_max: float,
-) -> tuple[Optional[str], Optional[str], Optional[list]]:
+) -> tuple[str | None, str | None, list | None]:
     """Load GEBCO once and return (raster_b64, contour_geojson, bounds).
 
     ``raster_b64`` — base64 PNG of discrete depth bands, reprojected to Web
@@ -251,14 +251,14 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctd_report import _plots as plots  # noqa: PLC0415
+    from ctd_report import _plots as plots
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
         return None, None, None
 
     try:
-        import matplotlib.pyplot as plt  # noqa: PLC0415
-        import xarray as xr  # noqa: PLC0415
+        import matplotlib.pyplot as plt
+        import xarray as xr
 
         ds = xr.open_dataset(str(plots.GEBCO_PATH), engine="netcdf4")
         ds_region = ds.sel(
@@ -322,7 +322,7 @@ def _make_gebco_layers(
 
         buf = io.BytesIO()
         plt.imsave(buf, rgba, format="png")
-        raster_b64: Optional[str] = base64.b64encode(buf.getvalue()).decode("ascii")
+        raster_b64: str | None = base64.b64encode(buf.getvalue()).decode("ascii")
 
         # --- Contours: vector GeoJSON at 100 m intervals ---
         cy = max(1, round(ny / _CONTOUR_MAX_PX))
@@ -332,7 +332,7 @@ def _make_gebco_layers(
         lons_c = lon_vals[::cx]
 
         max_depth = int(-elev_c[elev_c < 0].min()) if (elev_c < 0).any() else 0
-        contour_geojson: Optional[str] = None
+        contour_geojson: str | None = None
 
         if max_depth >= 100:
             levels_m = list(range(100, min(max_depth + 100, 6100), 100))
@@ -541,9 +541,9 @@ def generate_leaflet_map(
     all_meta: list[dict[str, Any]],
     sections_cfg: dict[str, Any],
     out_dir: Path,
-    force: bool = False,  # noqa: ARG001
-    ship_track_nc: Optional[Path] = None,
-) -> Optional[Path]:
+    force: bool = False,
+    ship_track_nc: Path | None = None,
+) -> Path | None:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
 
     Always regenerates (force is accepted for API symmetry but ignored).
@@ -637,7 +637,7 @@ def generate_leaflet_map(
         [lat_max + _GEBCO_PAD, lon_max + _GEBCO_PAD],
     ]
 
-    ship_track: Optional[list] = None
+    ship_track: list | None = None
     if ship_track_nc is not None and ship_track_nc.exists():
         print("  leaflet: loading ship track...", end=" ", flush=True)
         ship_track = _load_ship_track(ship_track_nc)

@@ -6,7 +6,7 @@ import base64
 import io
 import math
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import gsw
 import matplotlib.colors as mcolors
@@ -29,7 +29,7 @@ from ctd_report._analysis import (
 #   import ctd_report._plots as plots
 #   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
-GEBCO_PATH: Optional[Path] = None
+GEBCO_PATH: Path | None = None
 
 # Bundled mplstyle — controls font sizes, line widths, figure defaults.
 _MPLSTYLE = Path(__file__).parent / "ctd_report.mplstyle"
@@ -89,10 +89,10 @@ OVERVIEW_FIGSIZE: tuple[float, float] = (12.0, 4.0)
 # Optional lat/lon bounding box applied to all map functions.
 # When set, data-driven extents are overridden by these limits.
 # Set via config.yaml cruise_info.map_lat/lon_min/max; propagated by __main__.py.
-MAP_LAT_MIN: Optional[float] = None
-MAP_LAT_MAX: Optional[float] = None
-MAP_LON_MIN: Optional[float] = None
-MAP_LON_MAX: Optional[float] = None
+MAP_LAT_MIN: float | None = None
+MAP_LAT_MAX: float | None = None
+MAP_LON_MIN: float | None = None
+MAP_LON_MAX: float | None = None
 
 
 def _map_lim(
@@ -137,8 +137,8 @@ def _nice_colorbar_bounds(
     vmin: float,
     vmax: float,
     n: int = 20,
-    hard_min: Optional[float] = None,
-    hard_max: Optional[float] = None,
+    hard_min: float | None = None,
+    hard_max: float | None = None,
 ) -> np.ndarray:
     """Return a boundary array for a discrete colorbar with approximately *n* levels.
 
@@ -183,7 +183,7 @@ def _nice_colorbar_bounds(
 # ---------------------------------------------------------------------------
 
 
-def _make_profile_b64(ds: xr.Dataset, var: str, ylabel: str) -> Optional[str]:
+def _make_profile_b64(ds: xr.Dataset, var: str, ylabel: str) -> str | None:
     """Return a base64 PNG of *var* vs pressure (downcast blue, upcast red)."""
     if var not in ds:
         return None
@@ -213,7 +213,7 @@ def _make_profile_b64(ds: xr.Dataset, var: str, ylabel: str) -> Optional[str]:
         return None
 
 
-def _make_ts_density_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_ts_density_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT / SA / σ₀ triple-axis profile (downcast only)."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -269,8 +269,8 @@ def _make_ts_density_b64(ds: xr.Dataset) -> Optional[str]:
 
 
 def _make_ts_density_ladcp_b64(
-    ds: xr.Dataset, ladcp_path: Optional[Path]
-) -> Optional[str]:
+    ds: xr.Dataset, ladcp_path: Path | None
+) -> str | None:
     """Return CT/SA/σ₀ profiles alongside LADCP U/V on a shared y-axis.
 
     When *ladcp_path* is None or the file does not exist, renders the same two-column
@@ -287,11 +287,11 @@ def _make_ts_density_ladcp_b64(
         sig = ds_down["sigma0"].values
 
         ladcp_available = ladcp_path is not None and ladcp_path.exists()
-        z: Optional[np.ndarray] = None
-        u: Optional[np.ndarray] = None
-        v: Optional[np.ndarray] = None
+        z: np.ndarray | None = None
+        u: np.ndarray | None = None
+        v: np.ndarray | None = None
         if ladcp_available:
-            import scipy.io  # noqa: PLC0415
+            import scipy.io
 
             m = scipy.io.loadmat(
                 str(ladcp_path), squeeze_me=True, struct_as_record=False
@@ -368,7 +368,7 @@ def _make_ts_density_ladcp_b64(
         return None
 
 
-def _make_ts_diagram_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of a T-S diagram colored by O₂ saturation."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -418,7 +418,7 @@ def _make_ts_diagram_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_stability_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_stability_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of N² and Turner angle (2-panel)."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -465,7 +465,7 @@ def _make_stability_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_aux_profiles_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
     vars_labels = [
         ("oxygen_1", "O₂ saturation (%)"),
@@ -512,7 +512,7 @@ def _make_aux_profiles_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT, SA, σ₀ profiles side-by-side (downcast + grey upcast).
 
     Three-panel figure matching the style of ``_make_aux_profiles_b64``.
@@ -574,7 +574,7 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_ts_updown_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_ts_updown_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT–SA scatter: downcast in blue, upcast in red, σ₀ contours."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -645,7 +645,7 @@ def _make_station_map_b64(
     lat: float,
     lon: float,
     all_meta: list[dict],
-) -> Optional[str]:
+) -> str | None:
     """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -704,7 +704,7 @@ def _make_station_map_b64(
         return None
 
 
-def _make_cruise_map_b64(all_meta: list[dict]) -> Optional[str]:
+def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
     """Return a base64 PNG of all cast positions (no single-cast highlight).
 
     Casts are drawn as grey scatter over GEBCO bathymetry.  Cast numbers are
@@ -787,12 +787,12 @@ def _make_section_b64(
     x_label: str,
     title: str = "",
     style: str = "pcolormesh",
-    bathy_depths: Optional[np.ndarray] = None,
-    bathy_x: Optional[np.ndarray] = None,
-    cast_labels: Optional[list] = None,
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-) -> Optional[str]:
+    bathy_depths: np.ndarray | None = None,
+    bathy_x: np.ndarray | None = None,
+    cast_labels: list | None = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
+) -> str | None:
     """Return a base64 PNG of *var* vs pressure × *x_vals*.
 
     Parameters
@@ -927,9 +927,9 @@ def _make_ladcp_section_b64(
     x_vals: np.ndarray,
     x_label: str,
     ladcp_dir: Path,
-    lats: Optional[list[float]] = None,
-    lons: Optional[list[float]] = None,
-) -> Optional[str]:
+    lats: list[float] | None = None,
+    lons: list[float] | None = None,
+) -> str | None:
     """Return a base64 PNG of LADCP U (top) and V (bottom) sections with a shared RdBu_r colorbar.
 
     Casts without a matching .mat file are omitted.  Data are interpolated to a
@@ -937,7 +937,7 @@ def _make_ladcp_section_b64(
     Bathymetry is drawn when *lats*/*lons* and ``GEBCO_PATH`` are both available.
     """
     try:
-        import scipy.io  # noqa: PLC0415
+        import scipy.io
 
         plt.style.use(str(_MPLSTYLE))
 
@@ -1099,7 +1099,7 @@ def _make_ladcp_section_b64(
 def _make_section_ts_profiles_b64(
     ds_prof: xr.Dataset,
     x_vals: np.ndarray,
-) -> Optional[str]:
+) -> str | None:
     """Return a base64 PNG of per-cast CT–SA profiles coloured by along-track distance.
 
     Each downcast in *ds_prof* is drawn as a CT–SA line with σ₀ background contours.
@@ -1166,7 +1166,7 @@ def _make_section_ts_profiles_b64(
         return None
 
 
-def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> Optional[str]:
+def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
     if "SA" not in ds_prof or "CT" not in ds_prof:
         return None
@@ -1225,7 +1225,7 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> Optional[str]:
+def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
     if "SA" not in ds_prof or "CT" not in ds_prof or "oxygen_1" not in ds_prof:
         return None
@@ -1307,7 +1307,7 @@ def _make_section_map_b64(
     lons: list[float],
     cast_nums: list[int],
     title: str = "",
-) -> Optional[str]:
+) -> str | None:
     """Return a base64 PNG of a GEBCO map with the section track."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -1405,12 +1405,12 @@ def _make_overview_panel_b64(
     ds_prof: xr.Dataset,
     var: str,
     label: str,
-    bathy_depths: Optional[np.ndarray] = None,
+    bathy_depths: np.ndarray | None = None,
     style: str = "pcolormesh",
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    cast_groups: Optional[dict[str, list[int]]] = None,
-) -> Optional[str]:
+    vmin: float | None = None,
+    vmax: float | None = None,
+    cast_groups: dict[str, list[int]] | None = None,
+) -> str | None:
     """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
 
     *ds_prof* must already be filtered to downcasts and sorted by cast_number.
@@ -1524,7 +1524,7 @@ def _make_all_sections_map_b64(
     all_lats: list[float],
     all_lons: list[float],
     legend_outside: bool = False,
-) -> Optional[str]:
+) -> str | None:
     """Return a base64 PNG showing all section tracks coloured by section.
 
     Parameters
@@ -1638,9 +1638,9 @@ def _make_timeseries_b64(
     var: str,
     label: str,
     style: str = "pcolormesh",
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-) -> Optional[str]:
+    vmin: float | None = None,
+    vmax: float | None = None,
+) -> str | None:
     """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
 
     Parameters
@@ -1764,7 +1764,7 @@ def _make_timeseries_b64(
         return None
 
 
-def _make_sensor_diff_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of primary minus secondary sensor difference profiles.
 
     Shows T₁–T₂ and S₁–S₂ vs pressure with a fixed ±0.01 x-axis.
@@ -1812,7 +1812,7 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_pressure_time_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_pressure_time_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of pressure vs elapsed time (cast trajectory + bottle stops)."""
     try:
         plt.style.use(str(_MPLSTYLE))
@@ -1840,7 +1840,7 @@ def _make_pressure_time_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_updown_diff_b64(ds: xr.Dataset) -> Optional[str]:
+def _make_updown_diff_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of downcast minus upcast profiles: ΔCT, ΔSA, Δσ₀.
 
     Both casts are interpolated to a shared 1-dbar pressure grid before differencing.
@@ -1906,14 +1906,14 @@ def _make_updown_diff_b64(ds: xr.Dataset) -> Optional[str]:
         return None
 
 
-def _make_ladcp_profile_b64(ladcp_path: Path) -> Optional[str]:
+def _make_ladcp_profile_b64(ladcp_path: Path) -> str | None:
     """Return a base64 PNG of LADCP U and V profiles vs depth.
 
     Positive velocities (eastward / northward) are filled red; negative (westward /
     southward) are filled blue.  Returns None if the file cannot be read.
     """
     try:
-        import scipy.io  # noqa: PLC0415
+        import scipy.io
 
         m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
         dr = m["dr"]
@@ -1949,13 +1949,13 @@ def _make_ladcp_profile_b64(ladcp_path: Path) -> Optional[str]:
         return None
 
 
-def _make_ladcp_bottomtrack_b64(ladcp_path: Path) -> Optional[str]:
+def _make_ladcp_bottomtrack_b64(ladcp_path: Path) -> str | None:
     """Return a base64 PNG of LADCP bottom-track U and V vs depth.
 
     Returns None if the .mat file lacks ``zbot``, ``ubot``, or ``vbot`` fields.
     """
     try:
-        import scipy.io  # noqa: PLC0415
+        import scipy.io
 
         m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
         dr = m["dr"]

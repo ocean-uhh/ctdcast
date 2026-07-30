@@ -165,8 +165,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"[dry-run] config:    {cfg_path}")
         if run_ctd:
             print(
-                f"[dry-run] --ctd:     {cnv_dir} → {nc_dir}  "
-                f"(backend={args.backend})"
+                f"[dry-run] --ctd:     {cnv_dir} → {nc_dir}  (backend={args.backend})"
             )
         if run_profiles:
             print(f"[dry-run] --profiles: {nc_dir} → {profiles_path}")
@@ -202,6 +201,6 @@ def run(args: argparse.Namespace) -> int:
         if written:
             print(f"Built profiles.nc → {profiles_path}")
         else:
-            print(f"Skipped (profiles.nc already exists; use --force to rebuild).")
+            print("Skipped (profiles.nc already exists; use --force to rebuild).")
 
     return 0

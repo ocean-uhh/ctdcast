@@ -106,13 +106,17 @@ def run(args: argparse.Namespace) -> int:
                         pass
                     print(f"  first cast opens ok: {nc_files[0].name}")
                 except Exception as exc:  # noqa: BLE001
-                    errors.append(f"first cast netCDF unreadable: {nc_files[0].name}: {exc}")
+                    errors.append(
+                        f"first cast netCDF unreadable: {nc_files[0].name}: {exc}"
+                    )
 
     # profiles_nc
     need_profiles = gen_cfg.get("sections", True) or gen_cfg.get("timeseries", True)
     profiles_raw = data.get("profiles_nc")
     if need_profiles and not profiles_raw:
-        warnings.append("data.profiles_nc not set; sections and timeseries pages will be skipped")
+        warnings.append(
+            "data.profiles_nc not set; sections and timeseries pages will be skipped"
+        )
     elif profiles_raw:
         profiles_path = Path(profiles_raw)
         if not profiles_path.exists():
@@ -144,7 +148,9 @@ def run(args: argparse.Namespace) -> int:
     if gebco_raw:
         gebco_path = Path(gebco_raw)
         if not gebco_path.exists():
-            warnings.append(f"data.gebco_nc not found (maps will render without bathymetry): {gebco_path}")
+            warnings.append(
+                f"data.gebco_nc not found (maps will render without bathymetry): {gebco_path}"
+            )
         else:
             print(f"  gebco_nc: ok ({gebco_path})")
 

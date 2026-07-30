@@ -12,16 +12,16 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctd_report._version import __version__ as _VERSION
 from ctd_report._analysis import _add_aou, _add_teos10_profiles, _compact_cast_list
 from ctd_report._plots import _make_station_map_b64, _make_timeseries_b64
 from ctd_report._section import _expand_cast_numbers
+from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # Variables to plot (in order)
@@ -162,10 +162,10 @@ def generate_timeseries_page(
     out_dir: Path,
     force: bool = False,
     section_style: str = "pcolormesh",
-    vmin_override: Optional[dict[str, float]] = None,
-    vmax_override: Optional[dict[str, float]] = None,
-    all_meta: Optional[list[dict]] = None,
-) -> Optional[Path]:
+    vmin_override: dict[str, float] | None = None,
+    vmax_override: dict[str, float] | None = None,
+    all_meta: list[dict] | None = None,
+) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
 
     Plots both downcast and upcast profiles sorted by time_start on a shared
@@ -241,7 +241,7 @@ def generate_timeseries_page(
     yoyo_lons = ds_ts["longitude"].values if "longitude" in ds_ts else np.array([])
     yoyo_lat = float(np.nanmedian(yoyo_lats)) if len(yoyo_lats) else float("nan")
     yoyo_lon = float(np.nanmedian(yoyo_lons)) if len(yoyo_lons) else float("nan")
-    fig_location_b64: Optional[str] = None
+    fig_location_b64: str | None = None
     if all_meta and np.isfinite(yoyo_lat) and np.isfinite(yoyo_lon):
         fig_location_b64 = _make_station_map_b64(yoyo_lat, yoyo_lon, all_meta)
 

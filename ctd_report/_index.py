@@ -5,32 +5,31 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import xarray as xr
 import yaml
 from jinja2 import Environment
 
-from ctd_report._version import __version__ as _VERSION
-
-from ctd_report._plots import (
-    GEBCO_PATH,
-    _make_all_sections_map_b64,
-    _make_cruise_map_b64,  # noqa: F401 — kept for backward compat
-    _make_overview_panel_b64,
-    _make_section_ts_histogram_b64,
-    _make_station_map_b64,  # noqa: F401 — kept for backward compat
-)
 from ctd_report._analysis import (
     _add_aou,
     _add_teos10_profiles,
     _compact_cast_list,
     _interpolate_bathy_at_casts,
 )
+from ctd_report._plots import (
+    GEBCO_PATH,
+    _make_all_sections_map_b64,
+    _make_cruise_map_b64,
+    _make_overview_panel_b64,
+    _make_section_ts_histogram_b64,
+    _make_station_map_b64,  # noqa: F401 — kept for backward compat
+)
 from ctd_report._section import _expand_cast_numbers, generate_section_page
 from ctd_report._station import generate_station_page
 from ctd_report._timeseries import generate_timeseries_page
+from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -337,19 +336,19 @@ def generate_ctd_report(
     nc_dir: Path,
     out_dir: Path,
     *,
-    profiles_path: Optional[Path] = None,
-    section_yaml: Optional[Path] = None,
-    ladcp_dir: Optional[Path] = None,
-    ship_track_nc: Optional[Path] = None,
-    generate: Optional[dict[str, bool]] = None,
+    profiles_path: Path | None = None,
+    section_yaml: Path | None = None,
+    ladcp_dir: Path | None = None,
+    ship_track_nc: Path | None = None,
+    generate: dict[str, bool] | None = None,
     force: bool = False,
-    skip_existing: bool = False,  # noqa: ARG001
+    skip_existing: bool = False,
     section_style: str = "pcolormesh",
     timeseries_style: str = "pcolormesh",
-    vmin_override: Optional[dict[str, float]] = None,
-    vmax_override: Optional[dict[str, float]] = None,
-    cruise_info: Optional[dict[str, Any]] = None,
-    cast_filter: Optional[int] = None,
+    vmin_override: dict[str, float] | None = None,
+    vmax_override: dict[str, float] | None = None,
+    cruise_info: dict[str, Any] | None = None,
+    cast_filter: int | None = None,
 ) -> None:
     """Generate the full oceancast HTML report suite.
 
@@ -428,7 +427,9 @@ def generate_ctd_report(
 
     if gen["stations"]:
         cast_nums = [m["cast_num"] for m in all_meta]
-        targets = [m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter]
+        targets = [
+            m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter
+        ]
         if cast_filter is not None and not targets:
             print(f"Cast {cast_filter} not found in {nc_dir}")
             return
@@ -445,7 +446,9 @@ def generate_ctd_report(
                 force=force,
                 ladcp_dir=ladcp_dir,
             )
-            print(f"  station cast_{meta['cast_num']:03d}: {'ok' if out_page else 'FAILED'}")
+            print(
+                f"  station cast_{meta['cast_num']:03d}: {'ok' if out_page else 'FAILED'}"
+            )
 
     yaml_data: dict[str, Any] = {}
     if section_yaml and section_yaml.exists():
@@ -519,7 +522,11 @@ def generate_ctd_report(
             from ctd_report._map_leaflet import generate_leaflet_map
 
             lf_out = generate_leaflet_map(
-                all_meta, sections_cfg, out_dir, force=force, ship_track_nc=ship_track_nc
+                all_meta,
+                sections_cfg,
+                out_dir,
+                force=force,
+                ship_track_nc=ship_track_nc,
             )
             print(f"  leaflet map: {'ok' if lf_out else 'skipped (no casts)'}")
         except Exception:  # noqa: BLE001
@@ -550,13 +557,13 @@ def _write_index(
     sections_cfg: dict[str, Any],
     cruise: str,
     out_dir: Path,
-    force: bool,  # noqa: ARG001
-    profiles_path: Optional[Path] = None,
+    force: bool,
+    profiles_path: Path | None = None,
     section_style: str = "pcolormesh",
-    vmin_override: Optional[dict[str, float]] = None,
-    vmax_override: Optional[dict[str, float]] = None,
-    cruise_info: Optional[dict[str, Any]] = None,
-    timeseries_cfg: Optional[dict[str, Any]] = None,
+    vmin_override: dict[str, float] | None = None,
+    vmax_override: dict[str, float] | None = None,
+    cruise_info: dict[str, Any] | None = None,
+    timeseries_cfg: dict[str, Any] | None = None,
 ) -> None:
     """Write index.html with header card, stats, overview map, and stacked property panels."""
     times = [m["time_start"] for m in all_meta if m.get("time_start")]
@@ -638,7 +645,7 @@ def _write_index(
 
     # Stacked overview panels and cruise T-S diagram from profiles.nc
     overview_panels: list[dict[str, Any]] = []
-    ts_b64: Optional[str] = None
+    ts_b64: str | None = None
     if profiles_path is not None and profiles_path.exists():
         try:
             ds_all = xr.open_dataset(
@@ -741,9 +748,9 @@ def _write_stations_list(
     all_meta: list[dict[str, Any]],
     cruise: str,
     out_dir: Path,
-    sections_cfg: Optional[dict[str, Any]] = None,
-    timeseries_cfg: Optional[dict[str, Any]] = None,
-    ladcp_dir: Optional[Path] = None,
+    sections_cfg: dict[str, Any] | None = None,
+    timeseries_cfg: dict[str, Any] | None = None,
+    ladcp_dir: Path | None = None,
 ) -> None:
     """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file
@@ -825,8 +832,8 @@ def _write_sections_list(
     sections_cfg: dict[str, Any],
     cruise: str,
     out_dir: Path,
-    all_meta: Optional[list[dict[str, Any]]] = None,
-    ladcp_dir: Optional[Path] = None,
+    all_meta: list[dict[str, Any]] | None = None,
+    ladcp_dir: Path | None = None,
 ) -> None:
     """Write sections.html with overview map and cards for each section."""
     ladcp_cast_nums: set[int] = set()
@@ -988,8 +995,8 @@ def _write_timeseries_list(
     timeseries_cfg: dict[str, Any],
     cruise: str,
     out_dir: Path,
-    all_meta: Optional[list[dict[str, Any]]] = None,
-    ladcp_dir: Optional[Path] = None,
+    all_meta: list[dict[str, Any]] | None = None,
+    ladcp_dir: Path | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
     from ctd_report._section import _expand_cast_numbers
@@ -1081,7 +1088,7 @@ def _select_cast_files(nc_dir: Path) -> list[Path]:
     return [chosen[k] for k in sorted(chosen)]
 
 
-def _read_cast_meta(nc_path: Path) -> Optional[dict[str, Any]]:
+def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")

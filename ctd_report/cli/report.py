@@ -139,10 +139,16 @@ def run(args: argparse.Namespace) -> int:
     nc_dir = Path(nc_dir_raw)
     out_dir = Path(out_dir_raw)
 
-    profiles_path: Path | None = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
-    section_yaml: Path | None = Path(data["section_yaml"]) if data.get("section_yaml") else None
+    profiles_path: Path | None = (
+        Path(data["profiles_nc"]) if data.get("profiles_nc") else None
+    )
+    section_yaml: Path | None = (
+        Path(data["section_yaml"]) if data.get("section_yaml") else None
+    )
     ladcp_dir: Path | None = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
-    ship_track_nc: Path | None = Path(data["ship_track"]) if data.get("ship_track") else None
+    ship_track_nc: Path | None = (
+        Path(data["ship_track"]) if data.get("ship_track") else None
+    )
     gebco_path: Path | None = Path(data["gebco_nc"]) if data.get("gebco_nc") else None
 
     # Resolve which page types to generate.

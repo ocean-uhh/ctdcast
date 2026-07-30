@@ -9,7 +9,7 @@ in get_ctd_backend() — nothing else changes.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class CtdBackend(Protocol):
@@ -65,7 +65,7 @@ class _SeasenselibBackend:
     def __init__(self) -> None:
         """Initialise; raises ImportError if seasenselib is not installed."""
         try:
-            import seasenselib as _sl  # noqa: F401
+            import seasenselib as _sl
         except ImportError as exc:
             raise ImportError(
                 "seasenselib backend requested but the package is not installed. "
@@ -130,7 +130,7 @@ def convert_ctd_files(
     *,
     backend: str = "builtin",
     force: bool = False,
-    cast_filter: Optional[int] = None,
+    cast_filter: int | None = None,
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
 
