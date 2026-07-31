@@ -39,7 +39,7 @@ sections:
 
   Vesturdjup (VD3):
     description: Vesturdjup 
-    cast_numbers: [[162, 169]]
+    cast_numbers: [[162, 176]]
     color: "#8c564b"
 
 timeseries:
@@ -69,6 +69,9 @@ timeseries:
     cast_numbers: [[143, 160]]
     color: "#8c564b"
 
-#  DU2:
-#    description: Dunes eastwest mini
-#    cast_numbers: [[169]]
+  
+
+  Dunes (DU2):
+    description: Dunes mini-section
+    cast_numbers: [[178, 189]]
+    color: "#8c564b"

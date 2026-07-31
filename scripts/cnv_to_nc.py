@@ -25,7 +25,7 @@ logging.getLogger("seasenselib").setLevel(logging.ERROR)
 
 import seasenselib as ssl
 
-CNV_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv")
+CNV_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_cal")
 NC_DIR = Path("/Volumes/T9ifmeo/odb2026/CTD/cnv_nc")
 
 

@@ -3,6 +3,9 @@
 
 data:
   # Directory containing per-cast netCDF files (mixsed2_NNN.nc or similar)
+  cnv_dir: /Volumes/T9ifmeo/odb2026/CTD/cnv_cal
+
+  # Directory containing per-cast netCDF files (mixsed2_NNN.nc or similar)
   nc_dir: /Volumes/T9ifmeo/odb2026/CTD/cnv_nc
 
   # Compiled 1-dbar profiles grid (built by cnv_build_profiles.py)
@@ -24,8 +27,8 @@ data:
 
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
-  dir: outputs/ctd_report
-  #dir: /Volumes/Compartida/MIXSED2/CTD/ctd_report
+  #dir: outputs/ctd_report
+  dir: /Volumes/Compartida/MIXSED2/CTD/ctd_report
 
 # Overwrite existing HTML files
 force: false
