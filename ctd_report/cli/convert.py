@@ -14,25 +14,23 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     """Build the argument parser for ``oceancast convert``."""
     _epilog = """
-Steps run in dependency order when no step flag is given:
-  ctd first (CNV → per-cast netCDF), then profiles (compile profiles.nc).
-  ladcp is future work and is always skipped unless --ladcp is explicit.
+Default (no step flag): runs --profiles only if data.profiles_nc is configured.
+  --ctd must be requested explicitly; it requires an external backend.
+  --ladcp is not yet implemented.
 
 Examples:
-  # Full pipeline — convert all CNV files, then build profiles.nc:
+  # Build profiles.nc from existing per-cast netCDF files (most common):
   oceancast convert config.yaml
 
-  # Per-cast CNV → netCDF only, built-in converter:
+  # Same, explicit:
+  oceancast convert config.yaml --profiles
+
+  # CNV → per-cast netCDF using seasenselib (default backend), then profiles:
   oceancast convert config.yaml --ctd
-
-  # Same step, seasenselib backend:
-  oceancast convert config.yaml --ctd --backend seasenselib
-
-  # Compile profiles.nc from existing per-cast netCDF files:
   oceancast convert config.yaml --profiles
 
   # Force reprocess a single cast:
-  oceancast convert config.yaml --ctd --cast 42 --force
+  oceancast convert config.yaml --ctd --backend seasenselib --cast 42 --force
 """
     kwargs: dict = {
         "description": "Convert raw CTD (CNV) files to netCDF inputs for oceancast report.",
@@ -75,10 +73,10 @@ Examples:
     # Backend (applies only to --ctd)
     parser.add_argument(
         "--backend",
-        choices=["builtin", "seasenselib"],
-        default="builtin",
+        choices=["seasenselib", "builtin"],
+        default="seasenselib",
         metavar="NAME",
-        help="CTD conversion backend for --ctd: 'builtin' (default) or 'seasenselib'.",
+        help="CTD conversion backend for --ctd: 'seasenselib' (default) or 'builtin' (not yet implemented).",
     )
 
     # Per-cast targeting
@@ -135,8 +133,9 @@ def run(args: argparse.Namespace) -> int:
     elif any([args.ctd, args.profiles, args.ladcp]):
         run_ctd, run_profiles, run_ladcp = args.ctd, args.profiles, args.ladcp
     else:
-        # Default: all steps for which config keys are present
-        run_ctd = bool(cnv_dir_raw)
+        # Default: only build profiles — CTD conversion requires explicit --ctd
+        # (it needs an external backend and is not the common case).
+        run_ctd = False
         run_profiles = bool(profiles_nc_raw)
         run_ladcp = False
 

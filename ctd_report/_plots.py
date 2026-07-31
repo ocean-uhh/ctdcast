@@ -929,6 +929,7 @@ def _make_ladcp_section_b64(
     ladcp_dir: Path,
     lats: list[float] | None = None,
     lons: list[float] | None = None,
+    figsize: tuple[float, float] | None = None,
 ) -> str | None:
     """Return a base64 PNG of LADCP U (top) and V (bottom) sections with a shared RdBu_r colorbar.
 
@@ -1020,7 +1021,8 @@ def _make_ladcp_section_b64(
         y_bottom = max(z_max, bathy_max) * 1.05
 
         # GridSpec: two data panels + one narrow colorbar column
-        fig = plt.figure(figsize=(fig_w, fig_h * 2), constrained_layout=True)
+        _fsize = figsize if figsize is not None else (fig_w, fig_h * 2)
+        fig = plt.figure(figsize=_fsize, constrained_layout=True)
         gs = fig.add_gridspec(2, 2, width_ratios=[20, 1], hspace=0.08)
         ax_u = fig.add_subplot(gs[0, 0])
         ax_v = fig.add_subplot(gs[1, 0], sharex=ax_u, sharey=ax_u)
@@ -1664,6 +1666,9 @@ def _make_timeseries_b64(
             if "cast_type" in ds_prof
             else np.full(len(times_start), "down")
         )
+        cast_numbers = (
+            ds_prof["cast_number"].values if "cast_number" in ds_prof else None
+        )
 
         if not len(times_start):
             return None
@@ -1680,6 +1685,8 @@ def _make_timeseries_b64(
         data = data[order]
         times = times[order]
         cast_types = cast_types[order]
+        if cast_numbers is not None:
+            cast_numbers = cast_numbers[order]
 
         # Trim to deepest pressure level that has any valid data across all profiles
         valid_cols = np.where(np.any(np.isfinite(data), axis=0))[0]
@@ -1737,9 +1744,13 @@ def _make_timeseries_b64(
         cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
         cb.set_label(label)
 
-        # ▼ for downcast, △ for upcast at top edge
+        # ▼ for downcast, △ for upcast at top edge; cast number above each downcast
         y_top = float(p_trim[0]) - 0.02 * (float(p_trim[-1]) - float(p_trim[0]))
-        for t_val, ctype in zip(t_mpl, cast_types):
+        trans = ax.get_xaxis_transform()
+        n_down = sum(1 for ct in cast_types if ct == "down")
+        label_step = max(1, n_down // 20)
+        down_count = 0
+        for i, (t_val, ctype) in enumerate(zip(t_mpl, cast_types)):
             marker, color = (
                 ("v", "#1f77b4") if ctype == "down" else ("^", _UPCAST_COLOR)
             )
@@ -1752,6 +1763,19 @@ def _make_timeseries_b64(
                 clip_on=False,
                 transform=ax.transData,
             )
+            if ctype == "down" and cast_numbers is not None:
+                if down_count % label_step == 0:
+                    ax.text(
+                        t_val,
+                        1.04,
+                        str(int(cast_numbers[i])),
+                        transform=trans,
+                        ha="center",
+                        va="bottom",
+                        fontsize=5,
+                        rotation=90,
+                    )
+                down_count += 1
 
         ax.set_ylim(float(p_trim[-1]), float(p_trim[0]))
         ax.set_ylabel("Pressure (dbar)")
