@@ -36,7 +36,8 @@ from ctd_report._version import __version__ as _VERSION
 # HTML templates
 # ---------------------------------------------------------------------------
 
-_INDEX_TEMPLATE = """<!DOCTYPE html>
+_INDEX_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -125,10 +126,13 @@ _INDEX_TEMPLATE = """<!DOCTYPE html>
 </div>
 {% endif %}
 
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
-_STATIONS_TEMPLATE = """<!DOCTYPE html>
+_STATIONS_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -236,10 +240,13 @@ _STATIONS_TEMPLATE = """<!DOCTYPE html>
   </table>
 </div>
 
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
-_SECTIONS_TEMPLATE = """<!DOCTYPE html>
+_SECTIONS_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -319,7 +326,9 @@ _SECTIONS_TEMPLATE = """<!DOCTYPE html>
   </div>
 </div>
 
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +480,10 @@ def generate_ctd_report(
             _sec_note = ""
             if _would_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
-                if any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _sec_casts) and b"s-ladcp" not in _expected.read_bytes():
+                if (
+                    any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _sec_casts)
+                    and b"s-ladcp" not in _expected.read_bytes()
+                ):
                     _sec_note = " (LADCP available — use --force)"
             out_page = generate_section_page(
                 sec_name,
@@ -499,7 +511,10 @@ def generate_ctd_report(
             _ts_note = ""
             if _would_skip and ladcp_dir is not None:
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
-                if any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _ts_casts) and b"s-ladcp" not in _expected.read_bytes():
+                if (
+                    any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _ts_casts)
+                    and b"s-ladcp" not in _expected.read_bytes()
+                ):
                     _ts_note = " (LADCP available — use --force)"
             out_page = generate_timeseries_page(
                 ts_name,
@@ -940,7 +955,8 @@ def _write_sections_list(
     (out_dir / "sections.html").write_text(html, encoding="utf-8")
 
 
-_TIMESERIES_LIST_TEMPLATE = """<!DOCTYPE html>
+_TIMESERIES_LIST_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1019,7 +1035,9 @@ _TIMESERIES_LIST_TEMPLATE = """<!DOCTYPE html>
   {% endif %}
   </div>
 </div>
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
 def _write_timeseries_list(

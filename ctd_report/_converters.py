@@ -199,7 +199,10 @@ def convert_ctd_files(
         try:
             written = b.convert_cast(cnv_path, nc_path, force=force)
         except Exception as exc:  # noqa: BLE001
-            print(f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})", file=sys.stderr)
+            print(
+                f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
             continue
         if written:
             print(f"  ok: {cnv_path.name} → {nc_path.name}")

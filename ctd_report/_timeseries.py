@@ -45,7 +45,8 @@ _TIMESERIES_VARS: list[tuple[str, str, str]] = [
 # HTML template
 # ---------------------------------------------------------------------------
 
-_TIMESERIES_TEMPLATE = """<!DOCTYPE html>
+_TIMESERIES_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -160,7 +161,9 @@ _TIMESERIES_TEMPLATE = """<!DOCTYPE html>
 </div>
 {% endif %}
 
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
 # ---------------------------------------------------------------------------

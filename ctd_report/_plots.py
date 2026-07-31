@@ -268,9 +268,7 @@ def _make_ts_density_b64(ds: xr.Dataset) -> str | None:
         return None
 
 
-def _make_ts_density_ladcp_b64(
-    ds: xr.Dataset, ladcp_path: Path | None
-) -> str | None:
+def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str | None:
     """Return CT/SA/σ₀ profiles alongside LADCP U/V on a shared y-axis.
 
     When *ladcp_path* is None or the file does not exist, renders the same two-column

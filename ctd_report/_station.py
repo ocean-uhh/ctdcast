@@ -33,7 +33,8 @@ from ctd_report._version import __version__ as _VERSION
 # HTML template
 # ---------------------------------------------------------------------------
 
-_STATION_TEMPLATE = """<!DOCTYPE html>
+_STATION_TEMPLATE = (
+    """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -230,7 +231,9 @@ _STATION_TEMPLATE = """<!DOCTYPE html>
 </div>
 {% endif %}
 
-""" + _tmpl.FOOTER_TAIL
+"""
+    + _tmpl.FOOTER_TAIL
+)
 
 
 # ---------------------------------------------------------------------------

@@ -385,7 +385,8 @@ def _safe_json(obj: Any) -> str:
 # HTML template
 # ---------------------------------------------------------------------------
 
-_LEAFLET_TEMPLATE = """\
+_LEAFLET_TEMPLATE = (
+    """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -450,7 +451,9 @@ _LEAFLET_TEMPLATE = """\
 <div id="map"></div>
 <div id="info-panel" class="empty">Hover over a cast or section.</div>
 {% if depth_legend_html %}<div id="depth-legend">{{ depth_legend_html }}</div>{% endif %}
-""" + _tmpl.FOOTER_LINE + """
+"""
+    + _tmpl.FOOTER_LINE
+    + """
 
 {% if leaflet_inline %}
 <script>{{ leaflet_js }}</script>
@@ -531,6 +534,7 @@ CASTS.forEach(function(c) {
 </script>
 </body>
 </html>"""
+)
 
 
 # ---------------------------------------------------------------------------
