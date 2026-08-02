@@ -24,9 +24,6 @@ jobs:
   test:
     name: ${{ matrix.os }} / Py ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
     strategy:
       fail-fast: true
       matrix:
@@ -51,9 +48,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          # Install ruamel.yaml preferring a binary wheel to avoid C-extension build failures
           python -m pip install "ruamel.yaml>=0.18" --prefer-binary
-          if [ -f requirements.txt ]; then pip install -r requirements.txt --prefer-binary; fi
+          python -m pip install -r requirements.txt --prefer-binary
 
       - name: Install package
         run: |
