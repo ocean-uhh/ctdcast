@@ -1,14 +1,12 @@
 """Structural tests for generate_station_page HTML output."""
 
 import re
-from pathlib import Path
 
 import pytest
+from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
 from ctd_report._index import _read_cast_meta
 from ctd_report._station import generate_station_page
-
-from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
 
 @pytest.fixture
@@ -38,7 +36,9 @@ def station_html(tmp_path, meta_011, meta_012):
         next_num=12,
         force=True,
     )
-    assert out is not None and out.exists(), "generate_station_page returned None or missing file"
+    assert out is not None and out.exists(), (
+        "generate_station_page returned None or missing file"
+    )
     return out.read_text(encoding="utf-8")
 
 
@@ -60,10 +60,9 @@ def station_html_ladcp(tmp_path, meta_011, meta_012):
 
 # --- file creation -----------------------------------------------------------
 
+
 def test_station_creates_file(tmp_path, meta_011):
-    out = generate_station_page(
-        CAST_011, tmp_path, all_meta=[meta_011], force=True
-    )
+    out = generate_station_page(CAST_011, tmp_path, all_meta=[meta_011], force=True)
     assert out is not None
     assert out.exists()
     assert out.stat().st_size > 10_000
@@ -83,6 +82,7 @@ def test_station_output_path(tmp_path, meta_011):
 
 
 # --- HTML structure ----------------------------------------------------------
+
 
 def test_station_is_valid_html(station_html):
     assert station_html.lower().startswith("<!doctype html")
@@ -112,6 +112,7 @@ def test_station_has_profiles_section(station_html):
 
 
 # --- LADCP integration -------------------------------------------------------
+
 
 def test_station_ladcp_creates_file(tmp_path, meta_011):
     out = generate_station_page(

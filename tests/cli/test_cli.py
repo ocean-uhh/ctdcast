@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ctd_report.cli import main as cli_main
 from ctd_report.cli import init as _init
+from ctd_report.cli import main as cli_main
 from ctd_report.cli import report as _report
 from ctd_report.cli import validate as _validate
 
@@ -39,9 +39,15 @@ timeseries:
 def _report_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for report.run() with safe defaults."""
     defaults = dict(
-        stations=False, sections=False, timeseries=False,
-        index=False, map=False, cast=None,
-        force=False, skip_existing=False, dry_run=False,
+        stations=False,
+        sections=False,
+        timeseries=False,
+        index=False,
+        map=False,
+        cast=None,
+        force=False,
+        skip_existing=False,
+        dry_run=False,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -62,6 +68,7 @@ def _init_ns(**kwargs) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # oceancast init
 # ---------------------------------------------------------------------------
+
 
 class TestInit:
     def test_writes_config_to_directory(self, tmp_path):
@@ -107,6 +114,7 @@ class TestInit:
 # ---------------------------------------------------------------------------
 # oceancast validate
 # ---------------------------------------------------------------------------
+
 
 class TestValidate:
     def _write_cfg(self, tmp_path, **overrides) -> Path:
@@ -166,7 +174,9 @@ class TestValidate:
 
     def test_strict_missing_cast_returns_error(self, tmp_path):
         sec_yaml = tmp_path / "sections.yaml"
-        sec_yaml.write_text("sections:\n  BAD:\n    cast_numbers: [[999, 1000]]\n    color: '#f00'\n")
+        sec_yaml.write_text(
+            "sections:\n  BAD:\n    cast_numbers: [[999, 1000]]\n    color: '#f00'\n"
+        )
         cfg_path = self._write_cfg(
             tmp_path,
             data={"nc_dir": str(_FIXTURES_NC), "section_yaml": str(sec_yaml)},
@@ -178,6 +188,7 @@ class TestValidate:
 # ---------------------------------------------------------------------------
 # oceancast report
 # ---------------------------------------------------------------------------
+
 
 class TestReport:
     def _write_cfg(self, tmp_path, **extras) -> Path:
@@ -215,10 +226,14 @@ class TestReport:
         # report doesn't validate paths — it just prints "No cast files found"
         # and exits 0.  Use `oceancast validate` to catch missing paths upfront.
         p = tmp_path / "config.yaml"
-        p.write_text(yaml.dump({
-            "data": {"nc_dir": str(tmp_path / "missing")},
-            "output": {"dir": str(tmp_path / "out")},
-        }))
+        p.write_text(
+            yaml.dump(
+                {
+                    "data": {"nc_dir": str(tmp_path / "missing")},
+                    "output": {"dir": str(tmp_path / "out")},
+                }
+            )
+        )
         rc = _report.run(_report_ns(config=p))
         assert rc == 0
         assert not list((tmp_path / "out").glob("stations/*.html"))
@@ -226,12 +241,18 @@ class TestReport:
     def test_stations_only_generates_pages(self, tmp_path):
         """Confirm the CLI drives generate_ctd_report correctly for stations."""
         cfg = self._write_cfg(tmp_path)
-        rc = _report.run(_report_ns(
-            config=cfg, stations=True, force=True,
-        ))
+        rc = _report.run(
+            _report_ns(
+                config=cfg,
+                stations=True,
+                force=True,
+            )
+        )
         assert rc == 0
         for cast_num in (11, 12, 128, 129):
-            assert (tmp_path / "out" / "stations" / f"cast_{cast_num:03d}.html").exists()
+            assert (
+                tmp_path / "out" / "stations" / f"cast_{cast_num:03d}.html"
+            ).exists()
 
     def test_cast_flag_generates_single_station(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
@@ -244,6 +265,7 @@ class TestReport:
 # ---------------------------------------------------------------------------
 # Entry point: argument parser wiring
 # ---------------------------------------------------------------------------
+
 
 class TestEntryPoint:
     def test_main_help_exits_zero(self):

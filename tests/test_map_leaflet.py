@@ -2,10 +2,10 @@
 
 import re
 
+from conftest import CAST_011, CAST_012, CAST_128, CAST_129
+
 from ctd_report._index import _read_cast_meta
 from ctd_report._map_leaflet import generate_leaflet_map
-
-from conftest import CAST_011, CAST_012, CAST_128, CAST_129
 
 
 def _all_meta():

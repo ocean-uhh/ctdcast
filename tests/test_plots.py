@@ -5,8 +5,8 @@ that the image is pixel-perfect.  A returned str must start with the
 PNG base64 magic bytes ("iVBOR").
 """
 
-import pytest
 import xarray as xr
+from conftest import CAST_011, FIXTURES_LADCP
 
 import ctd_report._plots as plots
 from ctd_report._plots import (
@@ -14,6 +14,7 @@ from ctd_report._plots import (
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
     _make_pressure_time_b64,
+    _make_profile_b64,
     _make_sensor_diff_b64,
     _make_stability_b64,
     _make_station_map_b64,
@@ -22,10 +23,7 @@ from ctd_report._plots import (
     _make_ts_diagram_b64,
     _make_ts_updown_b64,
     _make_updown_diff_b64,
-    _make_profile_b64,
 )
-
-from conftest import CAST_011, CAST_128, FIXTURES_LADCP
 
 _LADCP_011 = FIXTURES_LADCP / "011.mat"
 _LADCP_128 = FIXTURES_LADCP / "128.mat"
@@ -39,6 +37,7 @@ def _is_valid(result):
 
 
 # --- profile plots -----------------------------------------------------------
+
 
 def test_profile_temperature(ds_011):
     assert _is_valid(_make_profile_b64(ds_011, "temperature_1", "Temperature (°C)"))
@@ -54,6 +53,7 @@ def test_profile_missing_var(ds_011):
 
 
 # --- station-page plot functions ---------------------------------------------
+
 
 def test_ts_density_b64(ds_011):
     assert _is_valid(_make_ts_density_b64(ds_011))
@@ -93,6 +93,7 @@ def test_updown_diff_b64(ds_011):
 
 # --- LADCP plot functions ----------------------------------------------------
 
+
 def test_ts_density_ladcp_b64(ds_011):
     assert _is_valid(_make_ts_density_ladcp_b64(ds_011, _LADCP_011))
 
@@ -113,10 +114,11 @@ def test_ladcp_bottomtrack_none():
 
 # --- station map (no GEBCO) --------------------------------------------------
 
+
 def test_station_map_no_gebco(ds_011, monkeypatch):
     monkeypatch.setattr(plots, "GEBCO_PATH", None)
-    import xarray as xr
     import numpy as np
+
     ds = xr.open_dataset(CAST_011, engine="netcdf4")
     lat = float(np.nanmedian(ds["latitude"].values))
     lon = float(np.nanmedian(ds["longitude"].values))
@@ -126,6 +128,7 @@ def test_station_map_no_gebco(ds_011, monkeypatch):
 
 
 # --- deep cast (cast 128) ----------------------------------------------------
+
 
 def test_ts_density_deep_cast(ds_128):
     assert _is_valid(_make_ts_density_b64(ds_128))

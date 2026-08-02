@@ -10,10 +10,9 @@ import re
 from pathlib import Path
 
 import pytest
-import yaml
 
 from ctd_report._converters import build_profiles
-from ctd_report._index import generate_ctd_report, _read_cast_meta
+from ctd_report._index import _read_cast_meta, generate_ctd_report
 from ctd_report._section import generate_section_page
 from ctd_report._station import generate_station_page
 from ctd_report._timeseries import generate_timeseries_page
@@ -77,6 +76,7 @@ def section_yaml_path(tmp_path_factory):
 # Station page: LADCP present vs absent
 # ---------------------------------------------------------------------------
 
+
 class TestStationLadcp:
     """Verify that the LADCP panel appears iff a LADCP directory is supplied."""
 
@@ -94,7 +94,9 @@ class TestStationLadcp:
         )
         assert out is not None and out.exists()
         html = out.read_text(encoding="utf-8")
-        assert 'id="s-ladcp"' in html, "LADCP section missing despite ladcp_dir supplied"
+        assert 'id="s-ladcp"' in html, (
+            "LADCP section missing despite ladcp_dir supplied"
+        )
 
     def test_with_ladcp_self_contained(self, tmp_path, all_meta):
         out = generate_station_page(
@@ -125,31 +127,48 @@ class TestStationLadcp:
 # Section page
 # ---------------------------------------------------------------------------
 
+
 class TestSectionPage:
     """Verify section page generation from profiles.nc + section config."""
 
     def test_section_generates(self, tmp_path, profiles_nc):
-        sec_cfg = {"description": "KO fixture", "cast_numbers": [[11, 12]], "color": "#1f77b4"}
+        sec_cfg = {
+            "description": "KO fixture",
+            "cast_numbers": [[11, 12]],
+            "color": "#1f77b4",
+        }
         out = generate_section_page("KO", sec_cfg, profiles_nc, tmp_path, force=True)
         assert out is not None, "generate_section_page returned None"
         assert out.exists()
         assert out == tmp_path / "sections" / "section_KO.html"
 
     def test_section_is_valid_html(self, tmp_path, profiles_nc):
-        sec_cfg = {"description": "KO fixture", "cast_numbers": [[11, 12]], "color": "#1f77b4"}
+        sec_cfg = {
+            "description": "KO fixture",
+            "cast_numbers": [[11, 12]],
+            "color": "#1f77b4",
+        }
         out = generate_section_page("KO", sec_cfg, profiles_nc, tmp_path, force=True)
         html = out.read_text(encoding="utf-8")
         assert html.lower().startswith("<!doctype html")
         assert "</html>" in html.lower()
 
     def test_section_is_self_contained(self, tmp_path, profiles_nc):
-        sec_cfg = {"description": "KO fixture", "cast_numbers": [[11, 12]], "color": "#1f77b4"}
+        sec_cfg = {
+            "description": "KO fixture",
+            "cast_numbers": [[11, 12]],
+            "color": "#1f77b4",
+        }
         out = generate_section_page("KO", sec_cfg, profiles_nc, tmp_path, force=True)
         html = out.read_text(encoding="utf-8")
         assert _no_external_resources(html) == []
 
     def test_section_with_ladcp(self, tmp_path, profiles_nc):
-        sec_cfg = {"description": "KO fixture", "cast_numbers": [[11, 12]], "color": "#1f77b4"}
+        sec_cfg = {
+            "description": "KO fixture",
+            "cast_numbers": [[11, 12]],
+            "color": "#1f77b4",
+        }
         out = generate_section_page(
             "KO", sec_cfg, profiles_nc, tmp_path, force=True, ladcp_dir=_LADCP
         )
@@ -160,11 +179,16 @@ class TestSectionPage:
 # Timeseries page
 # ---------------------------------------------------------------------------
 
+
 class TestTimeseriesPage:
     """Verify timeseries page generation from profiles.nc + timeseries config."""
 
     def test_timeseries_generates(self, tmp_path, profiles_nc, all_meta):
-        ts_cfg = {"description": "Triangle fixture", "cast_numbers": [[128, 129]], "color": "#d62728"}
+        ts_cfg = {
+            "description": "Triangle fixture",
+            "cast_numbers": [[128, 129]],
+            "color": "#d62728",
+        }
         out = generate_timeseries_page(
             "Triangle", ts_cfg, profiles_nc, tmp_path, force=True, all_meta=all_meta
         )
@@ -173,7 +197,11 @@ class TestTimeseriesPage:
         assert out == tmp_path / "timeseries" / "timeseries_Triangle.html"
 
     def test_timeseries_is_valid_html(self, tmp_path, profiles_nc, all_meta):
-        ts_cfg = {"description": "Triangle fixture", "cast_numbers": [[128, 129]], "color": "#d62728"}
+        ts_cfg = {
+            "description": "Triangle fixture",
+            "cast_numbers": [[128, 129]],
+            "color": "#d62728",
+        }
         out = generate_timeseries_page(
             "Triangle", ts_cfg, profiles_nc, tmp_path, force=True, all_meta=all_meta
         )
@@ -182,7 +210,11 @@ class TestTimeseriesPage:
         assert "</html>" in html.lower()
 
     def test_timeseries_is_self_contained(self, tmp_path, profiles_nc, all_meta):
-        ts_cfg = {"description": "Triangle fixture", "cast_numbers": [[128, 129]], "color": "#d62728"}
+        ts_cfg = {
+            "description": "Triangle fixture",
+            "cast_numbers": [[128, 129]],
+            "color": "#d62728",
+        }
         out = generate_timeseries_page(
             "Triangle", ts_cfg, profiles_nc, tmp_path, force=True, all_meta=all_meta
         )
@@ -194,12 +226,16 @@ class TestTimeseriesPage:
 # Full entry-point: generate_ctd_report
 # ---------------------------------------------------------------------------
 
+
 class TestFullReport:
     """Drive generate_ctd_report end-to-end with section + timeseries YAML."""
 
-    def test_generates_all_station_pages(self, tmp_path, section_yaml_path, profiles_nc):
+    def test_generates_all_station_pages(
+        self, tmp_path, section_yaml_path, profiles_nc
+    ):
         generate_ctd_report(
-            _NC, tmp_path,
+            _NC,
+            tmp_path,
             profiles_path=profiles_nc,
             section_yaml=section_yaml_path,
             ladcp_dir=_LADCP,
@@ -211,7 +247,8 @@ class TestFullReport:
 
     def test_generates_section_page(self, tmp_path, section_yaml_path, profiles_nc):
         generate_ctd_report(
-            _NC, tmp_path,
+            _NC,
+            tmp_path,
             profiles_path=profiles_nc,
             section_yaml=section_yaml_path,
             force=True,
@@ -220,7 +257,8 @@ class TestFullReport:
 
     def test_generates_timeseries_page(self, tmp_path, section_yaml_path, profiles_nc):
         generate_ctd_report(
-            _NC, tmp_path,
+            _NC,
+            tmp_path,
             profiles_path=profiles_nc,
             section_yaml=section_yaml_path,
             force=True,
@@ -229,17 +267,26 @@ class TestFullReport:
 
     def test_generates_index_pages(self, tmp_path, section_yaml_path, profiles_nc):
         generate_ctd_report(
-            _NC, tmp_path,
+            _NC,
+            tmp_path,
             profiles_path=profiles_nc,
             section_yaml=section_yaml_path,
             force=True,
         )
-        for name in ("index.html", "station_index.html", "sections.html", "leaflet.html"):
+        for name in (
+            "index.html",
+            "station_index.html",
+            "sections.html",
+            "leaflet.html",
+        ):
             assert (tmp_path / name).exists(), f"Missing index page: {name}"
 
-    def test_no_external_resources_in_station(self, tmp_path, section_yaml_path, profiles_nc):
+    def test_no_external_resources_in_station(
+        self, tmp_path, section_yaml_path, profiles_nc
+    ):
         generate_ctd_report(
-            _NC, tmp_path,
+            _NC,
+            tmp_path,
             profiles_path=profiles_nc,
             section_yaml=section_yaml_path,
             ladcp_dir=_LADCP,
@@ -251,9 +298,15 @@ class TestFullReport:
     def test_stations_only_no_yaml(self, tmp_path):
         """generate_ctd_report must work with no section_yaml (stations only)."""
         generate_ctd_report(
-            _NC, tmp_path,
-            generate={"stations": True, "sections": False, "timeseries": False,
-                      "index": False, "map": False},
+            _NC,
+            tmp_path,
+            generate={
+                "stations": True,
+                "sections": False,
+                "timeseries": False,
+                "index": False,
+                "map": False,
+            },
             force=True,
         )
         for cast_num in (11, 12, 128, 129):
