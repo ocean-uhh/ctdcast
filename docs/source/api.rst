@@ -4,8 +4,7 @@
 Python API
 ============
 
-The primary public entry point is :func:`ctd_report.generate_ctd_report`.  All other
-functions are internal.
+The primary public entry point is :func:`ctd_report.generate_ctd_report`.
 
 .. note::
 
@@ -17,7 +16,16 @@ functions are internal.
 Main entry point
 ----------------
 
-.. autofunction:: ctd_report._index.generate_ctd_report
+.. autofunction:: ctd_report.index.generate_ctd_report
+
+----
+
+Converters (Tier 0)
+-------------------
+
+.. automodule:: ctd_report.converters
+   :members:
+   :undoc-members:
 
 ----
 
@@ -28,7 +36,7 @@ These functions return base64-encoded PNG strings.  They are called by the page
 generators and return ``None`` on any exception, so a missing figure never prevents
 a page from being written.
 
-.. automodule:: ctd_report._plots
+.. automodule:: ctd_report.plots
    :members:
    :undoc-members:
 
@@ -37,14 +45,32 @@ a page from being written.
 Page generators (Tier 2)
 ------------------------
 
-.. automodule:: ctd_report._station
+.. automodule:: ctd_report.station
    :members:
    :undoc-members:
 
-.. automodule:: ctd_report._section
+.. automodule:: ctd_report.section
    :members:
    :undoc-members:
 
-.. automodule:: ctd_report._timeseries
+.. automodule:: ctd_report.timeseries
+   :members:
+   :undoc-members:
+
+----
+
+Interactive map (Tier 2)
+------------------------
+
+.. automodule:: ctd_report.map_leaflet
+   :members:
+   :undoc-members:
+
+----
+
+Analysis helpers
+----------------
+
+.. automodule:: ctd_report.analysis
    :members:
    :undoc-members:
