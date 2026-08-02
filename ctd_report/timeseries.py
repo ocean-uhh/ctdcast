@@ -19,14 +19,14 @@ import xarray as xr
 from jinja2 import Environment
 
 from ctd_report import _templates as _tmpl
-from ctd_report._analysis import _add_aou, _add_teos10_profiles, _compact_cast_list
-from ctd_report._plots import (
+from ctd_report._version import __version__ as _VERSION
+from ctd_report.analysis import _add_aou, _add_teos10_profiles, _compact_cast_list
+from ctd_report.plots import (
     _make_ladcp_section_b64,
     _make_station_map_b64,
     _make_timeseries_b64,
 )
-from ctd_report._section import _expand_cast_numbers
-from ctd_report._version import __version__ as _VERSION
+from ctd_report.section import _expand_cast_numbers
 
 # ---------------------------------------------------------------------------
 # Variables to plot (in order)

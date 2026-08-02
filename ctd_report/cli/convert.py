@@ -173,7 +173,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"[dry-run] force={args.force}")
         return 0
 
-    from ctd_report._converters import build_profiles, convert_ctd_files
+    from ctd_report.converters import build_profiles, convert_ctd_files
 
     if run_ctd:
         assert cnv_dir is not None
