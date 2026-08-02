@@ -245,10 +245,11 @@ def generate_station_page(
     nc_path: Path,
     out_dir: Path,
     all_meta: list[dict[str, Any]],
-    prev_num: int | None = None,
-    next_num: int | None = None,
+    prev_cast_str: str | None = None,
+    next_cast_str: str | None = None,
     force: bool = False,
     ladcp_dir: Path | None = None,
+    cast_num_str: str | None = None,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
 
@@ -260,22 +261,30 @@ def generate_station_page(
         Root output directory.
     all_meta:
         List of dicts with keys ``lat``, ``lon`` for all casts (used for map).
-    prev_num:
-        Cast number of the previous cast for nav links (or None).
-    next_num:
-        Cast number of the next cast for nav links (or None).
+    prev_cast_str:
+        Full cast identifier string of the previous cast for nav links, e.g.
+        ``"010"`` or ``"004b"`` (or None for no previous link).
+    next_cast_str:
+        Full cast identifier string of the next cast for nav links (or None).
     force:
         Overwrite existing file if True.
     ladcp_dir:
-        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``.
-        If None or if the matching file does not exist, LADCP panels are omitted.
+        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
+        or ``NNNb.mat``.  If None or no matching file exists, LADCP panels
+        are omitted.
+    cast_num_str:
+        Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived
+        from *nc_path* if not provided.
 
     Returns
     -------
     Path to the written HTML file, or None on failure.
+
     """
-    cast_num = _cast_num_from_path(nc_path)
-    out_file = out_dir / "stations" / f"cast_{cast_num:03d}.html"
+    cast_num, cast_suffix = _cast_id_from_path(nc_path)
+    if cast_num_str is None:
+        cast_num_str = f"{cast_num:03d}{cast_suffix}"
+    out_file = out_dir / "stations" / f"cast_{cast_num_str}.html"
     if out_file.exists() and not force:
         return out_file
 
@@ -293,21 +302,23 @@ def generate_station_page(
     t0 = str(ds["time"].values[0])[:16].replace("T", " ")
     cruise = ds.attrs.get("cruise", "odb2026")
 
-    prev_str = f"{prev_num:03d}" if prev_num is not None else ""
-    next_str = f"{next_num:03d}" if next_num is not None else ""
-
-    ladcp_path = ladcp_dir / f"{cast_num:03d}.mat" if ladcp_dir is not None else None
+    # LADCP: try suffixed filename first (e.g. 004b.mat), fall back to plain (004.mat)
+    ladcp_path: Path | None = None
+    if ladcp_dir is not None:
+        _suffixed = ladcp_dir / f"{cast_num:03d}{cast_suffix}.mat"
+        _plain = ladcp_dir / f"{cast_num:03d}.mat"
+        ladcp_path = _suffixed if _suffixed.exists() else (_plain if _plain.exists() else _suffixed)
     ladcp_exists = ladcp_path is not None and ladcp_path.exists()
 
     ctx: dict[str, Any] = {
-        "cast_num": f"{cast_num:03d}",
+        "cast_num": cast_num_str,
         "cruise": cruise,
         "datetime_str": t0,
         "lat_str": f"{lat:.4f}°N",
         "lon_str": f"{lon:.4f}°E",
         "max_depth_str": f"{max_depth:.0f} dbar",
-        "prev_num": prev_str,
-        "next_num": next_str,
+        "prev_num": prev_cast_str or "",
+        "next_num": next_cast_str or "",
         "ladcp_configured": ladcp_dir is not None,
         "ladcp_available": ladcp_exists,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
@@ -345,9 +356,20 @@ def generate_station_page(
     return out_file
 
 
-def _cast_num_from_path(nc_path: Path) -> int:
-    """Return the integer cast number from a filename like ``mixsed2_042.nc``."""
-    m = re.search(r"_(\d+)(_b)?\.nc$", nc_path.name)
+def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
+    """Return ``(cast_num, cast_suffix)`` from a filename like ``mixsed2_042b.nc``.
+
+    Returns ``(0, "")`` if the filename does not match the expected pattern.
+    """
+    m = re.search(r"_(\d+)([a-z]*)\.nc$", nc_path.name)
     if m:
-        return int(m.group(1))
-    return 0
+        return int(m.group(1)), m.group(2)
+    return 0, ""
+
+
+def _cast_num_from_path(nc_path: Path) -> int:
+    """Return the integer cast number from a filename like ``mixsed2_042.nc``.
+
+    Deprecated: use :func:`_cast_id_from_path` to also retrieve the suffix.
+    """
+    return _cast_id_from_path(nc_path)[0]

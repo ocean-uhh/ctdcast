@@ -390,6 +390,7 @@ def generate_ctd_report(
     cast_filter:
         If set, rebuild only the station page for this cast number
         (implies ``generate={"stations": True, rest False}``).
+
     """
     gen: dict[str, bool] = {
         "stations": True,
@@ -430,7 +431,7 @@ def generate_ctd_report(
     cruise = all_meta[0].get("cruise", "UNK") if all_meta else "UNK"
 
     if gen["stations"]:
-        cast_nums = [m["cast_num"] for m in all_meta]
+        cast_num_strs = [m["cast_num_str"] for m in all_meta]
         targets = [
             m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter
         ]
@@ -439,31 +440,34 @@ def generate_ctd_report(
             return
         for meta in targets:
             orig_i = all_meta.index(meta)
-            prev_num = cast_nums[orig_i - 1] if orig_i > 0 else None
-            next_num = cast_nums[orig_i + 1] if orig_i < len(all_meta) - 1 else None
-            _expected = out_dir / "stations" / f"cast_{meta['cast_num']:03d}.html"
-            _would_skip = _expected.exists() and not force
-            _skip_note = ""
-            if _would_skip and ladcp_dir is not None:
-                _mat = ladcp_dir / f"{meta['cast_num']:03d}.mat"
-                if _mat.exists() and b"fig-profile-ladcp" not in _expected.read_bytes():
-                    _skip_note = " (LADCP available — use --force)"
+            prev_cast_str = cast_num_strs[orig_i - 1] if orig_i > 0 else None
+            next_cast_str = cast_num_strs[orig_i + 1] if orig_i < len(all_meta) - 1 else None
+            _expected = out_dir / "stations" / f"cast_{meta['cast_num_str']}.html"
+            _skip_reason = _mtime_skip_reason(_expected, meta["path"], force)
+            _ladcp_note = ""
+            if _skip_reason and ladcp_dir is not None:
+                _mat = ladcp_dir / f"{meta['cast_num']:03d}{meta['cast_suffix']}.mat"
+                if not _mat.exists():
+                    _mat = ladcp_dir / f"{meta['cast_num']:03d}.mat"
+                if _mat.exists() and _expected.exists() and b"fig-profile-ladcp" not in _expected.read_bytes():
+                    _ladcp_note = " — LADCP available, use --force"
             out_page = generate_station_page(
                 meta["path"],
                 out_dir,
                 all_meta,
-                prev_num=prev_num,
-                next_num=next_num,
-                force=force,
+                prev_cast_str=prev_cast_str,
+                next_cast_str=next_cast_str,
+                force=force or not _skip_reason,
                 ladcp_dir=ladcp_dir,
+                cast_num_str=meta["cast_num_str"],
             )
-            if out_page is None:
+            if _skip_reason:
+                _status = _skip_reason + _ladcp_note
+            elif out_page is None:
                 _status = "FAILED"
-            elif _would_skip:
-                _status = f"skip{_skip_note}"
             else:
-                _status = "ok"
-            print(f"  station cast_{meta['cast_num']:03d}: {_status}")
+                _status = "regenerated"
+            print(f"  station cast_{meta['cast_num_str']}: {_status}")
 
     yaml_data: dict[str, Any] = {}
     if section_yaml and section_yaml.exists():
@@ -476,64 +480,68 @@ def generate_ctd_report(
     if gen["sections"]:
         for sec_name, sec_cfg in sections_cfg.items():
             _expected = out_dir / "sections" / f"section_{sec_name}.html"
-            _would_skip = _expected.exists() and not force
+            _src = profiles_path if profiles_path is not None else _expected
+            _sec_skip = _mtime_skip_reason(_expected, _src, force)
             _sec_note = ""
-            if _would_skip and ladcp_dir is not None:
+            if _sec_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
                 if (
                     any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _sec_casts)
+                    and _expected.exists()
                     and b"s-ladcp" not in _expected.read_bytes()
                 ):
-                    _sec_note = " (LADCP available — use --force)"
+                    _sec_note = " — LADCP available, use --force"
             out_page = generate_section_page(
                 sec_name,
                 sec_cfg,
                 profiles_path,
                 out_dir,
-                force=force,
+                force=force or not _sec_skip,
                 section_style=section_style,
                 vmin_override=vmin_override,
                 vmax_override=vmax_override,
                 ladcp_dir=ladcp_dir,
             )
-            if out_page is None:
+            if _sec_skip:
+                _sec_status = _sec_skip + _sec_note
+            elif out_page is None:
                 _sec_status = "FAILED"
-            elif _would_skip:
-                _sec_status = f"skip{_sec_note}"
             else:
-                _sec_status = "ok"
+                _sec_status = "regenerated"
             print(f"  section {sec_name}: {_sec_status}")
 
     if gen["timeseries"] and timeseries_cfg:
         for ts_name, ts_cfg in timeseries_cfg.items():
             _expected = out_dir / "timeseries" / f"timeseries_{ts_name}.html"
-            _would_skip = _expected.exists() and not force
+            _src = profiles_path if profiles_path is not None else _expected
+            _ts_skip = _mtime_skip_reason(_expected, _src, force)
             _ts_note = ""
-            if _would_skip and ladcp_dir is not None:
+            if _ts_skip and ladcp_dir is not None:
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
                 if (
                     any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _ts_casts)
+                    and _expected.exists()
                     and b"s-ladcp" not in _expected.read_bytes()
                 ):
-                    _ts_note = " (LADCP available — use --force)"
+                    _ts_note = " — LADCP available, use --force"
             out_page = generate_timeseries_page(
                 ts_name,
                 ts_cfg,
                 profiles_path,
                 out_dir,
-                force=force,
+                force=force or not _ts_skip,
                 section_style=timeseries_style,
                 vmin_override=vmin_override,
                 vmax_override=vmax_override,
                 all_meta=all_meta,
                 ladcp_dir=ladcp_dir,
             )
-            if out_page is None:
+            if _ts_skip:
+                _ts_status = _ts_skip + _ts_note
+            elif out_page is None:
                 _ts_status = "FAILED"
-            elif _would_skip:
-                _ts_status = f"skip{_ts_note}"
             else:
-                _ts_status = "ok"
+                _ts_status = "regenerated"
             print(f"  timeseries {ts_name}: {_ts_status}")
 
     if gen["index"]:
@@ -576,7 +584,7 @@ def generate_ctd_report(
                 force=force,
                 ship_track_nc=ship_track_nc,
             )
-            print(f"  leaflet map: {'ok' if lf_out else 'skipped (no casts)'}")
+            print(f"  leaflet map: {'regenerated' if lf_out else 'skipped (no casts)'}")
         except Exception:  # noqa: BLE001
             import traceback
 
@@ -1118,30 +1126,63 @@ def _write_timeseries_list(
 
 
 # ---------------------------------------------------------------------------
+# Mtime helper
+# ---------------------------------------------------------------------------
+
+
+def _mtime_skip_reason(expected: Path, source: Path, force: bool) -> str:
+    """Return a non-empty skip-reason string if *expected* should not be regenerated.
+
+    Returns an empty string when the page should be (re)generated.
+
+    Logic:
+    - *force* is True → always regenerate (return ``""``).
+    - *expected* does not exist → must generate (return ``""``).
+    - *expected* is newer than *source* → skip: ``"skipped (up to date)"``.
+    - *source* is newer than *expected* → regenerate (smart update, return ``""``).
+    - mtime comparison fails (``OSError``) → conservative skip:
+      ``"skipped (exists, use --force)"``.
+    """
+    if force or not expected.exists():
+        return ""
+    try:
+        if expected.stat().st_mtime > source.stat().st_mtime:
+            return "skipped (up to date)"
+        return ""  # source is newer: regenerate automatically
+    except OSError:
+        return "skipped (exists, use --force)"
+
+
+# ---------------------------------------------------------------------------
 # Metadata helpers
 # ---------------------------------------------------------------------------
 
 
 def _select_cast_files(nc_dir: Path) -> list[Path]:
-    """Return sorted list of cast .nc files, preferring _b variants."""
-    pattern = re.compile(r"^mixsed2_(\d+)(_b)?$")
-    chosen: dict[int, Path] = {}
+    """Return sorted list of cast .nc files, including all letter-suffix variants.
+
+    Both ``mixsed2_004.nc`` and ``mixsed2_004b.nc`` are returned as separate
+    entries rather than one suppressing the other.  Sort order is by cast number
+    then suffix (plain before ``b``).
+    """
+    pattern = re.compile(r"^mixsed2_(\d+)([a-z]*)$")
+    results: list[tuple[int, str, Path]] = []
     for p in sorted(nc_dir.glob("*.nc")):
         m = pattern.match(p.stem)
         if not m:
             continue
-        cast_num = int(m.group(1))
-        is_b = m.group(2) is not None
-        if cast_num not in chosen or is_b:
-            chosen[cast_num] = p
-    return [chosen[k] for k in sorted(chosen)]
+        results.append((int(m.group(1)), m.group(2), p))
+    results.sort(key=lambda t: (t[0], t[1]))
+    return [t[2] for t in results]
 
 
 def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
-        cast_num = int(re.search(r"_(\d+)(_b)?\.nc$", nc_path.name).group(1))  # type: ignore[union-attr]
+        m = re.search(r"_(\d+)([a-z]*)\.nc$", nc_path.name)
+        cast_num = int(m.group(1))  # type: ignore[union-attr]
+        cast_suffix = m.group(2) if m else ""  # type: ignore[union-attr]
         lat = float(np.nanmedian(ds["latitude"].values))
         lon = float(np.nanmedian(ds["longitude"].values))
         max_depth = float(np.nanmax(ds["pressure"].values))
@@ -1152,6 +1193,8 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         ds.close()
         return {
             "cast_num": cast_num,
+            "cast_suffix": cast_suffix,
+            "cast_num_str": f"{cast_num:03d}{cast_suffix}",
             "path": nc_path,
             "lat": lat,
             "lon": lon,

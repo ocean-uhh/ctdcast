@@ -32,8 +32,8 @@ def station_html(tmp_path, meta_011, meta_012):
         CAST_011,
         tmp_path,
         all_meta=[meta_011, meta_012],
-        prev_num=None,
-        next_num=12,
+        prev_cast_str=None,
+        next_cast_str="012",
         force=True,
     )
     assert out is not None and out.exists(), (
@@ -49,8 +49,8 @@ def station_html_ladcp(tmp_path, meta_011, meta_012):
         CAST_011,
         tmp_path,
         all_meta=[meta_011, meta_012],
-        prev_num=None,
-        next_num=12,
+        prev_cast_str=None,
+        next_cast_str="012",
         force=True,
         ladcp_dir=FIXTURES_LADCP,
     )
