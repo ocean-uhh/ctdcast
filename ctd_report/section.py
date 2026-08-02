@@ -10,9 +10,10 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctd_report import _plots
 from ctd_report import _templates as _tmpl
-from ctd_report._analysis import (
+from ctd_report import plots as _plots
+from ctd_report._version import __version__ as _VERSION
+from ctd_report.analysis import (
     _add_aou,
     _add_teos10_profiles,
     _along_track_km,
@@ -20,7 +21,7 @@ from ctd_report._analysis import (
     _dense_bathy_along_track,
     _interpolate_bathy_at_casts,
 )
-from ctd_report._plots import (
+from ctd_report.plots import (
     _make_ladcp_section_b64,
     _make_section_b64,
     _make_section_map_b64,
@@ -28,7 +29,6 @@ from ctd_report._plots import (
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
 )
-from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # Section variables to plot (in order)

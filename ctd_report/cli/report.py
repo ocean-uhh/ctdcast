@@ -197,7 +197,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     # Set module-level plot options before any figure code is imported.
-    import ctd_report._plots as plots
+    from ctd_report import plots
 
     if gebco_path:
         plots.GEBCO_PATH = gebco_path
@@ -224,7 +224,7 @@ def run(args: argparse.Namespace) -> int:
         k: v for k, v in (display.get("vmax") or {}).items() if v is not None
     }
 
-    from ctd_report._index import generate_ctd_report
+    from ctd_report.index import generate_ctd_report
 
     generate_ctd_report(
         nc_dir,

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from ctd_report._analysis import (
+from ctd_report.analysis import (
     _add_teos10,
     _interpolate_bathy_at_casts,
     _load_gebco,
@@ -26,7 +26,7 @@ from ctd_report._analysis import (
 # ---------------------------------------------------------------------------
 
 # Path to GEBCO_2025.nc — set this before generating maps, e.g.:
-#   import ctd_report._plots as plots
+#   import ctd_report.plots as plots
 #   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
 GEBCO_PATH: Path | None = None

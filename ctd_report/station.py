@@ -12,8 +12,9 @@ import xarray as xr
 from jinja2 import Environment
 
 from ctd_report import _templates as _tmpl
-from ctd_report._analysis import _add_teos10
-from ctd_report._plots import (
+from ctd_report._version import __version__ as _VERSION
+from ctd_report.analysis import _add_teos10
+from ctd_report.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
@@ -27,7 +28,6 @@ from ctd_report._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
-from ctd_report._version import __version__ as _VERSION
 
 # ---------------------------------------------------------------------------
 # HTML template

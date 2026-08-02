@@ -5,8 +5,8 @@ import re
 import pytest
 from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
-from ctd_report._index import _read_cast_meta
-from ctd_report._station import generate_station_page
+from ctd_report.index import _read_cast_meta
+from ctd_report.station import generate_station_page
 
 
 @pytest.fixture

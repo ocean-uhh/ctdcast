@@ -4,7 +4,7 @@ Leaflet JS/CSS (~160 KB) is bundled in ``ctd_report/leaflet/`` as package
 data so the generated ``leaflet.html`` requires no internet access at either
 generation or view time.
 
-If ``ctd_report._plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
+If ``ctd_report.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
 (standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,
 6000 m).
@@ -31,8 +31,8 @@ import numpy as np
 from jinja2 import Environment
 
 from ctd_report import _templates as _tmpl
-from ctd_report._section import _expand_cast_numbers
 from ctd_report._version import __version__ as _VERSION
+from ctd_report.section import _expand_cast_numbers
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"
@@ -252,7 +252,7 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctd_report import _plots as plots
+    from ctd_report import plots
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
         return None, None, None

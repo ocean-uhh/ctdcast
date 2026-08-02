@@ -13,13 +13,14 @@ import yaml
 from jinja2 import Environment
 
 from ctd_report import _templates as _tmpl
-from ctd_report._analysis import (
+from ctd_report._version import __version__ as _VERSION
+from ctd_report.analysis import (
     _add_aou,
     _add_teos10_profiles,
     _compact_cast_list,
     _interpolate_bathy_at_casts,
 )
-from ctd_report._plots import (
+from ctd_report.plots import (
     GEBCO_PATH,
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
@@ -27,10 +28,9 @@ from ctd_report._plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctd_report._section import _expand_cast_numbers, generate_section_page
-from ctd_report._station import generate_station_page
-from ctd_report._timeseries import generate_timeseries_page
-from ctd_report._version import __version__ as _VERSION
+from ctd_report.section import _expand_cast_numbers, generate_section_page
+from ctd_report.station import generate_station_page
+from ctd_report.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -567,7 +567,7 @@ def generate_ctd_report(
 
     if gen["map"]:
         try:
-            from ctd_report._map_leaflet import generate_leaflet_map
+            from ctd_report.map_leaflet import generate_leaflet_map
 
             lf_out = generate_leaflet_map(
                 all_meta,
@@ -1048,7 +1048,7 @@ def _write_timeseries_list(
     ladcp_dir: Path | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
-    from ctd_report._section import _expand_cast_numbers
+    from ctd_report.section import _expand_cast_numbers
 
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
