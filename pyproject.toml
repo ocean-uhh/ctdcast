@@ -30,6 +30,8 @@ test = ["pytest>=8", "pytest-cov>=5"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=ctd_report --cov-report=term-missing"
+markers = ["slow: marks tests as slow integration tests (deselect with '-m not slow')"]
+filterwarnings = ["ignore::RuntimeWarning:importlib"]
 
 [tool.coverage.run]
 source = ["ctd_report"]

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from ctd_report._converters import build_profiles
 from ctd_report._index import _read_cast_meta, generate_ctd_report
 from ctd_report._section import generate_section_page
