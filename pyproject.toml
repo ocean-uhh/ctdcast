@@ -25,6 +25,14 @@ docs = [
     "sphinx-rtd-theme>=2.0",
     "myst-parser>=2.0",
 ]
+test = ["pytest>=8", "pytest-cov>=5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=ctd_report --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["ctd_report"]
 
 [project.scripts]
 oceancast = "ctd_report.cli:main"
