@@ -20,6 +20,7 @@ from ctdreport.analysis import (
     _compact_cast_list,
     _dense_bathy_along_track,
     _interpolate_bathy_at_casts,
+    _section_orientation,
 )
 from ctdreport.plots import (
     _make_ladcp_section_b64,
@@ -111,8 +112,7 @@ _SECTION_TEMPLATE = (
     <a href="#s-meta">Metadata</a>
     {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
     {% for panel in panels %}{% if panel.b64 %}<a href="#s-panel-{{ loop.index }}">{{ panel.short }}</a>{% endif %}{% endfor %}
-    {% if fig_ladcp_section_b64 %}<a href="#s-ladcp">LADCP</a>{% endif %}
-    {% if ts_panels %}<a href="#s-ts">T–S</a>{% endif %}
+    {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
   </div>
 </nav>
 
@@ -157,29 +157,26 @@ _SECTION_TEMPLATE = (
 {% endif %}
 {% endfor %}
 
-{% if fig_ladcp_section_b64 %}
-<div class="card" id="s-ladcp">
-  <h2>LADCP velocity (U east, V north)</h2>
+{% for card in extra_cards %}
+<div class="card" id="s-{{ card.id }}">
+  <h2>{{ card.title }}</h2>
+  {% if card.panels | length == 1 %}
   <div class="plot-wide">
-    <img src="data:image/png;base64,{{ fig_ladcp_section_b64 }}" alt="LADCP U and V section">
+    <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
   </div>
-</div>
-{% endif %}
-
-{% if ts_panels %}
-<div class="card" id="s-ts">
-  <h2>TS diagrams</h2>
+  {% else %}
   <div class="plots">
-    {% for p in ts_panels %}
+    {% for panel in card.panels %}
     <figure style="text-align:center; margin:0;">
-      <img src="data:image/png;base64,{{ p.b64 }}" alt="{{ p.title }}"
+      <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}"
            style="max-height:420px; width:auto; border-radius:4px;">
-      <figcaption style="font-size:0.8rem; color:#555; margin-top:0.3rem;">{{ p.title }}</figcaption>
+      <figcaption style="font-size:0.8rem; color:#555; margin-top:0.3rem;">{{ panel.title }}</figcaption>
     </figure>
     {% endfor %}
   </div>
+  {% endif %}
 </div>
-{% endif %}
+{% endfor %}
 
 """
     + _tmpl.FOOTER_TAIL
@@ -263,16 +260,22 @@ def generate_section_page(
     lons = ds_sec["longitude"].values.tolist()
     sec_cast_nums = ds_sec["cast_number"].values.tolist()
 
-    # Along-track distance in km
+    # Along-track distance in km; flip to geographic convention (west-left / north-left)
     x_vals, x_label = _along_track_km(lats, lons)
-
-    cruise = ds_all.attrs.get("cruise", "odb2026")
-    dist_str = f"{x_vals[-1]:.1f} km" if len(x_vals) > 1 else "—"
 
     bathy = _interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
     dense_bathy_x, dense_bathy_d = _dense_bathy_along_track(
         lats, lons, x_vals, path=_plots.GEBCO_PATH
     )
+
+    if _section_orientation(lats, lons):
+        x_total = float(x_vals[-1])
+        x_vals = x_total - x_vals
+        if dense_bathy_x is not None:
+            dense_bathy_x = x_total - dense_bathy_x
+
+    cruise = ds_all.attrs.get("cruise", "odb2026")
+    dist_str = f"{x_vals.max():.1f} km" if len(x_vals) > 1 else "—"
     cast_nums_int = [int(c) for c in sec_cast_nums]
     vmin = vmin_override or {}
     vmax = vmax_override or {}
@@ -294,31 +297,27 @@ def generate_section_page(
         )
         panels.append({"title": label, "short": short, "b64": b64})
 
-    ts_panels_raw = [
-        {
-            "title": "Profiles coloured by distance",
-            "b64": _make_section_ts_profiles_b64(ds_sec, x_vals),
-        },
-        {
-            "title": "2-D histogram (log count)",
-            "b64": _make_section_ts_histogram_b64(ds_sec),
-        },
+    _ts_panels_raw = [
+        {"title": "Profiles coloured by distance", "b64": _make_section_ts_profiles_b64(ds_sec, x_vals)},
+        {"title": "2-D histogram (log count)", "b64": _make_section_ts_histogram_b64(ds_sec)},
         {"title": "Median O₂ saturation", "b64": _make_section_ts_o2_b64(ds_sec)},
     ]
-    ts_panels = [p for p in ts_panels_raw if p["b64"]]
-
-    fig_ladcp_section_b64 = (
-        _make_ladcp_section_b64(
-            cast_nums_int,
-            x_vals,
-            x_label,
-            ladcp_dir,
-            lats=lats,
-            lons=lons,
-        )
+    _ladcp_b64 = (
+        _make_ladcp_section_b64(cast_nums_int, x_vals, x_label, ladcp_dir, lats=lats, lons=lons)
         if ladcp_dir is not None
         else None
     )
+    _extra_raw: dict[str, dict | None] = {
+        "ladcp": {
+            "id": "ladcp", "title": "LADCP velocity (U east, V north)", "short": "LADCP",
+            "panels": [{"b64": _ladcp_b64, "title": "LADCP"}],
+        } if _ladcp_b64 else None,
+        "ts": {
+            "id": "ts", "title": "T–S diagrams", "short": "T–S",
+            "panels": [{"b64": p["b64"], "title": p["title"]} for p in _ts_panels_raw if p["b64"]],
+        } if any(p["b64"] for p in _ts_panels_raw) else None,
+    }
+    extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
 
     ctx: dict[str, Any] = {
         "section_name": section_name,
@@ -332,8 +331,7 @@ def generate_section_page(
             lats, lons, cast_nums_int, title=section_name
         ),
         "panels": panels,
-        "ts_panels": ts_panels,
-        "fig_ladcp_section_b64": fig_ladcp_section_b64,
+        "extra_cards": extra_cards,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
