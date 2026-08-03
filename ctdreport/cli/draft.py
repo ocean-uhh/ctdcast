@@ -179,7 +179,10 @@ def _run_pipeline(
 
     n = convert_ctd_files(cnv_dir, nc_dir, backend="seasenselib", force=force)
     if n == 0 and not any(nc_dir.glob("*.nc")):
-        print("Warning: no casts converted and nc_dir is empty — nothing to report.", file=sys.stderr)
+        print(
+            "Warning: no casts converted and nc_dir is empty — nothing to report.",
+            file=sys.stderr,
+        )
         return 1
 
     generate_ctd_report(
