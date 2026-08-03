@@ -1,10 +1,10 @@
-.. oceancast documentation master file
+.. ctdreport documentation master file
 
 ==========================================================
-oceancast: HTML reports for shipboard CTD and LADCP data
+ctdreport: HTML reports for shipboard CTD and LADCP data
 ==========================================================
 
-**oceancast** generates self-contained HTML report files from shipboard CTD and LADCP data.
+**ctdreport** generates self-contained HTML report files from shipboard CTD and LADCP data.
 All figures are embedded as base64 PNG images — no external requests are made at view time,
 so the output files work fully offline on a research vessel.
 
@@ -38,7 +38,7 @@ Contents
    :maxdepth: 1
    :caption: Links
 
-   GitHub repository <https://github.com/eleanorfrajka/ctd_report>
+   GitHub repository <https://github.com/eleanorfrajka/ctdreport>
 
 
 Indices and tables

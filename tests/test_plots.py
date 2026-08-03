@@ -8,8 +8,8 @@ PNG base64 magic bytes ("iVBOR").
 import xarray as xr
 from conftest import CAST_011, FIXTURES_LADCP
 
-from ctd_report import plots
-from ctd_report.plots import (
+from ctdreport import plots
+from ctdreport.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,

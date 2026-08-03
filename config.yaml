@@ -1,5 +1,5 @@
-# ctd_report configuration
-# Run: python -m ctd_report config.yaml
+# ctdreport configuration
+# Run: ctdreport run config.yaml
 
 data:
   # Directory containing per-cast netCDF files (mixsed2_NNN.nc or similar)

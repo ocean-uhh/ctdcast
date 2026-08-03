@@ -1,4 +1,4 @@
-"""``oceancast init`` — write a commented template config.yaml."""
+"""``ctdreport init`` — write a commented template config.yaml."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 _CONFIG_TEMPLATE = """\
-# oceancast configuration
-# Run 'oceancast validate config.yaml' to check all paths before the first run.
+# ctdreport configuration
+# Run 'ctdreport validate config.yaml' to check all paths before the first run.
 
 data:
   # Directory containing per-cast netCDF files (one per cast).
@@ -34,7 +34,7 @@ output:
   # Root directory for all generated HTML files.
   dir: outputs/ctd_report
 
-# Which page types to generate on a plain 'oceancast report' run.
+# Which page types to generate on a plain 'ctdreport report' run.
 # CLI flags (--stations, --sections, etc.) override these at runtime.
 generate:
   stations: true
@@ -107,14 +107,14 @@ sections:
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``oceancast init``."""
+    """Build the argument parser for ``ctdreport init``."""
     _epilog = """
 Examples:
-  oceancast init                     write config.yaml in the current directory
-  oceancast init cruise/             write config.yaml inside cruise/
-  oceancast init myconfig.yaml       write to a specific filename
-  oceancast init . --sections        also write ctd_sections.yaml
-  oceancast init . --force           overwrite existing files
+  ctdreport init                     write config.yaml in the current directory
+  ctdreport init cruise/             write config.yaml inside cruise/
+  ctdreport init myconfig.yaml       write to a specific filename
+  ctdreport init . --sections        also write ctd_sections.yaml
+  ctdreport init . --force           overwrite existing files
 """
     kwargs: dict = {
         "description": "Write a commented template config.yaml (and optionally ctd_sections.yaml).",
@@ -129,7 +129,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="oceancast init", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdreport init", **kwargs)
 
     parser.add_argument(
         "dest",
@@ -157,7 +157,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``oceancast init``."""
+    """Execute ``ctdreport init``."""
     dest: Path = args.dest
 
     # Resolve config output path.

@@ -4,7 +4,7 @@
 Configuration reference
 =================
 
-oceancast is configured through two YAML files: ``config.yaml`` (run-level settings) and
+ctdreport is configured through two YAML files: ``config.yaml`` (run-level settings) and
 ``ctd_sections.yaml`` (section definitions).
 
 ----

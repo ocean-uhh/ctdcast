@@ -13,11 +13,11 @@ import pytest
 
 pytestmark = pytest.mark.slow
 
-from ctd_report.converters import build_profiles
-from ctd_report.index import _read_cast_meta, generate_ctd_report
-from ctd_report.section import generate_section_page
-from ctd_report.station import generate_station_page
-from ctd_report.timeseries import generate_timeseries_page
+from ctdreport.converters import build_profiles
+from ctdreport.index import _read_cast_meta, generate_ctd_report
+from ctdreport.section import generate_section_page
+from ctdreport.station import generate_station_page
+from ctdreport.timeseries import generate_timeseries_page
 
 _HERE = Path(__file__).parent
 _FIXTURES = _HERE.parent / "fixtures"

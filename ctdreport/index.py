@@ -12,15 +12,15 @@ import xarray as xr
 import yaml
 from jinja2 import Environment
 
-from ctd_report import _templates as _tmpl
-from ctd_report._version import __version__ as _VERSION
-from ctd_report.analysis import (
+from ctdreport import _templates as _tmpl
+from ctdreport._version import __version__ as _VERSION
+from ctdreport.analysis import (
     _add_aou,
     _add_teos10_profiles,
     _compact_cast_list,
     _interpolate_bathy_at_casts,
 )
-from ctd_report.plots import (
+from ctdreport.plots import (
     GEBCO_PATH,
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
@@ -28,9 +28,9 @@ from ctd_report.plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctd_report.section import _expand_cast_numbers, generate_section_page
-from ctd_report.station import generate_station_page
-from ctd_report.timeseries import generate_timeseries_page
+from ctdreport.section import _expand_cast_numbers, generate_section_page
+from ctdreport.station import generate_station_page
+from ctdreport.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -354,7 +354,7 @@ def generate_ctd_report(
     cruise_info: dict[str, Any] | None = None,
     cast_filter: int | None = None,
 ) -> None:
-    """Generate the full oceancast HTML report suite.
+    """Generate the full ctdreport HTML report suite.
 
     Parameters
     ----------
@@ -636,7 +636,7 @@ def generate_ctd_report(
 
     if gen["map"]:
         try:
-            from ctd_report.map_leaflet import generate_leaflet_map
+            from ctdreport.map_leaflet import generate_leaflet_map
 
             lf_out = generate_leaflet_map(
                 all_meta,
@@ -798,7 +798,7 @@ def _write_index(
 
             ts_b64 = _make_section_ts_histogram_b64(ds_sorted)
             ds_all.close()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass  # Overview panels are optional; never crash index generation
 
     ctx: dict[str, Any] = {
@@ -1117,7 +1117,7 @@ def _write_timeseries_list(
     ladcp_dir: Path | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
-    from ctd_report.section import _expand_cast_numbers
+    from ctdreport.section import _expand_cast_numbers
 
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():

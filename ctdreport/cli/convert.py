@@ -1,4 +1,4 @@
-"""``oceancast convert`` — convert raw CTD data to netCDF report inputs."""
+"""``ctdreport convert`` — convert raw CTD data to netCDF report inputs."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import yaml
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``oceancast convert``."""
+    """Build the argument parser for ``ctdreport convert``."""
     _epilog = """
 Default (no step flag): runs --profiles only if data.profiles_nc is configured.
   --ctd must be requested explicitly; it requires an external backend.
@@ -20,20 +20,20 @@ Default (no step flag): runs --profiles only if data.profiles_nc is configured.
 
 Examples:
   # Build profiles.nc from existing per-cast netCDF files (most common):
-  oceancast convert config.yaml
+  ctdreport convert config.yaml
 
   # Same, explicit:
-  oceancast convert config.yaml --profiles
+  ctdreport convert config.yaml --profiles
 
   # CNV → per-cast netCDF using seasenselib (default backend), then profiles:
-  oceancast convert config.yaml --ctd
-  oceancast convert config.yaml --profiles
+  ctdreport convert config.yaml --ctd
+  ctdreport convert config.yaml --profiles
 
   # Force reprocess a single cast:
-  oceancast convert config.yaml --ctd --backend seasenselib --cast 42 --force
+  ctdreport convert config.yaml --ctd --backend seasenselib --cast 42 --force
 """
     kwargs: dict = {
-        "description": "Convert raw CTD (CNV) files to netCDF inputs for oceancast report.",
+        "description": "Convert raw CTD (CNV) files to netCDF inputs for ctdreport report.",
         "formatter_class": argparse.RawDescriptionHelpFormatter,
         "epilog": _epilog,
     }
@@ -45,7 +45,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="oceancast convert", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdreport convert", **kwargs)
 
     parser.add_argument("config", type=Path, help="Path to config YAML file.")
 
@@ -106,7 +106,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``oceancast convert``."""
+    """Execute ``ctdreport convert``."""
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
@@ -173,7 +173,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"[dry-run] force={args.force}")
         return 0
 
-    from ctd_report.converters import build_profiles, convert_ctd_files
+    from ctdreport.converters import build_profiles, convert_ctd_files
 
     if run_ctd:
         assert cnv_dir is not None

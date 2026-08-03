@@ -13,11 +13,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ctd_report.cli import init as _init
-from ctd_report.cli import main as cli_main
-from ctd_report.cli import report as _report
-from ctd_report.cli import run as _run
-from ctd_report.cli import validate as _validate
+from ctdreport.cli import init as _init
+from ctdreport.cli import main as cli_main
+from ctdreport.cli import report as _report
+from ctdreport.cli import run as _run
+from ctdreport.cli import validate as _validate
 
 _HERE = Path(__file__).parent
 _FIXTURES_NC = _HERE.parent / "fixtures" / "nc"
@@ -39,29 +39,29 @@ timeseries:
 
 def _report_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for report.run() with safe defaults."""
-    defaults = dict(
-        stations=False,
-        sections=False,
-        timeseries=False,
-        index=False,
-        map=False,
-        cast=None,
-        force=False,
-        skip_existing=False,
-        dry_run=False,
-    )
+    defaults = {
+        "stations": False,
+        "sections": False,
+        "timeseries": False,
+        "index": False,
+        "map": False,
+        "cast": None,
+        "force": False,
+        "skip_existing": False,
+        "dry_run": False,
+    }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
 
 def _validate_ns(**kwargs) -> argparse.Namespace:
-    defaults = dict(strict=False)
+    defaults = {"strict": False}
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
 
 def _init_ns(**kwargs) -> argparse.Namespace:
-    defaults = dict(dest=Path("."), sections=False, force=False)
+    defaults = {"dest": Path("."), "sections": False, "force": False}
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
