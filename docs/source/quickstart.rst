@@ -4,14 +4,31 @@
 Quickstart guide
 ================
 
-This guide walks through generating an ctdreport report from a set of processed CTD netCDF
-files.  It assumes you already have per-cast netCDF files and, optionally, a compiled
-``profiles.nc``.
+This guide walks through generating a ctdreport report from CTD data.
+Two workflows are available: a quick-look path that needs only raw CNV files and no
+configuration, and a full workflow for sections, time series, and LADCP panels.
 
 ----
 
-Prerequisites
--------------
+Quick look (no config file needed)
+-----------------------------------
+
+If you have raw SBE CNV files and want station pages + index + map immediately::
+
+   pip install seasenselib
+   ctdreport draft /path/to/cnv/                         # output → ./ctd_draft/
+   ctdreport draft /path/to/cnv/ ./out/ --cruise odb2026 # with cruise ID and output dir
+   ctdreport draft /path/to/cnv/ --dry-run               # preview without writing
+
+``ctdreport draft`` converts CNV files to netCDF via ``seasenselib``, then generates
+station pages, an index, and a Leaflet map in one step.  No ``config.yaml`` is needed.
+Sections and time series pages are **not** generated (they require a compiled
+``profiles.nc``).  For those, use the full workflow below.
+
+----
+
+Full workflow prerequisites
+---------------------------
 
 Python 3.10–3.13 is required.  Create a virtual environment and install from source:
 
