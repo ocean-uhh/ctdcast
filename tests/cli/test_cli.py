@@ -180,48 +180,53 @@ class TestDetectGroups:
         _make_profiles_nc(p, np.array(cast_nums), np.array(lats), np.array(lons))
         return p
 
-    def test_single_cast_is_timeseries(self, tmp_path):
-        # One cast: span = 0 → always timeseries.
+    def test_single_cast_yields_no_groups(self, tmp_path):
+        # One cast: too small for any run (min_run_casts >= 3) → no groups.
         p = self._profiles(tmp_path, [1], [60.0], [-25.0])
         sections, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
         assert sections == []
-        assert len(ts) == 1
+        assert ts == []
 
-    def test_two_close_casts_are_timeseries(self, tmp_path):
-        # Two casts 1 km apart → span < 5 km → timeseries.
+    def test_two_close_casts_yield_no_groups(self, tmp_path):
+        # Two casts: below minimum run length → no groups.
         p = self._profiles(tmp_path, [1, 2], [60.0, 60.009], [-25.0, -25.0])
         sections, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
         assert sections == []
-        assert len(ts) == 1
+        assert ts == []
 
-    def test_two_distant_casts_are_section(self, tmp_path):
-        # Two casts ~28 km apart (0.5° lon at 60°N ≈ 28 km).
-        # inter-cast < dx_section (50 km) → one group; span > dx_timeseries (5 km) → section.
+    def test_two_distant_casts_yield_no_groups(self, tmp_path):
+        # Two casts ~28 km apart: below minimum run length → no groups.
         p = self._profiles(tmp_path, [1, 2], [60.0, 60.0], [-25.0, -24.5])
         sections, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
-        assert len(sections) == 1
+        assert sections == []
         assert ts == []
 
     def test_transit_splits_into_two_groups(self, tmp_path):
-        # Casts 1-3 clustered, then a 200 km transit, then casts 4-6 clustered.
+        # Casts 1-3 clustered going N, then a 200 km transit, then casts 4-6 clustered going N.
+        # min_run_casts=3 used so 3-cast groups are kept.
         import numpy as np
 
         lats = np.array([60.0, 60.01, 60.02, 62.0, 62.01, 62.02])
         lons = np.array([-25.0, -25.0, -25.0, -25.0, -25.0, -25.0])
         p = self._profiles(tmp_path, [1, 2, 3, 4, 5, 6], lats, lons)
-        sections, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
+        sections, ts = _init._detect_groups(
+            p, dx_timeseries_km=5.0, dx_section_km=50.0, min_run_casts=3
+        )
         assert len(sections) == 0
         assert len(ts) == 2
 
     def test_section_and_timeseries_mixed(self, tmp_path):
-        # Casts 1-5: lon transect at 57°N, 0.4° steps ≈ 22 km each → one group, span ~88 km → section.
-        # Casts 6-8: clustered at 60°N (large transit from cast 5 → break) → timeseries.
+        # Casts 1-5: lon transect at 57°N, 0.4° steps ≈ 22 km → section.
+        # Casts 6-8: clustered at 60°N (large transit → gap split) → timeseries.
+        # min_run_casts=3 so the 3-cast cluster is kept.
         import numpy as np
 
         lats = np.array([57.0, 57.0, 57.0, 57.0, 57.0, 60.0, 60.01, 60.02])
         lons = np.array([-25.0, -24.6, -24.2, -23.8, -23.4, -25.0, -25.0, -25.0])
         p = self._profiles(tmp_path, list(range(1, 9)), lats, lons)
-        sections, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
+        sections, ts = _init._detect_groups(
+            p, dx_timeseries_km=5.0, dx_section_km=50.0, min_run_casts=3
+        )
         assert len(sections) == 1
         assert len(ts) == 1
 
@@ -237,8 +242,15 @@ class TestDetectGroups:
         assert sections[0]["name"] == "Section_001"
 
     def test_timeseries_name_is_sequential(self, tmp_path):
-        p = self._profiles(tmp_path, [1, 2], [60.0, 60.009], [-25.0, -25.0])
-        _, ts = _init._detect_groups(p, dx_timeseries_km=5.0, dx_section_km=50.0)
+        # 3 casts clustered near the same point → timeseries (min_run_casts=3).
+        import numpy as np
+
+        lats = np.array([60.0, 60.009, 60.018])
+        lons = np.array([-25.0, -25.0, -25.0])
+        p = self._profiles(tmp_path, [1, 2, 3], lats, lons)
+        _, ts = _init._detect_groups(
+            p, dx_timeseries_km=5.0, dx_section_km=50.0, min_run_casts=3
+        )
         assert ts[0]["name"] == "Station_001"
 
 
