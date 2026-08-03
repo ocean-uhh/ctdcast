@@ -68,7 +68,13 @@ def _init_ns(**kwargs) -> argparse.Namespace:
 
 def _run_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for run.run() with safe defaults."""
-    defaults = {"ctd": False, "cast": None, "force": False, "skip_existing": False, "dry_run": False}
+    defaults = {
+        "ctd": False,
+        "cast": None,
+        "force": False,
+        "skip_existing": False,
+        "dry_run": False,
+    }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 

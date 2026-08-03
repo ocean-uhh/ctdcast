@@ -307,7 +307,11 @@ def generate_station_page(
     if ladcp_dir is not None:
         _suffixed = ladcp_dir / f"{cast_num:03d}{cast_suffix}.mat"
         _plain = ladcp_dir / f"{cast_num:03d}.mat"
-        ladcp_path = _suffixed if _suffixed.exists() else (_plain if _plain.exists() else _suffixed)
+        ladcp_path = (
+            _suffixed
+            if _suffixed.exists()
+            else (_plain if _plain.exists() else _suffixed)
+        )
     ladcp_exists = ladcp_path is not None and ladcp_path.exists()
 
     ctx: dict[str, Any] = {

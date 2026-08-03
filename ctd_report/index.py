@@ -444,15 +444,21 @@ def generate_ctd_report(
         for meta in targets:
             orig_i = all_meta.index(meta)
             prev_cast_str = cast_num_strs[orig_i - 1] if orig_i > 0 else None
-            next_cast_str = cast_num_strs[orig_i + 1] if orig_i < len(all_meta) - 1 else None
+            next_cast_str = (
+                cast_num_strs[orig_i + 1] if orig_i < len(all_meta) - 1 else None
+            )
             _expected = out_dir / "stations" / f"cast_{meta['cast_num_str']}.html"
             _was_new = not _expected.exists()
-            _html_mtime_str = _fmt_mtime(_expected)  # capture before page is (re)written
+            _html_mtime_str = _fmt_mtime(
+                _expected
+            )  # capture before page is (re)written
 
             # Resolve LADCP mat path before the skip check so it feeds the mtime comparison.
             _mat: Path | None = None
             if ladcp_dir is not None:
-                _mat_cand = ladcp_dir / f"{meta['cast_num']:03d}{meta['cast_suffix']}.mat"
+                _mat_cand = (
+                    ladcp_dir / f"{meta['cast_num']:03d}{meta['cast_suffix']}.mat"
+                )
                 if not _mat_cand.exists():
                     _mat_cand = ladcp_dir / f"{meta['cast_num']:03d}.mat"
                 if _mat_cand.exists():
@@ -490,7 +496,9 @@ def generate_ctd_report(
                 _status = "regenerated (forced)"
             elif _was_new:
                 _ladcp_part = f", ladcp: {_fmt_mtime(_mat)}" if _mat else ""
-                _status = f"regenerated (new) [nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
+                _status = (
+                    f"regenerated (new) [nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
+                )
             else:
                 _ladcp_part = f", ladcp: {_fmt_mtime(_mat)}" if _mat else ""
                 _status = (
@@ -514,7 +522,9 @@ def generate_ctd_report(
             _sec_was_new = not _expected.exists()
             _sec_html_mtime_str = _fmt_mtime(_expected)
             _src = profiles_path if profiles_path is not None else _expected
-            _sec_skip = _mtime_skip_reason(_expected, _src, force, skip_existing=skip_existing)
+            _sec_skip = _mtime_skip_reason(
+                _expected, _src, force, skip_existing=skip_existing
+            )
             _sec_note = ""
             if _sec_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
@@ -556,7 +566,9 @@ def generate_ctd_report(
             _ts_was_new = not _expected.exists()
             _ts_html_mtime_str = _fmt_mtime(_expected)
             _src = profiles_path if profiles_path is not None else _expected
-            _ts_skip = _mtime_skip_reason(_expected, _src, force, skip_existing=skip_existing)
+            _ts_skip = _mtime_skip_reason(
+                _expected, _src, force, skip_existing=skip_existing
+            )
             _ts_note = ""
             if _ts_skip and ladcp_dir is not None:
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
