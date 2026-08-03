@@ -3,7 +3,7 @@
 import pytest
 from conftest import FIXTURES_NC
 
-from ctd_report.converters import build_profiles
+from ctdreport.converters import build_profiles
 
 
 def test_build_profiles_writes_file(tmp_path):
@@ -26,7 +26,6 @@ def test_build_profiles_skips_existing(tmp_path):
 def test_build_profiles_force_overwrites(tmp_path):
     out = tmp_path / "profiles.nc"
     build_profiles(FIXTURES_NC, out, force=False)
-    mtime1 = out.stat().st_mtime
     wrote = build_profiles(FIXTURES_NC, out, force=True)
     assert wrote is True
     # mtime may or may not change within a single second; just check it ran

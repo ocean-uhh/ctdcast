@@ -158,7 +158,7 @@ def convert_ctd_files(
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
 
-    Public API — analogous to generate_ctd_report() in _index.py.
+    Public API — analogous to generate_ctd_report() in index.py.
 
     Parameters
     ----------
@@ -432,7 +432,7 @@ def build_profiles(
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,
-        "source": f"{len(cast_list)} per-cast netCDF files compiled by oceancast",
+        "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdreport",
         "pressure_units": "dbar",
         "pressure_spacing_dbar": 1,
         "Conventions": "CF-1.13",

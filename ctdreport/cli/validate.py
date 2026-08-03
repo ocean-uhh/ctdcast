@@ -1,4 +1,4 @@
-"""``oceancast validate`` — check config and data paths without writing anything."""
+"""``ctdreport validate`` — check config and data paths without writing anything."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import yaml
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``oceancast validate``."""
+    """Build the argument parser for ``ctdreport validate``."""
     _epilog = """
 Checks performed:
   - config YAML is readable and has required keys
@@ -26,8 +26,8 @@ With --strict:
   - every cast number in section_yaml exists in nc_dir
 
 Examples:
-  oceancast validate config.yaml
-  oceancast validate config.yaml --strict
+  ctdreport validate config.yaml
+  ctdreport validate config.yaml --strict
 """
     kwargs: dict = {
         "description": "Validate config file and data paths without writing any output.",
@@ -42,7 +42,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="oceancast validate", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdreport validate", **kwargs)
 
     parser.add_argument("config", type=Path, help="Path to config YAML file.")
     parser.add_argument(
@@ -55,7 +55,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``oceancast validate``."""
+    """Execute ``ctdreport validate``."""
     errors: list[str] = []
     warnings: list[str] = []
 

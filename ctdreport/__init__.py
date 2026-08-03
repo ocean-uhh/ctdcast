@@ -9,7 +9,7 @@ Public API
 generate_ctd_report(nc_dir, profiles_path, section_yaml, out_dir, force=False)
 """
 
-from ctd_report._version import __version__
-from ctd_report.index import generate_ctd_report
+from ctdreport._version import __version__
+from ctdreport.index import generate_ctd_report
 
 __all__ = ["__version__", "generate_ctd_report"]

@@ -1,10 +1,10 @@
 """Tier-2: self-contained interactive cruise map using Leaflet.js.
 
-Leaflet JS/CSS (~160 KB) is bundled in ``ctd_report/leaflet/`` as package
+Leaflet JS/CSS (~160 KB) is bundled in ``ctdreport/leaflet/`` as package
 data so the generated ``leaflet.html`` requires no internet access at either
 generation or view time.
 
-If ``ctd_report.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
+If ``ctdreport.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
 (standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,
 6000 m).
@@ -30,9 +30,9 @@ from typing import Any
 import numpy as np
 from jinja2 import Environment
 
-from ctd_report import _templates as _tmpl
-from ctd_report._version import __version__ as _VERSION
-from ctd_report.section import _expand_cast_numbers
+from ctdreport import _templates as _tmpl
+from ctdreport._version import __version__ as _VERSION
+from ctdreport.section import _expand_cast_numbers
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"
@@ -212,7 +212,7 @@ def _load_leaflet() -> tuple[str, str]:
             with urllib.request.urlopen(url_css, timeout=10) as r:
                 css = r.read().decode("utf-8")
             return js, css
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
     return "", ""
 
@@ -252,7 +252,7 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctd_report import plots
+    from ctdreport import plots
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
         return None, None, None

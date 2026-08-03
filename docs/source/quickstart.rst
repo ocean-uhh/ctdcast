@@ -4,7 +4,7 @@
 Quickstart guide
 ================
 
-This guide walks through generating an oceancast report from a set of processed CTD netCDF
+This guide walks through generating an ctdreport report from a set of processed CTD netCDF
 files.  It assumes you already have per-cast netCDF files and, optionally, a compiled
 ``profiles.nc``.
 
@@ -13,12 +13,12 @@ files.  It assumes you already have per-cast netCDF files and, optionally, a com
 Prerequisites
 -------------
 
-Python 3.10 or later is required.  Create a virtual environment and install from source:
+Python 3.10–3.13 is required.  Create a virtual environment and install from source:
 
 .. code-block:: bash
 
-   git clone https://github.com/eleanorfrajka/ctd_report
-   cd ctd_report
+   git clone https://github.com/eleanorfrajka/ctdreport
+   cd ctdreport
    python -m venv venv
    source venv/bin/activate        # macOS / Linux
    pip install -e .
@@ -28,7 +28,7 @@ Python 3.10 or later is required.  Create a virtual environment and install from
 Prepare your input files
 -------------------------
 
-oceancast needs at minimum a directory of per-cast netCDF files (one per CTD cast).
+ctdreport needs at minimum a directory of per-cast netCDF files (one per CTD cast).
 Section and time series pages additionally require a compiled ``profiles.nc``.
 
 .. code-block:: text
@@ -97,15 +97,13 @@ Generate the report
 
 .. code-block:: bash
 
-   oceancast config.yaml
+   ctdreport run config.yaml
 
 To force regeneration of all pages (including ones that already exist):
 
 .. code-block:: bash
 
-   oceancast config.yaml --force
-
-Or set ``force: true`` in ``config.yaml`` under the ``generate`` key.
+   ctdreport run config.yaml --force
 
 ----
 
@@ -141,7 +139,7 @@ After adding new casts, rebuild ``profiles.nc`` if needed, then re-run:
 
 .. code-block:: bash
 
-   oceancast config.yaml
+   ctdreport run config.yaml
 
 Only pages for new casts will be written.  Existing section and time series pages are
 **not** automatically updated when new casts arrive; add ``--force`` or set
@@ -154,4 +152,4 @@ Where to go next
 
 - :doc:`config_reference` — all ``config.yaml`` and ``ctd_sections.yaml`` fields.
 - :doc:`output_structure` — what each report page contains.
-- :doc:`api` — Python API for calling oceancast from your own scripts.
+- :doc:`api` — Python API for calling ctdreport from your own scripts.

@@ -1,4 +1,4 @@
-"""Shared paths and fixtures for the ctd_report test suite."""
+"""Shared paths and fixtures for the ctdreport test suite."""
 
 from pathlib import Path
 

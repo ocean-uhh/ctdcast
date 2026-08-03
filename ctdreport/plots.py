@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from ctd_report.analysis import (
+from ctdreport.analysis import (
     _add_teos10,
     _interpolate_bathy_at_casts,
     _load_gebco,
@@ -26,13 +26,13 @@ from ctd_report.analysis import (
 # ---------------------------------------------------------------------------
 
 # Path to GEBCO_2025.nc — set this before generating maps, e.g.:
-#   import ctd_report.plots as plots
+#   import ctdreport.plots as plots
 #   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
 GEBCO_PATH: Path | None = None
 
 # Bundled mplstyle — controls font sizes, line widths, figure defaults.
-_MPLSTYLE = Path(__file__).parent / "ctd_report.mplstyle"
+_MPLSTYLE = Path(__file__).parent / "ctdreport.mplstyle"
 
 # Colors for the triple-axis T / S / sigma0 profile plot.
 _TS_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c"]
@@ -967,7 +967,7 @@ def _make_ladcp_section_b64(
                         np.asarray(dr.v, dtype=float),
                     )
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S112
                 continue
 
         if len(loaded) < 2:

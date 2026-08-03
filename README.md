@@ -1,4 +1,4 @@
-# oceancast
+# ctdreport
 
 Self-contained HTML report generator for shipboard CTD and LADCP data.
 Produces portable HTML files — all figures embedded as base64 PNGs, no external requests —
@@ -18,38 +18,25 @@ pip install -e .
 
 Dependencies: `gsw`, `matplotlib`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `scipy`
 
+CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdreport (`ctdreport run --ctd`). Install separately; not on PyPI. Pre-converted netCDF files from other tools must match ctdreport's variable naming convention (see docs).
+
 ---
 
 ## Quick start
 
-### 1. Edit config.yaml
+### 1. Write a config
 
-```yaml
-data:
-  nc_dir:       /path/to/cnv_nc           # per-cast netCDF files
-  profiles_nc:  /path/to/profiles.nc      # compiled 2D profiles
-  section_yaml: /path/to/ctd_sections.yaml
-  gebco_nc:     /path/to/GEBCO_2025.nc    # optional; omit for maps without bathymetry
-
-output:
-  dir: /path/to/output
-
-generate:
-  stations:   true
-  sections:   true    # requires profiles.nc and ctd_sections.yaml
-  timeseries: true    # requires profiles.nc
+```bash
+ctdreport init                        # writes a template config.yaml
+ctdreport validate config.yaml        # check paths before the first run
 ```
 
 ### 2. Generate
 
 ```bash
-oceancast config.yaml
-```
-
-Or to force regeneration of all pages:
-
-```bash
-oceancast config.yaml --force
+ctdreport run config.yaml             # smart update — skips up-to-date pages
+ctdreport run config.yaml --force     # rebuild everything
+ctdreport run config.yaml --cast 42   # rebuild one cast page
 ```
 
 Open `<output.dir>/index.html` in any browser.
@@ -112,4 +99,4 @@ The file (~8 GB) is not bundled. Maps render without bathymetry if the path is m
 
 ## Documentation
 
-Full documentation: [oceancast docs](https://eleanorfrajka.github.io/ctd_report)
+Full documentation: [ctdreport docs](https://eleanorfrajka.github.io/ctdreport)

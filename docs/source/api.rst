@@ -4,26 +4,21 @@
 Python API
 ============
 
-The primary public entry point is :func:`ctd_report.generate_ctd_report`.
-
-.. note::
-
-   The module will be renamed from ``ctd_report`` to ``oceancast`` in a future release
-   once the package rename is complete.  The public API will remain the same.
+The primary public entry point is :func:`ctdreport.index.generate_ctd_report`.
 
 ----
 
 Main entry point
 ----------------
 
-.. autofunction:: ctd_report.index.generate_ctd_report
+.. autofunction:: ctdreport.index.generate_ctdreport
 
 ----
 
 Converters (Tier 0)
 -------------------
 
-.. automodule:: ctd_report.converters
+.. automodule:: ctdreport.converters
    :members:
    :undoc-members:
 
@@ -36,7 +31,7 @@ These functions return base64-encoded PNG strings.  They are called by the page
 generators and return ``None`` on any exception, so a missing figure never prevents
 a page from being written.
 
-.. automodule:: ctd_report.plots
+.. automodule:: ctdreport.plots
    :members:
    :undoc-members:
 
@@ -45,15 +40,15 @@ a page from being written.
 Page generators (Tier 2)
 ------------------------
 
-.. automodule:: ctd_report.station
+.. automodule:: ctdreport.station
    :members:
    :undoc-members:
 
-.. automodule:: ctd_report.section
+.. automodule:: ctdreport.section
    :members:
    :undoc-members:
 
-.. automodule:: ctd_report.timeseries
+.. automodule:: ctdreport.timeseries
    :members:
    :undoc-members:
 
@@ -62,7 +57,7 @@ Page generators (Tier 2)
 Interactive map (Tier 2)
 ------------------------
 
-.. automodule:: ctd_report.map_leaflet
+.. automodule:: ctdreport.map_leaflet
    :members:
    :undoc-members:
 
@@ -71,6 +66,6 @@ Interactive map (Tier 2)
 Analysis helpers
 ----------------
 
-.. automodule:: ctd_report.analysis
+.. automodule:: ctdreport.analysis
    :members:
    :undoc-members:
