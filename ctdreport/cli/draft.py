@@ -28,6 +28,15 @@ Examples:
 
   # See what would happen without writing anything:
   ctdreport draft /data/cnv/ --dry-run
+
+  # Process only 1 Hz files (skip 24 Hz or other variants):
+  ctdreport draft /data/cnv/ --pattern "msm*1sec.cnv"
+
+  # Exclude pre-soak and anomalous records by salinity bounds:
+  ctdreport draft /data/cnv/ --sal 30 36
+
+  # Auto-detect and strip the CTD soak (pump-on window + near-surface dip):
+  ctdreport draft /data/cnv/ --trim-soak
 """
     kwargs: dict = {
         "description": (
@@ -79,6 +88,35 @@ Examples:
         help="Save converted netCDF files to DIR instead of discarding after the run.",
     )
     parser.add_argument(
+        "--pattern",
+        metavar="GLOB",
+        default="*.cnv",
+        help="Filename glob pattern for CNV files within cnv_dir (default: '*.cnv').",
+    )
+    parser.add_argument(
+        "--sal",
+        nargs=2,
+        type=float,
+        metavar=("MIN", "MAX"),
+        default=None,
+        help=(
+            "Salinity range [MIN MAX] for plot trimming.  Records with salinity_1 "
+            "outside this range are excluded from all station page plots "
+            "(NC files are not modified).  Example: --sal 30 36"
+        ),
+    )
+    parser.add_argument(
+        "--trim-soak",
+        action="store_true",
+        default=False,
+        help=(
+            "Auto-detect and strip the pre-soak window from each cast: cuts at least "
+            "the first 60 s (pump activation) and any records up to the last time the "
+            "CTD was within 2 dbar of the surface after pump-on.  NC files are not "
+            "modified; only plots are affected."
+        ),
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         default=False,
@@ -105,14 +143,18 @@ def run(args: argparse.Namespace) -> int:
         print(f"Error: CNV directory not found: {cnv_dir}", file=sys.stderr)
         return 1
 
-    cnv_files = list(cnv_dir.glob("*.cnv"))
+    cnv_files = list(cnv_dir.glob(args.pattern))
     if not cnv_files:
-        print(f"Error: No .cnv files found in {cnv_dir}", file=sys.stderr)
+        print(
+            f"Error: No files matching '{args.pattern}' found in {cnv_dir}",
+            file=sys.stderr,
+        )
         return 1
 
     if args.dry_run:
         nc_dir_display = args.keep_nc if args.keep_nc else Path("<tempdir>")
         print(f"[dry-run] cnv_dir:  {cnv_dir}")
+        print(f"[dry-run] pattern:  {args.pattern} ({len(cnv_files)} files matched)")
         print(f"[dry-run] nc_dir:   {nc_dir_display}")
         print(f"[dry-run] out_dir:  {out_dir}")
         print(f"[dry-run] cruise:   {args.cruise or '(from nc attrs)'}")
@@ -151,17 +193,38 @@ def run(args: argparse.Namespace) -> int:
         "map": True,
     }
 
+    sal_range: tuple[float, float] | None = (
+        (args.sal[0], args.sal[1]) if args.sal else None
+    )
+    trim_soak: bool = args.trim_soak
+
     if args.keep_nc:
         nc_dir: Path = args.keep_nc
         nc_dir.mkdir(parents=True, exist_ok=True)
         return _run_pipeline(
-            cnv_dir, nc_dir, out_dir, _gen, cruise_info or None, args.force
+            cnv_dir,
+            nc_dir,
+            out_dir,
+            _gen,
+            cruise_info or None,
+            args.force,
+            args.pattern,
+            sal_range,
+            trim_soak,
         )
 
     with tempfile.TemporaryDirectory(prefix="ctdreport_draft_") as _tmp:
         nc_dir = Path(_tmp)
         return _run_pipeline(
-            cnv_dir, nc_dir, out_dir, _gen, cruise_info or None, args.force
+            cnv_dir,
+            nc_dir,
+            out_dir,
+            _gen,
+            cruise_info or None,
+            args.force,
+            args.pattern,
+            sal_range,
+            trim_soak,
         )
 
 
@@ -172,12 +235,17 @@ def _run_pipeline(
     gen: dict[str, bool],
     cruise_info: dict[str, str] | None,
     force: bool,
+    pattern: str = "*.cnv",
+    sal_range: tuple[float, float] | None = None,
+    trim_soak: bool = False,
 ) -> int:
     """Convert CNV files then generate HTML; return exit code."""
-    from ctdreport.converters import convert_ctd_files
+    from ctdreport.converters import build_profiles, convert_ctd_files
     from ctdreport.index import generate_ctd_report
 
-    n = convert_ctd_files(cnv_dir, nc_dir, backend="seasenselib", force=force)
+    n = convert_ctd_files(
+        cnv_dir, nc_dir, backend="seasenselib", force=force, pattern=pattern
+    )
     if n == 0 and not any(nc_dir.glob("*.nc")):
         print(
             "Warning: no casts converted and nc_dir is empty — nothing to report.",
@@ -185,12 +253,26 @@ def _run_pipeline(
         )
         return 1
 
+    # Build profiles.nc so that the index page shows color section panels.
+    _ppath = nc_dir / "profiles.nc"
+    profiles_path: Path | None
+    try:
+        build_profiles(nc_dir, _ppath, force=force)
+        profiles_path = _ppath
+        print(f"  profiles: {profiles_path}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  profiles: skipped ({exc})")
+        profiles_path = None
+
     generate_ctd_report(
         nc_dir,
         out_dir,
+        profiles_path=profiles_path,
         generate=gen,
         force=force,
         cruise_info=cruise_info,
+        sal_range=sal_range,
+        trim_soak=trim_soak,
     )
     print(f"Done. Open {out_dir / 'index.html'}")
     return 0

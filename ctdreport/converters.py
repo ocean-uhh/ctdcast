@@ -13,6 +13,7 @@ import io
 import logging
 import re
 import sys
+import warnings
 from pathlib import Path
 from typing import Protocol
 
@@ -22,8 +23,9 @@ import xarray as xr
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
 
-# Matches any stem ending in _NNN or _NNN_b (e.g. mixsed2_004, mixsed2_004_b)
-_CAST_STEM_RE = re.compile(r"^.+_(\d+)(_b)?$")
+# Finds the last 3+-digit group in a stem, with optional letter suffix.
+# Handles mixsed2_004, mixsed2_004b, mixsed2_004_b, msm_142_1_001_1sec, etc.
+_CAST_STEM_RE = re.compile(r"_(\d{3,})([a-z]*)(?=_|$)")
 
 
 class CtdBackend(Protocol):
@@ -136,6 +138,7 @@ def convert_ctd_files(
     backend: str = "seasenselib",
     force: bool = False,
     cast_filter: int | None = None,
+    pattern: str = "*.cnv",
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
 
@@ -153,6 +156,9 @@ def convert_ctd_files(
         Overwrite existing netCDF files.
     cast_filter:
         If given, convert only files whose stem contains ``f"{cast_filter:03d}"``.
+    pattern:
+        Filename glob pattern applied within ``cnv_dir`` (default: ``"*.cnv"``).
+        Use e.g. ``"msm*1sec.cnv"`` to select a subset of files.
 
     Returns
     -------
@@ -169,7 +175,7 @@ def convert_ctd_files(
     nc_dir.mkdir(parents=True, exist_ok=True)
     b = get_ctd_backend(backend)
 
-    cnv_files = sorted(cnv_dir.glob("*.cnv"))
+    cnv_files = sorted(cnv_dir.glob(pattern))
     if cast_filter is not None:
         tag = f"{cast_filter:03d}"
         cnv_files = [p for p in cnv_files if tag in p.stem]
@@ -178,7 +184,11 @@ def convert_ctd_files(
     for cnv_path in cnv_files:
         nc_path = nc_dir / (cnv_path.stem + ".nc")
         try:
-            written = b.convert_cast(cnv_path, nc_path, force=force)
+            with warnings.catch_warnings():
+                # GSW Nsquared() warns on dp=0 (stationary CTD between 1-second samples).
+                # The cast converts correctly; this is noise from the conversion backend.
+                warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+                written = b.convert_cast(cnv_path, nc_path, force=force)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})",
@@ -201,16 +211,19 @@ def convert_ctd_files(
 def _select_cast_files(nc_dir: Path) -> list[tuple[int, Path]]:
     """Return sorted (cast_num, path) pairs from nc_dir, preferring _b variants.
 
-    Recognises files with stems matching ``<anything>_NNN`` or ``<anything>_NNN_b``
-    where NNN is one or more digits.
+    Recognises any ``*.nc`` file whose stem contains a 3+-digit cast number.
+    The **last** such group is taken as the cast number, so cruise/leg numbers
+    earlier in the name (e.g. ``142`` in ``msm_142_1_001_1sec``) are ignored.
+    When both a plain and a ``_b`` variant exist for the same cast, ``_b`` wins.
     """
     chosen: dict[int, Path] = {}
     for p in sorted(nc_dir.glob("*.nc")):
-        m = _CAST_STEM_RE.match(p.stem)
-        if not m:
+        matches = _CAST_STEM_RE.findall(p.stem)
+        if not matches:
             continue
-        cast_num = int(m.group(1))
-        is_b = m.group(2) is not None
+        cast_num_str, cast_suffix = matches[-1]
+        cast_num = int(cast_num_str)
+        is_b = cast_suffix == "b"
         if cast_num not in chosen or is_b:
             chosen[cast_num] = p
     return sorted(chosen.items())

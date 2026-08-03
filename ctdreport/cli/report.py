@@ -89,6 +89,30 @@ Examples:
         help="Rebuild only the station page for cast N (implies --stations).",
     )
 
+    parser.add_argument(
+        "--sal",
+        nargs=2,
+        type=float,
+        metavar=("MIN", "MAX"),
+        default=None,
+        help=(
+            "Salinity range [MIN MAX] for plot trimming.  Records with salinity_1 "
+            "outside this range are excluded from station page plots "
+            "(NC files are not modified).  Example: --sal 30 36"
+        ),
+    )
+    parser.add_argument(
+        "--trim-soak",
+        action="store_true",
+        default=False,
+        help=(
+            "Auto-detect and strip the pre-soak window from each cast: cuts at least "
+            "the first 60 s (pump activation) and any records up to the last time the "
+            "CTD was within 2 dbar of the surface after pump-on.  NC files are not "
+            "modified; only plots are affected."
+        ),
+    )
+
     # Run behaviour
     parser.add_argument(
         "--force",
@@ -242,5 +266,7 @@ def run(args: argparse.Namespace) -> int:
         vmax_override=vmax_override,
         cruise_info=cruise_info,
         cast_filter=args.cast,
+        sal_range=(args.sal[0], args.sal[1]) if args.sal else None,
+        trim_soak=args.trim_soak,
     )
     return 0

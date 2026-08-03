@@ -13,7 +13,7 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _add_teos10
+from ctdreport.analysis import _add_teos10, _find_soak_end
 from ctdreport.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -133,6 +133,13 @@ _STATION_TEMPLATE = (
   </div>
 </nav>
 
+{% if trim_note %}
+<div style="background:#fff3cd;border-left:4px solid #e6ac00;border-radius:4px;
+            padding:0.6rem 1rem;margin:0.75rem 1.5rem 0;font-size:0.87rem;color:#5a4200;">
+  ⚠ {{ trim_note }}
+</div>
+{% endif %}
+
 <!-- Row 1: CT/SA/σ₀ [+ LADCP U/V if available] | T–S up/down | station map -->
 <div class="card" id="s-overview">
   <div class="card-header">
@@ -250,6 +257,8 @@ def generate_station_page(
     force: bool = False,
     ladcp_dir: Path | None = None,
     cast_num_str: str | None = None,
+    sal_range: tuple[float, float] | None = None,
+    trim_soak: bool = False,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
 
@@ -275,6 +284,16 @@ def generate_station_page(
     cast_num_str:
         Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived
         from *nc_path* if not provided.
+    sal_range:
+        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this
+        range are excluded from all plots (but the NC file is not modified).
+        The count of excluded records is shown in the page header.
+    trim_soak:
+        If True, apply pre-soak detection via :func:`~ctdreport.analysis._find_soak_end`.
+        Finds the last record within 10 dbar of the surface before the cast
+        maximum depth, crawls back up to 20 seconds to the shallowest point
+        preceding the real descent, and trims everything up to that point.
+        Applied before *sal_range* trimming.  NC files are not modified.
 
     Returns
     -------
@@ -295,6 +314,43 @@ def generate_station_page(
         ds = _add_teos10(ds)
     except Exception:  # noqa: BLE001
         return None
+
+    # Pre-soak trim (applied first: removes leading unreliable records)
+    n_soak_trimmed = 0
+    if trim_soak and "pressure" in ds and "time" in ds:
+        soak_end = _find_soak_end(ds["pressure"].values, ds["time"].values)
+        n_total_records = len(ds["time"])
+        if 0 < soak_end < n_total_records:
+            n_soak_trimmed = soak_end
+            ds = ds.isel(time=slice(soak_end, None))
+        elif soak_end >= n_total_records:
+            # Cast entirely within pump window or never went deep — skip soak trim
+            pass
+
+    # Salinity range trim (applied after soak trim)
+    n_sal_trimmed = 0
+    sal_lo = sal_hi = 0.0
+    if sal_range is not None and "salinity_1" in ds:
+        sal_lo, sal_hi = sal_range
+        sal_vals = ds["salinity_1"].values
+        mask = (sal_vals >= sal_lo) & (sal_vals <= sal_hi) & np.isfinite(sal_vals)
+        n_sal_trimmed = int((~mask).sum())
+        if n_sal_trimmed > 0:
+            ds = ds.isel(time=mask)
+
+    # Build a single human-readable trim note for the page header
+    trim_note = ""
+    n_total = n_soak_trimmed + n_sal_trimmed
+    if n_soak_trimmed > 0 and n_sal_trimmed > 0:
+        trim_note = (
+            f"{n_total} records excluded "
+            f"({n_soak_trimmed} pre-soak, "
+            f"{n_sal_trimmed} salinity outside [{sal_lo}, {sal_hi}])"
+        )
+    elif n_soak_trimmed > 0:
+        trim_note = f"{n_soak_trimmed} records excluded (pre-soak)"
+    elif n_sal_trimmed > 0:
+        trim_note = f"{n_sal_trimmed} records excluded (salinity_1 outside [{sal_lo}, {sal_hi}])"
 
     lat = float(np.nanmedian(ds["latitude"].values))
     lon = float(np.nanmedian(ds["longitude"].values))
@@ -325,6 +381,7 @@ def generate_station_page(
         "next_num": next_cast_str or "",
         "ladcp_configured": ladcp_dir is not None,
         "ladcp_available": ladcp_exists,
+        "trim_note": trim_note,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
         # Row 1 — use LADCP layout whenever LADCP is configured (file may be absent)
@@ -360,16 +417,36 @@ def generate_station_page(
     return out_file
 
 
+def _extract_cast_id(stem: str) -> tuple[int, str] | None:
+    """Extract ``(cast_num, cast_suffix)`` from a NC file stem.
+
+    Handles directly-appended suffixes (``mixsed2_004b``) and
+    underscore-separated suffixes (``mixsed2_004_b``), while ignoring
+    cruise/leg numbers earlier in the stem (e.g. ``142`` in
+    ``msm_142_1_001_1sec``).  Returns ``None`` if no 3+-digit group is found.
+    """
+    matches = re.findall(r"_(\d{3,})([a-z]*)(?=_|$)", stem)
+    if not matches:
+        return None
+    cast_num_str, cast_suffix = matches[-1]
+    if not cast_suffix:
+        m = re.search(rf"_{re.escape(cast_num_str)}_([a-z]+)$", stem)
+        if m:
+            cast_suffix = m.group(1)
+    return int(cast_num_str), cast_suffix
+
+
 def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
     """Return ``(cast_num, cast_suffix)`` from a cast filename.
 
-    Handles both ``mixsed2_042b.nc`` and ``mixsed2_042_b.nc`` (underscore before
-    letter suffix).  Returns ``(0, "")`` if the filename does not match.
+    Uses the last 3+-digit group in the stem as the cast number so that
+    cruise/leg numbers earlier in the name (e.g. ``142`` in
+    ``msm_142_1_001_1sec.nc``) are not confused with cast numbers.
+    Letter suffixes directly appended (``004b``) or underscore-separated
+    (``004_b``) at the very end of the stem are both handled.
+    Returns ``(0, "")`` if no 3+-digit group is found.
     """
-    m = re.search(r"_(\d+)(?:_?([a-z]+))?\.nc$", nc_path.name)
-    if m:
-        return int(m.group(1)), m.group(2) or ""
-    return 0, ""
+    return _extract_cast_id(nc_path.stem) or (0, "")
 
 
 def _cast_num_from_path(nc_path: Path) -> int:

@@ -129,6 +129,8 @@ def run(args: argparse.Namespace) -> int:
         force=args.force,
         skip_existing=args.skip_existing,
         dry_run=args.dry_run,
+        sal=None,
+        trim_soak=False,
     )
 
     print("=== report ===")
