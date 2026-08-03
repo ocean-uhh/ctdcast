@@ -28,7 +28,7 @@ from ctdreport.plots import (
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
 from ctdreport.section import _expand_cast_numbers, generate_section_page
-from ctdreport.station import _extract_cast_id, generate_station_page
+from ctdreport.station import _extract_cast_id, _find_ladcp_file, generate_station_page
 from ctdreport.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
@@ -342,6 +342,7 @@ def generate_ctd_report(
     profiles_path: Path | None = None,
     section_yaml: Path | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
     ship_track_nc: Path | None = None,
     generate: dict[str, bool] | None = None,
     force: bool = False,
@@ -370,6 +371,10 @@ def generate_ctd_report(
     ladcp_dir:
         Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
         or ``NNNb.mat`` (letter-suffix variants supported).
+    ladcp_pattern:
+        Optional filename glob for non-standard LADCP naming, e.g.
+        ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the zero-padded
+        cast number.  See :func:`~ctdreport.station._find_ladcp_file`.
     ship_track_nc:
         Path to a ship-track netCDF for the Leaflet map background line.
     generate:
@@ -465,13 +470,9 @@ def generate_ctd_report(
             # Resolve LADCP mat path before the skip check so it feeds the mtime comparison.
             _mat: Path | None = None
             if ladcp_dir is not None:
-                _mat_cand = (
-                    ladcp_dir / f"{meta['cast_num']:03d}{meta['cast_suffix']}.mat"
+                _mat = _find_ladcp_file(
+                    ladcp_dir, meta["cast_num"], meta["cast_suffix"], ladcp_pattern
                 )
-                if not _mat_cand.exists():
-                    _mat_cand = ladcp_dir / f"{meta['cast_num']:03d}.mat"
-                if _mat_cand.exists():
-                    _mat = _mat_cand
 
             _extra: tuple[Path, ...] = (_mat,) if _mat is not None else ()
             _skip_reason = _mtime_skip_reason(
@@ -495,6 +496,7 @@ def generate_ctd_report(
                 next_cast_str=next_cast_str,
                 force=force or not _skip_reason,
                 ladcp_dir=ladcp_dir,
+                ladcp_pattern=ladcp_pattern,
                 cast_num_str=meta["cast_num_str"],
                 sal_range=sal_range,
                 trim_soak=trim_soak,
@@ -540,7 +542,11 @@ def generate_ctd_report(
             if _sec_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
                 if (
-                    any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _sec_casts)
+                    any(
+                        _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                        is not None
+                        for cn in _sec_casts
+                    )
                     and _expected.exists()
                     and b"s-ladcp" not in _expected.read_bytes()
                 ):

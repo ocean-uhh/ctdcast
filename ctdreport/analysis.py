@@ -366,6 +366,84 @@ def _find_soak_end(
     return i_min + 1
 
 
+def _find_cast_end(
+    pressure: np.ndarray,
+    times: np.ndarray,
+    deck_window_seconds: float = 20.0,
+    margin_dbar: float = 0.5,
+    max_deck_dbar: float = 20.0,
+) -> int:
+    """Return the exclusive end index, trimming post-recovery deck records.
+
+    Algorithm:
+
+    1. Take the median pressure of the last *deck_window_seconds* seconds as
+       the on-deck reference pressure.  Using a median handles sensor offset
+       (the pressure sensor may not read exactly 0 dbar when the CTD is in
+       the air) and is robust to brief oscillations on deck.
+    2. Find the **first** index after the pressure maximum where pressure falls
+       at or below ``p_deck_median + margin_dbar``.  Trim from that index
+       onward.
+
+    Returns ``len(pressure)`` (no trim) if:
+    - the record is empty or the CTD never returned near the surface
+      (``p_deck_median > max_deck_dbar``), or
+    - pressure never drops to the threshold on the upcast.
+
+    Parameters
+    ----------
+    pressure:
+        Pressure array in dbar.
+    times:
+        Time coordinate array (``numpy.datetime64`` or numeric seconds).
+    deck_window_seconds:
+        Duration of the tail window used to estimate on-deck pressure.
+    margin_dbar:
+        Added to the on-deck median to form the cut threshold.
+    max_deck_dbar:
+        If the on-deck median exceeds this value the CTD is considered not to
+        have returned to the surface and no trim is applied.
+
+    Returns
+    -------
+    int
+        Exclusive end index; slice with ``ds.isel(time=slice(None, idx))``.
+
+    """
+    n = len(pressure)
+    if n == 0:
+        return n
+
+    p_arr = np.asarray(pressure, dtype=float)
+    times_arr = np.asarray(times)
+    if np.issubdtype(times_arr.dtype, np.datetime64):
+        elapsed = (times_arr - times_arr[0]) / np.timedelta64(1, "s")
+    else:
+        elapsed = times_arr.astype(float) - float(times_arr[0])
+
+    i_max = int(np.nanargmax(p_arr))
+
+    # On-deck reference: median of final deck_window_seconds.
+    t_end = float(elapsed[-1])
+    i_win_start = int(np.searchsorted(elapsed, t_end - deck_window_seconds))
+    i_win_start = max(i_max + 1, i_win_start)
+    if i_win_start >= n:
+        return n
+
+    p_deck = float(np.nanmedian(p_arr[i_win_start:]))
+    if p_deck > max_deck_dbar:
+        return n
+
+    threshold = p_deck + margin_dbar
+
+    upcast = p_arr[i_max:]
+    below = np.where(upcast <= threshold)[0]
+    if len(below) == 0:
+        return n
+
+    return i_max + int(below[0])
+
+
 def _compact_cast_list(nums: list[int]) -> str:
     """Format a cast number list compactly, collapsing consecutive runs into ranges.
 

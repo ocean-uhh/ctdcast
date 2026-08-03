@@ -1896,7 +1896,7 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
         idx = 0
         if has_t:
             dt = ds["temperature_1"].values - ds["temperature_2"].values
-            axes[idx].plot(dt, p, color="#1f77b4", linewidth=0.8)
+            axes[idx].plot(dt, p, ".", color="#1f77b4", markersize=1.5, linewidth=0)
             axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
             axes[idx].set_xlabel("T₁ − T₂ (°C)")
             axes[idx].set_xlim(-0.01, 0.01)
@@ -1904,7 +1904,9 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
             idx += 1
         if has_s:
             ds_diff = ds["salinity_1"].values - ds["salinity_2"].values
-            axes[idx].plot(ds_diff, p, color="#ff7f0e", linewidth=0.8)
+            axes[idx].plot(
+                ds_diff, p, ".", color="#ff7f0e", markersize=1.5, linewidth=0
+            )
             axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
             axes[idx].set_xlabel("S₁ − S₂ (PSU)")
             axes[idx].set_xlim(-0.01, 0.01)

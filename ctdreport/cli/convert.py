@@ -133,6 +133,19 @@ def run(args: argparse.Namespace) -> int:
     nc_dir = Path(nc_dir_raw)
 
     cnv_dir_raw = data.get("cnv_dir")
+    # If cnv_dir contains a wildcard (e.g. "/path/msm*1sec.cnv"), split into
+    # parent directory and pattern so that older configs keep working.
+    if cnv_dir_raw and ("*" in cnv_dir_raw or "?" in cnv_dir_raw):
+        _cnv_path = Path(cnv_dir_raw)
+        if not _cnv_path.is_dir():
+            if args.pattern == "*.cnv":
+                args.pattern = _cnv_path.name
+            cnv_dir_raw = str(_cnv_path.parent)
+    # data.cnv_pattern overrides the CLI default ('*.cnv') but is itself overridden
+    # when the user passes an explicit --pattern on the command line.
+    cfg_pattern: str = data.get("cnv_pattern") or "*.cnv"
+    if args.pattern == "*.cnv":
+        args.pattern = cfg_pattern
     profiles_nc_raw = data.get("profiles_nc")
     profiles_path = Path(profiles_nc_raw) if profiles_nc_raw else None
 

@@ -13,7 +13,7 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _add_teos10, _find_soak_end
+from ctdreport.analysis import _add_teos10, _find_cast_end, _find_soak_end
 from ctdreport.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -96,6 +96,8 @@ _STATION_TEMPLATE = (
   .fig-stack img { max-height: 320px; width: auto; border-radius: 4px; }
   /* Shared constraint for all multi-panel figures (aux, CT/SA/σ₀, diagnostics) */
   .fig-panel { max-height: 420px; }
+  figure { margin: 0; display: inline-block; }
+  figcaption { font-size: 0.78rem; color: #555; margin-top: 0.25rem; max-width: 30ch; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
 </style>
 </head>
@@ -166,7 +168,10 @@ _STATION_TEMPLATE = (
     <a class="jump" href="#top">↑ top</a>
   </div>
   <div class="plots">
-    <img class="fig-panel" src="data:image/png;base64,{{ fig_ct_sa_sigma0_b64 }}" alt="CT · SA · σ₀ profiles">
+    <figure>
+      <img class="fig-panel" src="data:image/png;base64,{{ fig_ct_sa_sigma0_b64 }}" alt="CT · SA · σ₀ profiles">
+      <figcaption>CT, SA, σ₀ vs pressure. Downcast in colour; upcast in grey.</figcaption>
+    </figure>
   </div>
 </div>
 {% endif %}
@@ -218,9 +223,24 @@ _STATION_TEMPLATE = (
     <a class="jump" href="#top">↑ top</a>
   </div>
   <div class="plots">
-    {% if fig_pressure_time_b64 %}<img src="data:image/png;base64,{{ fig_pressure_time_b64 }}" alt="Pressure vs time">{% endif %}
-    {% if fig_sensor_diff_b64 %}<img class="fig-panel" src="data:image/png;base64,{{ fig_sensor_diff_b64 }}" alt="Sensor 1 − Sensor 2">{% endif %}
-    {% if fig_updown_diff_b64 %}<img class="fig-panel" src="data:image/png;base64,{{ fig_updown_diff_b64 }}" alt="Down − up cast differences">{% endif %}
+    {% if fig_pressure_time_b64 %}
+    <figure>
+      <img src="data:image/png;base64,{{ fig_pressure_time_b64 }}" alt="Pressure vs time">
+      <figcaption>Cast trajectory: pressure vs elapsed time. Shows descent, bottom stop, and ascent.</figcaption>
+    </figure>
+    {% endif %}
+    {% if fig_sensor_diff_b64 %}
+    <figure>
+      <img class="fig-panel" src="data:image/png;base64,{{ fig_sensor_diff_b64 }}" alt="Sensor 1 − Sensor 2">
+      <figcaption>Primary minus secondary sensor (full cast). T₁−T₂ in blue, S₁−S₂ in orange. Ideal: scatter around zero with ±0.01 spread.</figcaption>
+    </figure>
+    {% endif %}
+    {% if fig_updown_diff_b64 %}
+    <figure>
+      <img class="fig-panel" src="data:image/png;base64,{{ fig_updown_diff_b64 }}" alt="Down − up cast differences">
+      <figcaption>Downcast minus upcast on a 1-dbar grid (ΔCT, ΔSA, Δσ₀). Measures hysteresis from pump lag or sensor response time.</figcaption>
+    </figure>
+    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -256,6 +276,7 @@ def generate_station_page(
     next_cast_str: str | None = None,
     force: bool = False,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
     cast_num_str: str | None = None,
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
@@ -281,6 +302,10 @@ def generate_station_page(
         Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
         or ``NNNb.mat``.  If None or no matching file exists, LADCP panels
         are omitted.
+    ladcp_pattern:
+        Optional filename glob for non-standard LADCP naming conventions,
+        e.g. ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the
+        zero-padded cast number.  Falls back to glob-based discovery when omitted.
     cast_num_str:
         Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived
         from *nc_path* if not provided.
@@ -315,17 +340,28 @@ def generate_station_page(
     except Exception:  # noqa: BLE001
         return None
 
-    # Pre-soak trim (applied first: removes leading unreliable records)
+    # Pre-soak and post-recovery trim (both applied when trim_soak is True)
     n_soak_trimmed = 0
+    n_deck_trimmed = 0
     if trim_soak and "pressure" in ds and "time" in ds:
-        soak_end = _find_soak_end(ds["pressure"].values, ds["time"].values)
-        n_total_records = len(ds["time"])
-        if 0 < soak_end < n_total_records:
-            n_soak_trimmed = soak_end
-            ds = ds.isel(time=slice(soak_end, None))
-        elif soak_end >= n_total_records:
-            # Cast entirely within pump window or never went deep — skip soak trim
-            pass
+        p = ds["pressure"].values
+        t = ds["time"].values
+        n_total_records = len(t)
+        soak_end = _find_soak_end(p, t)
+        cast_end = _find_cast_end(p, t)
+        if cast_end <= soak_end:
+            cast_end = n_total_records
+        n_soak_trimmed = max(0, soak_end)
+        n_deck_trimmed = (
+            (n_total_records - cast_end) if cast_end < n_total_records else 0
+        )
+        if n_soak_trimmed > 0 or n_deck_trimmed > 0:
+            ds = ds.isel(
+                time=slice(
+                    soak_end if soak_end > 0 else None,
+                    cast_end if cast_end < n_total_records else None,
+                )
+            )
 
     # Salinity range trim (applied after soak trim)
     n_sal_trimmed = 0
@@ -340,17 +376,16 @@ def generate_station_page(
 
     # Build a single human-readable trim note for the page header
     trim_note = ""
-    n_total = n_soak_trimmed + n_sal_trimmed
-    if n_soak_trimmed > 0 and n_sal_trimmed > 0:
-        trim_note = (
-            f"{n_total} records excluded "
-            f"({n_soak_trimmed} pre-soak, "
-            f"{n_sal_trimmed} salinity outside [{sal_lo}, {sal_hi}])"
-        )
-    elif n_soak_trimmed > 0:
-        trim_note = f"{n_soak_trimmed} records excluded (pre-soak)"
-    elif n_sal_trimmed > 0:
-        trim_note = f"{n_sal_trimmed} records excluded (salinity_1 outside [{sal_lo}, {sal_hi}])"
+    soak_parts = []
+    if n_soak_trimmed > 0:
+        soak_parts.append(f"{n_soak_trimmed} pre-soak")
+    if n_deck_trimmed > 0:
+        soak_parts.append(f"{n_deck_trimmed} post-recovery")
+    if n_sal_trimmed > 0:
+        soak_parts.append(f"{n_sal_trimmed} salinity outside [{sal_lo}, {sal_hi}]")
+    if soak_parts:
+        n_total = n_soak_trimmed + n_deck_trimmed + n_sal_trimmed
+        trim_note = f"{n_total} records excluded ({', '.join(soak_parts)})"
 
     lat = float(np.nanmedian(ds["latitude"].values))
     lon = float(np.nanmedian(ds["longitude"].values))
@@ -358,15 +393,15 @@ def generate_station_page(
     t0 = str(ds["time"].values[0])[:16].replace("T", " ")
     cruise = ds.attrs.get("cruise", "odb2026")
 
-    # LADCP: try suffixed filename first (e.g. 004b.mat), fall back to plain (004.mat)
     ladcp_path: Path | None = None
     if ladcp_dir is not None:
-        _suffixed = ladcp_dir / f"{cast_num:03d}{cast_suffix}.mat"
-        _plain = ladcp_dir / f"{cast_num:03d}.mat"
+        found = _find_ladcp_file(ladcp_dir, cast_num, cast_suffix, ladcp_pattern)
+        # Keep a non-None path even when no file exists so downstream callers
+        # that gate on ladcp_dir-is-not-None still get the LADCP plot layout.
         ladcp_path = (
-            _suffixed
-            if _suffixed.exists()
-            else (_plain if _plain.exists() else _suffixed)
+            found
+            if found is not None
+            else ladcp_dir / f"{cast_num:03d}{cast_suffix}.mat"
         )
     ladcp_exists = ladcp_path is not None and ladcp_path.exists()
 
@@ -455,3 +490,36 @@ def _cast_num_from_path(nc_path: Path) -> int:
     Deprecated: use :func:`_cast_id_from_path` to also retrieve the suffix.
     """
     return _cast_id_from_path(nc_path)[0]
+
+
+def _find_ladcp_file(
+    ladcp_dir: Path,
+    cast_num: int,
+    cast_suffix: str = "",
+    ladcp_pattern: str | None = None,
+) -> Path | None:
+    """Return the .mat file for *cast_num* in *ladcp_dir*, or ``None`` if absent.
+
+    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*``
+    wildcard is replaced with the zero-padded cast number (and optional suffix)
+    and that name is tried first.  Falls back to standard names (``NNN.mat``,
+    ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.
+    The first glob match (lexicographic) is returned when multiple files match.
+    """
+    if ladcp_pattern:
+        for cast_str in (f"{cast_num:03d}{cast_suffix}", f"{cast_num:03d}"):
+            p = ladcp_dir / ladcp_pattern.replace("*", cast_str)
+            if p.exists():
+                return p
+    for name in (f"{cast_num:03d}{cast_suffix}.mat", f"{cast_num:03d}.mat"):
+        p = ladcp_dir / name
+        if p.exists():
+            return p
+    for glob_pat in (
+        f"*_{cast_num:03d}{cast_suffix}.mat",
+        f"*_{cast_num:03d}.mat",
+    ):
+        found = sorted(ladcp_dir.glob(glob_pat))
+        if found:
+            return found[0]
+    return None
