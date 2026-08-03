@@ -5,6 +5,7 @@ No matplotlib. No HTML. Imported by _plots.py (Tier 1) and Tier-2 orchestrators.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import gsw
@@ -22,9 +23,13 @@ def _add_teos10(ds: xr.Dataset) -> xr.Dataset:
     sp = ds["salinity_1"].values.astype(float)
     lat = float(np.nanmedian(ds["latitude"].values))
     lon = float(np.nanmedian(ds["longitude"].values))
-    sa = gsw.SA_from_SP(sp, p, lon, lat)
-    ct = gsw.CT_from_t(sa, t, p)
-    sig0 = gsw.sigma0(sa, ct)
+    # gsw warns on NaN / out-of-range inputs (common in raw CTD data before
+    # QC).  The computation returns NaN where invalid, which is correct behaviour.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+        sa = gsw.SA_from_SP(sp, p, lon, lat)
+        ct = gsw.CT_from_t(sa, t, p)
+        sig0 = gsw.sigma0(sa, ct)
     dim = ds["pressure"].dims[0]
     ds["SA"] = xr.DataArray(
         sa.astype(np.float32),
@@ -272,6 +277,93 @@ def _dense_bathy_along_track(
         return np.array(dense_x), depths
     except Exception:  # noqa: BLE001
         return None, None
+
+
+def _find_soak_end(
+    pressure: np.ndarray,
+    times: np.ndarray,
+    near_surface_dbar: float = 10.0,
+    search_seconds: float = 20.0,
+) -> int:
+    """Return the index at which the real downcast begins (exclusive end of soak).
+
+    Algorithm (three steps):
+
+    1. Find ``i_max``, the index of the global pressure maximum (deepest point
+       of the cast).  Searching only in ``pressure[0:i_max+1]`` keeps the
+       upcast recovery — when the CTD returns to the surface at the end of the
+       cast — from being confused with the pre-soak position.
+    2. Within ``pressure[0:i_max+1]``, find the **last** index where
+       ``pressure < near_surface_dbar``.  For a typical MSM-style cast this
+       falls on the early real descent, just as the CTD passes
+       ``near_surface_dbar`` going downward.
+    3. Crawl **backward** from that index within ``search_seconds`` to find the
+       **minimum pressure** — the shallowest point (closest to the surface) just
+       before the real descent began.  Return the index immediately after that
+       minimum as the start of the real downcast.
+
+    In bad-weather conditions where the CTD soaks at depth and is never raised
+    back to the surface, step 3 finds the minimum within the soak window and
+    removes only the first ``search_seconds`` of the soak.  The operator-
+    visible effect is a truncation of the pre-soak data, not a clean removal.
+
+    Parameters
+    ----------
+    pressure:
+        Pressure array in dbar (1-D, same length as *times*).
+    times:
+        Time coordinate array.  May be ``numpy.datetime64`` or numeric seconds;
+        elapsed time is computed relative to ``times[0]``.
+    near_surface_dbar:
+        Pressure threshold used to find the last near-surface crossing before
+        the main descent.  Default is 10 dbar (≈10 m), safely below the
+        typical soak depth of 8–10 m.
+    search_seconds:
+        Width of the backward-crawl window (seconds) used to find the
+        pre-descent surface minimum.  Default is 20 s.
+
+    Returns
+    -------
+    int
+        Index of the first record to keep; slice with
+        ``ds.isel(time=slice(idx, None))``.  Returns 0 if the cast never
+        reaches below ``near_surface_dbar`` (no trim applied).
+
+    """
+    n = len(pressure)
+    if n == 0:
+        return 0
+
+    p_arr = np.asarray(pressure, dtype=float)
+    times_arr = np.asarray(times)
+    if np.issubdtype(times_arr.dtype, np.datetime64):
+        elapsed = (times_arr - times_arr[0]) / np.timedelta64(1, "s")
+    else:
+        elapsed = times_arr.astype(float) - float(times_arr[0])
+
+    # Step 1: deepest point (also limits search to downcast only)
+    i_max = int(np.nanargmax(p_arr))
+
+    # Step 2: last near-surface crossing before the deepest point
+    pre_max_mask = p_arr[: i_max + 1] < near_surface_dbar
+    near_indices = np.where(pre_max_mask)[0]
+    if len(near_indices) == 0:
+        return 0  # cast never came within near_surface_dbar of the surface
+
+    i_last_near = int(near_indices[-1])
+
+    # Step 3: within search_seconds before i_last_near, find the pressure minimum
+    t_last = float(elapsed[i_last_near])
+    i_win_start = int(np.searchsorted(elapsed, t_last - search_seconds))
+    i_win_start = max(0, i_win_start)
+    window_p = p_arr[i_win_start : i_last_near + 1]
+    if len(window_p) == 0:
+        return i_last_near + 1
+
+    i_min_local = int(np.nanargmin(window_p))
+    i_min = i_win_start + i_min_local
+
+    return i_min + 1
 
 
 def _compact_cast_list(nums: list[int]) -> str:

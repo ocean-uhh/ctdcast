@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import math
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -430,8 +431,13 @@ def _make_stability_b64(ds: xr.Dataset) -> str | None:
         if len(p) < 3:
             return None
 
-        n2, p_n2 = gsw.Nsquared(sa, ct, p, lat=lat)
-        tu, _, p_tu = gsw.Turner_Rsubrho(sa, ct, p, axis=0)
+        # gsw.Nsquared warns when consecutive pressure values are equal (dp=0),
+        # which occurs in 1-second CTD data when the instrument is stationary.
+        # The computation still produces correct values where dp != 0.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+            n2, p_n2 = gsw.Nsquared(sa, ct, p, lat=lat)
+            tu, _, p_tu = gsw.Turner_Rsubrho(sa, ct, p, axis=0)
 
         fig, axes = plt.subplots(1, 2, figsize=(7, 6), sharey=True)
         ax_n2, ax_tu = axes

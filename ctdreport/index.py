@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -29,7 +28,7 @@ from ctdreport.plots import (
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
 from ctdreport.section import _expand_cast_numbers, generate_section_page
-from ctdreport.station import generate_station_page
+from ctdreport.station import _extract_cast_id, generate_station_page
 from ctdreport.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
@@ -353,6 +352,8 @@ def generate_ctd_report(
     vmax_override: dict[str, float] | None = None,
     cruise_info: dict[str, Any] | None = None,
     cast_filter: int | None = None,
+    sal_range: tuple[float, float] | None = None,
+    trim_soak: bool = False,
 ) -> None:
     """Generate the full ctdreport HTML report suite.
 
@@ -393,6 +394,14 @@ def generate_ctd_report(
     cast_filter:
         If set, rebuild only the station page for this cast number
         (implies ``generate={"stations": True, rest False}``).
+    sal_range:
+        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this
+        range are excluded from all station page plots.  The NC files are
+        not modified.  Excluded record count is shown in each page header.
+    trim_soak:
+        If True, apply pre-soak detection on each cast: cut the first 60 s
+        (pump activation) and any records up to the last near-surface record
+        after pump-on.  Passed through to :func:`~ctdreport.station.generate_station_page`.
 
     """
     gen: dict[str, bool] = {
@@ -487,6 +496,8 @@ def generate_ctd_report(
                 force=force or not _skip_reason,
                 ladcp_dir=ladcp_dir,
                 cast_num_str=meta["cast_num_str"],
+                sal_range=sal_range,
+                trim_soak=trim_soak,
             )
             if _skip_reason:
                 _status = _skip_reason + _ladcp_note
@@ -749,16 +760,18 @@ def _write_index(
                 }
             )
 
-    fig_map_b64 = (
-        _make_all_sections_map_b64(
+    if sections_data_map and _valid_lats:
+        fig_map_b64 = _make_all_sections_map_b64(
             sections_data_map,
             _valid_lats,
             _valid_lons,
             legend_outside=True,
         )
-        if _valid_lats
-        else None
-    )
+    elif _valid_lats:
+        # No sections configured (e.g. draft mode) — fall back to cruise-track map.
+        fig_map_b64 = _make_cruise_map_b64(all_meta)
+    else:
+        fig_map_b64 = None
 
     # Stacked overview panels and cruise T-S diagram from profiles.nc
     overview_panels: list[dict[str, Any]] = []
@@ -1244,20 +1257,21 @@ def _mtime_skip_reason(
 
 
 def _select_cast_files(nc_dir: Path) -> list[Path]:
-    """Return sorted list of cast .nc files, including all letter-suffix variants.
+    """Return sorted list of cast .nc files from any cruise naming convention.
 
-    Both ``mixsed2_004.nc`` and ``mixsed2_004b.nc`` (or ``mixsed2_004_b.nc``) are
-    returned as separate entries rather than one suppressing the other.  Sort order
-    is by cast number then suffix (plain before ``b``).
+    Accepts any ``*.nc`` file whose stem contains a 3+-digit cast number,
+    optionally followed by a letter suffix (e.g. ``mixsed2_004b.nc``,
+    ``msm_142_1_001_1sec.nc``).  The **last** 3+-digit group in the stem is
+    taken as the cast number so that cruise/leg numbers earlier in the name
+    (e.g. the ``142`` in ``msm_142_1_001_1sec``) are not confused with cast
+    numbers.  Sort order is cast number then suffix (plain before ``b``).
     """
-    # Matches both mixsed2_004b.nc and mixsed2_004_b.nc (underscore before letter suffix).
-    pattern = re.compile(r"^mixsed2_(\d+)(?:_?([a-z]+))?$")
     results: list[tuple[int, str, Path]] = []
     for p in sorted(nc_dir.glob("*.nc")):
-        m = pattern.match(p.stem)
-        if not m:
+        _id = _extract_cast_id(p.stem)
+        if _id is None:
             continue
-        results.append((int(m.group(1)), m.group(2) or "", p))
+        results.append((_id[0], _id[1], p))
     results.sort(key=lambda t: (t[0], t[1]))
     return [t[2] for t in results]
 
@@ -1266,9 +1280,10 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
-        m = re.search(r"_(\d+)(?:_?([a-z]+))?\.nc$", nc_path.name)
-        cast_num = int(m.group(1))  # type: ignore[union-attr]
-        cast_suffix = (m.group(2) or "") if m else ""  # type: ignore[union-attr]
+        _id = _extract_cast_id(nc_path.stem)
+        if _id is None:
+            return None
+        cast_num, cast_suffix = _id
         lat = float(np.nanmedian(ds["latitude"].values))
         lon = float(np.nanmedian(ds["longitude"].values))
         max_depth = float(np.nanmax(ds["pressure"].values))

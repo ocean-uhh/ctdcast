@@ -31,6 +31,9 @@ Examples:
 
   # Force reprocess a single cast:
   ctdreport convert config.yaml --ctd --cast 42 --force
+
+  # Convert only 1 Hz files (skip 24 Hz variants):
+  ctdreport convert config.yaml --ctd --pattern "msm*1sec.cnv"
 """
     kwargs: dict = {
         "description": "Convert raw CTD (CNV) files to netCDF inputs for ctdreport report.",
@@ -86,6 +89,12 @@ Examples:
         metavar="N",
         default=None,
         help="Convert only the CNV file for cast N (implies --ctd).",
+    )
+    parser.add_argument(
+        "--pattern",
+        metavar="GLOB",
+        default="*.cnv",
+        help="Filename glob pattern for CNV files (default: '*.cnv'). Applies to --ctd only.",
     )
 
     # Run behaviour
@@ -164,7 +173,8 @@ def run(args: argparse.Namespace) -> int:
         print(f"[dry-run] config:    {cfg_path}")
         if run_ctd:
             print(
-                f"[dry-run] --ctd:     {cnv_dir} → {nc_dir}  (backend={args.backend})"
+                f"[dry-run] --ctd:     {cnv_dir} → {nc_dir}  "
+                f"(backend={args.backend}, pattern={args.pattern})"
             )
         if run_profiles:
             print(f"[dry-run] --profiles: {nc_dir} → {profiles_path}")
@@ -184,6 +194,7 @@ def run(args: argparse.Namespace) -> int:
                 backend=args.backend,
                 force=args.force,
                 cast_filter=args.cast,
+                pattern=args.pattern,
             )
         except (NotImplementedError, ImportError) as exc:
             print(f"Error: {exc}", file=sys.stderr)

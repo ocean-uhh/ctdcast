@@ -50,6 +50,8 @@ def _report_ns(**kwargs) -> argparse.Namespace:
         "force": False,
         "skip_existing": False,
         "dry_run": False,
+        "sal": None,
+        "trim_soak": False,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -398,6 +400,8 @@ def _draft_ns(**kwargs) -> argparse.Namespace:
         "keep_nc": None,
         "force": False,
         "dry_run": False,
+        "pattern": "*.cnv",
+        "trim_soak": False,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
