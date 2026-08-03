@@ -900,7 +900,7 @@ def _write_stations_list(
         cast_num_int = m["cast_num"]
         stations.append(
             {
-                "cast_num": f"{cast_num_int:03d}",
+                "cast_num": m["cast_num_str"],
                 "filename": m.get("raw_filename", "—"),
                 "time_start_str": str(m.get("time_start", ""))[:16].replace("T", " "),
                 "lat_str": _dec_min(lat, "N", "S"),
@@ -1234,17 +1234,18 @@ def _mtime_skip_reason(
 def _select_cast_files(nc_dir: Path) -> list[Path]:
     """Return sorted list of cast .nc files, including all letter-suffix variants.
 
-    Both ``mixsed2_004.nc`` and ``mixsed2_004b.nc`` are returned as separate
-    entries rather than one suppressing the other.  Sort order is by cast number
-    then suffix (plain before ``b``).
+    Both ``mixsed2_004.nc`` and ``mixsed2_004b.nc`` (or ``mixsed2_004_b.nc``) are
+    returned as separate entries rather than one suppressing the other.  Sort order
+    is by cast number then suffix (plain before ``b``).
     """
-    pattern = re.compile(r"^mixsed2_(\d+)([a-z]*)$")
+    # Matches both mixsed2_004b.nc and mixsed2_004_b.nc (underscore before letter suffix).
+    pattern = re.compile(r"^mixsed2_(\d+)(?:_?([a-z]+))?$")
     results: list[tuple[int, str, Path]] = []
     for p in sorted(nc_dir.glob("*.nc")):
         m = pattern.match(p.stem)
         if not m:
             continue
-        results.append((int(m.group(1)), m.group(2), p))
+        results.append((int(m.group(1)), m.group(2) or "", p))
     results.sort(key=lambda t: (t[0], t[1]))
     return [t[2] for t in results]
 
@@ -1253,9 +1254,9 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
-        m = re.search(r"_(\d+)([a-z]*)\.nc$", nc_path.name)
+        m = re.search(r"_(\d+)(?:_?([a-z]+))?\.nc$", nc_path.name)
         cast_num = int(m.group(1))  # type: ignore[union-attr]
-        cast_suffix = m.group(2) if m else ""  # type: ignore[union-attr]
+        cast_suffix = (m.group(2) or "") if m else ""  # type: ignore[union-attr]
         lat = float(np.nanmedian(ds["latitude"].values))
         lon = float(np.nanmedian(ds["longitude"].values))
         max_depth = float(np.nanmax(ds["pressure"].values))

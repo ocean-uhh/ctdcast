@@ -357,13 +357,14 @@ def generate_station_page(
 
 
 def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
-    """Return ``(cast_num, cast_suffix)`` from a filename like ``mixsed2_042b.nc``.
+    """Return ``(cast_num, cast_suffix)`` from a cast filename.
 
-    Returns ``(0, "")`` if the filename does not match the expected pattern.
+    Handles both ``mixsed2_042b.nc`` and ``mixsed2_042_b.nc`` (underscore before
+    letter suffix).  Returns ``(0, "")`` if the filename does not match.
     """
-    m = re.search(r"_(\d+)([a-z]*)\.nc$", nc_path.name)
+    m = re.search(r"_(\d+)(?:_?([a-z]+))?\.nc$", nc_path.name)
     if m:
-        return int(m.group(1)), m.group(2)
+        return int(m.group(1)), m.group(2) or ""
     return 0, ""
 
 
