@@ -30,7 +30,7 @@ Examples:
   ctdreport convert config.yaml --profiles
 
   # Force reprocess a single cast:
-  ctdreport convert config.yaml --ctd --backend seasenselib --cast 42 --force
+  ctdreport convert config.yaml --ctd --cast 42 --force
 """
     kwargs: dict = {
         "description": "Convert raw CTD (CNV) files to netCDF inputs for ctdreport report.",
@@ -73,10 +73,10 @@ Examples:
     # Backend (applies only to --ctd)
     parser.add_argument(
         "--backend",
-        choices=["seasenselib", "builtin"],
+        choices=["seasenselib"],
         default="seasenselib",
         metavar="NAME",
-        help="CTD conversion backend for --ctd: 'seasenselib' (default) or 'builtin' (not yet implemented).",
+        help="CTD conversion backend for --ctd (currently only 'seasenselib').",
     )
 
     # Per-cast targeting

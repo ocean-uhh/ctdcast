@@ -18,20 +18,36 @@ pip install -e .
 
 Dependencies: `gsw`, `matplotlib`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `scipy`
 
-CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdreport (`ctdreport run --ctd`). Install separately; not on PyPI. Pre-converted netCDF files from other tools must match ctdreport's variable naming convention (see docs).
+CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdreport (`ctdreport draft` or `ctdreport run --ctd`). Install with `pip install seasenselib`. Pre-converted netCDF files from other tools must match ctdreport's variable naming convention (see docs).
 
 ---
 
 ## Quick start
 
-### 1. Write a config
+### Quick look (no config file needed)
+
+Raw CNV files fresh off the instrument? One command gives you station pages + index + map:
+
+```bash
+ctdreport draft /path/to/cnv/           # generates ./ctd_draft/index.html
+ctdreport draft /path/to/cnv/ out/ --cruise odb2026   # with cruise ID
+ctdreport draft /path/to/cnv/ --dry-run               # preview what would happen
+```
+
+Requires `seasenselib` for CNV conversion (`pip install seasenselib`).
+
+### Full workflow (with config)
+
+For sections, time series, and LADCP panels you need a `config.yaml`:
+
+#### 1. Write a config
 
 ```bash
 ctdreport init                        # writes a template config.yaml
 ctdreport validate config.yaml        # check paths before the first run
 ```
 
-### 2. Generate
+#### 2. Generate
 
 ```bash
 ctdreport run config.yaml             # smart update — skips up-to-date pages

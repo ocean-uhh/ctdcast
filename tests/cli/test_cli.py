@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ctdreport.cli import draft as _draft
 from ctdreport.cli import init as _init
 from ctdreport.cli import main as cli_main
 from ctdreport.cli import report as _report
@@ -382,3 +383,69 @@ class TestEntryPoint:
         args = parser.parse_args(["mydir/", "--sections", "--force"])
         assert args.sections is True
         assert args.force is True
+
+
+# ---------------------------------------------------------------------------
+# ctdreport draft
+# ---------------------------------------------------------------------------
+
+
+def _draft_ns(**kwargs) -> argparse.Namespace:
+    """Build a Namespace for draft.run() with safe defaults."""
+    defaults = {
+        "cruise": None,
+        "ship": None,
+        "keep_nc": None,
+        "force": False,
+        "dry_run": False,
+    }
+    defaults.update(kwargs)
+    return argparse.Namespace(**defaults)
+
+
+class TestDraft:
+    def test_missing_cnv_dir_returns_error(self, tmp_path):
+        ns = _draft_ns(cnv_dir=tmp_path / "nonexistent", out_dir=tmp_path / "out")
+        rc = _draft.run(ns)
+        assert rc == 1
+
+    def test_empty_cnv_dir_returns_error(self, tmp_path):
+        cnv_dir = tmp_path / "cnv"
+        cnv_dir.mkdir()
+        ns = _draft_ns(cnv_dir=cnv_dir, out_dir=tmp_path / "out")
+        rc = _draft.run(ns)
+        assert rc == 1
+
+    def test_dry_run_returns_zero(self, tmp_path):
+        cnv_dir = tmp_path / "cnv"
+        cnv_dir.mkdir()
+        (cnv_dir / "cast_001.cnv").write_text("dummy")
+        ns = _draft_ns(cnv_dir=cnv_dir, out_dir=tmp_path / "out", dry_run=True)
+        rc = _draft.run(ns)
+        assert rc == 0
+
+    def test_dry_run_writes_no_files(self, tmp_path):
+        cnv_dir = tmp_path / "cnv"
+        cnv_dir.mkdir()
+        (cnv_dir / "cast_001.cnv").write_text("dummy")
+        out_dir = tmp_path / "out"
+        ns = _draft_ns(cnv_dir=cnv_dir, out_dir=out_dir, dry_run=True)
+        _draft.run(ns)
+        assert not out_dir.exists()
+
+    def test_draft_parser_standalone(self):
+        parser = _draft.build_parser()
+        args = parser.parse_args(["cnv/", "--force", "--cruise", "M200"])
+        assert args.force is True
+        assert args.cruise == "M200"
+        assert args.cnv_dir == Path("cnv/")
+
+    def test_draft_parser_default_out_dir(self):
+        parser = _draft.build_parser()
+        args = parser.parse_args(["cnv/"])
+        assert args.out_dir == Path("ctd_draft/")
+
+    def test_keep_nc_flag(self):
+        parser = _draft.build_parser()
+        args = parser.parse_args(["cnv/", "--keep-nc", "nc_out/"])
+        assert args.keep_nc == Path("nc_out/")

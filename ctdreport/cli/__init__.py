@@ -8,6 +8,7 @@ import sys
 from ctdreport._version import __version__
 
 from . import convert as _convert
+from . import draft as _draft
 from . import init as _init
 from . import report as _report
 from . import run as _run
@@ -50,6 +51,7 @@ def main() -> None:
     )
     subparsers.required = True
 
+    _draft.build_parser(subparsers)
     _init.build_parser(subparsers)
     _convert.build_parser(subparsers)
     _report.build_parser(subparsers)
