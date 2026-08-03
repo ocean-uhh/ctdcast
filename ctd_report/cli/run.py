@@ -65,6 +65,12 @@ Examples:
         help="Force regeneration of all outputs regardless of mtime.",
     )
     parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        default=False,
+        help="Skip any page whose HTML already exists, regardless of source mtime.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
@@ -121,7 +127,7 @@ def run(args: argparse.Namespace) -> int:
         map=False,
         cast=cast_filter,
         force=args.force,
-        skip_existing=False,
+        skip_existing=args.skip_existing,
         dry_run=args.dry_run,
     )
 

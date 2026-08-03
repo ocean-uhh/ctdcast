@@ -68,7 +68,7 @@ def _init_ns(**kwargs) -> argparse.Namespace:
 
 def _run_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for run.run() with safe defaults."""
-    defaults = {"ctd": False, "cast": None, "force": False, "dry_run": False}
+    defaults = {"ctd": False, "cast": None, "force": False, "skip_existing": False, "dry_run": False}
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
@@ -331,6 +331,20 @@ class TestRun:
         parser = _run.build_parser()
         args = parser.parse_args(["config.yaml", "--ctd"])
         assert args.ctd is True
+
+    def test_run_parser_skip_existing_flag(self):
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml", "--skip-existing"])
+        assert args.skip_existing is True
+
+    def test_run_skip_existing_does_not_overwrite(self, tmp_path):
+        """--skip-existing leaves existing station pages untouched."""
+        cfg = self._write_cfg(tmp_path)
+        _run.run(_run_ns(config=cfg, force=True))
+        page = tmp_path / "out" / "stations" / "cast_011.html"
+        mtime_before = page.stat().st_mtime
+        _run.run(_run_ns(config=cfg, skip_existing=True))
+        assert page.stat().st_mtime == mtime_before
 
 
 # ---------------------------------------------------------------------------

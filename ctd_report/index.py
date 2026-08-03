@@ -378,9 +378,10 @@ def generate_ctd_report(
     force:
         Regenerate all pages regardless of file modification times.
     skip_existing:
-        Reserved for a future "skip if output exists" mode regardless of mtime.
-        Currently unused — the default behaviour (``force=False``) already performs
-        mtime-based smart updates.
+        If True, skip any page whose output HTML already exists, regardless of
+        whether the source files are newer.  Use this to fill in only missing
+        pages without touching anything already generated.  Takes precedence over
+        the mtime check but is overridden by ``force``.
     section_style:
         ``"pcolormesh"`` or ``"contourf"`` for section figures.
     timeseries_style:
@@ -458,7 +459,9 @@ def generate_ctd_report(
                     _mat = _mat_cand
 
             _extra: tuple[Path, ...] = (_mat,) if _mat is not None else ()
-            _skip_reason = _mtime_skip_reason(_expected, meta["path"], force, *_extra)
+            _skip_reason = _mtime_skip_reason(
+                _expected, meta["path"], force, *_extra, skip_existing=skip_existing
+            )
 
             _ladcp_note = ""
             if (
@@ -511,7 +514,7 @@ def generate_ctd_report(
             _sec_was_new = not _expected.exists()
             _sec_html_mtime_str = _fmt_mtime(_expected)
             _src = profiles_path if profiles_path is not None else _expected
-            _sec_skip = _mtime_skip_reason(_expected, _src, force)
+            _sec_skip = _mtime_skip_reason(_expected, _src, force, skip_existing=skip_existing)
             _sec_note = ""
             if _sec_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
@@ -553,7 +556,7 @@ def generate_ctd_report(
             _ts_was_new = not _expected.exists()
             _ts_html_mtime_str = _fmt_mtime(_expected)
             _src = profiles_path if profiles_path is not None else _expected
-            _ts_skip = _mtime_skip_reason(_expected, _src, force)
+            _ts_skip = _mtime_skip_reason(_expected, _src, force, skip_existing=skip_existing)
             _ts_note = ""
             if _ts_skip and ladcp_dir is not None:
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
@@ -1189,22 +1192,30 @@ def _fmt_mtime(path: Path) -> str:
 
 
 def _mtime_skip_reason(
-    expected: Path, source: Path, force: bool, *extra_sources: Path
+    expected: Path,
+    source: Path,
+    force: bool,
+    *extra_sources: Path,
+    skip_existing: bool = False,
 ) -> str:
     """Return a non-empty skip-reason string if *expected* should not be regenerated.
 
     Returns an empty string when the page should be (re)generated.
 
-    Logic:
+    Logic (evaluated in order):
     - *force* is True → always regenerate (return ``""``).
     - *expected* does not exist → must generate (return ``""``).
-    - *expected* is newer than ALL of *source* and *extra_sources* → skip.
+    - *skip_existing* is True → skip unconditionally: ``"skipped (exists)"``.
+    - *expected* is newer than ALL of *source* and *extra_sources* → skip:
+      ``"skipped (up to date)"``.
     - Any source newer than *expected* → regenerate (smart update, return ``""``).
     - mtime comparison fails (``OSError``) → conservative skip:
       ``"skipped (exists, use --force)"``.
     """
     if force or not expected.exists():
         return ""
+    if skip_existing:
+        return "skipped (exists)"
     try:
         html_mtime = expected.stat().st_mtime
         all_sources = [source, *extra_sources]
