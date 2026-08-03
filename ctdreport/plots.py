@@ -1166,6 +1166,87 @@ def _make_section_ts_profiles_b64(
         return None
 
 
+def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
+    """Return a base64 PNG of a CT–SA diagram for all timeseries profiles, coloured by time.
+
+    Each profile (N_PROF) is drawn as a line in CT–SA space.  Colour encodes hours
+    since the first profile so temporal evolution is visible.  σ₀ background contours
+    are overlaid.  Returns None if SA or CT are absent or fewer than two profiles exist.
+
+    Parameters
+    ----------
+    ds_ts:
+        2-D profiles dataset with dims ``(N_PROF, pressure)`` and variables
+        ``SA``, ``CT``, ``time_start``.
+    """
+    if "SA" not in ds_ts or "CT" not in ds_ts:
+        return None
+    try:
+        plt.style.use(str(_MPLSTYLE))
+        sa_all = ds_ts["SA"].values  # (N_PROF, N_P)
+        ct_all = ds_ts["CT"].values
+        if sa_all.shape[0] < 2:
+            return None
+
+        sa_fin = sa_all[np.isfinite(sa_all)]
+        ct_fin = ct_all[np.isfinite(ct_all)]
+        if not len(sa_fin) or not len(ct_fin):
+            return None
+
+        sa_lo = float(np.nanpercentile(sa_fin, 0.5))
+        sa_hi = float(np.nanpercentile(sa_fin, 99.5))
+        ct_lo = float(np.nanpercentile(ct_fin, 0.5))
+        ct_hi = float(np.nanpercentile(ct_fin, 99.5))
+
+        # Colourbar: hours since first profile
+        t_ns = ds_ts["time_start"].values.astype("datetime64[ns]").astype(float)
+        t_hours = (t_ns - t_ns[0]) / 3.6e12
+        t_lo, t_hi = float(t_hours[0]), float(t_hours[-1])
+        if t_hi <= t_lo:
+            t_hi = t_lo + 1.0
+        bounds = _nice_colorbar_bounds(t_lo, t_hi, n=12)
+        cmap = plt.get_cmap("plasma", len(bounds) - 1)
+        norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+
+        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
+        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
+        SA_g, CT_g = np.meshgrid(sa_g, ct_g)
+        sig0_g = gsw.sigma0(SA_g, CT_g)
+
+        fig, ax = plt.subplots(figsize=(5.5, 5))
+        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        ax.clabel(cs, fmt="%.1f", fontsize=7)
+
+        for i in range(sa_all.shape[0]):
+            mask = np.isfinite(sa_all[i]) & np.isfinite(ct_all[i])
+            if not mask.any():
+                continue
+            ax.plot(
+                sa_all[i, mask],
+                ct_all[i, mask],
+                color=cmap(norm(float(t_hours[i]))),
+                alpha=0.6,
+                lw=0.8,
+            )
+
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cb = fig.colorbar(sm, ax=ax, ticks=bounds[::2])
+        cb.set_label("Hours since start")
+
+        ax.set_xlim(sa_lo, sa_hi)
+        ax.set_ylim(ct_lo, ct_hi)
+        ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
+        ax.set_ylabel("Conservative Temperature (°C)")
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        b64 = _fig_to_base64(fig)
+        plt.close(fig)
+        return b64
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
     if "SA" not in ds_prof or "CT" not in ds_prof:

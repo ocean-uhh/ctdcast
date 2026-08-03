@@ -25,6 +25,7 @@ from ctdreport.plots import (
     _make_ladcp_section_b64,
     _make_station_map_b64,
     _make_timeseries_b64,
+    _make_ts_diagram_timeseries_b64,
 )
 from ctdreport.section import _expand_cast_numbers
 
@@ -108,7 +109,7 @@ _TIMESERIES_TEMPLATE = (
     {% for panel in panels %}
     <a href="#s-panel-{{ loop.index }}">{{ panel.short }}</a>
     {% endfor %}
-    {% if fig_ladcp_ts_b64 %}<a href="#s-ladcp">LADCP</a>{% endif %}
+    {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
     <a href="#top">↑ Top</a>
   </div>
 </nav>
@@ -152,14 +153,26 @@ _TIMESERIES_TEMPLATE = (
 <div class="card"><p style="color:#888">No data available for these casts.</p></div>
 {% endif %}
 
-{% if fig_ladcp_ts_b64 %}
-<div class="card" id="s-ladcp">
-  <h2>LADCP velocity (U east, V north)</h2>
+{% for card in extra_cards %}
+<div class="card" id="s-{{ card.id }}">
+  <h2>{{ card.title }}</h2>
+  {% if card.panels | length == 1 %}
   <div class="plot-wide">
-    <img src="data:image/png;base64,{{ fig_ladcp_ts_b64 }}" alt="LADCP U and V timeseries">
+    <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
   </div>
+  {% else %}
+  <div class="plots">
+    {% for panel in card.panels %}
+    <figure style="text-align:center; margin:0;">
+      <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}"
+           style="max-height:420px; width:auto; border-radius:4px;">
+      <figcaption style="font-size:0.8rem; color:#555; margin-top:0.3rem;">{{ panel.title }}</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
-{% endif %}
+{% endfor %}
 
 """
     + _tmpl.FOOTER_TAIL
@@ -280,8 +293,10 @@ def generate_timeseries_page(
         if b64:
             panels.append({"title": label, "short": short, "b64": b64})
 
+    _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
+
     # LADCP: use downcast profiles only, x-axis = hours since first cast
-    fig_ladcp_ts_b64: str | None = None
+    _ladcp_ts_b64: str | None = None
     if ladcp_dir is not None:
         if "cast_type" in ds_ts:
             ds_down = ds_ts.isel(N_PROF=ds_ts["cast_type"].values == "down")
@@ -293,7 +308,7 @@ def generate_timeseries_page(
         t_ns = ds_down["time_start"].values.astype("datetime64[ns]").astype(float)
         t_hours = (t_ns - t_ns[0]) / 3.6e12 if len(t_ns) > 0 else np.zeros(0)
         _figw = float(np.clip(0.25 * len(ladcp_cast_nums), 8, 16))
-        fig_ladcp_ts_b64 = _make_ladcp_section_b64(
+        _ladcp_ts_b64 = _make_ladcp_section_b64(
             ladcp_cast_nums,
             t_hours,
             "Hours since start",
@@ -302,6 +317,26 @@ def generate_timeseries_page(
             lons=ladcp_lons,
             figsize=(_figw, 8.0),
         )
+
+    _extra_raw: dict[str, dict | None] = {
+        "ladcp": {
+            "id": "ladcp",
+            "title": "LADCP velocity (U east, V north)",
+            "short": "LADCP",
+            "panels": [{"b64": _ladcp_ts_b64, "title": "LADCP"}],
+        }
+        if _ladcp_ts_b64
+        else None,
+        "ts": {
+            "id": "ts",
+            "title": "T–S diagram (profiles coloured by time)",
+            "short": "T–S",
+            "panels": [{"b64": _ts_diagram_b64, "title": "T–S diagram"}],
+        }
+        if _ts_diagram_b64
+        else None,
+    }
+    extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
 
     ctx: dict[str, Any] = {
         "ts_name": ts_name,
@@ -314,7 +349,7 @@ def generate_timeseries_page(
         "cast_nums": [f"{n:03d}" for n in sorted(cast_nums)],
         "panels": panels,
         "fig_location_b64": fig_location_b64,
-        "fig_ladcp_ts_b64": fig_ladcp_ts_b64,
+        "extra_cards": extra_cards,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }

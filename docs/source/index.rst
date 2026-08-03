@@ -30,6 +30,7 @@ Contents
    :maxdepth: 2
    :caption: Reference
 
+   cli_reference
    config_reference
    output_structure
    api
