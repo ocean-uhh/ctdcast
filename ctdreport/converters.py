@@ -55,24 +55,6 @@ class CtdBackend(Protocol):
         ...
 
 
-class _BuiltinBackend:
-    """Built-in CNV to netCDF converter (not yet implemented)."""
-
-    def convert_cast(
-        self,
-        cnv_path: Path,
-        nc_path: Path,
-        *,
-        force: bool = False,
-    ) -> bool:
-        """Convert one CNV file using the built-in converter."""
-        raise NotImplementedError(
-            "Built-in CNV converter is not yet implemented. "
-            "Use --backend seasenselib if it is installed, or convert files "
-            "manually and point data.nc_dir at the result directory."
-        )
-
-
 class _SeasenselibBackend:
     """CTD backend that delegates to the seasenselib package."""
 
@@ -122,7 +104,6 @@ class _SeasenselibBackend:
 
 
 _BACKENDS: dict[str, type] = {
-    "builtin": _BuiltinBackend,
     "seasenselib": _SeasenselibBackend,
 }
 
@@ -133,7 +114,7 @@ def get_ctd_backend(name: str) -> CtdBackend:
     Parameters
     ----------
     name:
-        ``"builtin"`` or ``"seasenselib"``.
+        Currently only ``"seasenselib"``.
 
     Raises
     ------
@@ -167,7 +148,7 @@ def convert_ctd_files(
     nc_dir:
         Output directory for per-cast netCDF files (created if absent).
     backend:
-        Backend name: ``"seasenselib"`` (default) or ``"builtin"`` (not yet implemented).
+        Backend name (currently only ``"seasenselib"``).
     force:
         Overwrite existing netCDF files.
     cast_filter:
