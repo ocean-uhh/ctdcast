@@ -298,24 +298,44 @@ def generate_section_page(
         panels.append({"title": label, "short": short, "b64": b64})
 
     _ts_panels_raw = [
-        {"title": "Profiles coloured by distance", "b64": _make_section_ts_profiles_b64(ds_sec, x_vals)},
-        {"title": "2-D histogram (log count)", "b64": _make_section_ts_histogram_b64(ds_sec)},
+        {
+            "title": "Profiles coloured by distance",
+            "b64": _make_section_ts_profiles_b64(ds_sec, x_vals),
+        },
+        {
+            "title": "2-D histogram (log count)",
+            "b64": _make_section_ts_histogram_b64(ds_sec),
+        },
         {"title": "Median O₂ saturation", "b64": _make_section_ts_o2_b64(ds_sec)},
     ]
     _ladcp_b64 = (
-        _make_ladcp_section_b64(cast_nums_int, x_vals, x_label, ladcp_dir, lats=lats, lons=lons)
+        _make_ladcp_section_b64(
+            cast_nums_int, x_vals, x_label, ladcp_dir, lats=lats, lons=lons
+        )
         if ladcp_dir is not None
         else None
     )
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
-            "id": "ladcp", "title": "LADCP velocity (U east, V north)", "short": "LADCP",
+            "id": "ladcp",
+            "title": "LADCP velocity (U east, V north)",
+            "short": "LADCP",
             "panels": [{"b64": _ladcp_b64, "title": "LADCP"}],
-        } if _ladcp_b64 else None,
+        }
+        if _ladcp_b64
+        else None,
         "ts": {
-            "id": "ts", "title": "T–S diagrams", "short": "T–S",
-            "panels": [{"b64": p["b64"], "title": p["title"]} for p in _ts_panels_raw if p["b64"]],
-        } if any(p["b64"] for p in _ts_panels_raw) else None,
+            "id": "ts",
+            "title": "T–S diagrams",
+            "short": "T–S",
+            "panels": [
+                {"b64": p["b64"], "title": p["title"]}
+                for p in _ts_panels_raw
+                if p["b64"]
+            ],
+        }
+        if any(p["b64"] for p in _ts_panels_raw)
+        else None,
     }
     extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
 

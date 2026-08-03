@@ -320,13 +320,21 @@ def generate_timeseries_page(
 
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
-            "id": "ladcp", "title": "LADCP velocity (U east, V north)", "short": "LADCP",
+            "id": "ladcp",
+            "title": "LADCP velocity (U east, V north)",
+            "short": "LADCP",
             "panels": [{"b64": _ladcp_ts_b64, "title": "LADCP"}],
-        } if _ladcp_ts_b64 else None,
+        }
+        if _ladcp_ts_b64
+        else None,
         "ts": {
-            "id": "ts", "title": "T–S diagram (profiles coloured by time)", "short": "T–S",
+            "id": "ts",
+            "title": "T–S diagram (profiles coloured by time)",
+            "short": "T–S",
             "panels": [{"b64": _ts_diagram_b64, "title": "T–S diagram"}],
-        } if _ts_diagram_b64 else None,
+        }
+        if _ts_diagram_b64
+        else None,
     }
     extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
 
