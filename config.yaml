@@ -27,8 +27,8 @@ data:
 
 output:
   # All HTML files are written here; subdirs stations/ and sections/ created automatically
-  #dir: outputs/ctd_report
-  dir: /Volumes/Compartida/MIXSED2/CTD/ctd_report
+  dir: outputs/ctd_report
+  #dir: /Volumes/Compartida/MIXSED2/CTD/ctd_report
 
 # Overwrite existing HTML files
 force: false

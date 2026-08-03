@@ -16,6 +16,7 @@ import yaml
 from ctd_report.cli import init as _init
 from ctd_report.cli import main as cli_main
 from ctd_report.cli import report as _report
+from ctd_report.cli import run as _run
 from ctd_report.cli import validate as _validate
 
 _HERE = Path(__file__).parent
@@ -61,6 +62,19 @@ def _validate_ns(**kwargs) -> argparse.Namespace:
 
 def _init_ns(**kwargs) -> argparse.Namespace:
     defaults = dict(dest=Path("."), sections=False, force=False)
+    defaults.update(kwargs)
+    return argparse.Namespace(**defaults)
+
+
+def _run_ns(**kwargs) -> argparse.Namespace:
+    """Build a Namespace for run.run() with safe defaults."""
+    defaults = {
+        "ctd": False,
+        "cast": None,
+        "force": False,
+        "skip_existing": False,
+        "dry_run": False,
+    }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
@@ -260,6 +274,83 @@ class TestReport:
         assert rc == 0
         assert (tmp_path / "out" / "stations" / "cast_011.html").exists()
         assert not (tmp_path / "out" / "stations" / "cast_012.html").exists()
+
+
+# ---------------------------------------------------------------------------
+# oceancast run
+# ---------------------------------------------------------------------------
+
+
+class TestRun:
+    def _write_cfg(self, tmp_path, **extras) -> Path:
+        cfg: dict = {
+            "data": {"nc_dir": str(_FIXTURES_NC)},
+            "output": {"dir": str(tmp_path / "out")},
+        }
+        for k, v in extras.items():
+            cfg["data"][k] = v
+        p = tmp_path / "config.yaml"
+        p.write_text(yaml.dump(cfg))
+        return p
+
+    def test_missing_config_returns_error(self, tmp_path):
+        rc = _run.run(_run_ns(config=tmp_path / "nonexistent.yaml"))
+        assert rc == 1
+
+    def test_dry_run_returns_zero(self, tmp_path):
+        cfg = self._write_cfg(tmp_path)
+        rc = _run.run(_run_ns(config=cfg, dry_run=True))
+        assert rc == 0
+
+    def test_dry_run_writes_no_files(self, tmp_path):
+        cfg = self._write_cfg(tmp_path)
+        _run.run(_run_ns(config=cfg, dry_run=True))
+        assert not (tmp_path / "out").exists()
+
+    def test_run_generates_station_pages(self, tmp_path):
+        """run with no profiles_nc → skips convert profiles, generates station pages."""
+        cfg = self._write_cfg(tmp_path)
+        rc = _run.run(_run_ns(config=cfg, force=True))
+        assert rc == 0
+        for cast_num in (11, 12, 128, 129):
+            assert (
+                tmp_path / "out" / "stations" / f"cast_{cast_num:03d}.html"
+            ).exists()
+
+    def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
+        """--cast N skips convert entirely; generates only the one station page."""
+        cfg = self._write_cfg(tmp_path)
+        rc = _run.run(_run_ns(config=cfg, cast=11, force=True))
+        assert rc == 0
+        assert (tmp_path / "out" / "stations" / "cast_011.html").exists()
+        assert not (tmp_path / "out" / "stations" / "cast_012.html").exists()
+
+    def test_run_parser_standalone(self):
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml", "--force", "--cast", "42"])
+        assert args.force is True
+        assert args.cast == 42
+        assert args.config == Path("config.yaml")
+        assert args.ctd is False
+
+    def test_run_parser_ctd_flag(self):
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml", "--ctd"])
+        assert args.ctd is True
+
+    def test_run_parser_skip_existing_flag(self):
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml", "--skip-existing"])
+        assert args.skip_existing is True
+
+    def test_run_skip_existing_does_not_overwrite(self, tmp_path):
+        """--skip-existing leaves existing station pages untouched."""
+        cfg = self._write_cfg(tmp_path)
+        _run.run(_run_ns(config=cfg, force=True))
+        page = tmp_path / "out" / "stations" / "cast_011.html"
+        mtime_before = page.stat().st_mtime
+        _run.run(_run_ns(config=cfg, skip_existing=True))
+        assert page.stat().st_mtime == mtime_before
 
 
 # ---------------------------------------------------------------------------

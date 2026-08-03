@@ -1,12 +1,13 @@
 """Structural tests for generate_station_page HTML output."""
 
 import re
+from pathlib import Path
 
 import pytest
 from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
 from ctd_report.index import _read_cast_meta
-from ctd_report.station import generate_station_page
+from ctd_report.station import _cast_id_from_path, generate_station_page
 
 
 @pytest.fixture
@@ -32,8 +33,8 @@ def station_html(tmp_path, meta_011, meta_012):
         CAST_011,
         tmp_path,
         all_meta=[meta_011, meta_012],
-        prev_num=None,
-        next_num=12,
+        prev_cast_str=None,
+        next_cast_str="012",
         force=True,
     )
     assert out is not None and out.exists(), (
@@ -49,8 +50,8 @@ def station_html_ladcp(tmp_path, meta_011, meta_012):
         CAST_011,
         tmp_path,
         all_meta=[meta_011, meta_012],
-        prev_num=None,
-        next_num=12,
+        prev_cast_str=None,
+        next_cast_str="012",
         force=True,
         ladcp_dir=FIXTURES_LADCP,
     )
@@ -125,3 +126,19 @@ def test_station_ladcp_self_contained(station_html_ladcp):
     external = re.findall(r'\bsrc=["\']https?://', station_html_ladcp)
     external += re.findall(r'<link\b[^>]+\bhref=["\']https?://', station_html_ladcp)
     assert external == [], f"External resource links in LADCP page: {external}"
+
+
+# --- cast id parsing ----------------------------------------------------------
+
+
+def test_cast_id_plain():
+    assert _cast_id_from_path(Path("mixsed2_042.nc")) == (42, "")
+
+
+def test_cast_id_letter_suffix_no_underscore():
+    assert _cast_id_from_path(Path("mixsed2_042b.nc")) == (42, "b")
+
+
+def test_cast_id_letter_suffix_with_underscore():
+    """Underscore-before-letter format (e.g. mixsed2_004_b.nc) normalises to same suffix."""
+    assert _cast_id_from_path(Path("mixsed2_004_b.nc")) == (4, "b")
