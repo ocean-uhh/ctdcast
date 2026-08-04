@@ -44,6 +44,8 @@ For sections, time series, and LADCP panels you need a `config.yaml`:
 
 ```bash
 ctdreport init                        # writes a template config.yaml
+ctdreport init --interactive          # guided setup: prompts for paths and
+                                      # auto-detects sections/timeseries from profiles.nc
 ctdreport validate config.yaml        # check paths before the first run
 ```
 

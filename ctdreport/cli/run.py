@@ -76,6 +76,16 @@ Examples:
         default=False,
         help="Print what would be done without writing any files.",
     )
+    parser.add_argument(
+        "--trim-soak",
+        action="store_true",
+        default=False,
+        dest="trim_soak",
+        help=(
+            "Remove pre-soak records from each cast before plotting. "
+            "Detects the last near-surface point before the main descent and trims everything prior."
+        ),
+    )
 
     return parser
 
@@ -90,15 +100,28 @@ def run(args: argparse.Namespace) -> int:
     cast_filter: int | None = args.cast
 
     # ------------------------------------------------------------------ convert
-    # Skip the convert step entirely when targeting a single cast — profiles.nc
-    # rebuild would be expensive and pointless for a per-cast station-page check.
-    if cast_filter is None:
-        from . import convert as _convert
+    from . import convert as _convert
 
-        # When --ctd is given, pass ctd=True and profiles=True so that convert's
-        # explicit-flag branch runs both steps in sequence.
-        # Without --ctd, pass both False so convert uses its default branch, which
-        # runs profiles only when data.profiles_nc is configured in the config.
+    if cast_filter is not None and args.ctd:
+        # Single-cast + --ctd: convert that one CNV file, skip profiles rebuild.
+        convert_ns = argparse.Namespace(
+            config=cfg_path,
+            ctd=True,
+            profiles=False,
+            ladcp=False,
+            backend="seasenselib",
+            cast=cast_filter,
+            pattern="*.cnv",
+            force=args.force,
+            dry_run=args.dry_run,
+        )
+        print("=== convert ===")
+        rc = _convert.run(convert_ns)
+        if rc != 0:
+            return rc
+    elif cast_filter is None:
+        # Full run: build profiles (and optionally CTD-convert first if --ctd).
+        # Without --ctd, the default branch in convert runs profiles only.
         convert_ns = argparse.Namespace(
             config=cfg_path,
             ctd=args.ctd,
@@ -106,14 +129,15 @@ def run(args: argparse.Namespace) -> int:
             ladcp=False,
             backend="seasenselib",
             cast=None,
+            pattern="*.cnv",
             force=args.force,
             dry_run=args.dry_run,
         )
-
         print("=== convert ===")
         rc = _convert.run(convert_ns)
         if rc != 0:
             return rc
+    # cast_filter set but no --ctd: skip convert entirely (just regenerate the HTML).
 
     # ------------------------------------------------------------------ report
     from . import report as _report
@@ -130,7 +154,7 @@ def run(args: argparse.Namespace) -> int:
         skip_existing=args.skip_existing,
         dry_run=args.dry_run,
         sal=None,
-        trim_soak=False,
+        trim_soak=args.trim_soak,
     )
 
     print("=== report ===")

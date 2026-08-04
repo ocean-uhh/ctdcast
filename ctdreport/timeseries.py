@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import numpy as np
@@ -23,7 +24,7 @@ from ctdreport._version import __version__ as _VERSION
 from ctdreport.analysis import _add_aou, _add_teos10_profiles, _compact_cast_list
 from ctdreport.plots import (
     _make_ladcp_section_b64,
-    _make_station_map_b64,
+    _make_section_map_b64,
     _make_timeseries_b64,
     _make_ts_diagram_timeseries_b64,
 )
@@ -195,6 +196,7 @@ def generate_timeseries_page(
     vmax_override: dict[str, float] | None = None,
     all_meta: list[dict] | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
 
@@ -221,8 +223,12 @@ def generate_timeseries_page(
         List of per-cast metadata dicts (keys ``lat``, ``lon``, ``cast_num``);
         used to render a cruise-context location map.  If None, no map is shown.
     ladcp_dir:
-        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``.
+        Directory containing processed LADCP ``.mat`` files.
         If None, the LADCP velocity panel is omitted.
+    ladcp_pattern:
+        Filename pattern for LADCP files, e.g. ``"msm_142_1_*.mat"``.
+        The ``*`` is replaced with the zero-padded cast number.
+        Falls back to ``NNN.mat`` if not given.
 
     Returns
     -------
@@ -240,12 +246,14 @@ def generate_timeseries_page(
     if not profiles_path.exists():
         return None
 
+    _dbg = perf_counter()
     try:
         ds_all = xr.open_dataset(
             profiles_path, decode_timedelta=False, engine="netcdf4"
         ).load()
     except Exception:  # noqa: BLE001
         return None
+    print(f"    [ts dbg] load profiles.nc: {perf_counter() - _dbg:.2f}s")
 
     all_cast_nums = ds_all["cast_number"].values
     mask = np.isin(all_cast_nums, cast_nums)
@@ -254,8 +262,10 @@ def generate_timeseries_page(
         return None
 
     ds_ts = ds_all.isel(N_PROF=mask)
+    _dbg = perf_counter()
     ds_ts = _add_teos10_profiles(ds_ts)
     ds_ts = _add_aou(ds_ts)
+    print(f"    [ts dbg] teos10+aou: {perf_counter() - _dbg:.2f}s")
 
     # Sort all profiles (both down and up) by time_start
     order = np.argsort(ds_ts["time_start"].values)
@@ -269,17 +279,47 @@ def generate_timeseries_page(
     time_start_str = str(times[0])[:16].replace("T", " ")
     time_end_str = str(times[-1])[:16].replace("T", " ")
 
-    # Location map: centroid of the yoyo station highlighted against all cruise casts
-    yoyo_lats = ds_ts["latitude"].values if "latitude" in ds_ts else np.array([])
-    yoyo_lons = ds_ts["longitude"].values if "longitude" in ds_ts else np.array([])
-    yoyo_lat = float(np.nanmedian(yoyo_lats)) if len(yoyo_lats) else float("nan")
-    yoyo_lon = float(np.nanmedian(yoyo_lons)) if len(yoyo_lons) else float("nan")
+    # Location map: zoom in on the repeat-station cluster with 1° margin.
+    # Use downcast positions only (up/down share the same location; avoids
+    # duplicate scatter markers piling up at the same point).
+    _ds_down = (
+        ds_ts.isel(N_PROF=ds_ts["cast_type"].values == "down")
+        if "cast_type" in ds_ts
+        else ds_ts
+    )
+    yoyo_lats = _ds_down["latitude"].values if "latitude" in _ds_down else np.array([])
+    yoyo_lons = (
+        _ds_down["longitude"].values if "longitude" in _ds_down else np.array([])
+    )
+    yoyo_cast_nums = [int(c) for c in _ds_down["cast_number"].values]
     fig_location_b64: str | None = None
-    if all_meta and np.isfinite(yoyo_lat) and np.isfinite(yoyo_lon):
-        fig_location_b64 = _make_station_map_b64(yoyo_lat, yoyo_lon, all_meta)
+    if len(yoyo_lats) and np.any(np.isfinite(yoyo_lats)):
+        _dbg = perf_counter()
+        # Compute cluster bounding radius in km, then set margin = 2× radius
+        # (min 2 km) converted to degrees separately for lat and lon so the
+        # rendered map is Mercator-square.
+        _fin_lats = yoyo_lats[np.isfinite(yoyo_lats)]
+        _fin_lons = yoyo_lons[np.isfinite(yoyo_lons)]
+        _mean_lat = float(np.nanmedian(_fin_lats))
+        _cos_lat = float(np.cos(np.deg2rad(_mean_lat)))
+        _lat_km = float((_fin_lats.max() - _fin_lats.min()) * 111.0)
+        _lon_km = float((_fin_lons.max() - _fin_lons.min()) * 111.0 * _cos_lat)
+        _radius_km = max(_lat_km, _lon_km) / 2.0
+        _context_km = max(_radius_km * 2.0, 2.0)
+        _margin_lat = _context_km / 111.0
+        _margin_lon = _context_km / (111.0 * max(_cos_lat, 0.05))
+        fig_location_b64 = _make_section_map_b64(
+            list(yoyo_lats),
+            list(yoyo_lons),
+            yoyo_cast_nums,
+            min_margin=_margin_lat,
+            min_margin_lon=_margin_lon,
+        )
+        print(f"    [ts dbg] station map: {perf_counter() - _dbg:.2f}s")
 
     vmin = vmin_override or {}
     vmax = vmax_override or {}
+    _dbg = perf_counter()
     panels: list[dict[str, Any]] = []
     for var, label, short in _TIMESERIES_VARS:
         b64 = _make_timeseries_b64(
@@ -292,8 +332,13 @@ def generate_timeseries_page(
         )
         if b64:
             panels.append({"title": label, "short": short, "b64": b64})
+    print(
+        f"    [ts dbg] timeseries panels ({len(panels)}): {perf_counter() - _dbg:.2f}s"
+    )
 
+    _dbg = perf_counter()
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
+    print(f"    [ts dbg] ts diagram: {perf_counter() - _dbg:.2f}s")
 
     # LADCP: use downcast profiles only, x-axis = hours since first cast
     _ladcp_ts_b64: str | None = None
@@ -316,6 +361,7 @@ def generate_timeseries_page(
             lats=ladcp_lats,
             lons=ladcp_lons,
             figsize=(_figw, 8.0),
+            ladcp_pattern=ladcp_pattern,
         )
 
     _extra_raw: dict[str, dict | None] = {

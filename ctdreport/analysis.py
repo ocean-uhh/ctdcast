@@ -99,6 +99,62 @@ def _split_cast(ds: xr.Dataset) -> tuple[xr.Dataset, xr.Dataset]:
     return ds.isel(time=slice(0, i_turn + 1)), ds.isel(time=slice(i_turn, None))
 
 
+# Module-level numpy cache: populated by preload_gebco() at report start.
+# Maps str(path) → (all_lons, all_lats, all_depth) numpy arrays for the cruise area.
+# Once populated, _load_gebco subsets with numpy (zero disk I/O).
+_GEBCO_CACHE: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+
+
+def preload_gebco(
+    path: Path,
+    lat_lo: float,
+    lat_hi: float,
+    lon_lo: float,
+    lon_hi: float,
+    margin: float = 1.0,
+) -> bool:
+    """Load a GEBCO region into memory once for the cruise area.
+
+    Call this at report-generation start with the full lat/lon extent of all
+    casts.  Subsequent ``_load_gebco`` calls then subset from numpy arrays
+    (no disk I/O) instead of reopening the file for every map figure.
+
+    Parameters
+    ----------
+    path:
+        Path to GEBCO netCDF file.
+    lat_lo, lat_hi, lon_lo, lon_hi:
+        Bounding box of the cruise area.
+    margin:
+        Extra degrees around the bounding box.  Default 1.0 deg.
+
+    Returns
+    -------
+    bool
+        True if the file was found and cached successfully.
+    """
+    if not Path(path).exists():
+        return False
+    try:
+        bathy = xr.open_dataset(path, engine="netcdf4")
+        lon_dim = "lon" if "lon" in bathy.coords else "longitude"
+        lat_dim = "lat" if "lat" in bathy.coords else "latitude"
+        sub = bathy.sel(
+            {
+                lon_dim: slice(lon_lo - margin, lon_hi + margin),
+                lat_dim: slice(lat_lo - margin, lat_hi + margin),
+            }
+        )
+        lons = sub[lon_dim].values.copy()
+        lats = sub[lat_dim].values.copy()
+        depth = -sub["elevation"].values.copy()  # GEBCO: negative = below sea level
+        bathy.close()
+        _GEBCO_CACHE[str(path)] = (lons, lats, depth)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _load_gebco(
     lat_lo: float,
     lat_hi: float,
@@ -107,17 +163,32 @@ def _load_gebco(
     margin: float = 0.05,
     path: Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
-    """Load a GEBCO subset; return (lons, lats, depth_m) or None if unavailable.
+    """Return a GEBCO subset as (lons, lats, depth_m) or None if unavailable.
+
+    If ``preload_gebco`` has been called for *path*, subsets from the in-memory
+    numpy cache (fast).  Otherwise opens the file from disk (slow).
 
     Parameters
     ----------
     path:
-        Path to GEBCO_2025.nc. Pass ``_plots.GEBCO_PATH`` from the caller.
+        Path to GEBCO_2025.nc. Pass ``plots.GEBCO_PATH`` from the caller.
         Returns None if not provided or file not found.
     """
     if path is None or not Path(path).exists():
         return None
+    path_str = str(path)
     try:
+        if path_str in _GEBCO_CACHE:
+            all_lons, all_lats, all_depth = _GEBCO_CACHE[path_str]
+            lon_mask = (all_lons >= lon_lo - margin) & (all_lons <= lon_hi + margin)
+            lat_mask = (all_lats >= lat_lo - margin) & (all_lats <= lat_hi + margin)
+            lons = all_lons[lon_mask]
+            lats = all_lats[lat_mask]
+            if lons.size == 0 or lats.size == 0:
+                return None
+            depth = all_depth[lat_mask][:, lon_mask]
+            return lons, lats, depth
+        # Fallback when preload_gebco was not called: open file directly.
         bathy = xr.open_dataset(path, engine="netcdf4")
         lon_dim = "lon" if "lon" in bathy.coords else "longitude"
         lat_dim = "lat" if "lat" in bathy.coords else "latitude"
@@ -364,6 +435,84 @@ def _find_soak_end(
     i_min = i_win_start + i_min_local
 
     return i_min + 1
+
+
+def _find_cast_end(
+    pressure: np.ndarray,
+    times: np.ndarray,
+    deck_window_seconds: float = 20.0,
+    margin_dbar: float = 0.5,
+    max_deck_dbar: float = 20.0,
+) -> int:
+    """Return the exclusive end index, trimming post-recovery deck records.
+
+    Algorithm:
+
+    1. Take the median pressure of the last *deck_window_seconds* seconds as
+       the on-deck reference pressure.  Using a median handles sensor offset
+       (the pressure sensor may not read exactly 0 dbar when the CTD is in
+       the air) and is robust to brief oscillations on deck.
+    2. Find the **first** index after the pressure maximum where pressure falls
+       at or below ``p_deck_median + margin_dbar``.  Trim from that index
+       onward.
+
+    Returns ``len(pressure)`` (no trim) if:
+    - the record is empty or the CTD never returned near the surface
+      (``p_deck_median > max_deck_dbar``), or
+    - pressure never drops to the threshold on the upcast.
+
+    Parameters
+    ----------
+    pressure:
+        Pressure array in dbar.
+    times:
+        Time coordinate array (``numpy.datetime64`` or numeric seconds).
+    deck_window_seconds:
+        Duration of the tail window used to estimate on-deck pressure.
+    margin_dbar:
+        Added to the on-deck median to form the cut threshold.
+    max_deck_dbar:
+        If the on-deck median exceeds this value the CTD is considered not to
+        have returned to the surface and no trim is applied.
+
+    Returns
+    -------
+    int
+        Exclusive end index; slice with ``ds.isel(time=slice(None, idx))``.
+
+    """
+    n = len(pressure)
+    if n == 0:
+        return n
+
+    p_arr = np.asarray(pressure, dtype=float)
+    times_arr = np.asarray(times)
+    if np.issubdtype(times_arr.dtype, np.datetime64):
+        elapsed = (times_arr - times_arr[0]) / np.timedelta64(1, "s")
+    else:
+        elapsed = times_arr.astype(float) - float(times_arr[0])
+
+    i_max = int(np.nanargmax(p_arr))
+
+    # On-deck reference: median of final deck_window_seconds.
+    t_end = float(elapsed[-1])
+    i_win_start = int(np.searchsorted(elapsed, t_end - deck_window_seconds))
+    i_win_start = max(i_max + 1, i_win_start)
+    if i_win_start >= n:
+        return n
+
+    p_deck = float(np.nanmedian(p_arr[i_win_start:]))
+    if p_deck > max_deck_dbar:
+        return n
+
+    threshold = p_deck + margin_dbar
+
+    upcast = p_arr[i_max:]
+    below = np.where(upcast <= threshold)[0]
+    if len(below) == 0:
+        return n
+
+    return i_max + int(below[0])
 
 
 def _compact_cast_list(nums: list[int]) -> str:

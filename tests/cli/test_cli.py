@@ -64,7 +64,18 @@ def _validate_ns(**kwargs) -> argparse.Namespace:
 
 
 def _init_ns(**kwargs) -> argparse.Namespace:
-    defaults = {"dest": Path("."), "sections": False, "force": False}
+    defaults = {
+        "dest": Path("."),
+        "sections": False,
+        "force": False,
+        "interactive": False,
+        "auto_section": False,
+        "dx_diameter": 1.0,
+        "dx_section": 50.0,
+        "max_turn_deg": 45.0,
+        "min_run_casts": 4,
+        "max_section_casts": 25,
+    }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
 
@@ -77,6 +88,7 @@ def _run_ns(**kwargs) -> argparse.Namespace:
         "force": False,
         "skip_existing": False,
         "dry_run": False,
+        "trim_soak": False,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -126,6 +138,220 @@ class TestInit:
         _init.run(_init_ns(dest=tmp_path, sections=True))
         parsed = yaml.safe_load((tmp_path / "ctd_sections.yaml").read_text())
         assert isinstance(parsed, dict)
+
+
+# ---------------------------------------------------------------------------
+# _detect_groups / _cast_range / _format_sections_yaml unit tests
+# ---------------------------------------------------------------------------
+
+
+def _make_profiles_nc(path: Path, cast_nums, lats, lons) -> None:
+    """Write a minimal profiles.nc with the given per-cast metadata."""
+    import numpy as np
+    import xarray as xr
+
+    n = len(cast_nums)
+    # Each cast appears twice: once as "down", once as "up".
+    all_cast_nums = np.concatenate([cast_nums, cast_nums])
+    all_types = np.array(["down"] * n + ["up"] * n)
+    all_lats = np.concatenate([lats, lats])
+    all_lons = np.concatenate([lons, lons])
+    p_grid = np.arange(1, 11, dtype=np.float32)
+
+    ds = xr.Dataset(
+        {
+            "cast_number": ("N_PROF", all_cast_nums.astype(np.int32)),
+            "cast_type": ("N_PROF", all_types),
+            "latitude": ("N_PROF", all_lats.astype(np.float32)),
+            "longitude": ("N_PROF", all_lons.astype(np.float32)),
+            "temperature_1": (
+                ["N_PROF", "pressure"],
+                np.zeros((2 * n, len(p_grid)), dtype=np.float32),
+            ),
+        },
+        coords={"pressure": p_grid},
+    )
+    ds.to_netcdf(path, engine="netcdf4")
+
+
+class TestDetectGroups:
+    """Tests for _detect_groups, _cast_range, and _format_sections_yaml."""
+
+    def _profiles(self, tmp_path, cast_nums, lats, lons) -> Path:
+        import numpy as np
+
+        p = tmp_path / "profiles.nc"
+        _make_profiles_nc(p, np.array(cast_nums), np.array(lats), np.array(lons))
+        return p
+
+    def test_single_cast_yields_no_groups(self, tmp_path):
+        # One cast: too small for any run (min_run_casts >= 3) → no groups.
+        p = self._profiles(tmp_path, [1], [60.0], [-25.0])
+        sections, ts = _init._detect_groups(p, dx_section_km=50.0)
+        assert sections == []
+        assert ts == []
+
+    def test_two_close_casts_yield_no_groups(self, tmp_path):
+        # Two casts: below minimum run length → no groups.
+        p = self._profiles(tmp_path, [1, 2], [60.0, 60.009], [-25.0, -25.0])
+        sections, ts = _init._detect_groups(p, dx_section_km=50.0)
+        assert sections == []
+        assert ts == []
+
+    def test_two_distant_casts_yield_no_groups(self, tmp_path):
+        # Two casts ~28 km apart: below minimum run length → no groups.
+        p = self._profiles(tmp_path, [1, 2], [60.0, 60.0], [-25.0, -24.5])
+        sections, ts = _init._detect_groups(p, dx_section_km=50.0)
+        assert sections == []
+        assert ts == []
+
+    def test_transit_splits_into_two_clusters(self, tmp_path):
+        # Casts 1-3 within <1 km (alternating N/S), then 200 km transit, then casts 4-6 same.
+        # Inconsistent headings → not a heading run → caught by cluster detection → timeseries.
+        import numpy as np
+
+        lats = np.array([60.0, 60.003, 59.997, 62.0, 62.003, 61.997])
+        lons = np.array([-25.0, -25.0, -25.0, -25.0, -25.0, -25.0])
+        p = self._profiles(tmp_path, [1, 2, 3, 4, 5, 6], lats, lons)
+        sections, ts = _init._detect_groups(
+            p, dx_section_km=50.0, min_run_casts=3, dx_diameter_km=1.0
+        )
+        assert len(sections) == 0
+        assert len(ts) == 2
+
+    def test_section_and_timeseries_mixed(self, tmp_path):
+        # Casts 1-5: lon transect at 57°N, 0.4° steps ≈ 22 km → section (heading algorithm).
+        # Casts 6-8: clustered at 60°N with alternating positions < 1 km → timeseries (cluster).
+        import numpy as np
+
+        lats = np.array([57.0, 57.0, 57.0, 57.0, 57.0, 60.0, 60.003, 59.997])
+        lons = np.array([-25.0, -24.6, -24.2, -23.8, -23.4, -25.0, -25.0, -25.0])
+        p = self._profiles(tmp_path, list(range(1, 9)), lats, lons)
+        sections, ts = _init._detect_groups(
+            p, dx_section_km=50.0, min_run_casts=3, dx_diameter_km=1.0
+        )
+        assert len(sections) == 1
+        assert len(ts) == 1
+
+    def test_section_name_is_sequential(self, tmp_path):
+        # 6 casts along a lon transect at 57°N, 0.4° steps ≈ 22 km each.
+        import numpy as np
+
+        lats = np.full(6, 57.0)
+        lons = np.arange(6) * 0.4 - 25.0
+        p = self._profiles(tmp_path, list(range(1, 7)), lats, lons)
+        sections, _ = _init._detect_groups(p, dx_section_km=50.0)
+        assert len(sections) >= 1
+        assert sections[0]["name"] == "Section_001"
+
+    def test_timeseries_name_is_sequential(self, tmp_path):
+        # 3 casts within <1 km with alternating positions (no consistent heading)
+        # → caught by cluster detection → timeseries (min_run_casts=3).
+        import numpy as np
+
+        lats = np.array([60.0, 60.003, 59.997])
+        lons = np.array([-25.0, -25.0, -25.0])
+        p = self._profiles(tmp_path, [1, 2, 3], lats, lons)
+        _, ts = _init._detect_groups(
+            p, dx_section_km=50.0, min_run_casts=3, dx_diameter_km=1.0
+        )
+        assert ts[0]["name"] == "Station_001"
+
+    def test_repeat_station_cluster_detected(self, tmp_path):
+        # 4 unclaimed casts all within 0.5 km of each other (after a section).
+        # They don't form a stable directional run, so they must be caught by
+        # the cluster detection step (step 2b), not the run detection.
+        import numpy as np
+
+        # Section: 6 casts heading steadily eastward.
+        section_lats = np.full(6, 60.0)
+        section_lons = np.linspace(-25.0, -24.5, 6)
+        # Repeat station: 4 casts clustered within ~0.3 km, consecutive cast numbers.
+        # Small lat offsets (~0.003° ≈ 0.3 km) simulate repeat casts at one location.
+        cluster_lats = np.array([59.5, 59.503, 59.497, 59.501])
+        cluster_lons = np.array([-24.0, -24.001, -23.999, -24.002])
+        lats = np.concatenate([section_lats, cluster_lats])
+        lons = np.concatenate([section_lons, cluster_lons])
+        casts = np.arange(1, len(lats) + 1)
+        p = self._profiles(tmp_path, casts, lats, lons)
+        sections, ts = _init._detect_groups(
+            p,
+            dx_section_km=50.0,
+            min_run_casts=4,
+            dx_diameter_km=1.0,
+        )
+        assert len(sections) == 1, f"Expected 1 section, got {len(sections)}"
+        assert len(ts) == 1, f"Expected 1 repeat station, got {len(ts)}"
+        # Repeat station cast numbers should be the cluster (casts 7-10).
+        ts_casts = ts[0]["cast_numbers"]
+        assert ts_casts == [[7, 10]]
+
+
+class TestCastRange:
+    def test_consecutive_range(self):
+        import numpy as np
+
+        result = _init._cast_range(np.array([1, 2, 3, 4, 5]))
+        assert result == [[1, 5]]
+
+    def test_non_consecutive_individual(self):
+        import numpy as np
+
+        result = _init._cast_range(np.array([1, 3, 5]))
+        assert result == [1, 3, 5]
+
+    def test_single_element(self):
+        import numpy as np
+
+        result = _init._cast_range(np.array([7]))
+        assert result == [[7, 7]]
+
+    def test_empty(self):
+        import numpy as np
+
+        result = _init._cast_range(np.array([], dtype=int))
+        assert result == []
+
+
+class TestFormatSectionsYaml:
+    def test_output_is_valid_yaml(self):
+        sections = [
+            {
+                "name": "Section_001",
+                "description": "Test",
+                "cast_numbers": [[1, 5]],
+                "color": "#1f77b4",
+            }
+        ]
+        ts = [
+            {
+                "name": "Station_001",
+                "description": "Rep",
+                "cast_numbers": [[6, 8]],
+                "color": "#ff7f0e",
+            }
+        ]
+        text = _init._format_sections_yaml(sections, ts, 50.0)
+        parsed = yaml.safe_load(text)
+        assert "sections" in parsed
+        assert "timeseries" in parsed
+
+    def test_empty_sections_still_valid(self):
+        text = _init._format_sections_yaml([], [], 50.0)
+        parsed = yaml.safe_load(text)
+        assert parsed is not None
+
+    def test_range_notation_used(self):
+        sections = [
+            {
+                "name": "Section_001",
+                "description": "T",
+                "cast_numbers": [[1, 10]],
+                "color": "#1f77b4",
+            }
+        ]
+        text = _init._format_sections_yaml(sections, [], 50.0)
+        assert "[1, 10]" in text
 
 
 # ---------------------------------------------------------------------------

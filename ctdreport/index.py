@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import numpy as np
@@ -28,7 +29,7 @@ from ctdreport.plots import (
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
 from ctdreport.section import _expand_cast_numbers, generate_section_page
-from ctdreport.station import _extract_cast_id, generate_station_page
+from ctdreport.station import _extract_cast_id, _find_ladcp_file, generate_station_page
 from ctdreport.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
@@ -342,6 +343,7 @@ def generate_ctd_report(
     profiles_path: Path | None = None,
     section_yaml: Path | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
     ship_track_nc: Path | None = None,
     generate: dict[str, bool] | None = None,
     force: bool = False,
@@ -370,6 +372,10 @@ def generate_ctd_report(
     ladcp_dir:
         Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
         or ``NNNb.mat`` (letter-suffix variants supported).
+    ladcp_pattern:
+        Optional filename glob for non-standard LADCP naming, e.g.
+        ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the zero-padded
+        cast number.  See :func:`~ctdreport.station._find_ladcp_file`.
     ship_track_nc:
         Path to a ship-track netCDF for the Leaflet map background line.
     generate:
@@ -442,7 +448,32 @@ def generate_ctd_report(
     )
     cruise = all_meta[0].get("cruise", "UNK") if all_meta else "UNK"
 
+    # Pre-load GEBCO for the cruise area into memory so every map figure
+    # subsets from numpy arrays rather than reopening the file from disk.
+    from ctdreport import plots as _plots_mod
+    from ctdreport.analysis import preload_gebco
+
+    _gebco_path = _plots_mod.GEBCO_PATH
+    if _gebco_path is not None and all_meta:
+        _cast_lats = [
+            m["lat"] for m in all_meta if np.isfinite(m.get("lat", float("nan")))
+        ]
+        _cast_lons = [
+            m["lon"] for m in all_meta if np.isfinite(m.get("lon", float("nan")))
+        ]
+        if _cast_lats:
+            _t0 = perf_counter()
+            preload_gebco(
+                _gebco_path,
+                float(min(_cast_lats)),
+                float(max(_cast_lats)),
+                float(min(_cast_lons)),
+                float(max(_cast_lons)),
+            )
+            print(f"  GEBCO preloaded ({perf_counter() - _t0:.1f}s)")
+
     if gen["stations"]:
+        _t0 = perf_counter()
         cast_num_strs = [m["cast_num_str"] for m in all_meta]
         targets = [
             m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter
@@ -465,13 +496,9 @@ def generate_ctd_report(
             # Resolve LADCP mat path before the skip check so it feeds the mtime comparison.
             _mat: Path | None = None
             if ladcp_dir is not None:
-                _mat_cand = (
-                    ladcp_dir / f"{meta['cast_num']:03d}{meta['cast_suffix']}.mat"
+                _mat = _find_ladcp_file(
+                    ladcp_dir, meta["cast_num"], meta["cast_suffix"], ladcp_pattern
                 )
-                if not _mat_cand.exists():
-                    _mat_cand = ladcp_dir / f"{meta['cast_num']:03d}.mat"
-                if _mat_cand.exists():
-                    _mat = _mat_cand
 
             _extra: tuple[Path, ...] = (_mat,) if _mat is not None else ()
             _skip_reason = _mtime_skip_reason(
@@ -495,6 +522,7 @@ def generate_ctd_report(
                 next_cast_str=next_cast_str,
                 force=force or not _skip_reason,
                 ladcp_dir=ladcp_dir,
+                ladcp_pattern=ladcp_pattern,
                 cast_num_str=meta["cast_num_str"],
                 sal_range=sal_range,
                 trim_soak=trim_soak,
@@ -518,6 +546,7 @@ def generate_ctd_report(
                     f" nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
                 )
             print(f"  station cast_{meta['cast_num_str']}: {_status}")
+        print(f"  [stations: {perf_counter() - _t0:.1f}s]")
 
     yaml_data: dict[str, Any] = {}
     if section_yaml and section_yaml.exists():
@@ -528,6 +557,7 @@ def generate_ctd_report(
     timeseries_cfg: dict[str, Any] = yaml_data.get("timeseries", {})
 
     if gen["sections"]:
+        _t0 = perf_counter()
         for sec_name, sec_cfg in sections_cfg.items():
             _expected = out_dir / "sections" / f"section_{sec_name}.html"
             _sec_was_new = not _expected.exists()
@@ -540,7 +570,11 @@ def generate_ctd_report(
             if _sec_skip and ladcp_dir is not None:
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
                 if (
-                    any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _sec_casts)
+                    any(
+                        _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                        is not None
+                        for cn in _sec_casts
+                    )
                     and _expected.exists()
                     and b"s-ladcp" not in _expected.read_bytes()
                 ):
@@ -555,6 +589,7 @@ def generate_ctd_report(
                 vmin_override=vmin_override,
                 vmax_override=vmax_override,
                 ladcp_dir=ladcp_dir,
+                ladcp_pattern=ladcp_pattern,
             )
             if _sec_skip:
                 _sec_status = _sec_skip + _sec_note
@@ -570,8 +605,10 @@ def generate_ctd_report(
                     f" [html: {_sec_html_mtime_str}, src: {_fmt_mtime(_src)}]"
                 )
             print(f"  section {sec_name}: {_sec_status}")
+        print(f"  [sections: {perf_counter() - _t0:.1f}s]")
 
     if gen["timeseries"] and timeseries_cfg:
+        _t0 = perf_counter()
         for ts_name, ts_cfg in timeseries_cfg.items():
             _expected = out_dir / "timeseries" / f"timeseries_{ts_name}.html"
             _ts_was_new = not _expected.exists()
@@ -584,7 +621,11 @@ def generate_ctd_report(
             if _ts_skip and ladcp_dir is not None:
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
                 if (
-                    any((ladcp_dir / f"{cn:03d}.mat").exists() for cn in _ts_casts)
+                    any(
+                        _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                        is not None
+                        for cn in _ts_casts
+                    )
                     and _expected.exists()
                     and b"s-ladcp" not in _expected.read_bytes()
                 ):
@@ -600,6 +641,7 @@ def generate_ctd_report(
                 vmax_override=vmax_override,
                 all_meta=all_meta,
                 ladcp_dir=ladcp_dir,
+                ladcp_pattern=ladcp_pattern,
             )
             if _ts_skip:
                 _ts_status = _ts_skip + _ts_note
@@ -615,8 +657,10 @@ def generate_ctd_report(
                     f" [html: {_ts_html_mtime_str}, src: {_fmt_mtime(_src)}]"
                 )
             print(f"  timeseries {ts_name}: {_ts_status}")
+        print(f"  [timeseries: {perf_counter() - _t0:.1f}s]")
 
     if gen["index"]:
+        _t0 = perf_counter()
         _write_index(
             all_meta,
             sections_cfg,
@@ -630,6 +674,8 @@ def generate_ctd_report(
             cruise_info=cruise_info,
             timeseries_cfg=timeseries_cfg,
         )
+        print(f"  [index.html: {perf_counter() - _t0:.1f}s]")
+        _t0 = perf_counter()
         _write_stations_list(
             all_meta,
             cruise,
@@ -638,12 +684,17 @@ def generate_ctd_report(
             timeseries_cfg=timeseries_cfg,
             ladcp_dir=ladcp_dir,
         )
+        print(f"  [station_index.html: {perf_counter() - _t0:.1f}s]")
+        _t0 = perf_counter()
         _write_sections_list(
             sections_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
         )
+        print(f"  [sections.html: {perf_counter() - _t0:.1f}s]")
+        _t0 = perf_counter()
         _write_timeseries_list(
             timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
         )
+        print(f"  [timeseries.html: {perf_counter() - _t0:.1f}s]")
 
     if gen["map"]:
         try:
