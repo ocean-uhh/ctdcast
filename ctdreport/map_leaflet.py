@@ -32,6 +32,7 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport._version import __version__ as _VERSION
+from ctdreport.analysis import _load_gebco
 from ctdreport.section import _expand_cast_numbers
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
@@ -259,17 +260,20 @@ def _make_gebco_layers(
 
     try:
         import matplotlib.pyplot as plt
-        import xarray as xr
 
-        ds = xr.open_dataset(str(plots.GEBCO_PATH), engine="netcdf4")
-        ds_region = ds.sel(
-            lat=slice(lat_min - _GEBCO_PAD, lat_max + _GEBCO_PAD),
-            lon=slice(lon_min - _GEBCO_PAD, lon_max + _GEBCO_PAD),
+        _gebco = _load_gebco(
+            lat_min,
+            lat_max,
+            lon_min,
+            lon_max,
+            margin=_GEBCO_PAD,
+            path=plots.GEBCO_PATH,
         )
-        elev = ds_region["elevation"].values.astype(np.float32)  # +up, (lat, lon)
-        lat_vals = ds_region["lat"].values  # ascending S→N
-        lon_vals = ds_region["lon"].values  # ascending W→E
-        ds.close()
+        if _gebco is None:
+            return None, None, None
+        lon_vals, lat_vals, depth = _gebco
+        # _load_gebco stores depth positive-down; downstream code uses elevation (+up).
+        elev = (-depth).astype(np.float32)
 
         if elev.size == 0:
             return None, None, None
@@ -481,7 +485,10 @@ L.control.zoom({ position: 'topright' }).addTo(map);
   var dataLatSpan = DATA_BOUNDS[1][0] - DATA_BOUNDS[0][0];
   var dataLonSpan = DATA_BOUNDS[1][1] - DATA_BOUNDS[0][1];
   var screenAspect = window.innerWidth / Math.max(1, window.innerHeight);
-  var targetLonSpan = Math.max(dataLonSpan, screenAspect * dataLatSpan / cosLat);
+  var targetLonSpan = Math.max(
+    dataLonSpan + 4.0,
+    screenAspect * 1.4 * dataLatSpan / cosLat
+  );
   var midLon = (DATA_BOUNDS[0][1] + DATA_BOUNDS[1][1]) / 2;
   var viewBounds = [
     [DATA_BOUNDS[0][0], midLon - targetLonSpan / 2],

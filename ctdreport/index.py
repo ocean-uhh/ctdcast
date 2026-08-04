@@ -683,6 +683,7 @@ def generate_ctd_report(
             sections_cfg=sections_cfg,
             timeseries_cfg=timeseries_cfg,
             ladcp_dir=ladcp_dir,
+            ladcp_pattern=ladcp_pattern,
         )
         print(f"  [station_index.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
@@ -932,16 +933,19 @@ def _write_stations_list(
     sections_cfg: dict[str, Any] | None = None,
     timeseries_cfg: dict[str, Any] | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
 ) -> None:
     """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
-    # LADCP: collect cast numbers that have a processed .mat file
+    # LADCP: collect cast numbers that have a processed .mat file.
+    # Use _find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
+    # are handled correctly.
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
-        for f in ladcp_dir.glob("*.mat"):
-            try:
-                ladcp_cast_nums.add(int(f.stem))
-            except ValueError:
-                pass
+        for meta in all_meta:
+            cn = meta["cast_num"]
+            cs = meta.get("cast_suffix", "")
+            if _find_ladcp_file(ladcp_dir, cn, cs, ladcp_pattern) is not None:
+                ladcp_cast_nums.add(cn)
 
     # Section name → YAML color; cast → section names
     section_colors: dict[str, str] = {

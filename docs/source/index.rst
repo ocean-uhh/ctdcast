@@ -39,7 +39,7 @@ Contents
    :maxdepth: 1
    :caption: Links
 
-   GitHub repository <https://github.com/eleanorfrajka/ctdreport>
+   GitHub repository <https://github.com/ocean-uhh/ctdreport>
 
 
 Indices and tables
