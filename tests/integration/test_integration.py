@@ -7,13 +7,17 @@ separate directory so they can be targeted with ``pytest tests/integration/``.
 """
 
 import re
+import warnings
 from pathlib import Path
 
+import numpy as np
 import pytest
+import xarray as xr
 
 pytestmark = pytest.mark.slow
 
-from ctdreport.converters import build_profiles
+from ctdreport.analysis import _add_teos10
+from ctdreport.converters import build_profiles, convert_ctd_files
 from ctdreport.index import _read_cast_meta, generate_ctd_report
 from ctdreport.section import generate_section_page
 from ctdreport.station import generate_station_page
@@ -313,3 +317,96 @@ class TestFullReport:
         )
         for cast_num in (11, 12, 128, 129):
             assert (tmp_path / "stations" / f"cast_{cast_num:03d}.html").exists()
+
+
+class TestCastNotes:
+    """Verify that cast_notes appear as warning banners on the station page."""
+
+    def test_note_rendered_in_html(self, tmp_path, all_meta):
+        note_text = "SBE43 malfunction — oxygen data unreliable"
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=[note_text],
+        )
+        assert out is not None and out.exists()
+        html = out.read_text(encoding="utf-8")
+        assert note_text in html, "cast_notes text must appear in station page HTML"
+
+    def test_no_note_banner_when_empty(self, tmp_path, all_meta):
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=[],
+        )
+        html = out.read_text(encoding="utf-8")
+        assert '<p class="cast-note">' not in html, (
+            "No .cast-note elements when cast_notes is empty"
+        )
+
+    def test_multiple_notes_all_rendered(self, tmp_path, all_meta):
+        notes = ["LADCP failed on deployment", "CTD only, no LADCP planned"]
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=notes,
+        )
+        html = out.read_text(encoding="utf-8")
+        for note in notes:
+            assert note in html
+
+
+_OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
+
+
+@pytest.mark.skipif(not _OXY_CNV.exists(), reason="MSM142 oxygen fixture not present")
+class TestOxygenConversion:
+    """Integration test for µmol/L → % saturation conversion via _add_teos10."""
+
+    def test_oxygen_units_converted(self, tmp_path):
+        """convert_ctd_files → _add_teos10 must yield oxygen in % saturation."""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+            n = convert_ctd_files(
+                _OXY_CNV.parent,
+                tmp_path,
+                force=True,
+                pattern=_OXY_CNV.name,
+            )
+        assert n == 1, "Expected exactly one NC file written"
+
+        nc_path = tmp_path / (_OXY_CNV.stem + ".nc")
+        assert nc_path.exists()
+
+        ds = xr.open_dataset(nc_path, engine="netcdf4")
+        assert "oxygen_1" in ds, "oxygen_1 variable missing from converted NC"
+
+        raw_units = ds["oxygen_1"].attrs.get("units", "")
+        assert any(tok in raw_units.lower() for tok in ("umol", "µmol")), (
+            f"Expected µmol units before conversion; got {raw_units!r}"
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            ds_converted = _add_teos10(ds)
+
+        assert ds_converted["oxygen_1"].attrs["units"] == "% saturation", (
+            f"Expected '% saturation'; got {ds_converted['oxygen_1'].attrs['units']!r}"
+        )
+        assert "original_units" in ds_converted["oxygen_1"].attrs, (
+            "original_units attribute must be preserved after conversion"
+        )
+
+        vals = ds_converted["oxygen_1"].values
+        finite = vals[~np.isnan(vals)]
+        assert len(finite) > 0, "No finite oxygen values after conversion"
+        assert finite.min() >= 0.0, f"Negative % saturation: min={finite.min():.2f}"
+        assert finite.max() <= 200.0, (
+            f"Implausibly high % saturation: max={finite.max():.2f}"
+        )

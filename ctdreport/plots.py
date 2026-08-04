@@ -17,6 +17,7 @@ import xarray as xr
 
 from ctdreport.analysis import (
     _add_teos10,
+    _find_ladcp_file,
     _interpolate_bathy_at_casts,
     _load_gebco,
     _split_cast,
@@ -1002,13 +1003,8 @@ def _make_ladcp_section_b64(
             tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
         ] = []
         for cn, xv in zip(cast_nums, x_vals):
-            cast_str = f"{cn:03d}"
-            mat_path = (
-                ladcp_dir / ladcp_pattern.replace("*", cast_str)
-                if ladcp_pattern
-                else ladcp_dir / f"{cast_str}.mat"
-            )
-            if not mat_path.exists():
+            mat_path = _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+            if mat_path is None:
                 continue
             try:
                 m = scipy.io.loadmat(

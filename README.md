@@ -117,4 +117,4 @@ The file (~8 GB) is not bundled. Maps render without bathymetry if the path is m
 
 ## Documentation
 
-Full documentation: [ctdreport docs](https://eleanorfrajka.github.io/ctdreport)
+Full documentation: [ctdreport docs](https://ocean-uhh.github.io/ctdreport)

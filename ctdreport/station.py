@@ -13,7 +13,13 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _add_teos10, _find_cast_end, _find_soak_end
+from ctdreport.analysis import (
+    _add_teos10,
+    _find_cast_end,
+    _find_ladcp_file,
+    _find_soak_end,
+    parse_sensor_info,
+)
 from ctdreport.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -99,6 +105,21 @@ _STATION_TEMPLATE = (
   figure { margin: 0; display: inline-block; }
   figcaption { font-size: 0.78rem; color: #555; margin-top: 0.25rem; max-width: 30ch; }
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+  .cast-notes { margin: 0.75rem 1.5rem 0; }
+  .cast-note {
+    background: #fff3cd; border-left: 4px solid #e6ac00; border-radius: 4px;
+    padding: 0.5rem 1rem; margin-bottom: 0.4rem; font-size: 0.87rem; color: #5a4200;
+  }
+  details.sensor-details { margin: 0.5rem 1.5rem 0; }
+  details.sensor-details summary {
+    cursor: pointer; font-size: 0.82rem; color: #555; user-select: none;
+    padding: 0.2rem 0;
+  }
+  .sensor-table { border-collapse: collapse; font-size: 0.8rem; margin-top: 0.4rem; }
+  .sensor-table th, .sensor-table td {
+    padding: 0.2rem 0.75rem 0.2rem 0; text-align: left; vertical-align: top;
+  }
+  .sensor-table th { color: var(--ocean); font-weight: 600; border-bottom: 1px solid #cdd8e3; }
 </style>
 </head>
 <body>
@@ -140,6 +161,30 @@ _STATION_TEMPLATE = (
             padding:0.6rem 1rem;margin:0.75rem 1.5rem 0;font-size:0.87rem;color:#5a4200;">
   ⚠ {{ trim_note }}
 </div>
+{% endif %}
+
+{% if cast_notes %}
+<div class="cast-notes">
+  {% for note in cast_notes %}
+  <p class="cast-note">⚠ {{ note }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if sensor_info %}
+<details class="sensor-details">
+  <summary>Sensors ({{ sensor_info | length }})</summary>
+  <table class="sensor-table">
+    <tr><th>Sensor</th><th>S/N</th><th>Cal date</th></tr>
+    {% for s in sensor_info %}
+    <tr>
+      <td>{{ s.sensor_type }}</td>
+      <td>{{ s.serial_number }}</td>
+      <td>{{ s.calibration_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</details>
 {% endif %}
 
 <!-- Row 1: CT/SA/σ₀ [+ LADCP U/V if available] | T–S up/down | station map -->
@@ -280,6 +325,7 @@ def generate_station_page(
     cast_num_str: str | None = None,
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
+    cast_notes: list[str] | None = None,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
 
@@ -319,6 +365,9 @@ def generate_station_page(
         maximum depth, crawls back up to 20 seconds to the shallowest point
         preceding the real descent, and trims everything up to that point.
         Applied before *sal_range* trimming.  NC files are not modified.
+    cast_notes:
+        Optional list of free-text notes for this cast (e.g. "SBE43 malfunction").
+        Rendered as warning banners near the top of the page.
 
     Returns
     -------
@@ -336,6 +385,7 @@ def generate_station_page(
 
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4").load()
+        sensor_info = parse_sensor_info(ds)
         ds = _add_teos10(ds)
     except Exception:  # noqa: BLE001
         return None
@@ -417,6 +467,8 @@ def generate_station_page(
         "ladcp_configured": ladcp_dir is not None,
         "ladcp_available": ladcp_exists,
         "trim_note": trim_note,
+        "cast_notes": cast_notes or [],
+        "sensor_info": sensor_info,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
         # Row 1 — use LADCP layout whenever LADCP is configured (file may be absent)
@@ -490,36 +542,3 @@ def _cast_num_from_path(nc_path: Path) -> int:
     Deprecated: use :func:`_cast_id_from_path` to also retrieve the suffix.
     """
     return _cast_id_from_path(nc_path)[0]
-
-
-def _find_ladcp_file(
-    ladcp_dir: Path,
-    cast_num: int,
-    cast_suffix: str = "",
-    ladcp_pattern: str | None = None,
-) -> Path | None:
-    """Return the .mat file for *cast_num* in *ladcp_dir*, or ``None`` if absent.
-
-    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*``
-    wildcard is replaced with the zero-padded cast number (and optional suffix)
-    and that name is tried first.  Falls back to standard names (``NNN.mat``,
-    ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.
-    The first glob match (lexicographic) is returned when multiple files match.
-    """
-    if ladcp_pattern:
-        for cast_str in (f"{cast_num:03d}{cast_suffix}", f"{cast_num:03d}"):
-            p = ladcp_dir / ladcp_pattern.replace("*", cast_str)
-            if p.exists():
-                return p
-    for name in (f"{cast_num:03d}{cast_suffix}.mat", f"{cast_num:03d}.mat"):
-        p = ladcp_dir / name
-        if p.exists():
-            return p
-    for glob_pat in (
-        f"*_{cast_num:03d}{cast_suffix}.mat",
-        f"*_{cast_num:03d}.mat",
-    ):
-        found = sorted(ladcp_dir.glob(glob_pat))
-        if found:
-            return found[0]
-    return None

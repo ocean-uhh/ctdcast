@@ -199,6 +199,7 @@ def generate_section_page(
     vmax_override: dict[str, float] | None = None,
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
+    dbar_step: int = 1,
 ) -> Path | None:
     """Generate a section HTML report page.
 
@@ -225,6 +226,10 @@ def generate_section_page(
         Filename pattern for LADCP files, e.g. ``"msm_142_1_*.mat"``.
         The ``*`` is replaced with the zero-padded cast number.
         Falls back to ``NNN.mat`` if not given.
+    dbar_step:
+        Subsample the pressure axis by this step before plotting (default 1,
+        no subsampling).  ``build_profiles()`` always stores 1-dbar data;
+        this controls plot-time resolution only.
 
     Returns
     -------
@@ -258,6 +263,9 @@ def generate_section_page(
         return None
 
     ds_sec = ds_all.isel(N_PROF=mask)
+    if dbar_step > 1:
+        p_idx = np.arange(0, ds_sec.sizes["pressure"], dbar_step)
+        ds_sec = ds_sec.isel(pressure=p_idx)
     ds_sec = _add_teos10_profiles(ds_sec)
     ds_sec = _add_aou(ds_sec)
 

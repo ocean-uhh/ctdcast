@@ -113,6 +113,18 @@ Examples:
         ),
     )
 
+    parser.add_argument(
+        "--dbar-step",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Plot every Nth dbar level from profiles.nc for section and timeseries "
+            "figures (default: 1, full 1-dbar resolution).  build_profiles() always "
+            "stores 1-dbar data; this controls plot-time resolution only."
+        ),
+    )
+
     # Run behaviour
     parser.add_argument(
         "--force",
@@ -270,5 +282,6 @@ def run(args: argparse.Namespace) -> int:
         cast_filter=args.cast,
         sal_range=(args.sal[0], args.sal[1]) if args.sal else None,
         trim_soak=args.trim_soak,
+        dbar_step=args.dbar_step,
     )
     return 0

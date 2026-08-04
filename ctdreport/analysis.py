@@ -5,6 +5,7 @@ No matplotlib. No HTML. Imported by _plots.py (Tier 1) and Tier-2 orchestrators.
 
 from __future__ import annotations
 
+import json
 import warnings
 from pathlib import Path
 
@@ -12,11 +13,87 @@ import gsw
 import numpy as np
 import xarray as xr
 
+# Human-readable display names for SBE sensor type strings.
+_SENSOR_LABELS: dict[str, str] = {
+    "TemperatureSensor": "Temperature",
+    "ConductivitySensor": "Conductivity",
+    "PressureSensor": "Pressure",
+    "OxygenSensor": "Oxygen (SBE43)",
+    "FluoroWetlabECO_AFL_FL_Sensor": "Fluorometer",
+    "TurbidityMeter": "Turbidity",
+    "pH_Sensor": "pH",
+    "AltimeterSensor": "Altimeter",
+    "UserPolynomialSensor": "Aux",
+    "WET_LabsCStar": "Transmissometer",
+}
+
+
+def parse_sensor_info(ds: xr.Dataset) -> list[dict[str, str]]:
+    """Extract sensor serial numbers and calibration dates from *ds*.
+
+    Parses the ``raw_metadata`` global attribute (a JSON string written by
+    seasenselib) and returns one entry per sensor channel that has both a
+    ``sensor_type`` and a ``serial_number``.
+
+    Parameters
+    ----------
+    ds:
+        Per-cast Dataset as opened from a netCDF file.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        Each dict has keys ``sensor_type`` (human-readable label),
+        ``serial_number``, and ``calibration_date``.  Returns ``[]`` if
+        ``raw_metadata`` is absent, unparseable, or contains no usable sensors.
+
+    """
+    raw = ds.attrs.get("raw_metadata", "")
+    if not raw:
+        return []
+    try:
+        meta = json.loads(raw)
+        ga = meta["blocks"]["other"]["global_attributes"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return []
+
+    results: list[dict[str, str]] = []
+    for key in sorted(
+        ga,
+        key=lambda k: (
+            int(k.split("_")[-1])
+            if k.startswith("cnv_sensor_") and k.split("_")[-1].isdigit()
+            else 9999
+        ),
+    ):
+        if not key.startswith("cnv_sensor_"):
+            continue
+        entry = ga[key]
+        if not isinstance(entry, dict):
+            continue
+        sensor_type_raw = entry.get("sensor_type", "")
+        serial = entry.get("serial_number", "")
+        if not sensor_type_raw or not serial:
+            continue
+        label = _SENSOR_LABELS.get(sensor_type_raw, sensor_type_raw)
+        results.append(
+            {
+                "sensor_type": label,
+                "serial_number": serial,
+                "calibration_date": entry.get("calibration_date", ""),
+            }
+        )
+    return results
+
 
 def _add_teos10(ds: xr.Dataset) -> xr.Dataset:
-    """Return *ds* with CT, SA, sigma0 added (1-D per-cast Dataset, dim=time)."""
-    if "CT" in ds and "SA" in ds and "sigma0" in ds:
-        return ds
+    """Return *ds* with CT, SA, sigma0 added (1-D per-cast Dataset, dim=time).
+
+    Also converts ``oxygen_1`` from µmol/L or µmol/kg to % saturation when the
+    variable's ``units`` attribute indicates a molar concentration.  The
+    conversion uses ``gsw.O2sol`` and the cast's in-situ SA/CT/p/lat/lon, so
+    TEOS-10 variables are always computed first even when they already exist.
+    """
     ds = ds.copy()
     p = ds["pressure"].values.astype(float)
     t = ds["temperature_1"].values.astype(float)
@@ -45,6 +122,76 @@ def _add_teos10(ds: xr.Dataset) -> xr.Dataset:
         sig0.astype(np.float32),
         dims=[dim],
         attrs={"long_name": "Potential density anomaly", "units": "kg m-3"},
+    )
+    if "oxygen_1" in ds:
+        ds = _convert_oxygen_to_pct_sat(ds, sa, ct, p, lat, lon)
+    return ds
+
+
+def _convert_oxygen_to_pct_sat(
+    ds: xr.Dataset,
+    sa: np.ndarray,
+    ct: np.ndarray,
+    p: np.ndarray,
+    lat: float,
+    lon: float,
+) -> xr.Dataset:
+    """Convert ``oxygen_1`` from µmol/L or µmol/kg to % saturation in-place.
+
+    Does nothing if ``oxygen_1`` units already indicate % saturation or if the
+    units attribute is absent.  Records the original units and the conversion
+    method in ``oxygen_1`` attributes for provenance.
+
+    Parameters
+    ----------
+    ds:
+        Dataset containing ``oxygen_1``; must already have SA/CT computed.
+    sa, ct, p:
+        Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar)
+        arrays matching the ``oxygen_1`` dimension.
+    lat, lon:
+        Representative cast latitude and longitude for ``gsw.O2sol``.
+    """
+    units = ds["oxygen_1"].attrs.get("units", "")
+    if not units:
+        return ds
+    u_lower = units.lower()
+    if "umol" not in u_lower and "µmol" not in u_lower:
+        return ds
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+        # O2 saturation in µmol/kg at in-situ T, S, p.
+        o2_sat_umol_kg = gsw.O2sol(sa, ct, p, lat, lon)
+
+    measured = ds["oxygen_1"].values.astype(float)
+
+    if "/l" in u_lower or "l-1" in u_lower:
+        # µmol/L → µmol/kg requires density (kg/m³ → g/mL = kg/L).
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+            rho = gsw.rho(sa, ct, p)  # kg/m³
+        o2_sat_umol_l = o2_sat_umol_kg * rho / 1000.0
+        pct_sat = measured / o2_sat_umol_l * 100.0
+        method = f"converted from {units} via gsw.O2sol + gsw.rho"
+    else:
+        # Assume µmol/kg.
+        pct_sat = measured / o2_sat_umol_kg * 100.0
+        method = f"converted from {units} via gsw.O2sol"
+
+    warnings.warn(
+        f"oxygen_1: {method}; values overwritten in-place.",
+        stacklevel=3,
+    )
+    new_attrs = dict(ds["oxygen_1"].attrs)
+    new_attrs["units"] = "% saturation"
+    new_attrs["original_units"] = units
+    new_attrs["oxygen_conversion"] = method
+    dim = ds["oxygen_1"].dims[0]
+    ds["oxygen_1"] = xr.DataArray(
+        pct_sat.astype(np.float32),
+        dims=[dim],
+        attrs=new_attrs,
     )
     return ds
 
@@ -533,3 +680,36 @@ def _compact_cast_list(nums: list[int]) -> str:
             start = end = n
     parts.append(str(start) if start == end else f"{start}–{end}")
     return ", ".join(parts)
+
+
+def _find_ladcp_file(
+    ladcp_dir: Path,
+    cast_num: int,
+    cast_suffix: str = "",
+    ladcp_pattern: str | None = None,
+) -> Path | None:
+    """Return the .mat file for *cast_num* in *ladcp_dir*, or ``None`` if absent.
+
+    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*``
+    wildcard is replaced with the zero-padded cast number (and optional suffix)
+    and that name is tried first.  Falls back to standard names (``NNN.mat``,
+    ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.
+    The first glob match (lexicographic) is returned when multiple files match.
+    """
+    if ladcp_pattern:
+        for cast_str in (f"{cast_num:03d}{cast_suffix}", f"{cast_num:03d}"):
+            p = ladcp_dir / ladcp_pattern.replace("*", cast_str)
+            if p.exists():
+                return p
+    for name in (f"{cast_num:03d}{cast_suffix}.mat", f"{cast_num:03d}.mat"):
+        p = ladcp_dir / name
+        if p.exists():
+            return p
+    for glob_pat in (
+        f"*_{cast_num:03d}{cast_suffix}.mat",
+        f"*_{cast_num:03d}.mat",
+    ):
+        found = sorted(ladcp_dir.glob(glob_pat))
+        if found:
+            return found[0]
+    return None
