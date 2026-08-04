@@ -52,6 +52,7 @@ def _report_ns(**kwargs) -> argparse.Namespace:
         "dry_run": False,
         "sal": None,
         "trim_soak": False,
+        "dbar_step": 1,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)

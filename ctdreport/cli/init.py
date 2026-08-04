@@ -63,6 +63,7 @@ display:
   # Figure style for section and timeseries plots: "pcolormesh" or "contourf".
   section_style: pcolormesh
   timeseries_style: pcolormesh
+  # dbar_step: 1  # plot every Nth dbar from profiles.nc (1 = full resolution)
 
   # Profile figure size [width_inches, height_inches].
   # profile_figsize: [7, 10]
@@ -1211,6 +1212,7 @@ def _build_config_text(
         "display:\n"
         "  section_style: pcolormesh\n"
         "  timeseries_style: pcolormesh\n"
+        "  # dbar_step: 1  # plot every Nth dbar from profiles.nc (1 = full resolution)\n"
     )
 
 

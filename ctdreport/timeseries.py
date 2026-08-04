@@ -197,6 +197,7 @@ def generate_timeseries_page(
     all_meta: list[dict] | None = None,
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
+    dbar_step: int = 1,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
 
@@ -229,6 +230,10 @@ def generate_timeseries_page(
         Filename pattern for LADCP files, e.g. ``"msm_142_1_*.mat"``.
         The ``*`` is replaced with the zero-padded cast number.
         Falls back to ``NNN.mat`` if not given.
+    dbar_step:
+        Subsample the pressure axis by this step before plotting (default 1,
+        no subsampling).  ``build_profiles()`` always stores 1-dbar data;
+        this controls plot-time resolution only.
 
     Returns
     -------
@@ -262,6 +267,9 @@ def generate_timeseries_page(
         return None
 
     ds_ts = ds_all.isel(N_PROF=mask)
+    if dbar_step > 1:
+        p_idx = np.arange(0, ds_ts.sizes["pressure"], dbar_step)
+        ds_ts = ds_ts.isel(pressure=p_idx)
     _dbg = perf_counter()
     ds_ts = _add_teos10_profiles(ds_ts)
     ds_ts = _add_aou(ds_ts)

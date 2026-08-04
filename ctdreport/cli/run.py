@@ -155,6 +155,7 @@ def run(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         sal=None,
         trim_soak=args.trim_soak,
+        dbar_step=1,
     )
 
     print("=== report ===")

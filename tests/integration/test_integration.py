@@ -319,6 +319,49 @@ class TestFullReport:
             assert (tmp_path / "stations" / f"cast_{cast_num:03d}.html").exists()
 
 
+class TestCastNotes:
+    """Verify that cast_notes appear as warning banners on the station page."""
+
+    def test_note_rendered_in_html(self, tmp_path, all_meta):
+        note_text = "SBE43 malfunction — oxygen data unreliable"
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=[note_text],
+        )
+        assert out is not None and out.exists()
+        html = out.read_text(encoding="utf-8")
+        assert note_text in html, "cast_notes text must appear in station page HTML"
+
+    def test_no_note_banner_when_empty(self, tmp_path, all_meta):
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=[],
+        )
+        html = out.read_text(encoding="utf-8")
+        assert '<p class="cast-note">' not in html, (
+            "No .cast-note elements when cast_notes is empty"
+        )
+
+    def test_multiple_notes_all_rendered(self, tmp_path, all_meta):
+        notes = ["LADCP failed on deployment", "CTD only, no LADCP planned"]
+        out = generate_station_page(
+            _CAST_011,
+            tmp_path,
+            all_meta=all_meta,
+            force=True,
+            cast_notes=notes,
+        )
+        html = out.read_text(encoding="utf-8")
+        for note in notes:
+            assert note in html
+
+
 _OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
 
 
