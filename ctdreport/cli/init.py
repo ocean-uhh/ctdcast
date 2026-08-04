@@ -501,10 +501,10 @@ def _resolve_output_path(initial: Path, force: bool) -> Path | None:
 
 
 def _run_interactive(args: argparse.Namespace) -> int:
-    """Run the interactive init wizard; write ctd_sections_draft.yaml then config.yaml.
+    """Run the interactive init wizard; write config.yaml and optionally ctd_sections_draft.yaml.
 
-    Detection runs before config.yaml is written so the draft path can be
-    recorded as ``section_yaml`` in the config automatically.
+    The config always records the user's intended production ``section_yaml`` path.
+    When detection runs, the draft is written alongside that path for review.
     """
     dest: Path = args.dest
     initial = dest if dest.suffix in {".yaml", ".yml"} else dest / "config.yaml"

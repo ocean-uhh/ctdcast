@@ -34,7 +34,7 @@ Python 3.10–3.13 is required.  Create a virtual environment and install from s
 
 .. code-block:: bash
 
-   git clone https://github.com/eleanorfrajka/ctdreport
+   git clone https://github.com/ocean-uhh/ctdreport
    cd ctdreport
    python -m venv venv
    source venv/bin/activate        # macOS / Linux

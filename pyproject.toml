@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "ctdreport"
 version = "0.1.0"
 description = "Self-contained HTML report generator for shipboard CTD and LADCP data"
+license = {text = "MIT"}
+authors = [{name = "Eleanor Frajka-Williams", email = "eleanorfrajka@gmail.com"}]
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "gsw>=3.6",
@@ -18,6 +20,12 @@ dependencies = [
     "ruamel.yaml>=0.18",
     "scipy>=1.9",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ocean-uhh/ctdreport"
+Source = "https://github.com/ocean-uhh/ctdreport"
+Documentation = "https://ocean-uhh.github.io/ctdreport"
+"Bug Tracker" = "https://github.com/ocean-uhh/ctdreport/issues"
 
 [project.optional-dependencies]
 docs = [

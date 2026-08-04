@@ -13,7 +13,12 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _add_teos10, _find_cast_end, _find_soak_end
+from ctdreport.analysis import (
+    _add_teos10,
+    _find_cast_end,
+    _find_ladcp_file,
+    _find_soak_end,
+)
 from ctdreport.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -490,36 +495,3 @@ def _cast_num_from_path(nc_path: Path) -> int:
     Deprecated: use :func:`_cast_id_from_path` to also retrieve the suffix.
     """
     return _cast_id_from_path(nc_path)[0]
-
-
-def _find_ladcp_file(
-    ladcp_dir: Path,
-    cast_num: int,
-    cast_suffix: str = "",
-    ladcp_pattern: str | None = None,
-) -> Path | None:
-    """Return the .mat file for *cast_num* in *ladcp_dir*, or ``None`` if absent.
-
-    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*``
-    wildcard is replaced with the zero-padded cast number (and optional suffix)
-    and that name is tried first.  Falls back to standard names (``NNN.mat``,
-    ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.
-    The first glob match (lexicographic) is returned when multiple files match.
-    """
-    if ladcp_pattern:
-        for cast_str in (f"{cast_num:03d}{cast_suffix}", f"{cast_num:03d}"):
-            p = ladcp_dir / ladcp_pattern.replace("*", cast_str)
-            if p.exists():
-                return p
-    for name in (f"{cast_num:03d}{cast_suffix}.mat", f"{cast_num:03d}.mat"):
-        p = ladcp_dir / name
-        if p.exists():
-            return p
-    for glob_pat in (
-        f"*_{cast_num:03d}{cast_suffix}.mat",
-        f"*_{cast_num:03d}.mat",
-    ):
-        found = sorted(ladcp_dir.glob(glob_pat))
-        if found:
-            return found[0]
-    return None
