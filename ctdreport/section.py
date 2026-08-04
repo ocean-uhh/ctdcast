@@ -198,6 +198,7 @@ def generate_section_page(
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_pattern: str | None = None,
 ) -> Path | None:
     """Generate a section HTML report page.
 
@@ -218,8 +219,12 @@ def generate_section_page(
     vmin_override, vmax_override:
         Per-variable colormap limit overrides (e.g. ``{"SA": 34.5}``).
     ladcp_dir:
-        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``.
+        Directory containing processed LADCP ``.mat`` files.
         If None, the LADCP velocity section panel is omitted.
+    ladcp_pattern:
+        Filename pattern for LADCP files, e.g. ``"msm_142_1_*.mat"``.
+        The ``*`` is replaced with the zero-padded cast number.
+        Falls back to ``NNN.mat`` if not given.
 
     Returns
     -------
@@ -310,7 +315,13 @@ def generate_section_page(
     ]
     _ladcp_b64 = (
         _make_ladcp_section_b64(
-            cast_nums_int, x_vals, x_label, ladcp_dir, lats=lats, lons=lons
+            cast_nums_int,
+            x_vals,
+            x_label,
+            ladcp_dir,
+            lats=lats,
+            lons=lons,
+            ladcp_pattern=ladcp_pattern,
         )
         if ladcp_dir is not None
         else None

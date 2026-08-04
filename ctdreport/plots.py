@@ -35,6 +35,11 @@ GEBCO_PATH: Path | None = None
 # Bundled mplstyle — controls font sizes, line widths, figure defaults.
 _MPLSTYLE = Path(__file__).parent / "ctdreport.mplstyle"
 
+# Extra margin (degrees) added when loading GEBCO for map rendering.
+# Ensures downsampled pcolormesh edge-cells extend past the axis limits,
+# eliminating white-gap artefacts at map borders.
+_GEBCO_RENDER_PAD: float = 0.5
+
 # Colors for the triple-axis T / S / sigma0 profile plot.
 _TS_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
@@ -177,6 +182,43 @@ def _nice_colorbar_bounds(
         if bounds[-1] < hi_clip:
             bounds = np.concatenate([bounds, [hi_clip]])
     return bounds
+
+
+def _downsample_gebco_for_map(
+    lons: np.ndarray,
+    lats: np.ndarray,
+    depth: np.ndarray,
+    max_pts: int = 400,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Subsample GEBCO arrays to at most *max_pts* per dimension for map rendering.
+
+    Only for use in pcolormesh map backgrounds — not for section bathymetry extraction.
+    """
+    stride = max(1, max(len(lons) // max_pts, len(lats) // max_pts))
+    return lons[::stride], lats[::stride], depth[::stride, ::stride]
+
+
+def _geo_figsize(
+    xl0: float,
+    xl1: float,
+    yl0: float,
+    yl1: float,
+    mean_lat: float,
+    target_h: float = 4.5,
+    w_min: float = 2.5,
+    w_max: float = 8.0,
+) -> tuple[float, float]:
+    """Return (width, height) that matches the geographic aspect ratio of the map extent.
+
+    Eliminates whitespace that results from pairing a fixed figsize with set_aspect.
+    """
+    lon_span = xl1 - xl0
+    lat_span = yl1 - yl0
+    if lat_span <= 0:
+        return (target_h, target_h)
+    geo_aspect = lon_span * float(np.cos(np.deg2rad(mean_lat))) / lat_span
+    fig_w = float(np.clip(target_h * geo_aspect, w_min, w_max))
+    return (fig_w, target_h)
 
 
 # ---------------------------------------------------------------------------
@@ -662,14 +704,17 @@ def _make_station_map_b64(
         lat_lo, lat_hi = min(all_lats), max(all_lats)
         lon_lo, lon_hi = min(all_lons), max(all_lons)
         margin = max(0.05, (lat_hi - lat_lo) * 0.1)
+        mean_lat = 0.5 * (lat_lo + lat_hi)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
-        fig, ax = plt.subplots(figsize=(3.5, 4.5))
+        fig, ax = plt.subplots(figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat))
 
         gebco = _load_gebco(
-            lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
+            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
         )
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
+            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
             d_fin = depth_b[depth_b > 0]
             if len(d_fin):
                 bounds_b = _nice_colorbar_bounds(
@@ -694,11 +739,8 @@ def _make_station_map_b64(
         )
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        mean_lat = 0.5 * (lat_lo + lat_hi)
-        ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -729,14 +771,19 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
         lat_lo, lat_hi = min(lats), max(lats)
         lon_lo, lon_hi = min(lons), max(lons)
         margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
+        mean_lat = 0.5 * (lat_lo + lat_hi)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
-        fig, ax = plt.subplots(figsize=(4, 3.5))
+        fig, ax = plt.subplots(
+            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.0)
+        )
 
         gebco = _load_gebco(
-            lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
+            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
         )
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
+            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
             d_fin = depth_b[depth_b > 0]
             if len(d_fin):
                 bounds_b = _nice_colorbar_bounds(
@@ -769,11 +816,8 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        mean_lat = 0.5 * (lat_lo + lat_hi)
-        ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -934,12 +978,16 @@ def _make_ladcp_section_b64(
     lats: list[float] | None = None,
     lons: list[float] | None = None,
     figsize: tuple[float, float] | None = None,
+    ladcp_pattern: str | None = None,
 ) -> str | None:
     """Return a base64 PNG of LADCP U (top) and V (bottom) sections with a shared RdBu_r colorbar.
 
     Casts without a matching .mat file are omitted.  Data are interpolated to a
     10 m depth grid.  Positive velocities (eastward / northward) map to red.
     Bathymetry is drawn when *lats*/*lons* and ``GEBCO_PATH`` are both available.
+
+    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
+    with the zero-padded cast number to form the filename.  Falls back to ``NNN.mat``.
     """
     try:
         import scipy.io
@@ -954,7 +1002,12 @@ def _make_ladcp_section_b64(
             tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
         ] = []
         for cn, xv in zip(cast_nums, x_vals):
-            mat_path = ladcp_dir / f"{cn:03d}.mat"
+            cast_str = f"{cn:03d}"
+            mat_path = (
+                ladcp_dir / ladcp_pattern.replace("*", cast_str)
+                if ladcp_pattern
+                else ladcp_dir / f"{cast_str}.mat"
+            )
             if not mat_path.exists():
                 continue
             try:
@@ -1394,8 +1447,17 @@ def _make_section_map_b64(
     lons: list[float],
     cast_nums: list[int],
     title: str = "",
+    min_margin: float = 0.03,
+    min_margin_lon: float | None = None,
 ) -> str | None:
-    """Return a base64 PNG of a GEBCO map with the section track."""
+    """Return a base64 PNG of a GEBCO map with the section track.
+
+    *min_margin* sets a floor on the geographic margin for the latitude axis.
+    *min_margin_lon*, when provided, sets a separate floor for the longitude
+    axis and suppresses the N-S-section guard (use for co-located timeseries
+    maps where lat and lon margins should be set independently for a
+    Mercator-square view).
+    """
     try:
         plt.style.use(str(_MPLSTYLE))
         lats_arr = np.array(lats)
@@ -1407,16 +1469,40 @@ def _make_section_map_b64(
 
         lat_lo, lat_hi = lats_arr.min(), lats_arr.max()
         lon_lo, lon_hi = lons_arr.min(), lons_arr.max()
-        margin = max(0.03, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.15)
+        mean_lat = 0.5 * (lat_lo + lat_hi)
+        cos_lat = float(np.cos(np.deg2rad(mean_lat)))
 
-        fig, ax = plt.subplots(figsize=(5, 4))
+        if min_margin_lon is not None:
+            # Independent lat/lon margins — used for co-located clusters.
+            # N-S guard not applied; caller is responsible for aspect.
+            data_extent = max(lat_hi - lat_lo, lon_hi - lon_lo)
+            margin_lat = max(min_margin, data_extent * 0.15)
+            margin_lon = max(min_margin_lon, data_extent * 0.15)
+            yl0 = MAP_LAT_MIN if MAP_LAT_MIN is not None else lat_lo - margin_lat
+            yl1 = MAP_LAT_MAX if MAP_LAT_MAX is not None else lat_hi + margin_lat
+            xl0 = MAP_LON_MIN if MAP_LON_MIN is not None else lon_lo - margin_lon
+            xl1 = MAP_LON_MAX if MAP_LON_MAX is not None else lon_hi + margin_lon
+        else:
+            margin = max(min_margin, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.15)
+            yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+            lon_span = xl1 - xl0
+            lat_span = yl1 - yl0
+            min_lon_span = 0.5 * lat_span / cos_lat
+            if lon_span < min_lon_span:
+                extra = (min_lon_span - lon_span) / 2
+                xl0, xl1 = xl0 - extra, xl1 + extra
+
+        fig, ax = plt.subplots(
+            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.5, w_max=8.0)
+        )
 
         gebco = _load_gebco(
-            lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
+            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
         )
         bathy_pc = None
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
+            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
             d_fin = depth_b[depth_b > 0]
             if len(d_fin):
                 bounds_b = _nice_colorbar_bounds(
@@ -1460,23 +1546,8 @@ def _make_section_map_b64(
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        mean_lat = 0.5 * (lat_lo + lat_hi)
-        cos_lat = np.cos(np.deg2rad(mean_lat))
-
-        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
-
-        # Ensure the map is not too narrow for nearly N-S sections (Mercator)
-        lon_span = xl1 - xl0
-        lat_span = yl1 - yl0
-        # In Mercator (aspect=1/cos_lat), require display width ≥ 0.5 × display height.
-        min_lon_span = 0.5 * lat_span / cos_lat
-        if lon_span < min_lon_span:
-            extra = (min_lon_span - lon_span) / 2
-            ax.set_xlim(xl0 - extra, xl1 + extra)
-        else:
-            ax.set_xlim(xl0, xl1)
+        ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        ax.set_aspect(1 / cos_lat)
         if title:
             ax.set_title(title)
         ax.grid(True, alpha=0.3)
@@ -1638,14 +1709,19 @@ def _make_all_sections_map_b64(
         lat_lo, lat_hi = min(finite_lats), max(finite_lats)
         lon_lo, lon_hi = min(finite_lons), max(finite_lons)
         margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
+        mean_lat = 0.5 * (lat_lo + lat_hi)
+        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(
+            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.5, w_max=9.0)
+        )
 
         gebco = _load_gebco(
-            lat_lo, lat_hi, lon_lo, lon_hi, margin=margin, path=GEBCO_PATH
+            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
         )
         if gebco is not None:
             lons_b, lats_b, depth_b = gebco
+            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
             d_fin = depth_b[depth_b > 0]
             if len(d_fin):
                 bounds_b = _nice_colorbar_bounds(
@@ -1694,11 +1770,8 @@ def _make_all_sections_map_b64(
 
         ax.set_xlabel("Longitude (°E)")
         ax.set_ylabel("Latitude (°N)")
-        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        mean_lat = 0.5 * (lat_lo + lat_hi)
-        ax.set_aspect(1 / np.cos(np.deg2rad(mean_lat)))
         ax.grid(True, alpha=0.3)
         if legend_outside:
             ax.legend(

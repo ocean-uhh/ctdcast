@@ -126,7 +126,9 @@ def _bearing_deg(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     lat1r = math.radians(lat1)
     lat2r = math.radians(lat2)
     x = math.sin(dlon) * math.cos(lat2r)
-    y = math.cos(lat1r) * math.sin(lat2r) - math.sin(lat1r) * math.cos(lat2r) * math.cos(dlon)
+    y = math.cos(lat1r) * math.sin(lat2r) - math.sin(lat1r) * math.cos(
+        lat2r
+    ) * math.cos(dlon)
     return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
 
 
@@ -149,7 +151,7 @@ Examples:
   ctdreport init . --force              overwrite existing files
   ctdreport init --interactive          prompt for paths; auto-detect sections
   ctdreport init --interactive \\
-    --dx-timeseries 5 --dx-section 50  set detection thresholds explicitly
+    --dx-section 20 --max-turn-deg 45  set detection thresholds explicitly
 """
     kwargs: dict = {
         "description": (
@@ -201,14 +203,27 @@ Examples:
         ),
     )
     parser.add_argument(
-        "--dx-timeseries",
-        type=float,
-        default=5.0,
-        metavar="KM",
-        dest="dx_timeseries",
+        "--auto-section",
+        action="store_true",
+        default=False,
+        dest="auto_section",
         help=(
-            "Maximum straight-line span (km) for a cast group to be classified as "
-            "a repeat station (timeseries).  Default: 5 km."
+            "Read profiles_nc from an existing config file and rewrite "
+            "ctd_sections_draft.yaml using the current detection parameters.  "
+            "Does not touch config.yaml.  Requires dest to be an existing config file."
+        ),
+    )
+    parser.add_argument(
+        "--dx-diameter",
+        type=float,
+        default=1.0,
+        metavar="KM",
+        dest="dx_diameter",
+        help=(
+            "Maximum inter-cast distance (km) within a repeat-station cluster. "
+            "Unclaimed casts (not in any directional run) that are consecutively "
+            "within this distance of each other are grouped as a repeat station. "
+            "Default: 1 km."
         ),
     )
     parser.add_argument(
@@ -264,6 +279,8 @@ def run(args: argparse.Namespace) -> int:
     if hasattr(args, "min_run_casts") and args.min_run_casts < 3:
         print("ERROR: --min-run-casts must be >= 3.", file=sys.stderr)
         return 1
+    if args.auto_section:
+        return _run_auto_section(args)
     if args.interactive:
         return _run_interactive(args)
 
@@ -299,8 +316,120 @@ def run(args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Detect-only mode                                                              #
+# --------------------------------------------------------------------------- #
+
+
+def _run_auto_section(args: argparse.Namespace) -> int:
+    """Re-run section/timeseries detection and rewrite ctd_sections_draft.yaml.
+
+    Reads ``profiles_nc`` from the config file passed as *dest*.  Does not
+    modify the config file.  All detection parameters come from CLI flags.
+    """
+    import yaml
+
+    config_path = Path(args.dest)
+    if not config_path.suffix in {".yaml", ".yml"}:
+        config_path = config_path / "config.yaml"
+    if not config_path.exists():
+        print(f"ERROR: config file not found: {config_path}", file=sys.stderr)
+        return 1
+
+    with config_path.open() as fh:
+        cfg = yaml.safe_load(fh) or {}
+
+    data_cfg: dict = cfg.get("data") or {}
+    profiles_nc_raw: str | None = data_cfg.get("profiles_nc")
+    if not profiles_nc_raw:
+        print("ERROR: profiles_nc not set in config.", file=sys.stderr)
+        return 1
+
+    profiles_path = Path(profiles_nc_raw)
+    if not profiles_path.exists():
+        print(f"ERROR: profiles_nc not found: {profiles_path}", file=sys.stderr)
+        return 1
+
+    # Derive draft output path: if section_yaml is set, write the draft alongside it
+    # (resolving relative to the config file's directory).
+    section_yaml_raw: str | None = data_cfg.get("section_yaml")
+    if section_yaml_raw:
+        section_yaml_path = (config_path.parent / section_yaml_raw).resolve()
+        draft_path = section_yaml_path.parent / "ctd_sections_draft.yaml"
+    else:
+        draft_path = config_path.parent / "ctd_sections_draft.yaml"
+
+    dx_sec = args.dx_section
+    dx_diam = args.dx_diameter
+    max_turn = args.max_turn_deg
+    min_run = args.min_run_casts
+    max_sec = args.max_section_casts
+
+    print(
+        f"Detecting from {profiles_path}\n"
+        f"  dx_section={dx_sec} km  dx_diameter={dx_diam} km"
+        f"  max_turn={max_turn}°  min_run={min_run}  max_section_casts={max_sec}"
+    )
+    try:
+        sections, timeseries = _detect_groups(
+            profiles_path, dx_sec, max_sec, max_turn, min_run, dx_diam
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    _print_detection_summary(sections, timeseries)
+
+    resolved = _resolve_output_path(draft_path, args.force)
+    if resolved is None:
+        return 0
+    yaml_text = _format_sections_yaml(
+        sections, timeseries, dx_sec, max_sec, max_turn, min_run, dx_diam
+    )
+    _write_file(resolved, yaml_text)
+    print(f"Written: {resolved}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # Interactive mode                                                              #
 # --------------------------------------------------------------------------- #
+
+
+def _parse_date(raw: str) -> str:
+    """Normalise a date string to YYYY-MM-DD, accepting several common formats.
+
+    Accepted: YYYY-MM-DD, YYYYMMDD, DD.MM.YYYY, DD/MM/YYYY, MM/DD/YYYY.
+    Returns the original string unchanged if it cannot be parsed.
+    """
+    import re
+
+    raw = raw.strip()
+    # Already correct.
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return raw
+    # YYYYMMDD
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", raw)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    # DD.MM.YYYY or DD/MM/YYYY  (day first — European)
+    m = re.fullmatch(r"(\d{1,2})[./](\d{1,2})[./](\d{4})", raw)
+    if m:
+        d, mo, y = m.group(1), m.group(2), m.group(3)
+        return f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
+    return raw
+
+
+def _trunc_default(value: str, max_len: int = 55) -> str:
+    """Return *value* truncated to *max_len* chars, prefixed with '…' if shortened."""
+    if len(value) <= max_len:
+        return value
+    return "…" + value[-(max_len - 1) :]
+
+
+def _section_header(title: str, width: int = 62) -> None:
+    """Print a visual section separator."""
+    bar = "─" * max(0, width - len(title) - 4)
+    print(f"\n── {title} {bar}" if bar else f"\n── {title}")
 
 
 def _prompt(
@@ -311,13 +440,20 @@ def _prompt(
     Returns ``None`` when the field is optional and the user presses Enter.
     """
     if default is not None:
-        suffix = f" [{default}]"
+        disp = _trunc_default(default)
+        suffix = f" [{disp}]"
     elif required:
         suffix = " (required)"
     else:
-        suffix = " (optional, Enter to skip)"
+        suffix = ""
+    # Bold the key name (part before ' — ') when running interactively.
+    if sys.stdout.isatty() and " — " in label:
+        key, rest = label.split(" — ", 1)
+        display = f"\033[1m{key}\033[0m — {rest}"
+    else:
+        display = label
     try:
-        val = input(f"  {label}{suffix}: ").strip()
+        val = input(f"  {display}{suffix}: ").strip()
     except (EOFError, KeyboardInterrupt):
         print()
         raise
@@ -375,39 +511,109 @@ def _run_interactive(args: argparse.Namespace) -> int:
 
     print("\n=== ctdreport init (interactive) ===\n")
 
+    # Pre-populate prompts from an existing config file so the user can press
+    # Enter to keep each current value rather than re-entering everything.
+    _ex: dict[str, str] = {}
+    if initial.exists():
+        try:
+            import yaml as _yaml
+
+            _cfg = _yaml.safe_load(initial.read_text()) or {}
+            _d = _cfg.get("data", {}) or {}
+            _o = _cfg.get("output", {}) or {}
+            _ci = _cfg.get("cruise_info", {}) or {}
+            _ex = {
+                "nc_dir": str(_d.get("nc_dir", "") or ""),
+                "cnv_dir": str(_d.get("cnv_dir", "") or ""),
+                "cnv_pattern": str(_d.get("cnv_pattern", "") or ""),
+                "profiles_nc": str(_d.get("profiles_nc", "") or ""),
+                "ladcp_dir": str(_d.get("ladcp_dir", "") or ""),
+                "ladcp_pattern": str(_d.get("ladcp_pattern", "") or ""),
+                "gebco_nc": str(_d.get("gebco_nc", "") or ""),
+                "section_yaml": str(_d.get("section_yaml", "") or ""),
+                "output_dir": str(_o.get("dir", "") or ""),
+                "cruise_name": str(_ci.get("name", "") or ""),
+                "ship": str(_ci.get("ship", "") or ""),
+                "chief_scientist": str(_ci.get("chief_scientist", "") or ""),
+                "start_date": str(_ci.get("start_date", "") or ""),
+                "end_date": str(_ci.get("end_date", "") or ""),
+            }
+            print(f"(Pre-filling from existing {initial.name})\n")
+        except Exception:  # noqa: BLE001,S110
+            pass
+
     config_path = _resolve_output_path(initial, args.force)
     if config_path is None:
         return 0
 
-    print("Data paths")
-    nc_dir = _prompt("nc_dir — per-cast netCDF directory", required=True)
+    _section_header("Data paths")
+    nc_dir = _prompt(
+        "nc_dir — per-cast netCDF directory"
+        " (one .nc per cast, converted from CNV, 1 dbar, both downcast and upcast)",
+        default=_ex.get("nc_dir", ""),
+        required=True,
+    )
     if not nc_dir:
         print("ERROR: nc_dir is required.", file=sys.stderr)
         return 1
-    cnv_dir = _prompt("cnv_dir — raw CNV files directory (for ctdreport run --ctd)")
-    cnv_pattern = _prompt("cnv_pattern — glob to select CNV files", default="*.cnv")
-    profiles_nc = _prompt("profiles_nc — compiled profiles.nc")
-    ladcp_dir = _prompt("ladcp_dir — LADCP .mat directory")
-    gebco_nc = _prompt("gebco_nc — GEBCO bathymetry .nc")
+    cnv_dir = _prompt(
+        "cnv_dir — raw CNV files directory (for ctdreport run --ctd)",
+        default=_ex.get("cnv_dir", ""),
+    )
+    cnv_pattern = _prompt(
+        "cnv_pattern — glob to select CNV files",
+        default=_ex.get("cnv_pattern", "") or "*.cnv",
+    )
+    profiles_nc = _prompt(
+        "profiles_nc — compiled profiles.nc"
+        " (required for section/timeseries auto-detection; optional otherwise)",
+        default=_ex.get("profiles_nc", ""),
+    )
+    ladcp_dir = _prompt(
+        "ladcp_dir — LADCP .mat directory",
+        default=_ex.get("ladcp_dir", ""),
+    )
+    ladcp_pattern = None
+    if ladcp_dir:
+        ladcp_pattern = _prompt(
+            "ladcp_pattern — filename pattern (* = zero-padded cast number)",
+            default=_ex.get("ladcp_pattern", "") or "*.mat",
+        )
+    gebco_nc = _prompt(
+        "gebco_nc — GEBCO bathymetry .nc",
+        default=_ex.get("gebco_nc", ""),
+    )
+    print(
+        "  ↳ ctdreport reads this YAML when generating reports."
+        " If detection runs, a draft (ctd_sections_draft.yaml)"
+        " is written in the same directory for review."
+    )
     section_yaml = _prompt(
-        "section_yaml — sections definition file (auto-set if detection runs)",
-        default="ctd_sections.yaml",
+        "section_yaml — production YAML path",
+        default=_ex.get("section_yaml", "") or "ctd_sections.yaml",
     )
 
-    print("\nOutput")
+    _section_header("Output")
     output_dir = (
-        _prompt("output_dir", default="outputs/ctd_report") or "outputs/ctd_report"
+        _prompt("output_dir", default=_ex.get("output_dir", "") or "outputs/ctd_report")
+        or "outputs/ctd_report"
     )
 
-    print("\nCruise info (optional)")
-    cruise_name = _prompt("cruise name") or ""
-    ship = _prompt("ship") or ""
-    chief_scientist = _prompt("chief scientist") or ""
-    start_date = _prompt("start date (YYYY-MM-DD)") or ""
-    end_date = _prompt("end date (YYYY-MM-DD)") or ""
+    _section_header("Cruise info (optional)")
+    cruise_name = _prompt("cruise name", default=_ex.get("cruise_name", "")) or ""
+    ship = _prompt("ship", default=_ex.get("ship", "")) or ""
+    chief_scientist = (
+        _prompt("chief scientist", default=_ex.get("chief_scientist", "")) or ""
+    )
+    start_date = _parse_date(
+        _prompt("start date (YYYY-MM-DD)", default=_ex.get("start_date", "")) or ""
+    )
+    end_date = _parse_date(
+        _prompt("end date (YYYY-MM-DD)", default=_ex.get("end_date", "")) or ""
+    )
 
-    # Run detection first so we can wire the draft path into config.yaml.
-    draft_path: Path | None = None
+    # Run detection if profiles.nc is available.
+    _draft_msg: str = ""
     if not profiles_nc:
         print(
             "  (no profiles.nc — skipping detection; "
@@ -418,36 +624,36 @@ def _run_interactive(args: argparse.Namespace) -> int:
         if not profiles_path.exists():
             print(f"  WARNING: {profiles_path} not found — skipping section detection.")
         else:
+            _section_header("Section / timeseries detection")
             try:
-                ans = (
-                    input(
-                        "\nRun section/timeseries detection from profiles.nc? [Y/n]: "
-                    )
-                    .strip()
-                    .lower()
-                )
+                ans = input("  Run detection from profiles.nc? [Y/n]: ").strip().lower()
             except (EOFError, KeyboardInterrupt):
                 print()
                 ans = "n"
             if ans not in {"n", "no"}:
-                dx_ts = args.dx_timeseries
                 dx_sec = args.dx_section
+                dx_diam = args.dx_diameter
                 max_turn = args.max_turn_deg
                 min_run = args.min_run_casts
                 max_sec = args.max_section_casts
                 print(
-                    f"\nDetection thresholds (--dx-timeseries {dx_ts} km,"
-                    f" --dx-section {dx_sec} km, --max-turn-deg {max_turn},"
-                    f" --min-run-casts {min_run})"
+                    f"\n  Thresholds — section break: {dx_sec} km,"
+                    f" repeat-station diameter: {dx_diam} km,"
+                    f" max heading change: {max_turn}°, min casts/section: {min_run}"
+                    f"\n  (Press Enter to accept each default)"
                 )
                 try:
-                    v = input(f"  Repeat-station radius km [{dx_ts}]: ").strip()
+                    v = input(
+                        f"  Repeat-station cluster diameter km [{dx_diam}]: "
+                    ).strip()
                     if v:
-                        dx_ts = float(v)
+                        dx_diam = float(v)
                     v = input(f"  Section break distance km [{dx_sec}]: ").strip()
                     if v:
                         dx_sec = float(v)
-                    v = input(f"  Max heading change within section deg [{max_turn}]: ").strip()
+                    v = input(
+                        f"  Max heading change within section deg [{max_turn}]: "
+                    ).strip()
                     if v:
                         max_turn = float(v)
                     v = input(f"  Min casts per section [{min_run}]: ").strip()
@@ -460,32 +666,56 @@ def _run_interactive(args: argparse.Namespace) -> int:
                 except (EOFError, KeyboardInterrupt, ValueError):
                     print()
                 print(
-                    f"\nDetecting (dx_timeseries={dx_ts} km, dx_section={dx_sec} km,"
+                    f"\nDetecting (dx_section={dx_sec} km, dx_diameter={dx_diam} km,"
                     f" max_turn={max_turn}°, min_run={min_run}, max_section_casts={max_sec})..."
                 )
                 try:
                     sections, timeseries = _detect_groups(
-                        profiles_path, dx_ts, dx_sec, max_sec, max_turn, min_run
+                        profiles_path,
+                        dx_sec,
+                        max_sec,
+                        max_turn,
+                        min_run,
+                        dx_diam,
                     )
                 except Exception as exc:  # noqa: BLE001
                     print(f"  ERROR: {exc}", file=sys.stderr)
                     return 1
                 _print_detection_summary(sections, timeseries)
-                _draft_initial = config_path.parent / "ctd_sections_draft.yaml"
+                _draft_dir = (
+                    Path(section_yaml).parent if section_yaml else config_path.parent
+                )
+                _draft_initial = _draft_dir / "ctd_sections_draft.yaml"
                 resolved = _resolve_output_path(_draft_initial, args.force)
                 if resolved is not None:
                     yaml_text = _format_sections_yaml(
-                        sections, timeseries, dx_ts, dx_sec, max_sec, max_turn, min_run
+                        sections,
+                        timeseries,
+                        dx_sec,
+                        max_sec,
+                        max_turn,
+                        min_run,
+                        dx_diam,
                     )
                     _write_file(resolved, yaml_text)
-                    print(
-                        f"Written: {resolved}"
-                        "  (draft — rename to ctd_sections.yaml after editing)"
-                    )
-                    draft_path = resolved
-
-    # Wire the draft path into section_yaml if detection produced one.
-    effective_section_yaml = str(draft_path) if draft_path is not None else section_yaml
+                    _target = section_yaml or "ctd_sections.yaml"
+                    _same = Path(_target).resolve() == resolved.resolve()
+                    if _same:
+                        _draft_msg = (
+                            f"  Draft written  : {resolved}"
+                            f"\n  section_yaml   : {_target}"
+                            f"\n  ↳ Draft is already at the production path — no rename needed."
+                        )
+                    else:
+                        _draft_msg = (
+                            f"  Draft written  : {resolved}"
+                            f"\n  section_yaml   : {_target}"
+                            f"\n  ↳ Review the draft, then rename to activate:"
+                            f"\n      mv {resolved} {_target}"
+                        )
+    # Config always points to the user's intended production path; the draft
+    # is a temporary review copy that the user renames to activate.
+    effective_section_yaml = section_yaml
 
     config_text = _build_config_text(
         nc_dir=nc_dir,
@@ -493,6 +723,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
         cnv_pattern=cnv_pattern,
         profiles_nc=profiles_nc,
         ladcp_dir=ladcp_dir,
+        ladcp_pattern=ladcp_pattern,
         gebco_nc=gebco_nc,
         section_yaml=effective_section_yaml,
         output_dir=output_dir,
@@ -504,7 +735,10 @@ def _run_interactive(args: argparse.Namespace) -> int:
     )
     config_path.parent.mkdir(parents=True, exist_ok=True)
     _write_file(config_path, config_text)
-    print(f"\nWritten: {config_path}")
+    _section_header("Done")
+    print(f"  Config written : {config_path}")
+    if _draft_msg:
+        print(_draft_msg)
     return 0
 
 
@@ -515,38 +749,43 @@ def _run_interactive(args: argparse.Namespace) -> int:
 
 def _detect_groups(
     profiles_path: Path,
-    dx_timeseries_km: float,
     dx_section_km: float,
     max_section_casts: int = 25,
     max_turn_deg: float = 45.0,
     min_run_casts: int = 4,
+    dx_diameter_km: float = 1.0,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Detect section and timeseries groups from *profiles_path*.
 
     Reads per-cast positions from the downcast rows of ``profiles.nc``.
 
-    Algorithm (two-level):
+    Algorithm:
 
     1. **Coarse gap split** — consecutive casts separated by more than
        *dx_section_km* km start a new coarse group (long transits at sea).
-    2. **Stable-heading run detection** — within each coarse group, find
+    2. **Heading-based section detection** — within each coarse group, find
        maximal sub-sequences where every consecutive heading change is
        ≤ *max_turn_deg*.  Runs shorter than *min_run_casts* are discarded as
        transit noise.  A backward-extension step checks whether the cast
        immediately before a run approaches from the same bearing as the run
        (handles the common "approach station" case where the ship arrives at
-       the first section station from a different direction).
-    3. **Safety cap** — runs longer than *max_section_casts* are split into
-       consecutive chunks.
-    4. **Classification** — span ≤ *dx_timeseries_km* → timeseries (repeat
-       station); span > *dx_timeseries_km* → section (transect).
+       the first section station from a different direction).  Groups detected
+       this way are classified as **sections**.
+    2b. **Repeat-station cluster detection** — unclaimed casts (not in any
+        heading run) are grouped into tight clusters: consecutive unclaimed
+        casts with no claimed casts between them and inter-cast distance
+        ≤ *dx_diameter_km*.  Clusters of ≥ 2 casts are classified as
+        **timeseries** (repeat stations / yoyos).
+    3. **Safety cap** — heading runs longer than *max_section_casts* are
+       split into consecutive chunks.
+
+    The detection method determines the type: heading runs → section,
+    diameter clusters → timeseries.  There is no span-based reclassification.
 
     Parameters
     ----------
     profiles_path:
         Path to a compiled ``profiles.nc`` file.
-    dx_timeseries_km:
-        Maximum first-to-last span (km) for a group to be a repeat station.
     dx_section_km:
         Inter-cast distance (km) that triggers a coarse section break (transit).
     max_section_casts:
@@ -558,6 +797,10 @@ def _detect_groups(
     min_run_casts:
         Minimum number of casts for a run to be kept.  Must be >= 3.
         Default: 4.
+    dx_diameter_km:
+        Maximum inter-cast distance (km) within a repeat-station cluster.
+        Unclaimed casts closer than this are grouped as a repeat station.
+        Default: 1.0.
 
     Returns
     -------
@@ -601,11 +844,11 @@ def _detect_groups(
             gap_groups.append(list(range(start, i)))
             start = i
 
-    # Level 2: within each coarse group, find stable-heading runs.
+    # Level 2: within each coarse group, find heading-consistent runs (sections)
+    # and tight repeat-station clusters (timeseries).
     # local_bearings[i] = bearing FROM g[i-1] TO g[i] (None for i=0).
-    # A "turn" at local position p = angle between local_bearings[p] and local_bearings[p+1].
-    # We end a run when that turn exceeds max_turn_deg.
-    raw_groups: list[list[int]] = []
+    section_groups: list[list[int]] = []
+    timeseries_groups: list[list[int]] = []
 
     for g in gap_groups:
         n_g = len(g)
@@ -615,8 +858,12 @@ def _detect_groups(
         local_bearings: list[float | None] = [None]
         for i in range(1, n_g):
             local_bearings.append(
-                _bearing_deg(float(lats[g[i - 1]]), float(lons[g[i - 1]]),
-                             float(lats[g[i]]), float(lons[g[i]]))
+                _bearing_deg(
+                    float(lats[g[i - 1]]),
+                    float(lons[g[i - 1]]),
+                    float(lats[g[i]]),
+                    float(lons[g[i]]),
+                )
             )
 
         # Find all maximal stable runs (local index lists within g).
@@ -625,8 +872,8 @@ def _detect_groups(
         for i in range(1, n_g + 1):
             end_run = i == n_g
             if not end_run:
-                b_arrive = local_bearings[i - 1]   # how we arrived at g[i-1]
-                b_depart = local_bearings[i]        # how we leave g[i-1] toward g[i]
+                b_arrive = local_bearings[i - 1]  # how we arrived at g[i-1]
+                b_depart = local_bearings[i]  # how we leave g[i-1] toward g[i]
                 if b_arrive is not None and b_depart is not None:
                     end_run = _angle_diff(b_arrive, b_depart) > max_turn_deg
             if end_run:
@@ -648,79 +895,123 @@ def _detect_groups(
             if prev_local < 0 or prev_local in claimed:
                 continue
             main_bear = _bearing_deg(
-                float(lats[g[local_run[0]]]), float(lons[g[local_run[0]]]),
-                float(lats[g[local_run[-1]]]), float(lons[g[local_run[-1]]]),
+                float(lats[g[local_run[0]]]),
+                float(lons[g[local_run[0]]]),
+                float(lats[g[local_run[-1]]]),
+                float(lons[g[local_run[-1]]]),
             )
             approach_bear = _bearing_deg(
-                float(lats[g[prev_local]]), float(lons[g[prev_local]]),
-                float(lats[g[local_run[0]]]), float(lons[g[local_run[0]]]),
+                float(lats[g[prev_local]]),
+                float(lons[g[prev_local]]),
+                float(lats[g[local_run[0]]]),
+                float(lons[g[local_run[0]]]),
             )
             if _angle_diff(approach_bear, main_bear) <= max_turn_deg:
                 kept[r_idx] = [prev_local] + local_run
                 claimed.add(prev_local)
 
         # Convert to global indices, apply max_section_casts safety cap.
+        # Heading-detected runs are sections.
         for local_run in kept:
             global_run = [g[li] for li in local_run]
             for chunk_start in range(0, len(global_run), max_section_casts):
-                raw_groups.append(global_run[chunk_start : chunk_start + max_section_casts])
+                section_groups.append(
+                    global_run[chunk_start : chunk_start + max_section_casts]
+                )
+
+        # Step 2b: collect unclaimed casts; split into tight repeat-station clusters.
+        # Consecutive unclaimed local indices with no claimed casts between them
+        # AND inter-cast distance ≤ dx_diameter_km form one cluster.
+        unclaimed = [li for li in range(n_g) if li not in claimed]
+        if len(unclaimed) >= 2:
+            sub_start = 0
+            for si in range(1, len(unclaimed) + 1):
+                end_sub = si == len(unclaimed)
+                if not end_sub:
+                    a_li, b_li = unclaimed[si - 1], unclaimed[si]
+                    if b_li - a_li > 1:
+                        end_sub = True  # claimed casts between these two
+                    else:
+                        d = (
+                            float(
+                                np.asarray(
+                                    gsw.distance(
+                                        [lons[g[a_li]], lons[g[b_li]]],
+                                        [lats[g[a_li]], lats[g[b_li]]],
+                                    )
+                                )[0]
+                            )
+                            / 1000.0
+                        )
+                        end_sub = d > dx_diameter_km
+                if end_sub:
+                    sub = unclaimed[sub_start:si]
+                    if len(sub) >= 2:
+                        # Diameter-clustered groups are timeseries.
+                        timeseries_groups.append([g[li] for li in sub])
+                    sub_start = si
 
     sections: list[dict[str, Any]] = []
     timeseries: list[dict[str, Any]] = []
+    color_idx = 0
 
-    for group_idx, g in enumerate(raw_groups):
+    for g in section_groups:
         g_casts = cast_nums[g]
         g_lats = lats[g]
         g_lons = lons[g]
         n_g = len(g)
         first_cast = int(g_casts[0])
         last_cast = int(g_casts[-1])
-        color = _TAB10_COLORS[group_idx % len(_TAB10_COLORS)]
-
-        span_km = (
-            float(
-                np.asarray(
-                    gsw.distance(
-                        np.array([g_lons[0], g_lons[-1]]),
-                        np.array([g_lats[0], g_lats[-1]]),
-                    )
-                )[0]
-            )
-            / 1000.0
-        )
+        color = _TAB10_COLORS[color_idx % len(_TAB10_COLORS)]
+        color_idx += 1
         path_km = float(np.sum(inter_km[g[1:]])) if n_g > 1 else 0.0
         cast_numbers = _cast_range(g_casts)
+        idx = len(sections) + 1
+        sections.append(
+            {
+                "name": f"Section_{idx:03d}",
+                "description": (
+                    f"Section {idx:03d} — casts {first_cast:03d}–{last_cast:03d}"
+                    f" ({n_g} casts, {path_km:.0f} km)"
+                ),
+                "cast_numbers": cast_numbers,
+                "color": color,
+            }
+        )
 
-        if span_km <= dx_timeseries_km:
-            lat_c = float(np.nanmean(g_lats))
-            lon_c = float(np.nanmean(g_lons))
-            ns = "N" if lat_c >= 0 else "S"
-            ew = "E" if lon_c >= 0 else "W"
-            idx = len(timeseries) + 1
-            timeseries.append(
-                {
-                    "name": f"Station_{idx:03d}",
-                    "description": (
-                        f"Station {idx:03d} — ~{abs(lat_c):.1f}°{ns} {abs(lon_c):.1f}°{ew}"
-                        f" ({n_g} cast{'s' if n_g != 1 else ''})"
-                    ),
-                    "cast_numbers": cast_numbers,
-                    "color": color,
-                }
-            )
-        else:
-            idx = len(sections) + 1
-            sections.append(
-                {
-                    "name": f"Section_{idx:03d}",
-                    "description": (
-                        f"Section {idx:03d} — casts {first_cast:03d}–{last_cast:03d}"
-                        f" ({n_g} casts, {path_km:.0f} km)"
-                    ),
-                    "cast_numbers": cast_numbers,
-                    "color": color,
-                }
-            )
+    for g in timeseries_groups:
+        g_casts = cast_nums[g]
+        g_lats = lats[g]
+        g_lons = lons[g]
+        n_g = len(g)
+        color = _TAB10_COLORS[color_idx % len(_TAB10_COLORS)]
+        color_idx += 1
+        cast_numbers = _cast_range(g_casts)
+        lat_c = float(np.nanmean(g_lats))
+        lon_c = float(np.nanmean(g_lons))
+        ns = "N" if lat_c >= 0 else "S"
+        ew = "E" if lon_c >= 0 else "W"
+        first_cast_ts = int(g_casts[0])
+        last_cast_ts = int(g_casts[-1])
+        cast_range_str = (
+            f"{first_cast_ts:03d}–{last_cast_ts:03d}"
+            if last_cast_ts != first_cast_ts
+            else f"{first_cast_ts:03d}"
+        )
+        idx = len(timeseries) + 1
+        timeseries.append(
+            {
+                "name": f"Station_{idx:03d}",
+                "description": (
+                    f"Station {idx:03d} — ~{abs(lat_c):.1f}°{ns} {abs(lon_c):.1f}°{ew}"
+                    f" ({n_g} cast{'s' if n_g != 1 else ''}: {cast_range_str})"
+                ),
+                "cast_numbers": cast_numbers,
+                "color": color,
+                "_lat": lat_c,
+                "_lon": lon_c,
+            }
+        )
 
     return sections, timeseries
 
@@ -742,16 +1033,43 @@ def _print_detection_summary(
     """Print a human-readable table of detected groups."""
     total = len(sections) + len(timeseries)
     print(
-        f"  Found {total} group(s): {len(sections)} section(s), {len(timeseries)} timeseries station(s)\n"
+        f"\n  Detected {total} groups: "
+        f"{len(sections)} section(s), {len(timeseries)} repeat station(s)"
     )
     if sections:
-        print("  Sections:")
+        print("\n  Sections")
+        print("  " + "─" * 58)
         for s in sections:
-            print(f"    {s['name']:16s}  {s['description']}")
+            print(f"  {s['description']}")
     if timeseries:
-        print("\n  Timeseries:")
+        print("\n  Repeat stations")
+        print("  " + "─" * 58)
         for t in timeseries:
-            print(f"    {t['name']:16s}  {t['description']}")
+            print(f"  {t['description']}")
+        # Warn about stations that appear to be at the same location.
+        _warned: set[tuple[int, int]] = set()
+        for i, a in enumerate(timeseries):
+            for j, b in enumerate(timeseries):
+                if j <= i:
+                    continue
+                pair = (i, j)
+                if pair in _warned:
+                    continue
+                a_lat = a.get("_lat")
+                b_lat = b.get("_lat")
+                a_lon = a.get("_lon")
+                b_lon = b.get("_lon")
+                if (
+                    a_lat is not None
+                    and b_lat is not None
+                    and abs(a_lat - b_lat) < 0.1
+                    and abs(a_lon - b_lon) < 0.1  # type: ignore[operator]
+                ):
+                    print(
+                        f"\n  ⚠  {a['name']} and {b['name']} are at the same location"
+                        " — consider merging in the draft YAML."
+                    )
+                    _warned.add(pair)
     print()
 
 
@@ -763,18 +1081,18 @@ def _print_detection_summary(
 def _format_sections_yaml(
     sections: list[dict[str, Any]],
     timeseries: list[dict[str, Any]],
-    dx_timeseries_km: float,
     dx_section_km: float,
     max_section_casts: int = 25,
     max_turn_deg: float = 45.0,
     min_run_casts: int = 4,
+    dx_diameter_km: float = 1.0,
 ) -> str:
     """Return a YAML string for ``ctd_sections_draft.yaml``."""
     lines: list[str] = [
         "# ctd_sections_draft.yaml — auto-generated by ctdreport init --interactive",
         (
-            f"# Detection thresholds: dx_timeseries={dx_timeseries_km} km,"
-            f" dx_section={dx_section_km} km, max_turn={max_turn_deg}°,"
+            f"# Detection thresholds: dx_section={dx_section_km} km,"
+            f" dx_diameter={dx_diameter_km} km, max_turn={max_turn_deg}°,"
             f" min_run={min_run_casts}, max_section_casts={max_section_casts}"
         ),
         "# Review carefully: rename groups, adjust cast ranges, move entries between",
@@ -816,6 +1134,7 @@ def _build_config_text(
     cnv_pattern: str | None,
     profiles_nc: str | None,
     ladcp_dir: str | None,
+    ladcp_pattern: str | None,
     gebco_nc: str | None,
     section_yaml: str | None,
     output_dir: str,
@@ -846,6 +1165,12 @@ def _build_config_text(
     ladcp_line = (
         f"  ladcp_dir: {ladcp_dir}" if ladcp_dir else "  # ladcp_dir: /path/to/ladcp"
     )
+    ladcp_pattern_default = "*.mat"
+    ladcp_pattern_line = (
+        f"  ladcp_pattern: {ladcp_pattern}"
+        if ladcp_pattern and ladcp_pattern != ladcp_pattern_default
+        else f"  # ladcp_pattern: {ladcp_pattern_default}  # * = zero-padded cast number"
+    )
     gebco_line = (
         f"  gebco_nc: {gebco_nc}"
         if gebco_nc
@@ -862,6 +1187,7 @@ def _build_config_text(
         f"{profiles_line}\n"
         f"{sections_line}\n"
         f"{ladcp_line}\n"
+        f"{ladcp_pattern_line}\n"
         "  # ship_track: /path/to/ship_track.nc\n"
         f"{gebco_line}\n"
         "\n"

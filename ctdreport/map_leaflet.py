@@ -471,7 +471,24 @@ var DATA_BOUNDS  = [[{{ lat_min }}, {{ lon_min }}], [{{ lat_max }}, {{ lon_max }
 
 var map = L.map('map', { zoomSnap: 0.25, zoomControl: false });
 L.control.zoom({ position: 'topright' }).addTo(map);
-map.fitBounds(DATA_BOUNDS, { padding: [40, 40] });
+// Expand the initial view longitude so the map fills a widescreen without
+// large empty side margins.  At latitude φ, 1° lon = cos(φ) × 1° lat in
+// Mercator distance.  We compute the lon span needed to fill the viewport at
+// the screen aspect ratio and use whichever is wider.
+(function() {
+  var meanLat = (DATA_BOUNDS[0][0] + DATA_BOUNDS[1][0]) / 2;
+  var cosLat  = Math.cos(meanLat * Math.PI / 180);
+  var dataLatSpan = DATA_BOUNDS[1][0] - DATA_BOUNDS[0][0];
+  var dataLonSpan = DATA_BOUNDS[1][1] - DATA_BOUNDS[0][1];
+  var screenAspect = window.innerWidth / Math.max(1, window.innerHeight);
+  var targetLonSpan = Math.max(dataLonSpan, screenAspect * dataLatSpan / cosLat);
+  var midLon = (DATA_BOUNDS[0][1] + DATA_BOUNDS[1][1]) / 2;
+  var viewBounds = [
+    [DATA_BOUNDS[0][0], midLon - targetLonSpan / 2],
+    [DATA_BOUNDS[1][0], midLon + targetLonSpan / 2]
+  ];
+  map.fitBounds(viewBounds, { padding: [20, 20] });
+})();
 
 if (GEBCO_B64) {
   L.imageOverlay('data:image/png;base64,' + GEBCO_B64, GEBCO_BOUNDS, {

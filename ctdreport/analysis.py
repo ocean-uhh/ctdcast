@@ -99,6 +99,62 @@ def _split_cast(ds: xr.Dataset) -> tuple[xr.Dataset, xr.Dataset]:
     return ds.isel(time=slice(0, i_turn + 1)), ds.isel(time=slice(i_turn, None))
 
 
+# Module-level numpy cache: populated by preload_gebco() at report start.
+# Maps str(path) → (all_lons, all_lats, all_depth) numpy arrays for the cruise area.
+# Once populated, _load_gebco subsets with numpy (zero disk I/O).
+_GEBCO_CACHE: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+
+
+def preload_gebco(
+    path: Path,
+    lat_lo: float,
+    lat_hi: float,
+    lon_lo: float,
+    lon_hi: float,
+    margin: float = 1.0,
+) -> bool:
+    """Load a GEBCO region into memory once for the cruise area.
+
+    Call this at report-generation start with the full lat/lon extent of all
+    casts.  Subsequent ``_load_gebco`` calls then subset from numpy arrays
+    (no disk I/O) instead of reopening the file for every map figure.
+
+    Parameters
+    ----------
+    path:
+        Path to GEBCO netCDF file.
+    lat_lo, lat_hi, lon_lo, lon_hi:
+        Bounding box of the cruise area.
+    margin:
+        Extra degrees around the bounding box.  Default 1.0 deg.
+
+    Returns
+    -------
+    bool
+        True if the file was found and cached successfully.
+    """
+    if not Path(path).exists():
+        return False
+    try:
+        bathy = xr.open_dataset(path, engine="netcdf4")
+        lon_dim = "lon" if "lon" in bathy.coords else "longitude"
+        lat_dim = "lat" if "lat" in bathy.coords else "latitude"
+        sub = bathy.sel(
+            {
+                lon_dim: slice(lon_lo - margin, lon_hi + margin),
+                lat_dim: slice(lat_lo - margin, lat_hi + margin),
+            }
+        )
+        lons = sub[lon_dim].values.copy()
+        lats = sub[lat_dim].values.copy()
+        depth = -sub["elevation"].values.copy()  # GEBCO: negative = below sea level
+        bathy.close()
+        _GEBCO_CACHE[str(path)] = (lons, lats, depth)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _load_gebco(
     lat_lo: float,
     lat_hi: float,
@@ -107,17 +163,32 @@ def _load_gebco(
     margin: float = 0.05,
     path: Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
-    """Load a GEBCO subset; return (lons, lats, depth_m) or None if unavailable.
+    """Return a GEBCO subset as (lons, lats, depth_m) or None if unavailable.
+
+    If ``preload_gebco`` has been called for *path*, subsets from the in-memory
+    numpy cache (fast).  Otherwise opens the file from disk (slow).
 
     Parameters
     ----------
     path:
-        Path to GEBCO_2025.nc. Pass ``_plots.GEBCO_PATH`` from the caller.
+        Path to GEBCO_2025.nc. Pass ``plots.GEBCO_PATH`` from the caller.
         Returns None if not provided or file not found.
     """
     if path is None or not Path(path).exists():
         return None
+    path_str = str(path)
     try:
+        if path_str in _GEBCO_CACHE:
+            all_lons, all_lats, all_depth = _GEBCO_CACHE[path_str]
+            lon_mask = (all_lons >= lon_lo - margin) & (all_lons <= lon_hi + margin)
+            lat_mask = (all_lats >= lat_lo - margin) & (all_lats <= lat_hi + margin)
+            lons = all_lons[lon_mask]
+            lats = all_lats[lat_mask]
+            if lons.size == 0 or lats.size == 0:
+                return None
+            depth = all_depth[lat_mask][:, lon_mask]
+            return lons, lats, depth
+        # Fallback when preload_gebco was not called: open file directly.
         bathy = xr.open_dataset(path, engine="netcdf4")
         lon_dim = "lon" if "lon" in bathy.coords else "longitude"
         lat_dim = "lat" if "lat" in bathy.coords else "latitude"
