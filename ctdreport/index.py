@@ -356,6 +356,7 @@ def generate_ctd_report(
     cast_filter: int | None = None,
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
+    dbar_step: int = 1,
 ) -> None:
     """Generate the full ctdreport HTML report suite.
 
@@ -408,6 +409,10 @@ def generate_ctd_report(
         If True, apply pre-soak detection on each cast: cut the first 60 s
         (pump activation) and any records up to the last near-surface record
         after pump-on.  Passed through to :func:`~ctdreport.station.generate_station_page`.
+    dbar_step:
+        Subsample the pressure axis by this step for section and timeseries
+        plots (default 1, full 1-dbar resolution).  ``build_profiles()``
+        always stores 1-dbar data; this controls plot-time resolution only.
 
     """
     gen: dict[str, bool] = {
@@ -472,6 +477,24 @@ def generate_ctd_report(
             )
             print(f"  GEBCO preloaded ({perf_counter() - _t0:.1f}s)")
 
+    # Load sections YAML once — needed for cast_notes before stations are written.
+    yaml_data: dict[str, Any] = {}
+    if section_yaml and section_yaml.exists():
+        with open(section_yaml) as f:
+            yaml_data = yaml.safe_load(f) or {}
+
+    # Build cruise-wide cast_notes mapping from all sections and timeseries.
+    all_cast_notes: dict[int, list[str]] = {}
+    for _grp in ("sections", "timeseries"):
+        for _cfg in (yaml_data.get(_grp) or {}).values():
+            if not isinstance(_cfg, dict):
+                continue
+            for _cn, _note in (_cfg.get("cast_notes") or {}).items():
+                _cn_int = int(_cn)
+                all_cast_notes.setdefault(_cn_int, [])
+                if _note and _note not in all_cast_notes[_cn_int]:
+                    all_cast_notes[_cn_int].append(str(_note))
+
     if gen["stations"]:
         _t0 = perf_counter()
         cast_num_strs = [m["cast_num_str"] for m in all_meta]
@@ -526,6 +549,7 @@ def generate_ctd_report(
                 cast_num_str=meta["cast_num_str"],
                 sal_range=sal_range,
                 trim_soak=trim_soak,
+                cast_notes=all_cast_notes.get(meta["cast_num"]),
             )
             if _skip_reason:
                 _status = _skip_reason + _ladcp_note
@@ -547,11 +571,6 @@ def generate_ctd_report(
                 )
             print(f"  station cast_{meta['cast_num_str']}: {_status}")
         print(f"  [stations: {perf_counter() - _t0:.1f}s]")
-
-    yaml_data: dict[str, Any] = {}
-    if section_yaml and section_yaml.exists():
-        with open(section_yaml) as f:
-            yaml_data = yaml.safe_load(f) or {}
 
     sections_cfg: dict[str, Any] = yaml_data.get("sections", {})
     timeseries_cfg: dict[str, Any] = yaml_data.get("timeseries", {})
@@ -590,6 +609,7 @@ def generate_ctd_report(
                 vmax_override=vmax_override,
                 ladcp_dir=ladcp_dir,
                 ladcp_pattern=ladcp_pattern,
+                dbar_step=dbar_step,
             )
             if _sec_skip:
                 _sec_status = _sec_skip + _sec_note
@@ -642,6 +662,7 @@ def generate_ctd_report(
                 all_meta=all_meta,
                 ladcp_dir=ladcp_dir,
                 ladcp_pattern=ladcp_pattern,
+                dbar_step=dbar_step,
             )
             if _ts_skip:
                 _ts_status = _ts_skip + _ts_note

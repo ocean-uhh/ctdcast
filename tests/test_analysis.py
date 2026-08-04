@@ -1,8 +1,15 @@
-"""Tests for analysis helpers: _section_orientation, _find_soak_end."""
+"""Tests for analysis helpers: _section_orientation, _find_soak_end, parse_sensor_info."""
+
+from pathlib import Path
 
 import numpy as np
+import xarray as xr
 
-from ctdreport.analysis import _find_soak_end, _section_orientation
+from ctdreport.analysis import _find_soak_end, _section_orientation, parse_sensor_info
+
+_FIXTURES = Path(__file__).parent / "fixtures"
+_NC = _FIXTURES / "nc"
+_CAST_011 = _NC / "mixsed2_011.nc"
 
 
 class TestSectionOrientation:
@@ -171,3 +178,52 @@ class TestFindSoakEnd:
         t = _make_times(300)
         idx = _find_soak_end(p, t)
         assert 0 <= idx <= 300
+
+
+class TestParseSensorInfo:
+    def test_returns_list_for_valid_fixture(self):
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        result = parse_sensor_info(ds)
+        assert isinstance(result, list)
+        # mixsed2_011.nc has Temperature, Conductivity, Pressure, Oxygen, pH,
+        # Fluorometer, and UserPolynomialSensor — expect at least 4
+        assert len(result) >= 4
+        for entry in result:
+            assert "sensor_type" in entry
+            assert "serial_number" in entry
+            assert "calibration_date" in entry
+            assert entry["sensor_type"]
+            assert entry["serial_number"]
+
+    def test_known_sensors_present(self):
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        result = parse_sensor_info(ds)
+        types = [r["sensor_type"] for r in result]
+        assert "Temperature" in types
+        assert "Conductivity" in types
+        assert "Pressure" in types
+
+    def test_empty_on_missing_raw_metadata(self):
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        ds.attrs.pop("raw_metadata", None)
+        result = parse_sensor_info(ds)
+        assert result == []
+
+    def test_empty_on_invalid_json(self):
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        ds.attrs["raw_metadata"] = "not valid json {"
+        result = parse_sensor_info(ds)
+        assert result == []
+
+    def test_altimeter_excluded(self):
+        # AltimeterSensor has no serial_number in fixture — must be excluded.
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        result = parse_sensor_info(ds)
+        types = [r["sensor_type"] for r in result]
+        assert "Altimeter" not in types
+
+    def test_serial_numbers_are_strings(self):
+        ds = xr.open_dataset(_CAST_011, engine="netcdf4")
+        result = parse_sensor_info(ds)
+        for entry in result:
+            assert isinstance(entry["serial_number"], str)
