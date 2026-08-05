@@ -1,0 +1,27 @@
+# Demo configuration — uses the committed fixture casts in tests/fixtures/.
+# Run from the repo root:
+#   python scripts/make_demo.py
+# or, with the CLI:
+#   ctdreport run tests/fixtures/config_demo.yaml
+# (paths below are relative to the repo root)
+
+cruise_info:
+  cruise_id: odb26
+  ship: Odon de Buen
+
+data:
+  nc_dir:       tests/fixtures/nc
+  profiles_nc:  tests/fixtures/profiles_demo.nc
+  section_yaml: tests/fixtures/ctd_sections_demo.yaml
+  ladcp_dir:    tests/fixtures/ladcp
+  # gebco_nc: /path/to/GEBCO_2025.nc   # optional — maps render without it
+
+output:
+  dir: docs/source/_static/demo
+
+generate:
+  stations:   true
+  sections:   true
+  timeseries: true
+  index:      true
+  leaflet:    true

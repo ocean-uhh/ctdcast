@@ -1,0 +1,11 @@
+sections:
+  KO:
+    description: "Kangerlussuaq Outer (fixture casts 11-12)"
+    color: "#1f77b4"
+    cast_numbers: [[11, 12]]
+
+timeseries:
+  Triangle:
+    description: "Triangle repeat station (fixture casts 128-129)"
+    color: "#d62728"
+    cast_numbers: [[128, 129]]
