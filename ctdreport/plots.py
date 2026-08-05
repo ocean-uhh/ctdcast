@@ -294,6 +294,124 @@ def _geo_figsize(
 
 
 # ---------------------------------------------------------------------------
+# Shared drawing helpers (internal)
+# ---------------------------------------------------------------------------
+
+
+def _gebco_background(
+    ax: Any,
+    yl0: float,
+    yl1: float,
+    xl0: float,
+    xl1: float,
+    *,
+    n: int = 12,
+) -> None:
+    """Draw a GEBCO bathymetry pcolormesh background on *ax*.
+
+    Does nothing if GEBCO_PATH is None or the file cannot be read.
+    """
+    gebco = _load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
+    if gebco is not None:
+        lons_b, lats_b, depth_b = gebco
+        lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
+        d_fin = depth_b[depth_b > 0]
+        if len(d_fin):
+            bounds_b = _nice_colorbar_bounds(
+                float(d_fin.min()), float(np.percentile(d_fin, 98)), n=n
+            )
+            cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
+            norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
+            LON2, LAT2 = np.meshgrid(lons_b, lats_b)
+            ax.pcolormesh(
+                LON2,
+                LAT2,
+                depth_b,
+                cmap=cmap_b,
+                norm=norm_b,
+                shading="nearest",
+                rasterized=True,
+            )
+
+
+def _cast_markers(ax: Any, x_vals: np.ndarray, cast_labels: list) -> None:
+    """Draw ▼ cast markers and sparse numeric labels along the top edge of *ax*."""
+    trans = ax.get_xaxis_transform()
+    ax.plot(
+        x_vals,
+        [1.03] * len(x_vals),
+        marker="v",
+        ls="none",
+        ms=5,
+        mfc="none",
+        mec="black",
+        mew=0.7,
+        transform=trans,
+        clip_on=False,
+        zorder=6,
+    )
+    n_lab = len(cast_labels)
+    label_step = max(1, n_lab // 20)
+    for i in range(0, n_lab, label_step):
+        ax.text(
+            float(x_vals[i]),
+            1.05,
+            str(cast_labels[i]),
+            transform=trans,
+            ha="center",
+            va="bottom",
+            fontsize=6,
+            rotation=0,
+        )
+
+
+def _discrete_norm(
+    d_fin: np.ndarray,
+    var: str,
+    vmin: float | None,
+    vmax: float | None,
+    n: int = 20,
+) -> tuple[Any, Any, np.ndarray]:
+    """Return ``(cmap, norm, bounds)`` for a discrete pcolormesh colorbar.
+
+    Percentile limits (2nd–98th) are computed from *d_fin* (finite data values)
+    unless overridden by *vmin*/*vmax*.  Includes the oxygen-specific fixed step
+    and a guard against degenerate ranges.
+    """
+    cmap_name = _VAR_CMAPS.get(var, "viridis")
+    v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
+    v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
+    if v0 >= v1:
+        v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
+    if var == "oxygen_1":
+        _o2_step = 2.5
+        _o2_lo = math.floor(v0 / _o2_step) * _o2_step
+        _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
+        bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
+    else:
+        bounds = _nice_colorbar_bounds(v0, v1, n=n, hard_min=vmin, hard_max=vmax)
+    cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
+    norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+    return cmap, norm, bounds
+
+
+def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> None:
+    """Draw σ₀ density contours as a grey backdrop on a T–S axes."""
+    sa_lo = float(np.nanpercentile(sa, 0.5))
+    sa_hi = float(np.nanpercentile(sa, 99.5))
+    ct_lo = float(np.nanpercentile(ct, 0.5))
+    ct_hi = float(np.nanpercentile(ct, 99.5))
+    sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, n)
+    ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, n)
+    SA_g, CT_g = np.meshgrid(sa_g, ct_g)
+    sig0_g = gsw.sigma0(SA_g, CT_g)
+    cs = ax.contour(
+        SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+    )
+    ax.clabel(cs, fmt="%.1f", fontsize=7)
+
+
+# ---------------------------------------------------------------------------
 # Panel — layout metadata passed from Tier-1 to Tier-2 callers
 # ---------------------------------------------------------------------------
 
@@ -535,14 +653,7 @@ def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
 
         fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
 
-        sa_grid = np.linspace(sa.min() - 0.1, sa.max() + 0.1, 80)
-        ct_grid = np.linspace(ct.min() - 0.2, ct.max() + 0.2, 80)
-        SA_g, CT_g = np.meshgrid(sa_grid, ct_grid)
-        sig0_g = gsw.sigma0(SA_g, CT_g)
-        cs = ax.contour(
-            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
-        )
-        ax.clabel(cs, fmt="%.1f", fontsize=7)
+        _sigma0_backdrop(ax, sa, ct)
 
         sc = ax.scatter(sa, ct, c=o2, cmap=cmap, norm=norm, s=6, alpha=0.8)
         cb = fig.colorbar(
@@ -811,29 +922,7 @@ def _make_station_map_b64(
             figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
         )
 
-        gebco = _load_gebco(
-            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
-        )
-        if gebco is not None:
-            lons_b, lats_b, depth_b = gebco
-            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
-            d_fin = depth_b[depth_b > 0]
-            if len(d_fin):
-                bounds_b = _nice_colorbar_bounds(
-                    float(d_fin.min()), float(np.percentile(d_fin, 98)), n=14
-                )
-                cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
-                norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
-                LON2, LAT2 = np.meshgrid(lons_b, lats_b)
-                ax.pcolormesh(
-                    LON2,
-                    LAT2,
-                    depth_b,
-                    cmap=cmap_b,
-                    norm=norm_b,
-                    shading="nearest",
-                    rasterized=True,
-                )
+        _gebco_background(ax, yl0, yl1, xl0, xl1, n=14)
 
         ax.scatter(all_lons, all_lats, s=12, color="0.5", zorder=3, label="all casts")
         ax.scatter(
@@ -877,29 +966,7 @@ def _make_cruise_map_b64(all_meta: list[dict], *, target_h: float = 4.0) -> str 
             figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
         )
 
-        gebco = _load_gebco(
-            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
-        )
-        if gebco is not None:
-            lons_b, lats_b, depth_b = gebco
-            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
-            d_fin = depth_b[depth_b > 0]
-            if len(d_fin):
-                bounds_b = _nice_colorbar_bounds(
-                    float(d_fin.min()), float(np.percentile(d_fin, 98)), n=12
-                )
-                cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
-                norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
-                LON2, LAT2 = np.meshgrid(lons_b, lats_b)
-                ax.pcolormesh(
-                    LON2,
-                    LAT2,
-                    depth_b,
-                    cmap=cmap_b,
-                    norm=norm_b,
-                    shading="nearest",
-                    rasterized=True,
-                )
+        _gebco_background(ax, yl0, yl1, xl0, xl1)
 
         ax.scatter(lons, lats, s=14, color="0.4", zorder=3)
         n = len(nums)
@@ -1024,20 +1091,8 @@ def _make_section_b64(
         if not len(d_fin):
             return None
 
+        cmap, norm, bounds = _discrete_norm(d_fin, var, vmin, vmax)
         cmap_name = _VAR_CMAPS.get(var, "viridis")
-        v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
-        v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
-        if v0 >= v1:
-            v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
-        if var == "oxygen_1":
-            _o2_step = 2.5
-            _o2_lo = math.floor(v0 / _o2_step) * _o2_step
-            _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
-            bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
-        else:
-            bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
-        cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
-        norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
         dist = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 10.0
         p_max_data = float(p_trim[-1])
@@ -1100,33 +1155,7 @@ def _make_section_b64(
         ax.set_xlabel(x_label)
 
         if cast_labels is not None and len(cast_labels) == len(x_vals):
-            trans = ax.get_xaxis_transform()
-            ax.plot(
-                x_vals,
-                [1.03] * len(x_vals),
-                marker="v",
-                ls="none",
-                ms=5,
-                mfc="none",
-                mec="black",
-                mew=0.7,
-                transform=trans,
-                clip_on=False,
-                zorder=6,
-            )
-            n_lab = len(cast_labels)
-            label_step = max(1, n_lab // 20)
-            for i in range(0, n_lab, label_step):
-                ax.text(
-                    float(x_vals[i]),
-                    1.05,
-                    str(cast_labels[i]),
-                    transform=trans,
-                    ha="center",
-                    va="bottom",
-                    fontsize=6,
-                    rotation=0,
-                )
+            _cast_markers(ax, x_vals, cast_labels)
 
         return fig
 
@@ -1296,32 +1325,7 @@ def _make_ladcp_section_b64(
                 ax.set_xlabel(x_label)
 
                 # Cast markers — open triangles matching other section panels
-                trans = ax.get_xaxis_transform()
-                ax.plot(
-                    x_ladcp,
-                    [1.03] * n_cast,
-                    marker="v",
-                    ls="none",
-                    ms=5,
-                    mfc="none",
-                    mec="black",
-                    mew=0.7,
-                    transform=trans,
-                    clip_on=False,
-                    zorder=6,
-                )
-                label_step = max(1, n_cast // 20)
-                for i in range(0, n_cast, label_step):
-                    ax.text(
-                        x_ladcp[i],
-                        1.05,
-                        str(cast_nums_ladcp[i]),
-                        transform=trans,
-                        ha="center",
-                        va="bottom",
-                        fontsize=6,
-                        rotation=0,
-                    )
+                _cast_markers(ax, x_ladcp, cast_nums_ladcp)
 
                 ax.text(
                     0.01,
@@ -1379,10 +1383,6 @@ def _make_section_ts_profiles_b64(
         sa_hi = float(np.nanpercentile(sa_fin, 99.5))
         ct_lo = float(np.nanpercentile(ct_fin, 0.5))
         ct_hi = float(np.nanpercentile(ct_fin, 99.5))
-        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
-        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
-        SA_g, CT_g = np.meshgrid(sa_g, ct_g)
-        sig0_g = gsw.sigma0(SA_g, CT_g)
 
         x_lo, x_hi = float(x_vals.min()), float(x_vals.max())
         if x_hi <= x_lo:
@@ -1392,10 +1392,7 @@ def _make_section_ts_profiles_b64(
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
         fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-        cs = ax.contour(
-            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
-        )
-        ax.clabel(cs, fmt="%.1f", fontsize=7)
+        _sigma0_backdrop(ax, sa_fin, ct_fin)
 
         for i in range(sa_all.shape[0]):
             mask = np.isfinite(sa_all[i]) & np.isfinite(ct_all[i])
@@ -1476,16 +1473,8 @@ def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
         cmap = plt.get_cmap("plasma", len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
-        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
-        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
-        SA_g, CT_g = np.meshgrid(sa_g, ct_g)
-        sig0_g = gsw.sigma0(SA_g, CT_g)
-
         fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-        cs = ax.contour(
-            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
-        )
-        ax.clabel(cs, fmt="%.1f", fontsize=7)
+        _sigma0_backdrop(ax, sa_fin, ct_fin)
 
         for i in range(sa_all.shape[0]):
             mask = np.isfinite(sa_all[i]) & np.isfinite(ct_all[i])
@@ -1542,10 +1531,6 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
         sa_hi = float(np.nanpercentile(sa, 99.5))
         ct_lo = float(np.nanpercentile(ct, 0.5))
         ct_hi = float(np.nanpercentile(ct, 99.5))
-        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
-        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
-        SA_g, CT_g = np.meshgrid(sa_g, ct_g)
-        sig0_g = gsw.sigma0(SA_g, CT_g)
 
         sa_edges = np.linspace(sa_lo, sa_hi, 51)
         ct_edges = np.linspace(ct_lo, ct_hi, 51)
@@ -1564,10 +1549,7 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
         norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=256)
 
         fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-        cs = ax.contour(
-            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
-        )
-        ax.clabel(cs, fmt="%.1f", fontsize=7)
+        _sigma0_backdrop(ax, sa, ct)
         pc = ax.pcolormesh(sa_c, ct_c, counts_log, cmap=cmap_c, norm=norm_c)
         cb = fig.colorbar(
             pc,
@@ -1610,10 +1592,6 @@ def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
         sa_hi = float(np.nanpercentile(sa, 99.5))
         ct_lo = float(np.nanpercentile(ct, 0.5))
         ct_hi = float(np.nanpercentile(ct, 99.5))
-        sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, 80)
-        ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, 80)
-        SA_g, CT_g = np.meshgrid(sa_g, ct_g)
-        sig0_g = gsw.sigma0(SA_g, CT_g)
 
         n_sa, n_ct = 50, 50
         sa_edges = np.linspace(sa_lo, sa_hi, n_sa + 1)
@@ -1650,10 +1628,7 @@ def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
         norm_o = mcolors.BoundaryNorm(bounds_o, ncolors=cmap_o.N)
 
         fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-        cs = ax.contour(
-            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
-        )
-        ax.clabel(cs, fmt="%.1f", fontsize=7)
+        _sigma0_backdrop(ax, sa, ct)
         pc = ax.pcolormesh(sa_c, ct_c, o2_grid, cmap=cmap_o, norm=norm_o)
         cb = fig.colorbar(
             pc,
@@ -1991,29 +1966,7 @@ def _make_all_sections_map_b64(
             )
         )
 
-        gebco = _load_gebco(
-            yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
-        )
-        if gebco is not None:
-            lons_b, lats_b, depth_b = gebco
-            lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
-            d_fin = depth_b[depth_b > 0]
-            if len(d_fin):
-                bounds_b = _nice_colorbar_bounds(
-                    float(d_fin.min()), float(np.percentile(d_fin, 98)), n=12
-                )
-                cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
-                norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
-                LON2, LAT2 = np.meshgrid(lons_b, lats_b)
-                ax.pcolormesh(
-                    LON2,
-                    LAT2,
-                    depth_b,
-                    cmap=cmap_b,
-                    norm=norm_b,
-                    shading="nearest",
-                    rasterized=True,
-                )
+        _gebco_background(ax, yl0, yl1, xl0, xl1)
 
         if all_lats:
             fin = [
@@ -2151,18 +2104,7 @@ def _make_timeseries_b64(
         if not len(d_fin):
             return None
 
-        cmap_name = _VAR_CMAPS.get(var, "viridis")
-        v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
-        v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
-        if var == "oxygen_1":
-            _o2_step = 2.5
-            _o2_lo = math.floor(v0 / _o2_step) * _o2_step
-            _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
-            bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
-        else:
-            bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
-        cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
-        norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+        cmap, norm, bounds = _discrete_norm(d_fin, var, vmin, vmax)
 
         t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
         n_prof = len(t_mpl)
