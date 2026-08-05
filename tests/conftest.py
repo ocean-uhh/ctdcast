@@ -2,8 +2,14 @@
 
 from pathlib import Path
 
+import matplotlib
 import pytest
 import xarray as xr
+
+# Force non-interactive backend before any other matplotlib import.
+# Without this, Windows CI fails with a TclError when matplotlib tries to
+# initialise the Tk backend on a runner where Tcl/Tk is not installed.
+matplotlib.use("Agg")
 
 import ctdreport.plots as _plots
 
