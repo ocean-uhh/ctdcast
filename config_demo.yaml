@@ -1,0 +1,46 @@
+# Demo configuration — uses committed fixture casts to verify your installation.
+#
+# Run from the repo root:
+#   ctdreport run config_demo.yaml
+#
+# Output is written to demo_report/ (gitignored).
+# Open demo_report/index.html in any browser to inspect the result.
+
+cruise_info:
+  cruise_id: odb26
+  ship: Odon de Buen
+  # Map extent — if omitted, auto-fitted to the cast positions.
+  # Set these to keep a consistent map across re-runs as new casts arrive.
+  # map_lat_min: 65.0
+  # map_lat_max: 67.0
+  # map_lon_min: -30.0
+  # map_lon_max: -27.0
+
+data:
+  nc_dir:       tests/fixtures/nc
+  profiles_nc:  tests/fixtures/profiles_demo.nc
+  section_yaml: tests/fixtures/ctd_sections_demo.yaml
+  ladcp_dir:    tests/fixtures/ladcp
+  # gebco_nc: /path/to/GEBCO_2025.nc   # optional — maps render without it
+  # ladcp_pattern: "cruise_NNN_ladcp.mat"  # if your LADCP files aren't named NNN.mat
+
+output:
+  dir: demo_report
+
+generate:
+  stations:   true
+  sections:   true
+  timeseries: true
+  index:      true
+  leaflet:    true
+
+# display:
+#   section_style: pcolormesh    # or "contour" for smoothed filled contours
+#   timeseries_style: pcolormesh
+#   # Override colorbar limits when the auto-scale is dominated by outliers:
+#   vmin:
+#     oxygen_1: 70.0   # % saturation
+#     temperature_1: 3.0
+#   vmax:
+#     oxygen_1: 105.0
+#     temperature_1: 10.0
