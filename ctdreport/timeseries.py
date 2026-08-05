@@ -410,22 +410,18 @@ def generate_timeseries_page(
         ladcp_lons = ds_down["longitude"].values.tolist()
         t_ns = ds_down["time_start"].values.astype("datetime64[ns]").astype(float)
         t_hours = (t_ns - t_ns[0]) / 3.6e12 if len(t_ns) > 0 else np.zeros(0)
-        _ladcp_u, _ladcp_v = _make_ladcp_section_b64(
-            ladcp_cast_nums,
-            t_hours,
-            "Hours since start",
-            ladcp_dir,
-            lats=ladcp_lats,
-            lons=ladcp_lons,
-            figsize=(ts_figw, _MAX_SECTION_H),
-            ladcp_pattern=ladcp_pattern,
-            style=section_style,
-        )
         _ladcp_ts_panels = [
             p
-            for p in (
-                Panel(b64=_ladcp_u, title="U velocity (east +)", short="U"),
-                Panel(b64=_ladcp_v, title="V velocity (north +)", short="V"),
+            for p in _make_ladcp_section_b64(
+                ladcp_cast_nums,
+                t_hours,
+                "Hours since start",
+                ladcp_dir,
+                lats=ladcp_lats,
+                lons=ladcp_lons,
+                figsize=(ts_figw, _MAX_SECTION_H),
+                ladcp_pattern=ladcp_pattern,
+                style=section_style,
             )
             if p.b64
         ]

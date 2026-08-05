@@ -405,28 +405,24 @@ def generate_section_page(
             b64=_make_section_ts_o2_b64(ds_sec),
         ),
     ]
-    _ladcp_u_b64, _ladcp_v_b64 = (
-        _make_ladcp_section_b64(
-            cast_nums_int,
-            x_vals,
-            x_label,
-            ladcp_dir,
-            lats=lats,
-            lons=lons,
-            ladcp_pattern=ladcp_pattern,
-            style=section_style,
-        )
+    _ladcp_panels = (
+        [
+            p
+            for p in _make_ladcp_section_b64(
+                cast_nums_int,
+                x_vals,
+                x_label,
+                ladcp_dir,
+                lats=lats,
+                lons=lons,
+                ladcp_pattern=ladcp_pattern,
+                style=section_style,
+            )
+            if p.b64
+        ]
         if ladcp_dir is not None
-        else (None, None)
+        else []
     )
-    _ladcp_panels = [
-        p
-        for p in (
-            Panel(b64=_ladcp_u_b64, title="U velocity (east +)", short="U"),
-            Panel(b64=_ladcp_v_b64, title="V velocity (north +)", short="V"),
-        )
-        if p.b64
-    ]
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
             "id": "ladcp",

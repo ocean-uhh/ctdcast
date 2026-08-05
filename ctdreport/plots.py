@@ -448,91 +448,13 @@ class Panel:
 # ---------------------------------------------------------------------------
 
 
-def _make_profile_b64(ds: xr.Dataset, var: str, ylabel: str) -> str | None:
-    """Return a base64 PNG of *var* vs pressure (downcast blue, upcast red)."""
+def _make_ts_density_b64(ds: xr.Dataset, ladcp_path: Path | None = None) -> str | None:
+    """Return a base64 PNG of CT/SA/σ₀ profiles, optionally alongside LADCP U/V.
 
-    def _draw() -> plt.Figure | None:
-        if var not in ds:
-            return None
-        ds_down, ds_up = _split_cast(ds)
-        p_down = ds_down["pressure"].values
-        v_down = ds_down[var].values
-        p_up = ds_up["pressure"].values
-        v_up = ds_up[var].values
-
-        fig, ax = plt.subplots(figsize=(4, 7))
-        ax.plot(v_down, p_down, color="#1f77b4", label="downcast")
-        if len(v_up) > 2:
-            ax.plot(v_up, p_up, color=_UPCAST_COLOR, alpha=0.6, label="upcast")
-        ax.set_ylim(float(np.nanmax(p_down)), 0)
-        ax.set_ylabel("Pressure (dbar)")
-        ax.set_xlabel(ylabel)
-        ax.grid(True)
-        ax.legend(loc="lower right")
-        _hide_outer_spines(ax)
-        return fig
-
-    return render_b64(_draw)
-
-
-def _make_ts_density_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of CT / SA / σ₀ triple-axis profile (downcast only)."""
-
-    def _draw() -> plt.Figure | None:
-        ds_teos = _add_teos10(ds)
-        ds_down, _ = _split_cast(ds_teos)
-        p = ds_down["pressure"].values
-        ct = ds_down["CT"].values
-        sa = ds_down["SA"].values
-        sig = ds_down["sigma0"].values
-
-        fig, ax0 = plt.subplots(figsize=PROFILE_FIGSIZE)
-        ax1 = ax0.twiny()
-        ax2 = ax0.twiny()
-
-        (l0,) = ax0.plot(ct, p, color=_TS_COLORS[0], label="CT")
-        (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], label="SA")
-        (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
-
-        # ax1/ax2 use the top spine as their x-axis — restore visibility
-        # even if CLEAN_SPINES would otherwise suppress it.
-        ax2.spines["top"].set_position(("axes", 1.12))
-        ax1.spines["top"].set_visible(True)
-        ax2.spines["top"].set_visible(True)
-
-        for ax, line in zip((ax0, ax1, ax2), (l0, l1, l2)):
-            ax.xaxis.label.set_color(line.get_color())
-            ax.tick_params(axis="x", colors=line.get_color())
-            ax.spines["top"].set_edgecolor(line.get_color())
-
-        # Clip x-axes to 1–99th percentile of downcast to suppress outliers
-        for ax, vals in ((ax0, ct), (ax1, sa), (ax2, sig)):
-            fin = vals[np.isfinite(vals)]
-            if len(fin) > 1:
-                lo, hi = float(np.percentile(fin, 1)), float(np.percentile(fin, 99))
-                pad = max((hi - lo) * 0.05, 1e-6)
-                ax.set_xlim(lo - pad, hi + pad)
-
-        ax0.set_ylim(float(np.nanmax(p)), 0)
-        ax0.set_ylabel("Pressure (dbar)")
-        ax0.set_xlabel("CT (°C)", color=_TS_COLORS[0])
-        ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
-        ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
-        ax0.grid(True)
-        # No legend — x-axis labels are colour-coded to identify each variable.
-        if CLEAN_SPINES:
-            ax0.spines["right"].set_visible(False)
-        return fig
-
-    return render_b64(_draw)
-
-
-def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str | None:
-    """Return CT/SA/σ₀ profiles alongside LADCP U/V on a shared y-axis.
-
-    When *ladcp_path* is None or the file does not exist, renders the same two-column
-    layout with a "no processed LADCP file" message in the right panel so the cast
-    page keeps a consistent appearance for all LADCP-configured casts.
+    When *ladcp_path* is ``None``, renders a single-column CT/SA/σ₀ triple-axis
+    profile (downcast only).  When *ladcp_path* is given, renders a two-column layout
+    with LADCP U/V on the right; shows a placeholder when the file does not exist so
+    the cast page keeps a consistent appearance for all LADCP-configured casts.
     """
 
     def _draw() -> plt.Figure | None:
@@ -543,7 +465,40 @@ def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str |
         sa = ds_down["SA"].values
         sig = ds_down["sigma0"].values
 
-        ladcp_available = ladcp_path is not None and ladcp_path.exists()
+        if ladcp_path is None:
+            # Single-column: CT/SA/σ₀ triple-axis profile only
+            fig, ax0 = plt.subplots(figsize=PROFILE_FIGSIZE)
+            ax1 = ax0.twiny()
+            ax2 = ax0.twiny()
+            (l0,) = ax0.plot(ct, p, color=_TS_COLORS[0], label="CT")
+            (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], label="SA")
+            (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
+            # ax1/ax2 use the top spine — restore visibility even if CLEAN_SPINES.
+            ax2.spines["top"].set_position(("axes", 1.12))
+            ax1.spines["top"].set_visible(True)
+            ax2.spines["top"].set_visible(True)
+            for ax, line in zip((ax0, ax1, ax2), (l0, l1, l2)):
+                ax.xaxis.label.set_color(line.get_color())
+                ax.tick_params(axis="x", colors=line.get_color())
+                ax.spines["top"].set_edgecolor(line.get_color())
+            for ax, vals in ((ax0, ct), (ax1, sa), (ax2, sig)):
+                fin = vals[np.isfinite(vals)]
+                if len(fin) > 1:
+                    lo, hi = float(np.percentile(fin, 1)), float(np.percentile(fin, 99))
+                    pad = max((hi - lo) * 0.05, 1e-6)
+                    ax.set_xlim(lo - pad, hi + pad)
+            ax0.set_ylim(float(np.nanmax(p)), 0)
+            ax0.set_ylabel("Pressure (dbar)")
+            ax0.set_xlabel("CT (°C)", color=_TS_COLORS[0])
+            ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
+            ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
+            ax0.grid(True)
+            if CLEAN_SPINES:
+                ax0.spines["right"].set_visible(False)
+            return fig
+
+        # Two-column: CT/SA/σ₀ on left + LADCP U/V on right
+        ladcp_available = ladcp_path.exists()
         z: np.ndarray | None = None
         u: np.ndarray | None = None
         v: np.ndarray | None = None
@@ -644,7 +599,7 @@ def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
         o2_lo = float(np.nanpercentile(o2_fin, 2))
         o2_hi = float(np.nanpercentile(o2_fin, 98))
         # Fixed 2.5 % color steps; tick labels every 5 % (bounds[::2])
-        _step_c, _step_t = 2.5, 5.0
+        _step_c = 2.5
         b_lo = np.floor(o2_lo / _step_c) * _step_c
         b_hi = np.ceil(o2_hi / _step_c) * _step_c
         bounds = np.arange(b_lo, b_hi + _step_c, _step_c)
@@ -1172,8 +1127,8 @@ def _make_ladcp_section_b64(
     figsize: tuple[float, float] | None = None,
     ladcp_pattern: str | None = None,
     style: str = "pcolormesh",
-) -> tuple[str | None, str | None]:
-    """Return ``(u_b64, v_b64)`` — separate base64 PNGs for LADCP U and V sections.
+) -> list[Panel]:
+    """Return a list of ``Panel`` objects for LADCP U and V sections.
 
     Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
     Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
@@ -1220,7 +1175,7 @@ def _make_ladcp_section_b64(
                     continue
 
             if len(loaded) < 2:
-                return None, None
+                return []
 
             x_ladcp = np.array([t[0] for t in loaded])
             cast_nums_ladcp = [t[1] for t in loaded]
@@ -1247,7 +1202,7 @@ def _make_ladcp_section_b64(
                 [u_grid[np.isfinite(u_grid)], v_grid[np.isfinite(v_grid)]]
             )
             if not len(all_fin):
-                return None, None
+                return []
             vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
             bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
             cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
@@ -1276,10 +1231,10 @@ def _make_ladcp_section_b64(
             )
             y_bottom = max(z_max, bathy_max) * 1.05
 
-            b64_pair: list[str | None] = []
-            for grid_data, panel_label in (
-                (u_grid, "U  East +"),
-                (v_grid, "V  North +"),
+            panels: list[Panel] = []
+            for grid_data, panel_title, panel_short, panel_label in (
+                (u_grid, "U velocity (east +)", "U", "U  East +"),
+                (v_grid, "V velocity (north +)", "V", "V  North +"),
             ):
                 fig, ax = plt.subplots(figsize=(panel_w, panel_h))
 
@@ -1344,10 +1299,12 @@ def _make_ladcp_section_b64(
                 )
                 _hide_outer_spines(ax)
                 fig.tight_layout()
-                b64_pair.append(_fig_to_base64(fig))
+                panels.append(
+                    Panel(b64=_fig_to_base64(fig), title=panel_title, short=panel_short)
+                )
                 plt.close(fig)
 
-            return b64_pair[0], b64_pair[1]
+            return panels
     except Exception:
         if RAISE_ON_PLOT_ERROR:
             raise
@@ -1356,7 +1313,7 @@ def _make_ladcp_section_b64(
             RuntimeWarning,
             stacklevel=2,
         )
-        return None, None
+        return []
 
 
 def _make_section_ts_profiles_b64(

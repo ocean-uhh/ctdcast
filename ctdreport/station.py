@@ -46,7 +46,6 @@ from ctdreport.plots import (
     _make_stability_b64,
     _make_station_map_b64,
     _make_ts_density_b64,
-    _make_ts_density_ladcp_b64,
     _make_ts_diagram_b64,
     _make_ts_updown_b64,
     _make_updown_diff_b64,
@@ -460,10 +459,8 @@ def generate_station_page(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
         # Overview row — CT/SA/σ₀ triple-axis + LADCP U/V panel
-        "fig_ts_density_b64": (
-            _make_ts_density_ladcp_b64(ds, ladcp_path)
-            if ladcp_dir is not None
-            else _make_ts_density_b64(ds)
+        "fig_ts_density_b64": _make_ts_density_b64(
+            ds, ladcp_path if ladcp_dir is not None else None
         ),
         "fig_station_map_b64": _make_station_map_b64(lat, lon, all_meta, target_h=2.75),
         "fig_ts_updown_b64": _make_ts_updown_b64(ds),
