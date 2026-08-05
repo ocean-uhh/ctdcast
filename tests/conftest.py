@@ -2,8 +2,19 @@
 
 from pathlib import Path
 
+import matplotlib
 import pytest
 import xarray as xr
+
+# Force non-interactive backend before any other matplotlib import.
+# Without this, Windows CI fails with a TclError when matplotlib tries to
+# initialise the Tk backend on a runner where Tcl/Tk is not installed.
+matplotlib.use("Agg")
+
+import ctdreport.plots as _plots
+
+# Surface plotting failures as test errors rather than silently returning None.
+_plots.RAISE_ON_PLOT_ERROR = True
 
 _HERE = Path(__file__).parent
 FIXTURES_NC = _HERE / "fixtures" / "nc"

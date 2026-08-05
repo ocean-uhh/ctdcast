@@ -14,12 +14,10 @@ from ctdreport.plots import (
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
     _make_pressure_time_b64,
-    _make_profile_b64,
     _make_sensor_diff_b64,
     _make_stability_b64,
     _make_station_map_b64,
     _make_ts_density_b64,
-    _make_ts_density_ladcp_b64,
     _make_ts_diagram_b64,
     _make_ts_updown_b64,
     _make_updown_diff_b64,
@@ -34,22 +32,6 @@ def _is_valid(result):
     if result is None:
         return True
     return isinstance(result, str) and result.startswith("iVBOR")
-
-
-# --- profile plots -----------------------------------------------------------
-
-
-def test_profile_temperature(ds_011):
-    assert _is_valid(_make_profile_b64(ds_011, "temperature_1", "Temperature (°C)"))
-
-
-def test_profile_salinity(ds_011):
-    assert _is_valid(_make_profile_b64(ds_011, "salinity_1", "Salinity (PSU)"))
-
-
-def test_profile_missing_var(ds_011):
-    # Missing variable must return None, not raise
-    assert _make_profile_b64(ds_011, "nonexistent_var", "units") is None
 
 
 # --- station-page plot functions ---------------------------------------------
@@ -95,12 +77,12 @@ def test_updown_diff_b64(ds_011):
 
 
 def test_ts_density_ladcp_b64(ds_011):
-    assert _is_valid(_make_ts_density_ladcp_b64(ds_011, _LADCP_011))
+    assert _is_valid(_make_ts_density_b64(ds_011, _LADCP_011))
 
 
 def test_ts_density_ladcp_missing_file(ds_011):
-    # Missing LADCP file must return None or a plain density plot — not raise
-    result = _make_ts_density_ladcp_b64(ds_011, None)
+    # ladcp_path=None → single-column layout, not raise
+    result = _make_ts_density_b64(ds_011, None)
     assert _is_valid(result)
 
 
@@ -135,4 +117,4 @@ def test_ts_density_deep_cast(ds_128):
 
 
 def test_ts_density_ladcp_deep(ds_128):
-    assert _is_valid(_make_ts_density_ladcp_b64(ds_128, _LADCP_128))
+    assert _is_valid(_make_ts_density_b64(ds_128, _LADCP_128))
