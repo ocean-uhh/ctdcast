@@ -32,6 +32,7 @@ from ctdreport.plots import (
     _W_FULL,
     _W_HALF,
     _W_THIRD,
+    Panel,
     _make_ladcp_section_b64,
     _make_section_map_b64,
     _make_timeseries_b64,
@@ -384,7 +385,7 @@ def generate_timeseries_page(
         ts_slot = "slot-third"
         ts_figw = _W_THIRD
 
-    def _ts_panel(var: str, label: str, short: str) -> dict[str, Any]:
+    def _ts_panel(var: str, label: str, short: str) -> Panel:
         b64 = _make_timeseries_b64(
             ds_ts,
             var,
@@ -394,7 +395,7 @@ def generate_timeseries_page(
             vmax=vmax.get(var),
             figw=ts_figw,
         )
-        return {"title": label, "short": short, "b64": b64}
+        return Panel(b64=b64, title=label, short=short)
 
     physics_panels = [_ts_panel(*t) for t in _TIMESERIES_PHYSICS_VARS]
     biogeo_panels = [_ts_panel(*t) for t in _TIMESERIES_BIOGEO_VARS]
@@ -402,7 +403,7 @@ def generate_timeseries_page(
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
 
     # LADCP: use downcast profiles only, x-axis = hours since first cast
-    _ladcp_ts_panels: list[dict] = []
+    _ladcp_ts_panels: list[Panel] = []
     if ladcp_dir is not None:
         ladcp_cast_nums = [int(c) for c in ds_down["cast_number"].values]
         ladcp_lats = ds_down["latitude"].values.tolist()
@@ -423,10 +424,10 @@ def generate_timeseries_page(
         _ladcp_ts_panels = [
             p
             for p in (
-                {"b64": _ladcp_u, "title": "U velocity (east +)"},
-                {"b64": _ladcp_v, "title": "V velocity (north +)"},
+                Panel(b64=_ladcp_u, title="U velocity (east +)", short="U"),
+                Panel(b64=_ladcp_v, title="V velocity (north +)", short="V"),
             )
-            if p["b64"]
+            if p.b64
         ]
 
     _extra_raw: dict[str, dict | None] = {
@@ -442,8 +443,7 @@ def generate_timeseries_page(
             "id": "ts",
             "title": "T–S diagram (profiles coloured by time)",
             "short": "T–S diagram",
-            "slot": "slot-third",
-            "panels": [{"b64": _ts_diagram_b64, "title": "T-S diagram"}],
+            "panels": [Panel(b64=_ts_diagram_b64, title="T–S diagram")],
         }
         if _ts_diagram_b64
         else None,

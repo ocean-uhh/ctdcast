@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import io
 import math
 import warnings
@@ -290,6 +291,38 @@ def _geo_figsize(
     geo_aspect = lon_span * float(np.cos(np.deg2rad(mean_lat))) / lat_span
     fig_w = float(np.clip(target_h * geo_aspect, w_min, w_max))
     return (fig_w, target_h)
+
+
+# ---------------------------------------------------------------------------
+# Panel — layout metadata passed from Tier-1 to Tier-2 callers
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class Panel:
+    """A rendered figure plus the layout metadata the HTML template needs.
+
+    Attributes
+    ----------
+    b64:
+        Base64-encoded PNG string, or ``None`` when the figure could not be rendered.
+    title:
+        Long descriptive title (used in ``alt`` attributes and headings).
+    short:
+        Short label used in ``<figcaption>`` elements (e.g. ``"CT"``, ``"U"``).
+    figsize:
+        Figure dimensions ``(width, height)`` in inches, as reported by the
+        function that rendered the figure.  ``None`` when not recorded.
+    slot:
+        CSS slot class (e.g. ``"slot-full"``, ``"slot-half"``) that matches the
+        PNG's aspect ratio.  ``None`` when not recorded.
+    """
+
+    b64: str | None
+    title: str = ""
+    short: str = ""
+    figsize: tuple[float, float] | None = None
+    slot: str | None = None
 
 
 # ---------------------------------------------------------------------------

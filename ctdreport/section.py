@@ -25,6 +25,7 @@ from ctdreport.analysis import (
     _section_orientation,
 )
 from ctdreport.plots import (
+    Panel,
     _make_ladcp_section_b64,
     _make_section_b64,
     _make_section_map_b64,
@@ -367,7 +368,7 @@ def generate_section_page(
     )
     end_time = _fmt_utc(_te_vals[-1]) if _te_vals is not None and len(_te_vals) else "—"
 
-    def _section_panel(var: str, label: str, short: str) -> dict:
+    def _section_panel(var: str, label: str, short: str) -> Panel:
         b64 = _make_section_b64(
             ds_sec,
             var,
@@ -382,21 +383,27 @@ def generate_section_page(
             vmax=vmax.get(var),
             figsize=section_figsize,
         )
-        return {"title": label, "short": short, "b64": b64}
+        return Panel(b64=b64, title=label, short=short)
 
     physics_panels = [_section_panel(v, l, s) for v, l, s in _PHYSICS_VARS]
     biogeo_panels = [_section_panel(v, l, s) for v, l, s in _BIOGEO_VARS]
 
     _ts_panels_raw = [
-        {
-            "title": "Profiles coloured by distance",
-            "b64": _make_section_ts_profiles_b64(ds_sec, x_vals),
-        },
-        {
-            "title": "2-D histogram (log count)",
-            "b64": _make_section_ts_histogram_b64(ds_sec),
-        },
-        {"title": "Median O₂ saturation", "b64": _make_section_ts_o2_b64(ds_sec)},
+        Panel(
+            title="Profiles coloured by distance",
+            short="Profiles",
+            b64=_make_section_ts_profiles_b64(ds_sec, x_vals),
+        ),
+        Panel(
+            title="2-D histogram (log count)",
+            short="Histogram",
+            b64=_make_section_ts_histogram_b64(ds_sec),
+        ),
+        Panel(
+            title="Median O₂ saturation",
+            short="O₂",
+            b64=_make_section_ts_o2_b64(ds_sec),
+        ),
     ]
     _ladcp_u_b64, _ladcp_v_b64 = (
         _make_ladcp_section_b64(
@@ -415,10 +422,10 @@ def generate_section_page(
     _ladcp_panels = [
         p
         for p in (
-            {"b64": _ladcp_u_b64, "title": "U velocity (east +)"},
-            {"b64": _ladcp_v_b64, "title": "V velocity (north +)"},
+            Panel(b64=_ladcp_u_b64, title="U velocity (east +)", short="U"),
+            Panel(b64=_ladcp_v_b64, title="V velocity (north +)", short="V"),
         )
-        if p["b64"]
+        if p.b64
     ]
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
@@ -433,13 +440,9 @@ def generate_section_page(
             "id": "ts",
             "title": "T–S diagrams",
             "short": "T–S diagram",
-            "panels": [
-                {"b64": p["b64"], "title": p["title"]}
-                for p in _ts_panels_raw
-                if p["b64"]
-            ],
+            "panels": [p for p in _ts_panels_raw if p.b64],
         }
-        if any(p["b64"] for p in _ts_panels_raw)
+        if any(p.b64 for p in _ts_panels_raw)
         else None,
     }
     extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
