@@ -28,6 +28,13 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: Demo
+
+   demo
+
+
+.. toctree::
+   :maxdepth: 2
    :caption: Reference
 
    cli_reference

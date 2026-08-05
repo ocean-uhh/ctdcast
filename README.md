@@ -18,12 +18,25 @@ All output files are fully self-contained and work offline.
 ## Install
 
 ```bash
+git clone https://github.com/eleanorfrajka/ctdreport
+cd ctdreport
+python -m venv venv
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
 pip install -e .
 ```
 
 Dependencies: `gsw`, `matplotlib`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `scipy`
 
 CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdreport (`ctdreport draft` or `ctdreport run --ctd`). Install with `pip install seasenselib`. Pre-converted netCDF files from other tools must match ctdreport's variable naming convention (see docs).
+
+To verify the installation, run the bundled demo against the committed fixture casts:
+
+```bash
+ctdreport run config_demo.yaml   # writes demo_report/index.html
+```
+
+For a full walkthrough see the [Quickstart guide](https://eleanorfrajka.github.io/ctdreport/quickstart.html).
 
 ---
 
@@ -122,4 +135,4 @@ The file (~8 GB) is not bundled. Maps render without bathymetry if the path is m
 
 ## Documentation
 
-Full documentation: [ctdreport docs](https://ocean-uhh.github.io/ctdreport)
+Full documentation: [eleanorfrajka.github.io/ctdreport](https://eleanorfrajka.github.io/ctdreport/)

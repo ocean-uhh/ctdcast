@@ -34,11 +34,20 @@ Python 3.10–3.13 is required.  Create a virtual environment and install from s
 
 .. code-block:: bash
 
-   git clone https://github.com/ocean-uhh/ctdreport
+   git clone https://github.com/eleanorfrajka/ctdreport
    cd ctdreport
    python -m venv venv
    source venv/bin/activate        # macOS / Linux
    pip install -e .
+
+To verify the installation, run the bundled demo against the committed fixture casts:
+
+.. code-block:: bash
+
+   ctdreport run config_demo.yaml
+
+Then open ``demo_report/index.html`` in a browser.
+See :ref:`demo` for a preview of what the output looks like.
 
 ----
 

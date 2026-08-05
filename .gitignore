@@ -28,3 +28,4 @@ htmlcov/
 
 # Outputs (generated HTML reports)
 outputs/
+demo_report/
