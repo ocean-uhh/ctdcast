@@ -54,9 +54,11 @@ Examples:
     parser.add_argument(
         "--cast",
         type=int,
+        nargs="+",
         metavar="N",
         default=None,
-        help="Process only cast N: rebuild its station page (skips the profiles step).",
+        help="Process only these cast(s): rebuild their station pages (skips the profiles step). "
+        "Example: --cast 42  or  --cast 42 43 44",
     )
     parser.add_argument(
         "--force",
@@ -97,7 +99,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    cast_filter: int | None = args.cast
+    cast_filter: list[int] | None = args.cast
 
     # ------------------------------------------------------------------ convert
     from . import convert as _convert

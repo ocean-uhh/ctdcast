@@ -84,9 +84,11 @@ Examples:
     parser.add_argument(
         "--cast",
         type=int,
+        nargs="+",
         metavar="N",
         default=None,
-        help="Rebuild only the station page for cast N (implies --stations).",
+        help="Rebuild station pages for one or more cast numbers (implies --stations). "
+        "Example: --cast 42  or  --cast 42 43 44",
     )
 
     parser.add_argument(

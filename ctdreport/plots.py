@@ -17,6 +17,7 @@ import xarray as xr
 
 from ctdreport.analysis import (
     _add_teos10,
+    _dense_bathy_along_track,
     _find_ladcp_file,
     _interpolate_bathy_at_casts,
     _load_gebco,
@@ -41,8 +42,26 @@ _MPLSTYLE = Path(__file__).parent / "ctdreport.mplstyle"
 # eliminating white-gap artefacts at map borders.
 _GEBCO_RENDER_PAD: float = 0.5
 
-# Colors for the triple-axis T / S / sigma0 profile plot.
-_TS_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+# Central color registry.
+# Physics (CT/SA/σ₀/U/V/N²/Turner): Okabe-Ito palette — Bang Wong, Nature Methods 8:441 (2011).
+# Biogeochemistry (O₂/fluorescence/turbidity): Paul Tol palette — https://jrnold.github.io/ggthemes/reference/ptol_pal.html
+VAR_COLORS: dict[str, str] = {
+    "CT": "#56B4E9",  # sky blue       — Okabe-Ito
+    "SA": "#E69F00",  # orange         — Okabe-Ito
+    "sigma0": "#009E73",  # bluish green   — Okabe-Ito
+    "U": "#D55E00",  # vermillion     — Okabe-Ito
+    "V": "#0072B2",  # blue           — Okabe-Ito
+    "oxygen_1": "#332288",  # indigo         — Paul Tol
+    "fluorescence": "#117733",  # forest green   — Paul Tol
+    "turbidity": "#661100",  # dark red       — Paul Tol
+    "N2": "#000000",  # black
+    "Turner": "#000000",  # black
+}
+
+# Derived aliases used throughout this module.
+_TS_COLORS = [VAR_COLORS["CT"], VAR_COLORS["SA"], VAR_COLORS["sigma0"]]
+_LADCP_U_COLOR: str = VAR_COLORS["U"]
+_LADCP_V_COLOR: str = VAR_COLORS["V"]
 
 # ColorBrewer colormaps per variable (for pcolormesh / scatter).
 _VAR_CMAPS: dict[str, str] = {
@@ -54,32 +73,14 @@ _VAR_CMAPS: dict[str, str] = {
     "AOU": "RdBu_r",  # blue = near saturation, red = depleted
     "fluorescence": "YlGn",
     "turbidity": "YlOrBr",
-    "sigma0": "Greys_r",
-}
-
-_VAR_LABELS: dict[str, str] = {
-    "CT": "Conservative Temperature (°C)",
-    "SA": "Absolute Salinity (g kg⁻¹)",
-    "temperature_1": "Temperature (°C)",
-    "salinity_1": "Salinity (PSU)",
-    "oxygen_1": "O₂ saturation (%)",
-    "AOU": "O₂ deficit (% sat)",
-    "fluorescence": "Fluorescence (mg m⁻³)",
-    "turbidity": "Turbidity (NTU)",
-    "sigma0": "σ₀ (kg m⁻³)",
-    "density": "Density (kg m⁻³)",
+    "sigma0": "Purples",
 }
 
 # Upcast trace color (dark grey).  Downcast uses the native per-variable color.
 _UPCAST_COLOR: str = "#666666"
 
-# LADCP fill colors: red = positive (eastward / northward), blue = negative.
-_LADCP_POS_COLOR: str = "#d62728"
-_LADCP_NEG_COLOR: str = "#1f77b4"
-
-# Component colors for LADCP U/V line plots: U = red, V = green.
-_LADCP_U_COLOR: str = "#d62728"
-_LADCP_V_COLOR: str = "#2ca02c"
+# Grey level for σ₀ density contours on T–S diagrams.
+_SIGMA0_CONTOUR_COLOR: str = "0.4"
 
 # When True, hide top and right spines on profile/scatter figures.
 # Set via config.yaml display.clean_spines; propagated by __main__.py.
@@ -91,7 +92,7 @@ PROFILE_FIGSIZE: tuple[float, float] = (7.0, 10.0)
 
 # Figsize (width, height) in inches for the cruise overview stacked panels.
 # Set via config.yaml display.overview_figsize; propagated by __main__.py.
-OVERVIEW_FIGSIZE: tuple[float, float] = (12.0, 4.0)
+OVERVIEW_FIGSIZE: tuple[float, float] = (9.0, 4.5)
 
 # Optional lat/lon bounding box applied to all map functions.
 # When set, data-driven extents are overridden by these limits.
@@ -100,6 +101,26 @@ MAP_LAT_MIN: float | None = None
 MAP_LAT_MAX: float | None = None
 MAP_LON_MIN: float | None = None
 MAP_LON_MAX: float | None = None
+
+# Slot widths in inches at savefig.dpi=150 (body usable width = 1086px).
+# PNGs are intentionally wider than the slot (1350px vs 1086px at full width) so that
+# at 10pt labels, displayed font size (~17px) matches the pre-refactor appearance.
+# The browser downscales by ~0.80, giving crisp subpixel rendering.
+_W_FULL: float = 9.0  # 1350px PNG → 1086px display
+_W_TWOTHIRDS: float = 6.0  # 900px PNG  → 719px display
+_W_THREE_FIFTHS: float = 5.4  # 810px PNG  → 652px display (60% slot)
+_W_HALF: float = 4.5  # 675px PNG  → 543px display
+_W_TWO_FIFTHS: float = 3.6  # 540px PNG  → 434px display (40% slot)
+_W_THIRD: float = 3.0  # 450px PNG  → 361px display
+
+# fontsize for ax.clabel() calls (not controlled by mplstyle).
+_CLABEL_FS: int = 8
+
+# Section aspect-ratio scaling.
+# Calibrated so KTout (416 dbar, 94 km) renders at 2.5 in tall at _W_FULL = 9.0 in.
+# (Equivalent to Eleanor's stretch=12.8 at 7.2 in width; scaled proportionally.)
+_SECTION_STRETCH: float = 16.0
+_MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig_w
 
 
 def _map_lim(
@@ -135,7 +156,7 @@ def _hide_outer_spines(*axes: Any) -> None:
 def _fig_to_base64(fig: Any) -> str:
     """Render *fig* to a PNG and return its base64-encoded bytes as a string."""
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=110, bbox_inches="tight")
+    fig.savefig(buf, format="png", bbox_inches="tight")
     buf.seek(0)
     return base64.b64encode(buf.read()).decode("ascii")
 
@@ -246,7 +267,7 @@ def _make_profile_b64(ds: xr.Dataset, var: str, ylabel: str) -> str | None:
         ax.set_ylim(float(np.nanmax(p_down)), 0)
         ax.set_ylabel("Pressure (dbar)")
         ax.set_xlabel(ylabel)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         ax.legend(loc="lower right")
         _hide_outer_spines(ax)
         fig.tight_layout()
@@ -300,7 +321,7 @@ def _make_ts_density_b64(ds: xr.Dataset) -> str | None:
         ax0.set_xlabel("CT (°C)", color=_TS_COLORS[0])
         ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
         ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
-        ax0.grid(True, alpha=0.3)
+        ax0.grid(True)
         # No legend — x-axis labels are colour-coded to identify each variable.
         if CLEAN_SPINES:
             ax0.spines["right"].set_visible(False)
@@ -347,10 +368,7 @@ def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str |
             1,
             2,
             sharey=True,
-            figsize=(
-                max(3.0, PROFILE_FIGSIZE[0] - 1.5),
-                max(3.0, PROFILE_FIGSIZE[1] - 3.0),
-            ),
+            figsize=(_W_THREE_FIFTHS, 5.5),
             gridspec_kw={"width_ratios": [2, 1]},
         )
 
@@ -358,9 +376,9 @@ def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str |
         ax1 = ax_ctd.twiny()
         ax2 = ax_ctd.twiny()
 
-        (l0,) = ax_ctd.plot(ct, p, color=_TS_COLORS[0])
-        (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1])
-        (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2])
+        (l0,) = ax_ctd.plot(ct, p, color=_TS_COLORS[0], lw=1.8, label="CT")
+        (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], lw=1.8, label="SA")
+        (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
 
         ax2.spines["top"].set_position(("axes", 1.12))
         ax1.spines["top"].set_visible(True)
@@ -370,12 +388,16 @@ def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str |
             ax.xaxis.label.set_color(line.get_color())
             ax.tick_params(axis="x", colors=line.get_color())
             ax.spines["top"].set_edgecolor(line.get_color())
+            ax.spines["top"].set_linewidth(0.6)
 
         ax_ctd.set_ylabel("Pressure (dbar)")
         ax_ctd.set_xlabel("CT (°C)", color=_TS_COLORS[0])
         ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
         ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
-        ax_ctd.grid(True, alpha=0.3)
+        ax_ctd.legend(
+            handles=[l0, l1, l2], loc="center left", fontsize=7, framealpha=0.7
+        )
+        ax_ctd.grid(True)
         if CLEAN_SPINES:
             ax_ctd.spines["right"].set_visible(False)
 
@@ -386,7 +408,7 @@ def _make_ts_density_ladcp_b64(ds: xr.Dataset, ladcp_path: Path | None) -> str |
             ax_ladcp.axvline(0, color="0.5", lw=0.6, ls="--")
             ax_ladcp.set_xlabel("Velocity (m s⁻¹)")
             ax_ladcp.legend(loc="upper left", fontsize=7)
-            ax_ladcp.grid(True, alpha=0.3)
+            ax_ladcp.grid(True)
         else:
             ax_ladcp.text(
                 0.5,
@@ -428,30 +450,43 @@ def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
             return None
 
         o2_fin = o2[np.isfinite(o2)]
-        bounds = _nice_colorbar_bounds(
-            float(np.nanpercentile(o2_fin, 2)),
-            float(np.nanpercentile(o2_fin, 98)),
-            n=16,
-        )
+        o2_lo = float(np.nanpercentile(o2_fin, 2))
+        o2_hi = float(np.nanpercentile(o2_fin, 98))
+        # Fixed 2.5 % color steps; tick labels every 5 % (bounds[::2])
+        _step_c, _step_t = 2.5, 5.0
+        b_lo = np.floor(o2_lo / _step_c) * _step_c
+        b_hi = np.ceil(o2_hi / _step_c) * _step_c
+        bounds = np.arange(b_lo, b_hi + _step_c, _step_c)
         cmap = plt.get_cmap("RdYlGn", len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
-        fig, ax = plt.subplots(figsize=(5.5, 5))
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
 
         sa_grid = np.linspace(sa.min() - 0.1, sa.max() + 0.1, 80)
         ct_grid = np.linspace(ct.min() - 0.2, ct.max() + 0.2, 80)
         SA_g, CT_g = np.meshgrid(sa_grid, ct_grid)
         sig0_g = gsw.sigma0(SA_g, CT_g)
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
 
         sc = ax.scatter(sa, ct, c=o2, cmap=cmap, norm=norm, s=6, alpha=0.8)
-        cb = fig.colorbar(sc, ax=ax, ticks=bounds)
+        cb = fig.colorbar(
+            sc,
+            ax=ax,
+            orientation="horizontal",
+            location="bottom",
+            ticks=bounds[::2],
+            pad=0.18,
+            shrink=0.9,
+            aspect=20,
+        )
         cb.set_label("O₂ saturation (%)")
 
-        ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
-        ax.set_ylabel("Conservative Temperature (°C)")
-        ax.grid(True, alpha=0.3)
+        ax.set_xlabel("SA (g kg⁻¹)")
+        ax.set_ylabel("CT (°C)")
+        _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -482,7 +517,7 @@ def _make_stability_b64(ds: xr.Dataset) -> str | None:
             n2, p_n2 = gsw.Nsquared(sa, ct, p, lat=lat)
             tu, _, p_tu = gsw.Turner_Rsubrho(sa, ct, p, axis=0)
 
-        fig, axes = plt.subplots(1, 2, figsize=(7, 6), sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(_W_TWOTHIRDS, 5.5), sharey=True)
         ax_n2, ax_tu = axes
 
         ax_n2.plot(n2, p_n2, color="k")
@@ -490,7 +525,7 @@ def _make_stability_b64(ds: xr.Dataset) -> str | None:
         ax_n2.set_ylim(float(np.nanmax(p_n2)), 0)
         ax_n2.set_xlabel("N² (s⁻²)")
         ax_n2.set_ylabel("Pressure (dbar)")
-        ax_n2.grid(True, alpha=0.3)
+        ax_n2.grid(True)
 
         ax_tu.axvspan(-90, -45, color="#f4a582", alpha=0.35, label="salt fingering")
         ax_tu.axvspan(45, 90, color="#92c5de", alpha=0.35, label="diffusive conv.")
@@ -501,7 +536,7 @@ def _make_stability_b64(ds: xr.Dataset) -> str | None:
         ax_tu.set_xlim(-90, 90)
         ax_tu.set_xlabel("Turner angle (°)")
         ax_tu.legend(loc="lower right", fontsize=7)
-        ax_tu.grid(True, alpha=0.3)
+        ax_tu.grid(True)
         _hide_outer_spines(ax_n2, ax_tu)
 
         fig.tight_layout()
@@ -526,16 +561,14 @@ def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
         plt.style.use(str(_MPLSTYLE))
         ds_down, ds_up = _split_cast(ds)
 
-        fig, axes = plt.subplots(
-            1, len(available), figsize=(3.5 * len(available), 7), sharey=True
-        )
+        fig, axes = plt.subplots(1, len(available), figsize=(_W_FULL, 5.5), sharey=True)
         if len(available) == 1:
             axes = [axes]
 
-        colors = ["#1b7837", "#762a83", "#bf812d"]
         p_down = ds_down["pressure"].values
         max_p = float(np.nanmax(p_down))
-        for ax, (var, label), color in zip(axes, available, colors):
+        for ax, (var, label) in zip(axes, available):
+            color = VAR_COLORS.get(var, "#000000")
             ax.plot(ds_down[var].values, p_down, color=color, label="downcast")
             if var in ds_up and len(ds_up["pressure"]) > 2:
                 ax.plot(
@@ -546,10 +579,11 @@ def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
                     label="upcast",
                 )
             ax.set_xlabel(label)
-            ax.grid(True, alpha=0.3)
+            ax.grid(True)
 
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(max_p, 0)
+        axes[0].legend(loc="center left", fontsize="small")
         _hide_outer_spines(*axes)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -578,16 +612,15 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
         if not available:
             return None
 
-        fig, axes = plt.subplots(
-            1, len(available), figsize=(3.5 * len(available), 7), sharey=True
-        )
+        fig, axes = plt.subplots(1, len(available), figsize=(_W_FULL, 5.5), sharey=True)
         if len(available) == 1:
             axes = [axes]
 
         p_down = ds_down["pressure"].values
         max_p = float(np.nanmax(p_down))
 
-        for ax, (var, label), color in zip(axes, available, _TS_COLORS):
+        for ax, (var, label) in zip(axes, available):
+            color = VAR_COLORS.get(var, "#000000")
             d_vals = ds_down[var].values
             d_fin = d_vals[np.isfinite(d_vals)]
             ax.plot(d_vals, p_down, color=color, label="downcast")
@@ -600,7 +633,7 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
                     label="upcast",
                 )
             ax.set_xlabel(label)
-            ax.grid(True, alpha=0.3)
+            ax.grid(True)
             # Lock x-axis to downcast 1–99th percentile so upcast outliers don't stretch the scale
             if len(d_fin) > 1:
                 p1, p99 = (
@@ -612,6 +645,7 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
 
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(max_p, 0)
+        axes[0].legend(loc="center left", fontsize="small")
         _hide_outer_spines(*axes)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -653,8 +687,10 @@ def _make_ts_updown_b64(ds: xr.Dataset) -> str | None:
         SA_g, CT_g = np.meshgrid(sa_g, ct_g)
         sig0_g = gsw.sigma0(SA_g, CT_g)
 
-        fig, ax = plt.subplots(figsize=(3.5, 3.5))
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        fig, ax = plt.subplots(figsize=(_W_TWO_FIFTHS, _W_TWO_FIFTHS))
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
         ax.scatter(
             sa_d[mask_d],
@@ -678,7 +714,7 @@ def _make_ts_updown_b64(ds: xr.Dataset) -> str | None:
         ax.set_xlabel("SA (g kg⁻¹)")
         ax.set_ylabel("CT (°C)")
         ax.legend(loc="best", markerscale=2, fontsize=8)
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
         _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -692,8 +728,13 @@ def _make_station_map_b64(
     lat: float,
     lon: float,
     all_meta: list[dict],
+    target_h: float = 4.5,
 ) -> str | None:
-    """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted."""
+    """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
+
+    *target_h* controls the figure height in inches; width is computed from the
+    geographic aspect ratio via :func:`_geo_figsize`.
+    """
     try:
         plt.style.use(str(_MPLSTYLE))
         all_lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
@@ -708,7 +749,9 @@ def _make_station_map_b64(
         mean_lat = 0.5 * (lat_lo + lat_hi)
         yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
-        fig, ax = plt.subplots(figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat))
+        fig, ax = plt.subplots(
+            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
+        )
 
         gebco = _load_gebco(
             yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH
@@ -742,7 +785,7 @@ def _make_station_map_b64(
         ax.set_ylabel("Latitude (°N)")
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -751,7 +794,7 @@ def _make_station_map_b64(
         return None
 
 
-def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
+def _make_cruise_map_b64(all_meta: list[dict], *, target_h: float = 4.0) -> str | None:
     """Return a base64 PNG of all cast positions (no single-cast highlight).
 
     Casts are drawn as grey scatter over GEBCO bathymetry.  Cast numbers are
@@ -776,7 +819,7 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
         yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
         fig, ax = plt.subplots(
-            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.0)
+            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
         )
 
         gebco = _load_gebco(
@@ -819,13 +862,58 @@ def _make_cruise_map_b64(all_meta: list[dict]) -> str | None:
         ax.set_ylabel("Latitude (°N)")
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
         return b64
     except Exception:  # noqa: BLE001
         return None
+
+
+def section_figsize_and_slot(
+    p_max_dbar: float,
+    dist_km: float,
+) -> tuple[tuple[float, float], str]:
+    """Return figure size and CSS slot class for a section pcolormesh plot.
+
+    Aspect ratio is calibrated so KTout (416 dbar, 94 km) is 2.5 in tall at full
+    width (_W_FULL = 9.0 in).  When the uncapped height would exceed _MAX_SECTION_H,
+    height is capped and width is reduced to preserve the ratio; the narrower CSS
+    slot is chosen accordingly.
+
+    Parameters
+    ----------
+    p_max_dbar:
+        Maximum pressure in the section (dbar).
+    dist_km:
+        Total along-track distance of the section (km).
+
+    Returns
+    -------
+    tuple of ``((fig_w, fig_h), css_slot)`` where ``css_slot`` is one of
+    ``"slot-full"``, ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.
+    """
+    dist = max(abs(dist_km), 1.0)  # abs: x_vals may be flipped for east→west sections
+    fig_h_raw = _W_FULL * p_max_dbar / dist / _SECTION_STRETCH
+    if fig_h_raw <= _MAX_SECTION_H:
+        fig_w = _W_FULL
+        fig_h = float(max(fig_h_raw, 3.0))
+    else:
+        fig_h = _MAX_SECTION_H
+        fig_w = float(
+            max(_MAX_SECTION_H * dist * _SECTION_STRETCH / p_max_dbar, _W_THIRD)
+        )
+    # Pick slot by proximity to standard widths
+    if fig_w >= (_W_FULL + _W_TWOTHIRDS) / 2:
+        slot = "slot-full"
+    elif fig_w >= (_W_TWOTHIRDS + _W_HALF) / 2:
+        slot = "slot-twothirds"
+    elif fig_w >= (_W_HALF + _W_THIRD) / 2:
+        slot = "slot-half"
+    else:
+        slot = "slot-third"
+    return (fig_w, fig_h), slot
 
 
 def _make_section_b64(
@@ -883,18 +971,19 @@ def _make_section_b64(
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
         if v0 >= v1:
             v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
+        if var == "oxygen_1":
+            _o2_step = 2.5
+            _o2_lo = math.floor(v0 / _o2_step) * _o2_step
+            _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
+            bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
+        else:
+            bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
-        # Auto-size: for along-track km axes (x range > 10), scale width to distance
-        dist = float(x_vals[-1] - x_vals[0]) if len(x_vals) > 1 else 10.0
+        dist = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 10.0
         p_max_data = float(p_trim[-1])
-        if dist > 10.0:
-            fig_w = max(6.0, min(18.0, dist / 50.0))
-            fig_h = max(3.0, min(7.0, fig_w * p_max_data / max(dist, 1.0) / 40.0))
-        else:
-            fig_w, fig_h = 9.0, 5.0
+        (fig_w, fig_h), _ = section_figsize_and_slot(p_max_data, dist)
 
         # Y extent: deeper of data max and bathy max
         p_max_bathy = (
@@ -910,12 +999,12 @@ def _make_section_b64(
             X, Y = np.meshgrid(x_vals, p_trim)
             Z = np.ma.masked_invalid(data_trim.T)
             cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02)
+            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
         else:
             pc = ax.pcolormesh(
                 x_vals, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
             )
-            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
+            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
 
         if bathy_depths is not None:
             bx = (
@@ -929,22 +1018,37 @@ def _make_section_b64(
                     bx, bathy_depths, y_bottom, color="black", step=step, lw=0
                 )
 
+        if var == "sigma0":
+            try:
+                _iso = ax.contour(
+                    x_vals,
+                    p_trim,
+                    data_trim.T,
+                    levels=[27.7, 27.8],
+                    colors="k",
+                    linewidths=0.4,
+                    linestyles="solid",
+                )
+                ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            except Exception:  # noqa: BLE001, S110
+                pass
+
         cb.set_label(label)
         ax.set_ylim(y_bottom, 0)
         ax.set_ylabel("Pressure (dbar)")
         ax.set_xlabel(x_label)
-        ax.grid(True, alpha=0.2, color="white")
 
         if cast_labels is not None and len(cast_labels) == len(x_vals):
             trans = ax.get_xaxis_transform()
             ax.plot(
                 x_vals,
-                [1.0] * len(x_vals),
+                [1.03] * len(x_vals),
                 marker="v",
                 ls="none",
-                ms=3,
-                mfc="black",
+                ms=5,
+                mfc="none",
                 mec="black",
+                mew=0.7,
                 transform=trans,
                 clip_on=False,
                 zorder=6,
@@ -954,13 +1058,13 @@ def _make_section_b64(
             for i in range(0, n_lab, label_step):
                 ax.text(
                     float(x_vals[i]),
-                    1.04,
+                    1.05,
                     str(cast_labels[i]),
                     transform=trans,
                     ha="center",
                     va="bottom",
-                    fontsize=5,
-                    rotation=90,
+                    fontsize=6,
+                    rotation=0,
                 )
 
         fig.tight_layout()
@@ -980,15 +1084,19 @@ def _make_ladcp_section_b64(
     lons: list[float] | None = None,
     figsize: tuple[float, float] | None = None,
     ladcp_pattern: str | None = None,
-) -> str | None:
-    """Return a base64 PNG of LADCP U (top) and V (bottom) sections with a shared RdBu_r colorbar.
+    style: str = "pcolormesh",
+) -> tuple[str | None, str | None]:
+    """Return ``(u_b64, v_b64)`` — separate base64 PNGs for LADCP U and V sections.
 
-    Casts without a matching .mat file are omitted.  Data are interpolated to a
-    10 m depth grid.  Positive velocities (eastward / northward) map to red.
-    Bathymetry is drawn when *lats*/*lons* and ``GEBCO_PATH`` are both available.
+    Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
+    Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
+    when *lats*/*lons* and ``GEBCO_PATH`` are available.
+
+    If *figsize* is given, each panel uses ``(figsize[0], figsize[1] / 2)``.
+    Otherwise ``section_figsize_and_slot`` determines dimensions.
 
     If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
-    with the zero-padded cast number to form the filename.  Falls back to ``NNN.mat``.
+    with the zero-padded cast number.  Falls back to ``NNN.mat``.
     """
     try:
         import scipy.io
@@ -1026,7 +1134,7 @@ def _make_ladcp_section_b64(
                 continue
 
         if len(loaded) < 2:
-            return None
+            return None, None
 
         x_ladcp = np.array([t[0] for t in loaded])
         cast_nums_ladcp = [t[1] for t in loaded]
@@ -1048,54 +1156,114 @@ def _make_ladcp_section_b64(
             u_grid[i, in_range] = np.interp(z_grid[in_range], z_s, u_s)
             v_grid[i, in_range] = np.interp(z_grid[in_range], z_s, v_s)
 
-        # Symmetric RdBu_r colormap centred at zero
+        # Symmetric RdBu_r colormap centred at zero — matched for both panels
         all_fin = np.concatenate(
             [u_grid[np.isfinite(u_grid)], v_grid[np.isfinite(v_grid)]]
         )
         if not len(all_fin):
-            return None
-        vmax_val = float(np.nanpercentile(np.abs(all_fin), 98))
-        vmax_val = max(vmax_val, 1e-4)
+            return None, None
+        vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
         bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
         cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
-        # Figsize matches _make_section_b64 formula (per panel), doubled height
-        dist = float(x_ladcp[-1] - x_ladcp[0]) if n_cast > 1 else 10.0
-        if dist > 10.0:
-            fig_w = max(6.0, min(18.0, dist / 50.0))
-            fig_h = max(3.0, min(7.0, fig_w * z_max / max(dist, 1.0) / 40.0))
+        # Figure size: caller override (timeseries) or aspect-ratio formula (sections)
+        abs_dist = abs(float(x_ladcp[-1] - x_ladcp[0])) if n_cast > 1 else 10.0
+        if figsize is not None:
+            panel_w, panel_h = float(figsize[0]), float(figsize[1])
         else:
-            fig_w, fig_h = 9.0, 5.0
+            (panel_w, panel_h), _ = section_figsize_and_slot(z_max, abs_dist)
 
-        # Bathymetry for the subset of casts that have .mat files
-        bathy = _interpolate_bathy_at_casts(filt_lats, filt_lons, path=GEBCO_PATH)
-        bathy_max = float(np.nanmax(bathy)) if bathy is not None and len(bathy) else 0.0
+        # Dense bathy (smooth fill); fall back to cast-position bathy
+        dense_bathy_x, dense_bathy_d = _dense_bathy_along_track(
+            filt_lats, filt_lons, x_ladcp, path=GEBCO_PATH
+        )
+        bathy_coarse = _interpolate_bathy_at_casts(
+            filt_lats, filt_lons, path=GEBCO_PATH
+        )
+        bathy_max = (
+            float(np.nanmax(dense_bathy_d))
+            if dense_bathy_d is not None and len(dense_bathy_d)
+            else float(np.nanmax(bathy_coarse))
+            if bathy_coarse is not None and len(bathy_coarse)
+            else 0.0
+        )
         y_bottom = max(z_max, bathy_max) * 1.05
 
-        # GridSpec: two data panels + one narrow colorbar column
-        _fsize = figsize if figsize is not None else (fig_w, fig_h * 2)
-        fig = plt.figure(figsize=_fsize, constrained_layout=True)
-        gs = fig.add_gridspec(2, 2, width_ratios=[20, 1], hspace=0.08)
-        ax_u = fig.add_subplot(gs[0, 0])
-        ax_v = fig.add_subplot(gs[1, 0], sharex=ax_u, sharey=ax_u)
-        cax = fig.add_subplot(gs[:, 1])
-
-        pc: Any = None
-        for ax, grid, panel_label in (
-            (ax_u, u_grid, "U  East +"),
-            (ax_v, v_grid, "V  North +"),
+        b64_pair: list[str | None] = []
+        for grid_data, panel_label in (
+            (u_grid, "U  East +"),
+            (v_grid, "V  North +"),
         ):
-            pc = ax.pcolormesh(
-                x_ladcp, z_grid, grid.T, cmap=cmap, norm=norm, shading="nearest"
-            )
-            if bathy is not None and len(bathy) == n_cast:
-                ax.fill_between(
-                    x_ladcp, bathy, y_bottom, color="black", step="mid", lw=0
+            fig, ax = plt.subplots(figsize=(panel_w, panel_h))
+
+            if style == "contourf":
+                X, Y = np.meshgrid(x_ladcp, z_grid)
+                Z = np.ma.masked_invalid(grid_data.T)
+                cf = ax.contourf(X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both")
+                fig.colorbar(
+                    cf, ax=ax, ticks=bounds[::2], label="Velocity (m s⁻¹)", pad=0.02
                 )
+            else:
+                pc = ax.pcolormesh(
+                    x_ladcp,
+                    z_grid,
+                    grid_data.T,
+                    cmap=cmap,
+                    norm=norm,
+                    shading="nearest",
+                )
+                fig.colorbar(
+                    pc,
+                    ax=ax,
+                    ticks=bounds[::2],
+                    label="Velocity (m s⁻¹)",
+                    pad=0.02,
+                    extend="both",
+                )
+
+            # Bathymetry — dense interpolation preferred
+            if dense_bathy_x is not None and dense_bathy_d is not None:
+                ax.fill_between(
+                    dense_bathy_x, dense_bathy_d, y_bottom, color="black", lw=0
+                )
+            elif bathy_coarse is not None and len(bathy_coarse) == n_cast:
+                ax.fill_between(
+                    x_ladcp, bathy_coarse, y_bottom, color="black", step="mid", lw=0
+                )
+
             ax.set_ylim(y_bottom, 0)
             ax.set_ylabel("Depth (m)")
-            ax.grid(True, alpha=0.2, color="white")
+            ax.set_xlabel(x_label)
+
+            # Cast markers — open triangles matching other section panels
+            trans = ax.get_xaxis_transform()
+            ax.plot(
+                x_ladcp,
+                [1.03] * n_cast,
+                marker="v",
+                ls="none",
+                ms=5,
+                mfc="none",
+                mec="black",
+                mew=0.7,
+                transform=trans,
+                clip_on=False,
+                zorder=6,
+            )
+            label_step = max(1, n_cast // 20)
+            for i in range(0, n_cast, label_step):
+                ax.text(
+                    x_ladcp[i],
+                    1.05,
+                    str(cast_nums_ladcp[i]),
+                    transform=trans,
+                    ha="center",
+                    va="bottom",
+                    fontsize=6,
+                    rotation=0,
+                )
+
             ax.text(
                 0.01,
                 0.97,
@@ -1111,44 +1279,14 @@ def _make_ladcp_section_b64(
                     "edgecolor": "none",
                 },
             )
+            _hide_outer_spines(ax)
 
-        # Cast ▼ markers and sparse labels on top panel
-        trans = ax_u.get_xaxis_transform()
-        ax_u.plot(
-            x_ladcp,
-            [1.0] * n_cast,
-            marker="v",
-            ls="none",
-            ms=3,
-            mfc="black",
-            mec="black",
-            transform=trans,
-            clip_on=False,
-            zorder=6,
-        )
-        label_step = max(1, n_cast // 20)
-        for i in range(0, n_cast, label_step):
-            ax_u.text(
-                x_ladcp[i],
-                1.04,
-                str(cast_nums_ladcp[i]),
-                transform=trans,
-                ha="center",
-                va="bottom",
-                fontsize=5,
-                rotation=90,
-            )
+            b64_pair.append(_fig_to_base64(fig))
+            plt.close(fig)
 
-        ax_v.set_xlabel(x_label)
-
-        # Shared colorbar in its own GridSpec column — does not steal from data axes
-        fig.colorbar(pc, cax=cax, label="Velocity (m s⁻¹)", ticks=bounds[::2])
-
-        b64 = _fig_to_base64(fig)
-        plt.close(fig)
-        return b64
+        return b64_pair[0], b64_pair[1]
     except Exception:  # noqa: BLE001
-        return None
+        return None, None
 
 
 def _make_section_ts_profiles_b64(
@@ -1187,8 +1325,10 @@ def _make_section_ts_profiles_b64(
         cmap = plt.get_cmap("plasma", len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
-        fig, ax = plt.subplots(figsize=(5.5, 5))
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
 
         for i in range(sa_all.shape[0]):
@@ -1205,14 +1345,24 @@ def _make_section_ts_profiles_b64(
 
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
-        cb = fig.colorbar(sm, ax=ax, ticks=bounds[::2])
+        cb = fig.colorbar(
+            sm,
+            ax=ax,
+            orientation="horizontal",
+            location="bottom",
+            ticks=bounds[::2],
+            pad=0.18,
+            shrink=0.9,
+            aspect=20,
+        )
         cb.set_label("Along-track distance (km)")
 
         ax.set_xlim(sa_lo, sa_hi)
         ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
+        _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1268,8 +1418,10 @@ def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
         SA_g, CT_g = np.meshgrid(sa_g, ct_g)
         sig0_g = gsw.sigma0(SA_g, CT_g)
 
-        fig, ax = plt.subplots(figsize=(5.5, 5))
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
 
         for i in range(sa_all.shape[0]):
@@ -1286,14 +1438,24 @@ def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
 
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
-        cb = fig.colorbar(sm, ax=ax, ticks=bounds[::2])
+        cb = fig.colorbar(
+            sm,
+            ax=ax,
+            orientation="horizontal",
+            location="bottom",
+            ticks=bounds[::2],
+            pad=0.18,
+            shrink=0.9,
+            aspect=20,
+        )
         cb.set_label("Hours since start")
 
         ax.set_xlim(sa_lo, sa_hi)
         ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
+        _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1341,18 +1503,30 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
         cmap_c.set_bad("white")
         norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=256)
 
-        fig, ax = plt.subplots(figsize=(5.5, 5))
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
         pc = ax.pcolormesh(sa_c, ct_c, counts_log, cmap=cmap_c, norm=norm_c)
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds_c)
+        cb = fig.colorbar(
+            pc,
+            ax=ax,
+            orientation="horizontal",
+            location="bottom",
+            ticks=bounds_c[::2],
+            pad=0.18,
+            shrink=0.9,
+            aspect=20,
+        )
         cb.set_label("log₁₀(count)")
 
         ax.set_xlim(sa_lo, sa_hi)
         ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
+        _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1418,18 +1592,30 @@ def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
         cmap_o = plt.get_cmap("RdYlGn", len(bounds_o) - 1)
         norm_o = mcolors.BoundaryNorm(bounds_o, ncolors=cmap_o.N)
 
-        fig, ax = plt.subplots(figsize=(5.5, 5))
-        cs = ax.contour(SA_g, CT_g, sig0_g, levels=8, colors="0.6", linewidths=0.6)
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
+        cs = ax.contour(
+            SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        )
         ax.clabel(cs, fmt="%.1f", fontsize=7)
         pc = ax.pcolormesh(sa_c, ct_c, o2_grid, cmap=cmap_o, norm=norm_o)
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds_o[::2])
+        cb = fig.colorbar(
+            pc,
+            ax=ax,
+            orientation="horizontal",
+            location="bottom",
+            ticks=bounds_o[::2],
+            pad=0.18,
+            shrink=0.9,
+            aspect=20,
+        )
         cb.set_label("Median O₂ saturation (%)")
 
         ax.set_xlim(sa_lo, sa_hi)
         ax.set_ylim(ct_lo, ct_hi)
         ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
         ax.set_ylabel("Conservative Temperature (°C)")
-        ax.grid(True, alpha=0.3)
+        ax.grid(False)
+        _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1483,13 +1669,18 @@ def _make_section_map_b64(
             yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
             lon_span = xl1 - xl0
             lat_span = yl1 - yl0
-            min_lon_span = 0.5 * lat_span / cos_lat
-            if lon_span < min_lon_span:
-                extra = (min_lon_span - lon_span) / 2
+            # Mercator-equivalent widths: x_width = lon_span * cos(lat), y_height = lat_span.
+            # If the map would be taller than wide, expand longitude to make it square.
+            x_width = lon_span * cos_lat
+            if lat_span > x_width:
+                lon_span_sq = lat_span / cos_lat
+                extra = (lon_span_sq - lon_span) / 2
                 xl0, xl1 = xl0 - extra, xl1 + extra
 
         fig, ax = plt.subplots(
-            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.5, w_max=8.0)
+            figsize=_geo_figsize(
+                xl0, xl1, yl0, yl1, mean_lat, target_h=_W_HALF, w_max=_W_HALF
+            )
         )
 
         gebco = _load_gebco(
@@ -1502,7 +1693,10 @@ def _make_section_map_b64(
             d_fin = depth_b[depth_b > 0]
             if len(d_fin):
                 bounds_b = _nice_colorbar_bounds(
-                    float(d_fin.min()), float(np.percentile(d_fin, 98)), n=12
+                    float(d_fin.min()),
+                    float(np.percentile(d_fin, 98)),
+                    n=12,
+                    hard_min=0.0,
                 )
                 cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
                 norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
@@ -1517,8 +1711,8 @@ def _make_section_map_b64(
                     rasterized=True,
                 )
                 cb = fig.colorbar(bathy_pc, ax=ax, pad=0.02, ticks=bounds_b[::2])
-                cb.set_label("Depth (m)", fontsize=7)
-                cb.ax.tick_params(labelsize=6)
+                cb.set_label("Depth (m)")
+                cb.ax.invert_yaxis()
 
         ax.plot(lons_arr, lats_arr, "-", color="white", lw=1.2, zorder=3)
         ax.scatter(
@@ -1546,7 +1740,7 @@ def _make_section_map_b64(
         ax.set_ylim(yl0, yl1)
         if title:
             ax.set_title(title)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1599,7 +1793,13 @@ def _make_overview_panel_b64(
         cmap_name = _VAR_CMAPS.get(var, "viridis")
         v0 = vmin if vmin is not None else float(np.percentile(d_fin, 1))
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 99))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
+        if var == "oxygen_1":
+            _o2_step = 2.5
+            _o2_lo = math.floor(v0 / _o2_step) * _o2_step
+            _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
+            bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
+        else:
+            bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -1616,35 +1816,57 @@ def _make_overview_panel_b64(
 
         fig, ax = plt.subplots(figsize=OVERVIEW_FIGSIZE)
 
+        # Subtle cast-position gridlines drawn before the fill so the fill sits on top.
+        # Use multiples of 5 or 10 cast numbers as grid positions.
+        n_casts = len(cast_nums)
+        _grid_step = 5 if n_casts <= 100 else 10
+        _cast_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
+        for cn_i, cn in enumerate(cast_nums):
+            if int(cn) % _grid_step == 0:
+                ax.axvline(x_pos[cn_i], color="white", lw=0.5, alpha=0.25, zorder=0)
+
         if style == "contourf":
             X, Y = np.meshgrid(x_pos, p_trim)
             Z = np.ma.masked_invalid(data_trim.T)
             cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02)
+            cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
         else:
             pc = ax.pcolormesh(
                 x_pos, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
             )
-            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
+            cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
 
         if bathy_depths is not None:
             ax.fill_between(
                 x_pos, bathy_depths, y_bottom, color="black", step="mid", lw=0
             )
 
-        # Colored markers at top edge for casts belonging to each group
+        if var == "sigma0":
+            try:
+                _iso = ax.contour(
+                    x_pos,
+                    p_trim,
+                    data_trim.T,
+                    levels=[27.7, 27.8],
+                    colors="k",
+                    linewidths=0.4,
+                    linestyles="solid",
+                )
+                ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            except Exception:  # noqa: BLE001, S110
+                pass
+
+        # Open triangle markers above top axis for casts belonging to each group
         if cast_groups:
-            cast_num_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
             for color, group_casts in cast_groups.items():
-                gx = [
-                    cast_num_to_xpos[cn] for cn in group_casts if cn in cast_num_to_xpos
-                ]
+                gx = [_cast_to_xpos[cn] for cn in group_casts if cn in _cast_to_xpos]
                 if gx:
                     ax.scatter(
                         gx,
-                        np.zeros(len(gx)),
+                        np.ones(len(gx)) * 1.03,
                         marker="v",
-                        color=color,
+                        facecolors="none",
+                        edgecolors=color,
                         s=18,
                         clip_on=False,
                         zorder=6,
@@ -1655,15 +1877,19 @@ def _make_overview_panel_b64(
         ax.set_ylim(y_bottom, 0)
         ax.set_ylabel("Pressure (dbar)")
         ax.set_xlabel("Cast number")
-        ax.grid(True, alpha=0.2, color="white")
 
-        n_casts = len(cast_nums)
-        step = max(1, n_casts // 20)
-        tick_idx = np.arange(0, n_casts, step)
-        ax.set_xticks(x_pos[tick_idx])
-        ax.set_xticklabels(
-            [str(cast_nums[i]) for i in tick_idx], rotation=45, ha="right"
-        )
+        # Tick marks at multiples of 5 or 10, matching the grid lines
+        tick_cast_nums = [cn for cn in cast_nums if int(cn) % _grid_step == 0]
+        tick_xpos = [
+            _cast_to_xpos[int(cn)] for cn in tick_cast_nums if int(cn) in _cast_to_xpos
+        ]
+        if tick_xpos:
+            ax.set_xticks(tick_xpos)
+            ax.set_xticklabels(
+                [str(int(cn)) for cn in tick_cast_nums if int(cn) in _cast_to_xpos],
+                rotation=45,
+                ha="right",
+            )
 
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -1678,6 +1904,8 @@ def _make_all_sections_map_b64(
     all_lats: list[float],
     all_lons: list[float],
     legend_outside: bool = False,
+    *,
+    target_h: float = 4.5,
 ) -> str | None:
     """Return a base64 PNG showing all section tracks coloured by section.
 
@@ -1689,6 +1917,8 @@ def _make_all_sections_map_b64(
         List of dicts with keys ``name``, ``color``, ``lats``, ``lons``.
     all_lats, all_lons:
         Positions of all casts drawn as a grey background scatter.
+    target_h:
+        Target figure height in inches; width is computed from geographic aspect ratio.
     """
     if not sections_data:
         return None
@@ -1709,7 +1939,9 @@ def _make_all_sections_map_b64(
         yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
 
         fig, ax = plt.subplots(
-            figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=4.5, w_max=9.0)
+            figsize=_geo_figsize(
+                xl0, xl1, yl0, yl1, mean_lat, target_h=target_h, w_max=9.0
+            )
         )
 
         gebco = _load_gebco(
@@ -1768,7 +2000,7 @@ def _make_all_sections_map_b64(
         ax.set_ylabel("Latitude (°N)")
         ax.set_xlim(xl0, xl1)
         ax.set_ylim(yl0, yl1)
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         if legend_outside:
             ax.legend(
                 loc="upper left",
@@ -1796,6 +2028,7 @@ def _make_timeseries_b64(
     style: str = "pcolormesh",
     vmin: float | None = None,
     vmax: float | None = None,
+    figw: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
 
@@ -1805,6 +2038,8 @@ def _make_timeseries_b64(
         ``"pcolormesh"`` (default) or ``"contourf"``.
     vmin, vmax:
         Colormap limits; if None, 2nd–98th percentile of valid data.
+    figw:
+        Figure width in inches; auto-computed from profile count if None.
     """
     if var not in ds_prof or "time_start" not in ds_prof:
         return None
@@ -1856,15 +2091,27 @@ def _make_timeseries_b64(
         cmap_name = _VAR_CMAPS.get(var, "viridis")
         v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
         v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
-        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
+        if var == "oxygen_1":
+            _o2_step = 2.5
+            _o2_lo = math.floor(v0 / _o2_step) * _o2_step
+            _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
+            bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
+        else:
+            bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
         cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
         t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
         n_prof = len(t_mpl)
-        figw = float(np.clip(0.25 * n_prof, 8, 16))
+        figw = (
+            figw
+            if figw is not None
+            else float(np.clip(0.25 * n_prof, _W_HALF, _W_FULL))
+        )
+        fig_h = float(np.clip(float(p_trim[-1]) / 250.0 + 2.5, 3.0, _MAX_SECTION_H))
 
-        fig, ax = plt.subplots(figsize=(figw, 4))
+        fig, ax = plt.subplots(figsize=(figw, fig_h))
+        x_for_contour: np.ndarray
         if style == "contourf":
             t_idx = np.arange(n_prof, dtype=float)
             pc = ax.contourf(
@@ -1876,11 +2123,14 @@ def _make_timeseries_b64(
                 norm=norm,
                 extend="both",
             )
-            ax.set_xticks(t_idx[:: max(1, n_prof // 12)])
+            x_for_contour = t_idx
+            _max_ticks = max(4, round(figw * 1.4))
+            _tick_step = max(1, n_prof // _max_ticks)
+            ax.set_xticks(t_idx[::_tick_step])
             ax.set_xticklabels(
                 [
                     mdates.num2date(t).strftime("%d %b\n%H:%M")
-                    for t in t_mpl[:: max(1, n_prof // 12)]
+                    for t in t_mpl[::_tick_step]
                 ],
                 rotation=30,
                 ha="right",
@@ -1889,17 +2139,32 @@ def _make_timeseries_b64(
             pc = ax.pcolormesh(
                 t_mpl, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
             )
+            x_for_contour = t_mpl
             ax.xaxis_date()
             locator = mdates.AutoDateLocator()
             ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
             plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha="right")
 
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02)
+        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
         cb.set_label(label)
 
-        # ▼ for downcast, △ for upcast at top edge; cast number above each downcast
-        y_top = float(p_trim[0]) - 0.02 * (float(p_trim[-1]) - float(p_trim[0]))
+        if var == "sigma0":
+            try:
+                _iso = ax.contour(
+                    x_for_contour,
+                    p_trim,
+                    data_trim.T,
+                    levels=[27.7, 27.8],
+                    colors="k",
+                    linewidths=0.4,
+                    linestyles="solid",
+                )
+                ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            except Exception:  # noqa: BLE001, S110
+                pass
+
+        # ▼ for downcast, △ for upcast floating above axes; cast number above each downcast
         trans = ax.get_xaxis_transform()
         n_down = sum(1 for ct in cast_types if ct == "down")
         label_step = max(1, n_down // 20)
@@ -1910,30 +2175,32 @@ def _make_timeseries_b64(
             )
             ax.plot(
                 t_val,
-                y_top,
+                1.03,
                 marker=marker,
-                color=color,
-                ms=4,
+                ls="none",
+                ms=5,
+                mfc="none",
+                mec=color,
+                mew=0.7,
                 clip_on=False,
-                transform=ax.transData,
+                transform=trans,
             )
             if ctype == "down" and cast_numbers is not None:
                 if down_count % label_step == 0:
                     ax.text(
                         t_val,
-                        1.04,
+                        1.05,
                         str(int(cast_numbers[i])),
                         transform=trans,
                         ha="center",
                         va="bottom",
-                        fontsize=5,
-                        rotation=90,
+                        fontsize=6,
+                        rotation=0,
                     )
                 down_count += 1
 
         ax.set_ylim(float(p_trim[-1]), float(p_trim[0]))
         ax.set_ylabel("Pressure (dbar)")
-        ax.grid(True, alpha=0.2, color="white")
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
         plt.close(fig)
@@ -1957,7 +2224,7 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
             return None
 
         n_panels = int(has_t) + int(has_s)
-        fig, axes = plt.subplots(1, n_panels, figsize=(3.5 * n_panels, 7), sharey=True)
+        fig, axes = plt.subplots(1, n_panels, figsize=(_W_TWOTHIRDS, 5.5), sharey=True)
         if n_panels == 1:
             axes = [axes]
 
@@ -1965,21 +2232,23 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
         idx = 0
         if has_t:
             dt = ds["temperature_1"].values - ds["temperature_2"].values
-            axes[idx].plot(dt, p, ".", color="#1f77b4", markersize=1.5, linewidth=0)
+            axes[idx].plot(
+                dt, p, ".", color=VAR_COLORS["CT"], markersize=1.5, linewidth=0
+            )
             axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
             axes[idx].set_xlabel("T₁ − T₂ (°C)")
             axes[idx].set_xlim(-0.01, 0.01)
-            axes[idx].grid(True, alpha=0.3)
+            axes[idx].grid(True)
             idx += 1
         if has_s:
             ds_diff = ds["salinity_1"].values - ds["salinity_2"].values
             axes[idx].plot(
-                ds_diff, p, ".", color="#ff7f0e", markersize=1.5, linewidth=0
+                ds_diff, p, ".", color=VAR_COLORS["SA"], markersize=1.5, linewidth=0
             )
             axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
             axes[idx].set_xlabel("S₁ − S₂ (PSU)")
             axes[idx].set_xlim(-0.01, 0.01)
-            axes[idx].grid(True, alpha=0.3)
+            axes[idx].grid(True)
 
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(max_p, 0)
@@ -2004,13 +2273,13 @@ def _make_pressure_time_b64(ds: xr.Dataset) -> str | None:
         else:
             elapsed_min = (t_raw.astype(float) - float(t_raw[0])) / 60.0
 
-        fig, ax = plt.subplots(figsize=(5, 4))
-        ax.plot(elapsed_min, p, color="0.3", linewidth=0.7)
+        fig, ax = plt.subplots(figsize=(_W_THIRD, 3.7))
+        ax.plot(elapsed_min, p, color="k", linewidth=0.7)
         max_p = float(np.nanmax(p))
         ax.set_ylim(max_p, 0)
         ax.set_xlabel("Elapsed time (min)")
         ax.set_ylabel("Pressure (dbar)")
-        ax.grid(True, alpha=0.3)
+        ax.grid(True)
         _hide_outer_spines(ax)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
@@ -2065,16 +2334,14 @@ def _make_updown_diff_b64(ds: xr.Dataset) -> str | None:
         if not diffs:
             return None
 
-        fig, axes = plt.subplots(
-            1, len(diffs), figsize=(3.5 * len(diffs), 7), sharey=True
-        )
+        fig, axes = plt.subplots(1, len(diffs), figsize=(_W_FULL, 5.5), sharey=True)
         if len(diffs) == 1:
             axes = [axes]
         for ax, diff, label, color in zip(axes, diffs, labels, colors):
             ax.plot(diff, p_grid, color=color, linewidth=0.8)
             ax.axvline(0, color="0.6", linewidth=0.6, linestyle="--")
             ax.set_xlabel(label)
-            ax.grid(True, alpha=0.3)
+            ax.grid(True)
         axes[0].set_ylabel("Pressure (dbar)")
         axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
         _hide_outer_spines(*axes)
@@ -2104,19 +2371,18 @@ def _make_ladcp_profile_b64(ladcp_path: Path) -> str | None:
         plt.style.use(str(_MPLSTYLE))
         fig, axes = plt.subplots(1, 2, sharey=True, figsize=(3.5, PROFILE_FIGSIZE[1]))
 
-        for ax, vel, xlabel in zip(
+        for ax, vel, xlabel, color in zip(
             axes,
             [u, v],
             ["U (m s⁻¹)\nEast +", "V (m s⁻¹)\nNorth +"],
+            [VAR_COLORS["U"], VAR_COLORS["V"]],
         ):
-            pos = np.where(vel > 0, vel, 0.0)
-            neg = np.where(vel < 0, vel, 0.0)
-            ax.fill_betweenx(z, 0, pos, color=_LADCP_POS_COLOR, alpha=0.6)
-            ax.fill_betweenx(z, neg, 0, color=_LADCP_NEG_COLOR, alpha=0.6)
-            ax.plot(vel, z, color="k", lw=0.7)
+            ax.fill_betweenx(z, 0, np.where(vel > 0, vel, 0.0), color=color, alpha=0.5)
+            ax.fill_betweenx(z, np.where(vel < 0, vel, 0.0), 0, color=color, alpha=0.5)
+            ax.plot(vel, z, color=color, lw=0.7)
             ax.axvline(0, color="0.5", lw=0.6, ls="--")
             ax.set_xlabel(xlabel)
-            ax.grid(True, alpha=0.3)
+            ax.grid(True)
 
         axes[0].set_ylabel("Depth (m)")
         axes[0].set_ylim(float(z.max()) * 1.02, 0.0)
@@ -2148,24 +2414,26 @@ def _make_ladcp_bottomtrack_b64(ladcp_path: Path) -> str | None:
             return None
 
         plt.style.use(str(_MPLSTYLE))
-        fig, axes = plt.subplots(1, 2, sharey=True, figsize=(3.5, 5))
+        fig, axes = plt.subplots(1, 2, sharey=True, figsize=(_W_THIRD, 1.8))
 
-        for ax, vel, xlabel in zip(
+        for ax, vel, xlabel, color in zip(
             axes,
             [u, v],
             ["U (m s⁻¹)\nEast +", "V (m s⁻¹)\nNorth +"],
+            [VAR_COLORS["U"], VAR_COLORS["V"]],
         ):
-            pos = np.where(vel > 0, vel, 0.0)
-            neg = np.where(vel < 0, vel, 0.0)
-            ax.fill_betweenx(z, 0, pos, color=_LADCP_POS_COLOR, alpha=0.6)
-            ax.fill_betweenx(z, neg, 0, color=_LADCP_NEG_COLOR, alpha=0.6)
-            ax.plot(vel, z, color="k", lw=0.7)
+            ax.fill_betweenx(z, 0, np.where(vel > 0, vel, 0.0), color=color, alpha=0.5)
+            ax.fill_betweenx(z, np.where(vel < 0, vel, 0.0), 0, color=color, alpha=0.5)
+            ax.plot(vel, z, color=color, lw=0.7)
             ax.axvline(0, color="0.5", lw=0.6, ls="--")
             ax.set_xlabel(xlabel)
-            ax.grid(True, alpha=0.3)
+            ax.grid(True)
 
         axes[0].set_ylabel("Depth (m)")
         axes[0].set_ylim(float(z.max()) * 1.02, float(z.min()) * 0.98)
+        xlim = float(np.nanmax(np.abs(np.concatenate([u, v])))) * 1.05
+        for ax in axes:
+            ax.set_xlim(-xlim, xlim)
         _hide_outer_spines(*axes)
         fig.tight_layout()
         b64 = _fig_to_base64(fig)
