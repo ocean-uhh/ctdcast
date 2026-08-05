@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from time import perf_counter
 from typing import Any
 
 import numpy as np
@@ -20,9 +19,19 @@ import xarray as xr
 from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
+from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _add_aou, _add_teos10_profiles, _compact_cast_list
+from ctdreport.analysis import (
+    _add_aou,
+    _add_teos10_profiles,
+    _compact_cast_list,
+    _fmt_utc,
+)
 from ctdreport.plots import (
+    _MAX_SECTION_H,
+    _W_FULL,
+    _W_HALF,
+    _W_THIRD,
     _make_ladcp_section_b64,
     _make_section_map_b64,
     _make_timeseries_b64,
@@ -34,11 +43,14 @@ from ctdreport.section import _expand_cast_numbers
 # Variables to plot (in order)
 # ---------------------------------------------------------------------------
 
-_TIMESERIES_VARS: list[tuple[str, str, str]] = [
+_TIMESERIES_PHYSICS_VARS: list[tuple[str, str, str]] = [
     ("CT", "Conservative Temperature (°C)", "CT"),
     ("SA", "Absolute Salinity (g kg⁻¹)", "SA"),
+    ("sigma0", "Potential density σ₀ (kg m⁻³)", "σ₀"),
+]
+
+_TIMESERIES_BIOGEO_VARS: list[tuple[str, str, str]] = [
     ("oxygen_1", "O₂ saturation (%)", "O₂"),
-    ("AOU", "O₂ deficit (% sat)", "AOU"),
     ("fluorescence", "Fluorescence (mg m⁻³)", "Fluor"),
     ("turbidity", "Turbidity (NTU)", "Turb"),
 ]
@@ -53,130 +65,152 @@ _TIMESERIES_TEMPLATE = (
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ ts_name }} timeseries — {{ cruise }}</title>
+<title>{{ ts_name }} — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1rem 1.5rem; }
-  header h1 { font-size: 1.3rem; }
-  header .meta { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
-  nav { background: var(--seafoam); padding: 0.5rem 1.5rem; border-bottom: 1px solid #cdd8e3;
-        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }
-  nav .breadcrumb a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.3rem; }
-  nav .breadcrumb a:hover { text-decoration: underline; }
-  nav .breadcrumb span { color: #888; font-size: 0.9rem; margin-right: 0.3rem; }
-  nav .quicklinks { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-  nav .quicklinks a { color: var(--ocean); text-decoration: none; font-size: 0.78rem;
-                      background: #fff; border: 1px solid #b0c8dc; padding: 0.15rem 0.6rem;
-                      border-radius: 999px; }
-  nav .quicklinks a:hover { background: var(--ocean); color: #fff; }
-  .legend { font-size: 0.82rem; color: #555; }
-  .legend span { display: inline-block; width: 0.8rem; text-align: center; margin-right: 0.15rem; }
-  .card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.25rem; margin: 1rem 1.5rem;
-  }
-  .card h2 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.75rem; }
-  .meta-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.5rem; font-size: 0.9rem;
-  }
-  .meta-item { display: flex; flex-direction: column; }
-  .meta-item .label { font-size: 0.75rem; color: #888; }
-  .meta-item .value { font-weight: 600; }
-  .plot-wide { margin-top: 0.5rem; }
-  .plot-wide img { max-width: 100%; height: auto; border-radius: 4px; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+"""
+    + SHARED_CSS
+    + """\
+/* Timeseries page */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem; font-size: 0.85rem;
+}
+.breadcrumb a { color: var(--ocean); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
+.cast-pill {
+  display: inline-block; background: #4a6fa5; color: #fff;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.78rem; text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.cast-pill:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
 <div id="top"></div>
 
-<header>
-  <h1>{{ ts_name }} — {{ cruise }}</h1>
-  <div class="meta">{{ ts_description }} &nbsp;·&nbsp; {{ n_casts }} casts &nbsp;·&nbsp; casts {{ cast_list_str }} &nbsp;·&nbsp; {{ time_range }}</div>
-</header>
-
-<nav>
-  <div class="breadcrumb">
-    <a href="../index.html">Index</a> <span>›</span>
-    <a href="../timeseries.html">Timeseries</a> <span>›</span>
+<div class="topbar">
+  <nav class="breadcrumb">
+    <a href="../index.html">Index</a>
+    <span class="sep">›</span>
+    <a href="../timeseries.html">Timeseries</a>
+    <span class="sep">›</span>
     <span>{{ ts_name }}</span>
-  </div>
-  <div class="quicklinks">
-    <a href="#s-meta">Metadata</a>
-    {% if fig_location_b64 %}<a href="#s-map">Map</a>{% endif %}
-    {% for panel in panels %}
-    <a href="#s-panel-{{ loop.index }}">{{ panel.short }}</a>
-    {% endfor %}
-    {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
-    <a href="#top">↑ Top</a>
-  </div>
-</nav>
-
-<div class="card" id="s-meta">
-  <h2>Timeseries metadata</h2>
-  <div class="meta-grid">
-    <div class="meta-item"><span class="label">Group</span><span class="value">{{ ts_name }}</span></div>
-    <div class="meta-item"><span class="label">Description</span><span class="value">{{ ts_description }}</span></div>
-    <div class="meta-item"><span class="label">Casts</span><span class="value">{{ cast_list_str }}</span></div>
-    <div class="meta-item"><span class="label">Time range</span><span class="value">{{ time_range }}</span></div>
-  </div>
-  <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-    {% for cn in cast_nums %}
-    <a style="display:inline-block; background:#4a6fa5; color:#fff; padding:0.2rem 0.6rem;
-       border-radius:999px; font-size:0.78rem; text-decoration:none;"
-       href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
-    {% endfor %}
+  </nav>
+  <div class="nav-btns">
+    {% if prev_name %}<a class="btn-nav" href="timeseries_{{ prev_name }}.html">← {{ prev_name }}</a>{% endif %}
+    {% if next_name %}<a class="btn-nav" href="timeseries_{{ next_name }}.html">{{ next_name }} →</a>{% endif %}
   </div>
 </div>
+
+<div class="masthead" style="background:#27ae60;">
+  <div class="masthead-header">
+    <h1>{{ ts_name }}</h1>
+    <span class="masthead-type">Timeseries</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="../index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
+    <a href="../station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
+    <a href="../sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
+    <a href="../timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60;opacity:0.55">Timeseries</a>
+    <a href="../leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    <div><dt>Ship</dt><dd>{{ ship }}</dd></div>
+    <div><dt>CTD casts</dt><dd>{{ n_casts }}</dd></div>
+    <div><dt>Start</dt><dd>{{ time_start_str }}</dd></div>
+    <div><dt>End</dt><dd>{{ time_end_str }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ duration_str }}</dd></div>
+  </dl>
+</div>
+
+<div class="jump-nav">
+  {% if fig_location_b64 %}<a href="#s-map">Map</a>{% endif %}
+  {% if physics_panels | selectattr("b64") | list %}<a href="#s-physics">Hydrography</a>{% endif %}
+  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
+  {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
+</div>
+
+<div style="margin-bottom:1rem;">
+  {% for cn in cast_nums %}
+  <a class="cast-pill" href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
+  {% endfor %}
+</div>
+
+{% macro ts_panel_group(panels, slot, anchor, heading) %}
+{% if panels | selectattr("b64") | list %}
+{% if heading %}<h2 id="{{ anchor }}">{{ heading }}</h2>{% endif %}
+{% if slot == "slot-third" %}
+<div class="fig-row">
+  {% for panel in panels %}{% if panel.b64 %}
+  <figure class="{{ slot }}">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.title }}</figcaption>
+  </figure>
+  {% endif %}{% endfor %}
+</div>
+{% elif slot == "slot-half" %}
+{% for row in panels | batch(2, None) %}
+<div class="fig-row">
+  {% for panel in row %}{% if panel and panel.b64 %}
+  <figure class="{{ slot }}">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.title }}</figcaption>
+  </figure>
+  {% endif %}{% endfor %}
+</div>
+{% endfor %}
+{% else %}
+{% for panel in panels %}{% if panel.b64 %}
+<div class="fig-row">
+  <figure class="{{ slot }}">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.title }}</figcaption>
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{% endmacro %}
 
 {% if fig_location_b64 %}
-<div class="card" id="s-map">
-  <h2>Station location</h2>
-  <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map" style="max-height:260px;width:auto;border-radius:4px;">
+<h2 id="s-map">Map</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map">
+  </figure>
 </div>
 {% endif %}
 
-{% for panel in panels %}
-{% if panel.b64 %}
-<div class="card" id="s-panel-{{ loop.index }}">
-  <h2>{{ panel.title }}</h2>
-  <div class="plot-wide">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </div>
-</div>
-{% endif %}
-{% endfor %}
+{{ ts_panel_group(physics_panels, ts_slot, "s-physics", "Hydrography") }}
+{{ ts_panel_group(biogeo_panels, ts_slot, "s-biogeo", "Biogeochemistry") }}
 
-{% if not panels %}
-<div class="card"><p style="color:#888">No data available for these casts.</p></div>
+{% if not physics_panels and not biogeo_panels %}
+<p style="color:#888">No data available for these casts.</p>
 {% endif %}
 
 {% for card in extra_cards %}
-<div class="card" id="s-{{ card.id }}">
-  <h2>{{ card.title }}</h2>
-  {% if card.panels | length == 1 %}
-  <div class="plot-wide">
-    <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
-  </div>
-  {% else %}
-  <div class="plots">
-    {% for panel in card.panels %}
-    <figure style="text-align:center; margin:0;">
-      <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}"
-           style="max-height:420px; width:auto; border-radius:4px;">
-      <figcaption style="font-size:0.8rem; color:#555; margin-top:0.3rem;">{{ panel.title }}</figcaption>
-    </figure>
-    {% endfor %}
-  </div>
-  {% endif %}
+<h2 id="s-{{ card.id }}">{{ card.title }}</h2>
+{% if card.id == "ts" %}
+<div class="fig-row">
+  {% for panel in card.panels %}{% if panel.b64 %}
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.title }}</figcaption>
+  </figure>
+  {% endif %}{% endfor %}
 </div>
+{% else %}
+{{ ts_panel_group(card.panels, ts_slot, "", "") }}
+{% endif %}
 {% endfor %}
 
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -191,13 +225,15 @@ def generate_timeseries_page(
     profiles_path: Path,
     out_dir: Path,
     force: bool = False,
-    section_style: str = "pcolormesh",
+    section_style: str = "contourf",
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
     all_meta: list[dict] | None = None,
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
     dbar_step: int = 1,
+    prev_name: str | None = None,
+    next_name: str | None = None,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
 
@@ -234,6 +270,10 @@ def generate_timeseries_page(
         Subsample the pressure axis by this step before plotting (default 1,
         no subsampling).  ``build_profiles()`` always stores 1-dbar data;
         this controls plot-time resolution only.
+    prev_name:
+        Name of the preceding timeseries group (for the ← nav button).  None omits the button.
+    next_name:
+        Name of the following timeseries group (for the → nav button).  None omits the button.
 
     Returns
     -------
@@ -251,14 +291,12 @@ def generate_timeseries_page(
     if not profiles_path.exists():
         return None
 
-    _dbg = perf_counter()
     try:
         ds_all = xr.open_dataset(
             profiles_path, decode_timedelta=False, engine="netcdf4"
         ).load()
     except Exception:  # noqa: BLE001
         return None
-    print(f"    [ts dbg] load profiles.nc: {perf_counter() - _dbg:.2f}s")
 
     all_cast_nums = ds_all["cast_number"].values
     mask = np.isin(all_cast_nums, cast_nums)
@@ -270,22 +308,33 @@ def generate_timeseries_page(
     if dbar_step > 1:
         p_idx = np.arange(0, ds_ts.sizes["pressure"], dbar_step)
         ds_ts = ds_ts.isel(pressure=p_idx)
-    _dbg = perf_counter()
     ds_ts = _add_teos10_profiles(ds_ts)
     ds_ts = _add_aou(ds_ts)
-    print(f"    [ts dbg] teos10+aou: {perf_counter() - _dbg:.2f}s")
 
     # Sort all profiles (both down and up) by time_start
     order = np.argsort(ds_ts["time_start"].values)
     ds_ts = ds_ts.isel(N_PROF=order)
 
     cruise: str = ds_all.attrs.get("cruise", "odb2026")
+    ship: str = ds_all.attrs.get(
+        "ship",
+        ds_all.attrs.get("platform", ds_all.attrs.get("vessel", "UNK")),
+    )
     n_profiles = int(mask.sum())
     n_casts = len(cast_nums)
 
     times = ds_ts["time_start"].values
-    time_start_str = str(times[0])[:16].replace("T", " ")
-    time_end_str = str(times[-1])[:16].replace("T", " ")
+    time_start_str = _fmt_utc(times[0])
+    time_end_str = _fmt_utc(times[-1])
+    _dt_hours = (
+        float((times[-1] - times[0]) / np.timedelta64(1, "h"))
+        if len(times) > 1
+        else 0.0
+    )
+    if _dt_hours >= 48.0:
+        duration_str = f"{_dt_hours / 24:.1f} d ({_dt_hours:.0f} h)"
+    else:
+        duration_str = f"{_dt_hours:.1f} h"
 
     # Downcast profiles only — used for both the location map and LADCP.
     # Up/down share the same location; restricting to downcast avoids duplicate
@@ -300,7 +349,6 @@ def generate_timeseries_page(
     yoyo_cast_nums = [int(c) for c in ds_down["cast_number"].values]
     fig_location_b64: str | None = None
     if len(yoyo_lats) and np.any(np.isfinite(yoyo_lats)):
-        _dbg = perf_counter()
         # Compute cluster bounding radius in km, then set margin = 2× radius
         # (min 2 km) converted to degrees separately for lat and lon so the
         # rendered map is Mercator-square.
@@ -321,13 +369,22 @@ def generate_timeseries_page(
             min_margin=_margin_lat,
             min_margin_lon=_margin_lon,
         )
-        print(f"    [ts dbg] station map: {perf_counter() - _dbg:.2f}s")
 
     vmin = vmin_override or {}
     vmax = vmax_override or {}
-    _dbg = perf_counter()
-    panels: list[dict[str, Any]] = []
-    for var, label, short in _TIMESERIES_VARS:
+
+    # Slot and figure width based on cast count
+    if n_casts >= 30:
+        ts_slot = "slot-full"
+        ts_figw = _W_FULL
+    elif n_casts >= 15:
+        ts_slot = "slot-half"
+        ts_figw = _W_HALF
+    else:
+        ts_slot = "slot-third"
+        ts_figw = _W_THIRD
+
+    def _ts_panel(var: str, label: str, short: str) -> dict[str, Any]:
         b64 = _make_timeseries_b64(
             ds_ts,
             var,
@@ -335,51 +392,58 @@ def generate_timeseries_page(
             style=section_style,
             vmin=vmin.get(var),
             vmax=vmax.get(var),
+            figw=ts_figw,
         )
-        if b64:
-            panels.append({"title": label, "short": short, "b64": b64})
-    print(
-        f"    [ts dbg] timeseries panels ({len(panels)}): {perf_counter() - _dbg:.2f}s"
-    )
+        return {"title": label, "short": short, "b64": b64}
 
-    _dbg = perf_counter()
+    physics_panels = [_ts_panel(*t) for t in _TIMESERIES_PHYSICS_VARS]
+    biogeo_panels = [_ts_panel(*t) for t in _TIMESERIES_BIOGEO_VARS]
+
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
-    print(f"    [ts dbg] ts diagram: {perf_counter() - _dbg:.2f}s")
 
     # LADCP: use downcast profiles only, x-axis = hours since first cast
-    _ladcp_ts_b64: str | None = None
+    _ladcp_ts_panels: list[dict] = []
     if ladcp_dir is not None:
         ladcp_cast_nums = [int(c) for c in ds_down["cast_number"].values]
         ladcp_lats = ds_down["latitude"].values.tolist()
         ladcp_lons = ds_down["longitude"].values.tolist()
         t_ns = ds_down["time_start"].values.astype("datetime64[ns]").astype(float)
         t_hours = (t_ns - t_ns[0]) / 3.6e12 if len(t_ns) > 0 else np.zeros(0)
-        _figw = float(np.clip(0.25 * len(ladcp_cast_nums), 8, 16))
-        _ladcp_ts_b64 = _make_ladcp_section_b64(
+        _ladcp_u, _ladcp_v = _make_ladcp_section_b64(
             ladcp_cast_nums,
             t_hours,
             "Hours since start",
             ladcp_dir,
             lats=ladcp_lats,
             lons=ladcp_lons,
-            figsize=(_figw, 8.0),
+            figsize=(ts_figw, _MAX_SECTION_H),
             ladcp_pattern=ladcp_pattern,
+            style=section_style,
         )
+        _ladcp_ts_panels = [
+            p
+            for p in (
+                {"b64": _ladcp_u, "title": "U velocity (east +)"},
+                {"b64": _ladcp_v, "title": "V velocity (north +)"},
+            )
+            if p["b64"]
+        ]
 
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
             "id": "ladcp",
-            "title": "LADCP velocity (U east, V north)",
-            "short": "LADCP",
-            "panels": [{"b64": _ladcp_ts_b64, "title": "LADCP"}],
+            "title": "Velocity (U east, V north)",
+            "short": "Velocity",
+            "panels": _ladcp_ts_panels,
         }
-        if _ladcp_ts_b64
+        if _ladcp_ts_panels
         else None,
         "ts": {
             "id": "ts",
             "title": "T–S diagram (profiles coloured by time)",
-            "short": "T–S",
-            "panels": [{"b64": _ts_diagram_b64, "title": "T–S diagram"}],
+            "short": "T–S diagram",
+            "slot": "slot-third",
+            "panels": [{"b64": _ts_diagram_b64, "title": "T-S diagram"}],
         }
         if _ts_diagram_b64
         else None,
@@ -390,14 +454,21 @@ def generate_timeseries_page(
         "ts_name": ts_name,
         "ts_description": ts_cfg.get("description", ""),
         "cruise": cruise,
+        "ship": ship,
         "n_casts": n_casts,
         "n_profiles": n_profiles,
-        "time_range": f"{time_start_str} – {time_end_str}",
+        "time_start_str": time_start_str,
+        "time_end_str": time_end_str,
+        "duration_str": duration_str,
         "cast_list_str": _compact_cast_list(cast_nums),
         "cast_nums": [f"{n:03d}" for n in sorted(cast_nums)],
-        "panels": panels,
+        "physics_panels": physics_panels,
+        "biogeo_panels": biogeo_panels,
+        "ts_slot": ts_slot,
         "fig_location_b64": fig_location_b64,
         "extra_cards": extra_cards,
+        "prev_name": prev_name or "",
+        "next_name": next_name or "",
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }

@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import warnings
 from pathlib import Path
+from typing import Any
 
 import gsw
 import numpy as np
@@ -713,3 +714,14 @@ def _find_ladcp_file(
         if found:
             return found[0]
     return None
+
+
+def _fmt_utc(t: Any) -> str:
+    """Format a numpy datetime64 scalar as 'YYYY-MM-DD HH:MM UTC'.
+
+    Returns '—' on any error.
+    """
+    try:
+        return str(np.datetime_as_string(t, unit="m")).replace("T", " ") + " UTC"
+    except Exception:  # noqa: BLE001
+        return "—"

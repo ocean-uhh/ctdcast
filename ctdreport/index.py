@@ -13,10 +13,12 @@ import yaml
 from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
+from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdreport._version import __version__ as _VERSION
 from ctdreport.analysis import (
     _add_aou,
     _add_teos10_profiles,
+    _along_track_km,
     _compact_cast_list,
     _interpolate_bathy_at_casts,
 )
@@ -44,90 +46,94 @@ _INDEX_TEMPLATE = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CTD Report — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1.25rem 1.5rem; }
-  header h1 { font-size: 1.5rem; }
-  header .meta { font-size: 0.9rem; opacity: 0.8; margin-top: 0.3rem; }
-  .card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.25rem; margin: 1rem 1.5rem;
-  }
-  .card h2 { font-size: 1.05rem; color: var(--ocean); margin-bottom: 0.75rem; }
-  .hero { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
-  .hero img { max-height: 360px; width: auto; border-radius: 6px; }
-  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; min-width: 200px; }
-  .stat { background: var(--seafoam); border-radius: 6px; padding: 0.75rem; text-align: center; }
-  .stat .n { font-size: 2rem; font-weight: 700; color: var(--ocean); }
-  .stat .lbl { font-size: 0.8rem; color: #555; }
-  .btn {
-    display: inline-block; background: var(--ocean); color: #fff;
-    padding: 0.4rem 1.1rem; border-radius: 999px; text-decoration: none;
-    font-size: 0.9rem; margin: 0.3rem;
-  }
-  .btn:hover { background: var(--accent); }
-  .btn-sec { background: #2c6e49; }
-  .btn-ts  { background: #7b2d8b; }
-  .plot-wide { margin-top: 0.75rem; }
-  .plot-wide img { max-width: 100%; height: auto; border-radius: 4px; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+"""
+    + SHARED_CSS
+    + """\
 </style>
 </head>
 <body>
+<div id="top"></div>
 
-<header>
-  <h1>CTD Report — {{ cruise }}</h1>
-  <div class="meta">
-    {% if ship or cruise_id or project %}{{ ship }}{% if cruise_id %} · {{ cruise_id }}{% endif %}{% if project %} · {{ project }}{% endif %} &nbsp;|&nbsp; {% endif %}{{ date_range }} &nbsp;·&nbsp; {{ n_casts }} casts &nbsp;·&nbsp; {{ n_sections }} sections
+<div class="masthead" style="background:#2980b9;">
+  <div class="masthead-header">
+    <h1>{{ cruise }}</h1>
+    <span class="masthead-type">CTD Report</span>
   </div>
-</header>
-
-<div class="card">
-  <div class="hero">
-    {% if fig_map_b64 %}
-    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
-    {% endif %}
-    <div>
-      <div class="hero-stats">
-        <div class="stat"><div class="n">{{ n_casts }}</div><div class="lbl">CTD casts</div></div>
-        <div class="stat"><div class="n">{{ n_sections }}</div><div class="lbl">Sections</div></div>
-        <div class="stat"><div class="n">{{ max_depth_str }}</div><div class="lbl">Max depth</div></div>
-        <div class="stat"><div class="n">{{ n_days }}</div><div class="lbl">Days at sea</div></div>
-      </div>
-      <div style="margin-top:1rem;">
-        <a class="btn" href="station_index.html">All stations</a>
-        <a class="btn btn-sec" href="sections.html">Sections</a>
-        <a class="btn btn-ts" href="timeseries.html">Time series</a>
-        <a class="btn" style="background:#1a6b8a;" href="leaflet.html">Interactive map</a>
-      </div>
-    </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9;opacity:0.55">Summary</a>
+    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
   </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if project %}<div><dt>Project</dt><dd>{{ project }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if n_days %}<div><dt>Duration</dt><dd>{{ n_days }} d</dd></div>{% endif %}
+    <div><dt>CTD casts</dt><dd>{{ n_casts }}</dd></div>
+    <div><dt>Sections</dt><dd>{{ n_sections }}</dd></div>
+    <div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>
+  </dl>
 </div>
 
-{% for panel in overview_panels %}
-{% if panel.b64 %}
-<div class="card">
-  <h2>{{ panel.title }}</h2>
-  <div class="plot-wide">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </div>
+<div class="jump-nav">
+  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
+  {% if physics_panels | selectattr("b64") | list %}<a href="#s-hydro">Hydrography</a>{% endif %}
+  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
+  {% if ts_b64 %}<a href="#s-ts">T–S diagram</a>{% endif %}
+</div>
+
+{% if fig_map_b64 %}
+<h2 id="s-map">Map</h2>
+<div class="fig-row" style="justify-content:center;">
+  <figure class="slot-half">
+    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
+  </figure>
 </div>
 {% endif %}
-{% endfor %}
+
+{% if physics_panels | selectattr("b64") | list %}
+<h2 id="s-hydro">Hydrography</h2>
+{% for panel in physics_panels %}{% if panel.b64 %}
+<p class="note">{{ panel.title }}</p>
+<div class="fig-row">
+  <figure class="slot-full">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
+
+{% if biogeo_panels | selectattr("b64") | list %}
+<h2 id="s-biogeo">Biogeochemistry</h2>
+{% for panel in biogeo_panels %}{% if panel.b64 %}
+<p class="note">{{ panel.title }}</p>
+<div class="fig-row">
+  <figure class="slot-full">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
 
 {% if ts_b64 %}
-<div class="card">
-  <h2>T–S diagram (all downcast profiles)</h2>
-  <div style="display:flex;justify-content:center;">
-    <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram"
-         style="max-height:420px;width:auto;border-radius:4px;">
-  </div>
+<h2 id="s-ts">T-S diagram</h2>
+<p class="note">All downcast profiles</p>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">
+  </figure>
 </div>
 {% endif %}
 
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -139,32 +145,18 @@ _STATIONS_TEMPLATE = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Station index — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1rem 1.5rem; }
-  header h1 { font-size: 1.3rem; }
-  nav { background: var(--seafoam); padding: 0.6rem 1.5rem; border-bottom: 1px solid #cdd8e3; }
-  nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav a:hover { text-decoration: underline; }
-  nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
-  .map-card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.25rem; margin: 1rem 1.5rem; text-align: center;
-  }
-  .map-card img { max-width: 100%; max-height: 400px; width: auto; border-radius: 4px; }
-  .card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.25rem; margin: 1rem 1.5rem; overflow-x: auto;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; }
-  th {
-    background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
-    text-align: left; position: sticky; top: 0; z-index: 1;
-  }
-  td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; vertical-align: middle; }
-  tbody tr { cursor: pointer; }
-  tbody tr:hover td { background: var(--seafoam); }
+"""
+    + SHARED_CSS
+    + """\
+/* Stations index */
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; overflow-x: auto; display: block; }
+th {
+  background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
+  text-align: left; position: sticky; top: 0; z-index: 1;
+}
+td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--seafoam); }
   .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
   .cast-link:hover { text-decoration: underline; }
   .filename { font-family: monospace; font-size: 0.82rem; color: #444; }
@@ -181,26 +173,47 @@ _STATIONS_TEMPLATE = (
   .pill-btn:hover { opacity: 0.85; }
   .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
   .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
 </style>
 </head>
 <body>
+<div id="top"></div>
 
-<header><h1>Station index — {{ cruise }} ({{ stations|length }} casts)</h1></header>
-
-<nav>
-  <a href="index.html">Index</a> <span>›</span>
-  <span>Stations</span>
-</nav>
+<div class="masthead" style="background:#1a3a5c;">
+  <div class="masthead-header">
+    <h1>{{ cruise }}</h1>
+    <span class="masthead-type">Station index</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
+    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c;opacity:0.55">Stations</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>CTD casts</dt><dd>{{ stations|length }}</dd></div>
+    {% if max_depth_str %}<div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>{% endif %}
+  </dl>
+</div>
 
 {% if cruise_map_b64 %}
-<div class="map-card">
-  <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
+<h2 id="s-map">Map</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
+  </figure>
 </div>
 {% endif %}
 
-<div class="card">
-  <table>
+<h2 id="s-table">Casts</h2>
+<table>
     <thead>
       <tr>
         <th>Cast</th>
@@ -238,10 +251,10 @@ _STATIONS_TEMPLATE = (
     {% endfor %}
     </tbody>
   </table>
-</div>
 
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -253,81 +266,93 @@ _SECTIONS_TEMPLATE = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sections — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1rem 1.5rem; }
-  header h1 { font-size: 1.3rem; }
-  nav { background: var(--seafoam); padding: 0.6rem 1.5rem; border-bottom: 1px solid #cdd8e3; }
-  nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav a:hover { text-decoration: underline; }
-  nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
-  .content-row {
-    display: flex; gap: 1.5rem; margin: 1rem 1.5rem; align-items: flex-start;
-  }
-  .map-sidebar { flex: 0 0 auto; max-width: 400px; }
-  .map-sidebar img { width: 100%; height: auto; border-radius: 4px; }
-  .grid {
-    flex: 1;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
-  }
-  .sec-card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.1rem; border-left: 4px solid #1a3a5c;
-  }
-  .sec-card h3 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.3rem; }
-  .sec-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.6rem; }
-  .sec-card .info { font-size: 0.82rem; color: #777; }
-  .btn {
-    display: inline-block; background: var(--ocean); color: #fff;
-    padding: 0.3rem 0.85rem; border-radius: 999px; text-decoration: none;
-    font-size: 0.82rem; margin-top: 0.6rem;
-  }
-  .btn:hover { background: var(--accent); }
-  .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-  .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+"""
+    + SHARED_CSS
+    + """\
+/* Sections index */
+.sec-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.sec-card {
+  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
+  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.sec-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
+.sec-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+.sec-card .info { font-size: 0.82rem; color: #777; }
+.btn-card {
+  display: inline-block; background: #8e44ad; color: #fff;
+  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
+  font-size: 0.8rem; margin-top: 0.6rem;
+}
+.btn-card:hover { opacity: 0.85; }
+.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
+.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
 </style>
 </head>
 <body>
+<div id="top"></div>
 
-<header><h1>Sections — {{ cruise }}</h1></header>
+<div class="masthead" style="background:#8e44ad;">
+  <div class="masthead-header">
+    <h1>{{ cruise }}</h1>
+    <span class="masthead-type">Section index</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
+    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad;opacity:0.55">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>Sections</dt><dd>{{ sections|length }}</dd></div>
+    {% if casts_range %}<div><dt>Casts per section</dt><dd>{{ casts_range }}</dd></div>{% endif %}
+    {% if dist_range %}<div><dt>Distance range</dt><dd>{{ dist_range }}</dd></div>{% endif %}
+  </dl>
+</div>
 
-<nav>
-  <a href="index.html">Index</a> <span>›</span>
-  <span>Sections</span>
-</nav>
-
-<div class="content-row">
-  {% if sections_map_b64 %}
-  <div class="map-sidebar">
+{% if sections_map_b64 %}
+<h2 id="s-map">Section tracks</h2>
+<div class="fig-row">
+  <figure class="slot-third">
     <img src="data:image/png;base64,{{ sections_map_b64 }}" alt="Sections overview map">
+  </figure>
+</div>
+{% endif %}
+
+<h2 id="s-list">Sections</h2>
+<div class="sec-grid">
+{% for sec in sections %}
+<div class="sec-card" style="border-left-color:{{ sec.color }}">
+  <h3>{{ sec.name }}</h3>
+  <div class="desc">{{ sec.description }}</div>
+  <div class="info">{{ sec.n_casts }} casts &nbsp;·&nbsp; {{ sec.cast_range }}</div>
+  {% if ladcp_configured %}
+  <div style="margin-top:0.4rem;">
+    {% if sec.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
   </div>
   {% endif %}
-  <div class="grid">
-  {% for sec in sections %}
-  <div class="sec-card" style="border-left-color: {{ sec.color }}">
-    <h3>{{ sec.name }}</h3>
-    <div class="desc">{{ sec.description }}</div>
-    <div class="info">{{ sec.n_casts }} casts &nbsp;·&nbsp; casts {{ sec.cast_range }}</div>
-    {% if ladcp_configured %}
-    <div style="margin-top:0.4rem;">
-      {% if sec.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
-    </div>
-    {% endif %}
-    {% if sec.report_exists %}
-    <a class="btn" href="sections/section_{{ sec.name }}.html">view section →</a>
-    {% else %}
-    <span style="font-size:0.8rem; color:#aaa; margin-top:0.4rem; display:inline-block;">report not yet generated</span>
-    {% endif %}
-  </div>
-  {% endfor %}
-  </div>
+  {% if sec.report_exists %}
+  <a class="btn-card" href="sections/section_{{ sec.name }}.html">view section →</a>
+  {% else %}
+  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
+  {% endif %}
+</div>
+{% endfor %}
 </div>
 
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -353,7 +378,7 @@ def generate_ctd_report(
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
     cruise_info: dict[str, Any] | None = None,
-    cast_filter: int | None = None,
+    cast_filter: int | list[int] | None = None,
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
     dbar_step: int = 1,
@@ -498,11 +523,18 @@ def generate_ctd_report(
     if gen["stations"]:
         _t0 = perf_counter()
         cast_num_strs = [m["cast_num_str"] for m in all_meta]
+        _cast_set: set[int] | None = (
+            {cast_filter}
+            if isinstance(cast_filter, int)
+            else set(cast_filter)
+            if cast_filter is not None
+            else None
+        )
         targets = [
-            m for m in all_meta if cast_filter is None or m["cast_num"] == cast_filter
+            m for m in all_meta if _cast_set is None or m["cast_num"] in _cast_set
         ]
-        if cast_filter is not None and not targets:
-            print(f"Cast {cast_filter} not found in {nc_dir}")
+        if _cast_set is not None and not targets:
+            print(f"Cast(s) {cast_filter} not found in {nc_dir}")
             return
         for meta in targets:
             orig_i = all_meta.index(meta)
@@ -550,6 +582,7 @@ def generate_ctd_report(
                 sal_range=sal_range,
                 trim_soak=trim_soak,
                 cast_notes=all_cast_notes.get(meta["cast_num"]),
+                cruise_info=cruise_info,
             )
             if _skip_reason:
                 _status = _skip_reason + _ladcp_note
@@ -577,7 +610,10 @@ def generate_ctd_report(
 
     if gen["sections"]:
         _t0 = perf_counter()
-        for sec_name, sec_cfg in sections_cfg.items():
+        _sec_names = list(sections_cfg.keys())
+        for _sec_i, (sec_name, sec_cfg) in enumerate(sections_cfg.items()):
+            _sec_prev = _sec_names[_sec_i - 1] if _sec_i > 0 else None
+            _sec_next = _sec_names[_sec_i + 1] if _sec_i < len(_sec_names) - 1 else None
             _expected = out_dir / "sections" / f"section_{sec_name}.html"
             _sec_was_new = not _expected.exists()
             _sec_html_mtime_str = _fmt_mtime(_expected)
@@ -610,6 +646,8 @@ def generate_ctd_report(
                 ladcp_dir=ladcp_dir,
                 ladcp_pattern=ladcp_pattern,
                 dbar_step=dbar_step,
+                prev_name=_sec_prev,
+                next_name=_sec_next,
             )
             if _sec_skip:
                 _sec_status = _sec_skip + _sec_note
@@ -629,7 +667,10 @@ def generate_ctd_report(
 
     if gen["timeseries"] and timeseries_cfg:
         _t0 = perf_counter()
-        for ts_name, ts_cfg in timeseries_cfg.items():
+        _ts_names = list(timeseries_cfg.keys())
+        for _ts_i, (ts_name, ts_cfg) in enumerate(timeseries_cfg.items()):
+            _ts_prev = _ts_names[_ts_i - 1] if _ts_i > 0 else None
+            _ts_next = _ts_names[_ts_i + 1] if _ts_i < len(_ts_names) - 1 else None
             _expected = out_dir / "timeseries" / f"timeseries_{ts_name}.html"
             _ts_was_new = not _expected.exists()
             _ts_html_mtime_str = _fmt_mtime(_expected)
@@ -663,6 +704,8 @@ def generate_ctd_report(
                 ladcp_dir=ladcp_dir,
                 ladcp_pattern=ladcp_pattern,
                 dbar_step=dbar_step,
+                prev_name=_ts_prev,
+                next_name=_ts_next,
             )
             if _ts_skip:
                 _ts_status = _ts_skip + _ts_note
@@ -705,16 +748,27 @@ def generate_ctd_report(
             timeseries_cfg=timeseries_cfg,
             ladcp_dir=ladcp_dir,
             ladcp_pattern=ladcp_pattern,
+            cruise_info=cruise_info,
         )
         print(f"  [station_index.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
         _write_sections_list(
-            sections_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+            sections_cfg,
+            cruise,
+            out_dir,
+            all_meta=all_meta,
+            ladcp_dir=ladcp_dir,
+            cruise_info=cruise_info,
         )
         print(f"  [sections.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
         _write_timeseries_list(
-            timeseries_cfg, cruise, out_dir, all_meta=all_meta, ladcp_dir=ladcp_dir
+            timeseries_cfg,
+            cruise,
+            out_dir,
+            all_meta=all_meta,
+            ladcp_dir=ladcp_dir,
+            cruise_info=cruise_info,
         )
         print(f"  [timeseries.html: {perf_counter() - _t0:.1f}s]")
 
@@ -743,11 +797,14 @@ def generate_ctd_report(
 # Page writers
 # ---------------------------------------------------------------------------
 
-_OVERVIEW_VARS: list[tuple[str, str]] = [
+_OVERVIEW_PHYSICS_VARS: list[tuple[str, str]] = [
     ("CT", "Conservative Temperature (°C)"),
     ("SA", "Absolute Salinity (g kg⁻¹)"),
+    ("sigma0", "Potential density σ₀ (kg m⁻³)"),
+]
+
+_OVERVIEW_BIOGEO_VARS: list[tuple[str, str]] = [
     ("oxygen_1", "O₂ saturation (%)"),
-    ("AOU", "O₂ deficit (% sat)"),
     ("fluorescence", "Fluorescence (mg m⁻³)"),
     ("turbidity", "Turbidity (NTU)"),
 ]
@@ -769,8 +826,6 @@ def _write_index(
     """Write index.html with header card, stats, overview map, and stacked property panels."""
     times = [m["time_start"] for m in all_meta if m.get("time_start")]
     times_str = sorted(str(t)[:10] for t in times if t)
-    date_range = f"{times_str[0]} – {times_str[-1]}" if len(times_str) >= 2 else "—"
-
     n_days = 0
     if len(times_str) >= 2:
         from datetime import date
@@ -839,15 +894,17 @@ def _write_index(
             _valid_lats,
             _valid_lons,
             legend_outside=True,
+            target_h=3.0,
         )
     elif _valid_lats:
         # No sections configured (e.g. draft mode) — fall back to cruise-track map.
-        fig_map_b64 = _make_cruise_map_b64(all_meta)
+        fig_map_b64 = _make_cruise_map_b64(all_meta, target_h=3.0)
     else:
         fig_map_b64 = None
 
     # Stacked overview panels and cruise T-S diagram from profiles.nc
-    overview_panels: list[dict[str, Any]] = []
+    physics_panels_idx: list[dict[str, Any]] = []
+    biogeo_panels_idx: list[dict[str, Any]] = []
     ts_b64: str | None = None
     if profiles_path is not None and profiles_path.exists():
         try:
@@ -868,7 +925,8 @@ def _write_index(
 
             vmin = vmin_override or {}
             vmax = vmax_override or {}
-            for var, label in _OVERVIEW_VARS:
+
+            def _idx_panel(var: str, label: str) -> dict[str, Any]:
                 b64 = _make_overview_panel_b64(
                     ds_sorted,
                     var,
@@ -879,26 +937,32 @@ def _write_index(
                     vmax=vmax.get(var),
                     cast_groups=cast_groups,
                 )
-                if b64:
-                    overview_panels.append({"title": label, "b64": b64})
+                return {"title": label, "b64": b64}
+
+            physics_panels_idx = [_idx_panel(v, l) for v, l in _OVERVIEW_PHYSICS_VARS]
+            biogeo_panels_idx = [_idx_panel(v, l) for v, l in _OVERVIEW_BIOGEO_VARS]
 
             ts_b64 = _make_section_ts_histogram_b64(ds_sorted)
             ds_all.close()
         except Exception:  # noqa: BLE001, S110
             pass  # Overview panels are optional; never crash index generation
 
+    date_start = times_str[0] if times_str else ""
+    date_end = times_str[-1] if len(times_str) >= 2 else ""
+
     ctx: dict[str, Any] = {
         "cruise": cruise,
         "ship": ci.get("ship", ""),
-        "cruise_id": ci.get("cruise_id", ""),
         "project": ci.get("project", ""),
-        "date_range": date_range,
+        "date_start": date_start,
+        "date_end": date_end,
         "n_casts": len(all_meta),
         "n_sections": len(sections_cfg),
         "max_depth_str": f"{max_depth:.0f} dbar",
         "n_days": n_days,
         "fig_map_b64": fig_map_b64,
-        "overview_panels": overview_panels,
+        "physics_panels": physics_panels_idx,
+        "biogeo_panels": biogeo_panels_idx,
         "ts_b64": ts_b64
         if profiles_path is not None and profiles_path.exists()
         else None,
@@ -955,6 +1019,7 @@ def _write_stations_list(
     timeseries_cfg: dict[str, Any] | None = None,
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
+    cruise_info: dict[str, Any] | None = None,
 ) -> None:
     """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file.
@@ -1021,10 +1086,33 @@ def _write_stations_list(
             }
         )
 
+    _ci = cruise_info or {}
+    _times_str = sorted(
+        str(m["time_start"])[:10] for m in all_meta if m.get("time_start")
+    )
+    _date_start = _times_str[0] if _times_str else ""
+    _date_end = _times_str[-1] if len(_times_str) >= 2 else ""
+    _duration_days = 0
+    if _date_start and _date_end:
+        try:
+            from datetime import date as _date
+
+            _duration_days = (
+                _date.fromisoformat(_date_end) - _date.fromisoformat(_date_start)
+            ).days + 1
+        except ValueError:
+            pass
+    _max_depth = max((m.get("max_depth", 0) for m in all_meta), default=0)
+
     ctx: dict[str, Any] = {
         "cruise": cruise,
+        "ship": _ci.get("ship", ""),
+        "date_start": _date_start,
+        "date_end": _date_end,
+        "duration_days": _duration_days,
+        "max_depth_str": f"{_max_depth:.0f} dbar" if _max_depth else "",
         "stations": stations,
-        "cruise_map_b64": _make_cruise_map_b64(all_meta),
+        "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0),
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
@@ -1040,6 +1128,7 @@ def _write_sections_list(
     out_dir: Path,
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
+    cruise_info: dict[str, Any] | None = None,
 ) -> None:
     """Write sections.html with overview map and cards for each section."""
     ladcp_cast_nums: set[int] = set()
@@ -1064,16 +1153,20 @@ def _write_sections_list(
 
     sections = []
     sections_data: list[dict[str, Any]] = []
+    _sec_n_casts_list: list[int] = []
+    _sec_dist_list: list[float] = []
     for name, cfg in sections_cfg.items():
         cast_nums = _expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "sections" / f"section_{name}.html"
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
+        n_casts_sec = len(cast_nums)
+        _sec_n_casts_list.append(n_casts_sec)
         sections.append(
             {
                 "name": name,
                 "description": cfg.get("description", ""),
                 "color": cfg.get("color", "#1a3a5c"),
-                "n_casts": len(cast_nums),
+                "n_casts": n_casts_sec,
                 "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
                 "report_exists": report_path.exists(),
                 "ladcp_has": ladcp_has,
@@ -1091,17 +1184,55 @@ def _write_sections_list(
                         "lons": sec_lons,
                     }
                 )
+                if len(sec_lats) >= 2:
+                    _km, _ = _along_track_km(sec_lats, sec_lons)
+                    _sec_dist_list.append(float(_km[-1]))
 
     all_cast_lats = [v[0] for v in cast_pos.values()]
     all_cast_lons = [v[1] for v in cast_pos.values()]
     sections_map_b64 = (
-        _make_all_sections_map_b64(sections_data, all_cast_lats, all_cast_lons)
+        _make_all_sections_map_b64(
+            sections_data, all_cast_lats, all_cast_lons, target_h=3.0
+        )
         if sections_data
         else None
     )
 
+    # Cruise-wide date range from all_meta
+    _ci = cruise_info or {}
+    _times_str = sorted(
+        str(m["time_start"])[:10] for m in (all_meta or []) if m.get("time_start")
+    )
+    _date_start = _times_str[0] if _times_str else ""
+    _date_end = _times_str[-1] if len(_times_str) >= 2 else ""
+    _duration_days = 0
+    if _date_start and _date_end:
+        try:
+            from datetime import date as _date
+
+            _duration_days = (
+                _date.fromisoformat(_date_end) - _date.fromisoformat(_date_start)
+            ).days + 1
+        except ValueError:
+            pass
+    # Summary ranges across sections
+    _casts_range = ""
+    if _sec_n_casts_list:
+        mn, mx = min(_sec_n_casts_list), max(_sec_n_casts_list)
+        _casts_range = f"{mn}–{mx}" if mn != mx else str(mn)
+    _dist_range = ""
+    if _sec_dist_list:
+        mn_d, mx_d = min(_sec_dist_list), max(_sec_dist_list)
+        _dist_range = f"{mn_d:.0f}–{mx_d:.0f} km" if mn_d != mx_d else f"{mn_d:.0f} km"
+
     ctx: dict[str, Any] = {
         "cruise": cruise,
+        "ship": _ci.get("ship", ""),
+        "date_start": _date_start,
+        "date_end": _date_end,
+        "duration_days": _duration_days,
+        "casts_range": _casts_range,
+        "dist_range": _dist_range,
         "sections": sections,
         "sections_map_b64": sections_map_b64,
         "ladcp_configured": ladcp_dir is not None,
@@ -1121,80 +1252,96 @@ _TIMESERIES_LIST_TEMPLATE = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Timeseries — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1rem 1.5rem; }
-  header h1 { font-size: 1.3rem; }
-  nav { background: var(--seafoam); padding: 0.6rem 1.5rem; border-bottom: 1px solid #cdd8e3; }
-  nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav a:hover { text-decoration: underline; }
-  nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
-  .content-row {
-    display: flex; gap: 1.5rem; margin: 1rem 1.5rem; align-items: flex-start;
-  }
-  .map-sidebar { flex: 0 0 auto; max-width: 400px; }
-  .map-sidebar img { width: 100%; height: auto; border-radius: 4px; }
-  .grid {
-    flex: 1;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
-  }
-  .ts-card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.1rem; border-left: 4px solid #1a3a5c;
-  }
-  .ts-card h3 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.3rem; }
-  .ts-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.6rem; }
-  .ts-card .info { font-size: 0.82rem; color: #777; }
-  .btn {
-    display: inline-block; background: var(--ocean); color: #fff;
-    padding: 0.3rem 0.85rem; border-radius: 999px; text-decoration: none;
-    font-size: 0.82rem; margin-top: 0.6rem;
-  }
-  .btn:hover { background: var(--accent); }
-  .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-  .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+"""
+    + SHARED_CSS
+    + """\
+/* Timeseries index */
+.ts-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.ts-card {
+  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
+  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.ts-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
+.ts-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+.ts-card .info { font-size: 0.82rem; color: #777; }
+.btn-card {
+  display: inline-block; background: #27ae60; color: #fff;
+  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
+  font-size: 0.8rem; margin-top: 0.6rem;
+}
+.btn-card:hover { opacity: 0.85; }
+.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
+.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
 </style>
 </head>
 <body>
-<header><h1>Timeseries — {{ cruise }}</h1></header>
-<nav>
-  <a href="index.html">Index</a> <span>›</span>
-  <span>Timeseries</span>
-</nav>
-<div class="content-row">
-  {% if timeseries_map_b64 %}
-  <div class="map-sidebar">
-    <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
+<div id="top"></div>
+
+<div class="masthead" style="background:#27ae60;">
+  <div class="masthead-header">
+    <h1>{{ cruise }}</h1>
+    <span class="masthead-type">Timeseries index</span>
   </div>
-  {% endif %}
-  <div class="grid">
-  {% for ts in timeseries %}
-  <div class="ts-card" style="border-left-color: {{ ts.color }}">
-    <h3>{{ ts.name }}</h3>
-    <div class="desc">{{ ts.description }}</div>
-    <div class="info">{{ ts.n_casts }} casts &nbsp;·&nbsp; casts {{ ts.cast_range }}</div>
-    {% if ladcp_configured %}
-    <div style="margin-top:0.4rem;">
-      {% if ts.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
-    </div>
-    {% endif %}
-    {% if ts.report_exists %}
-    <a class="btn" href="timeseries/timeseries_{{ ts.name }}.html">view timeseries →</a>
-    {% else %}
-    <span style="font-size:0.8rem; color:#aaa; margin-top:0.4rem; display:inline-block;">report not yet generated</span>
-    {% endif %}
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
+    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60;opacity:0.55">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
   </div>
-  {% endfor %}
-  {% if not timeseries %}
-  <div style="color:#888">No timeseries groups configured.</div>
-  {% endif %}
-  </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>Timeseries groups</dt><dd>{{ timeseries|length }}</dd></div>
+    {% if ts_casts_range %}<div><dt>Casts per group</dt><dd>{{ ts_casts_range }}</dd></div>{% endif %}
+    {% if ts_dur_range %}<div><dt>Duration range</dt><dd>{{ ts_dur_range }}</dd></div>{% endif %}
+  </dl>
 </div>
+
+{% if timeseries_map_b64 %}
+<h2 id="s-map">Timeseries locations</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
+  </figure>
+</div>
+{% endif %}
+
+<h2 id="s-list">Timeseries groups</h2>
+<div class="ts-grid">
+{% for ts in timeseries %}
+<div class="ts-card" style="border-left-color:{{ ts.color }}">
+  <h3>{{ ts.name }}</h3>
+  <div class="desc">{{ ts.description }}</div>
+  <div class="info">{{ ts.n_casts }} casts &nbsp;·&nbsp; {{ ts.cast_range }}</div>
+  {% if ladcp_configured %}
+  <div style="margin-top:0.4rem;">
+    {% if ts.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if ts.report_exists %}
+  <a class="btn-card" href="timeseries/timeseries_{{ ts.name }}.html">view timeseries →</a>
+  {% else %}
+  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
+  {% endif %}
+</div>
+{% endfor %}
+{% if not timeseries %}
+<p style="color:#888">No timeseries groups configured.</p>
+{% endif %}
+</div>
+
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -1204,6 +1351,7 @@ def _write_timeseries_list(
     out_dir: Path,
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
+    cruise_info: dict[str, Any] | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
     from ctdreport.section import _expand_cast_numbers
@@ -1216,31 +1364,48 @@ def _write_timeseries_list(
             except ValueError:
                 pass
 
-    # Build cast → position lookup
+    # Build cast → position and time lookup
     cast_pos: dict[int, tuple[float, float]] = {}
+    cast_times: dict[int, tuple[Any, Any]] = {}
     if all_meta:
         for m in all_meta:
             cn = m.get("cast_num")
-            if (
-                cn is not None
-                and np.isfinite(m.get("lat", np.nan))
-                and np.isfinite(m.get("lon", np.nan))
-            ):
-                cast_pos[int(cn)] = (float(m["lat"]), float(m["lon"]))
+            if cn is not None:
+                if np.isfinite(m.get("lat", np.nan)) and np.isfinite(
+                    m.get("lon", np.nan)
+                ):
+                    cast_pos[int(cn)] = (float(m["lat"]), float(m["lon"]))
+                if m.get("time_start") is not None and m.get("time_end") is not None:
+                    cast_times[int(cn)] = (m["time_start"], m["time_end"])
 
     items = []
     timeseries_data: list[dict[str, Any]] = []
+    _ts_n_casts_list: list[int] = []
+    _ts_dur_h_list: list[float] = []
     for name, cfg in timeseries_cfg.items():
         cast_nums = _expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "timeseries" / f"timeseries_{name}.html"
         color = cfg.get("color", "#7b2d8b")
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
+        n_casts_ts = len(cast_nums)
+        _ts_n_casts_list.append(n_casts_ts)
+        # Compute per-group duration from cast timestamps
+        grp_starts = [cast_times[c][0] for c in cast_nums if c in cast_times]
+        grp_ends = [cast_times[c][1] for c in cast_nums if c in cast_times]
+        if grp_starts and grp_ends:
+            try:
+                _t0 = np.min(np.array(grp_starts, dtype="datetime64[ns]"))
+                _t1 = np.max(np.array(grp_ends, dtype="datetime64[ns]"))
+                _dur_h = float((_t1 - _t0) / np.timedelta64(1, "h"))
+                _ts_dur_h_list.append(_dur_h)
+            except Exception:  # noqa: BLE001,S110
+                pass
         items.append(
             {
                 "name": name,
                 "description": cfg.get("description", ""),
                 "color": color,
-                "n_casts": len(cast_nums),
+                "n_casts": n_casts_ts,
                 "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
                 "report_exists": report_path.exists(),
                 "ladcp_has": ladcp_has,
@@ -1257,13 +1422,48 @@ def _write_timeseries_list(
     all_cast_lats = [v[0] for v in cast_pos.values()]
     all_cast_lons = [v[1] for v in cast_pos.values()]
     timeseries_map_b64 = (
-        _make_all_sections_map_b64(timeseries_data, all_cast_lats, all_cast_lons)
+        _make_all_sections_map_b64(
+            timeseries_data, all_cast_lats, all_cast_lons, target_h=3.0
+        )
         if timeseries_data
         else None
     )
 
+    # Cruise-wide date range
+    _ci = cruise_info or {}
+    _times_str = sorted(
+        str(m["time_start"])[:10] for m in (all_meta or []) if m.get("time_start")
+    )
+    _date_start = _times_str[0] if _times_str else ""
+    _date_end = _times_str[-1] if len(_times_str) >= 2 else ""
+    _duration_days = 0
+    if _date_start and _date_end:
+        try:
+            from datetime import date as _date
+
+            _duration_days = (
+                _date.fromisoformat(_date_end) - _date.fromisoformat(_date_start)
+            ).days + 1
+        except ValueError:
+            pass
+    # Summary ranges across timeseries groups
+    _ts_casts_range = ""
+    if _ts_n_casts_list:
+        mn, mx = min(_ts_n_casts_list), max(_ts_n_casts_list)
+        _ts_casts_range = f"{mn}–{mx}" if mn != mx else str(mn)
+    _ts_dur_range = ""
+    if _ts_dur_h_list:
+        mn_h, mx_h = min(_ts_dur_h_list), max(_ts_dur_h_list)
+        _ts_dur_range = f"{mn_h:.0f}–{mx_h:.0f} h" if mn_h != mx_h else f"{mn_h:.0f} h"
+
     ctx: dict[str, Any] = {
         "cruise": cruise,
+        "ship": _ci.get("ship", ""),
+        "date_start": _date_start,
+        "date_end": _date_end,
+        "duration_days": _duration_days,
+        "ts_casts_range": _ts_casts_range,
+        "ts_dur_range": _ts_dur_range,
         "timeseries": items,
         "timeseries_map_b64": timeseries_map_b64,
         "ladcp_configured": ladcp_dir is not None,
@@ -1360,8 +1560,12 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         if _id is None:
             return None
         cast_num, cast_suffix = _id
-        lat = float(np.nanmedian(ds["latitude"].values))
-        lon = float(np.nanmedian(ds["longitude"].values))
+        import warnings as _w
+
+        with _w.catch_warnings():
+            _w.filterwarnings("ignore", "All-NaN slice encountered")
+            lat = float(np.nanmedian(ds["latitude"].values))
+            lon = float(np.nanmedian(ds["longitude"].values))
         max_depth = float(np.nanmax(ds["pressure"].values))
         time_start = ds["time"].values[0]
         time_end = ds["time"].values[-1]

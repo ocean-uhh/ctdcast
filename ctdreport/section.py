@@ -12,6 +12,7 @@ from jinja2 import Environment
 
 from ctdreport import _templates as _tmpl
 from ctdreport import plots as _plots
+from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdreport._version import __version__ as _VERSION
 from ctdreport.analysis import (
     _add_aou,
@@ -19,6 +20,7 @@ from ctdreport.analysis import (
     _along_track_km,
     _compact_cast_list,
     _dense_bathy_along_track,
+    _fmt_utc,
     _interpolate_bathy_at_casts,
     _section_orientation,
 )
@@ -29,17 +31,21 @@ from ctdreport.plots import (
     _make_section_ts_histogram_b64,
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
+    section_figsize_and_slot,
 )
 
 # ---------------------------------------------------------------------------
 # Section variables to plot (in order)
 # ---------------------------------------------------------------------------
 
-_SECTION_VARS: list[tuple[str, str, str]] = [
+_PHYSICS_VARS: list[tuple[str, str, str]] = [
     ("CT", "Conservative Temperature (°C)", "CT"),
     ("SA", "Absolute Salinity (g kg⁻¹)", "SA"),
+    ("sigma0", "Potential density σ₀ (kg m⁻³)", "σ₀"),
+]
+
+_BIOGEO_VARS: list[tuple[str, str, str]] = [
     ("oxygen_1", "O₂ saturation (%)", "O₂ (%)"),
-    ("AOU", "O₂ deficit (% sat)", "AOU"),
     ("fluorescence", "Fluorescence (mg m⁻³)", "Fluor"),
     ("turbidity", "Turbidity (NTU)", "Turb"),
 ]
@@ -56,130 +62,155 @@ _SECTION_TEMPLATE = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ section_name }} — {{ cruise }}</title>
 <style>
-  :root { --ocean: #1a3a5c; --seafoam: #e8f4f8; --accent: #2e86ab; --text: #1a1a2e; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f5f7fa; color: var(--text); }
-  header { background: var(--ocean); color: #fff; padding: 1rem 1.5rem; }
-  header h1 { font-size: 1.3rem; }
-  header .meta { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
-  nav { background: var(--seafoam); padding: 0.6rem 1.5rem; border-bottom: 1px solid #cdd8e3; }
-  nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }
-  nav a { color: var(--ocean); text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav a:hover { text-decoration: underline; }
-  nav span { color: #888; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .quicklinks { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-  nav .quicklinks a {
-    color: var(--ocean); text-decoration: none; font-size: 0.8rem;
-    border: 1px solid #cdd8e3; border-radius: 999px; padding: 0.15rem 0.6rem;
-    background: #fff;
-  }
-  nav .quicklinks a:hover { background: var(--seafoam); }
-  .card {
-    background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    padding: 1.25rem; margin: 1rem 1.5rem;
-  }
-  .card h2 { font-size: 1rem; color: var(--ocean); margin-bottom: 0.75rem; }
-  .meta-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.5rem; font-size: 0.9rem;
-  }
-  .meta-item { display: flex; flex-direction: column; }
-  .meta-item .label { font-size: 0.75rem; color: #888; }
-  .meta-item .value { font-weight: 600; }
-  .plot-wide { margin-top: 0.75rem; }
-  .plot-wide img { max-width: 100%; height: auto; border-radius: 4px; }
-  .plots { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
-  .plots img { max-height: 380px; width: auto; border-radius: 4px; }
-  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: #999; }
+"""
+    + SHARED_CSS
+    + """\
+/* Section page */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem; font-size: 0.85rem;
+}
+.breadcrumb a { color: var(--ocean); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
+.cast-pill {
+  display: inline-block; background: #4a6fa5; color: #fff;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.78rem; text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.cast-pill:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
-
-<header>
-  <div>
-    <h1>{{ section_name }} — {{ section_description }}</h1>
-    <div class="meta">{{ cruise }} &nbsp;·&nbsp; {{ n_casts }} casts &nbsp;·&nbsp; {{ dist_str }}</div>
-  </div>
-</header>
-
-<nav>
-  <div class="breadcrumb">
-    <a href="../index.html">Index</a> <span>›</span>
-    <a href="../sections.html">Sections</a> <span>›</span>
-    <span>{{ section_name }}</span>
-  </div>
-  <div class="quicklinks">
-    <a href="#s-meta">Metadata</a>
-    {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
-    {% for panel in panels %}{% if panel.b64 %}<a href="#s-panel-{{ loop.index }}">{{ panel.short }}</a>{% endif %}{% endfor %}
-    {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
-  </div>
-</nav>
-
 <div id="top"></div>
 
-<!-- Metadata -->
-<div class="card" id="s-meta">
-  <h2>Section metadata</h2>
-  <div class="meta-grid">
-    <div class="meta-item"><span class="label">Section</span><span class="value">{{ section_name }}</span></div>
-    <div class="meta-item"><span class="label">Description</span><span class="value">{{ section_description }}</span></div>
-    <div class="meta-item"><span class="label">Casts</span><span class="value">{{ cast_list_str }}</span></div>
-    <div class="meta-item"><span class="label">Along-track distance</span><span class="value">{{ dist_str }}</span></div>
-  </div>
-  <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-    {% for cn in cast_nums %}
-    <a style="display:inline-block; background:#4a6fa5; color:#fff; padding:0.2rem 0.6rem;
-       border-radius:999px; font-size:0.78rem; text-decoration:none;"
-       href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
-    {% endfor %}
+<div class="topbar">
+  <nav class="breadcrumb">
+    <a href="../index.html">Index</a>
+    <span class="sep">›</span>
+    <a href="../sections.html">Sections</a>
+    <span class="sep">›</span>
+    <span>{{ section_name }}</span>
+  </nav>
+  <div class="nav-btns">
+    {% if prev_name %}<a class="btn-nav" href="section_{{ prev_name }}.html">← {{ prev_name }}</a>{% endif %}
+    {% if next_name %}<a class="btn-nav" href="section_{{ next_name }}.html">{{ next_name }} →</a>{% endif %}
   </div>
 </div>
 
-<!-- Section map + sections -->
+<div class="masthead" style="background:#8e44ad;">
+  <div class="masthead-header">
+    <h1>{{ section_name }}</h1>
+    <span class="masthead-type">Section</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="../index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
+    <a href="../station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
+    <a href="../sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad;opacity:0.55">Sections</a>
+    <a href="../timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
+    <a href="../leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    <div><dt>Ship</dt><dd>{{ ship }}</dd></div>
+    <div><dt>Description</dt><dd>{{ section_description }}</dd></div>
+    <div><dt>CTD casts</dt><dd>{{ cast_list_str }}</dd></div>
+    <div><dt>Distance</dt><dd>{{ dist_str }}</dd></div>
+    <div><dt>Max depth</dt><dd>{{ p_max_str }}</dd></div>
+    <div><dt>Start position</dt><dd>{{ start_pos }}</dd></div>
+    <div><dt>Start time</dt><dd>{{ start_time }}</dd></div>
+    <div><dt>End position</dt><dd>{{ end_pos }}</dd></div>
+    <div><dt>End time</dt><dd>{{ end_time }}</dd></div>
+  </dl>
+</div>
+
+<div class="jump-nav">
+  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
+  {% if physics_panels | selectattr("b64") | list %}<a href="#s-physics">Hydrography</a>{% endif %}
+  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
+  {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
+</div>
+
+<div style="margin-bottom:1rem;">
+  {% for cn in cast_nums %}
+  <a class="cast-pill" href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
+  {% endfor %}
+</div>
+
 {% if fig_map_b64 %}
-<div class="card" id="s-map">
-  <h2>Section track</h2>
-  <div class="plots">
+<h2 id="s-map">Map</h2>
+<div class="fig-row">
+  <figure class="slot-third">
     <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Section map">
-  </div>
+  </figure>
 </div>
 {% endif %}
 
-{% for panel in panels %}
-{% if panel.b64 %}
-<div class="card" id="s-panel-{{ loop.index }}">
-  <h2>{{ panel.title }}</h2>
-  <div class="plot-wide">
+{% macro section_panel_group(panels, slot, anchor, heading) %}
+{% if panels | selectattr("b64") | list %}
+{% if heading %}<h2 id="{{ anchor }}">{{ heading }}</h2>{% endif %}
+{% if slot == "slot-third" %}
+<div class="fig-row">
+  {% for panel in panels %}{% if panel.b64 %}
+  <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </div>
+    <figcaption>{{ panel.short }}</figcaption>
+  </figure>
+  {% endif %}{% endfor %}
 </div>
-{% endif %}
+{% elif slot == "slot-half" %}
+{% for row in panels | batch(2, None) %}
+<div class="fig-row">
+  {% for panel in row %}{% if panel and panel.b64 %}
+  <figure class="{{ slot }}">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.short }}</figcaption>
+  </figure>
+  {% endif %}{% endfor %}
+</div>
 {% endfor %}
+{% else %}
+{% for panel in panels %}{% if panel.b64 %}
+<div class="fig-row">
+  <figure class="{{ slot }}">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+{{ section_panel_group(physics_panels, section_slot, "s-physics", "Hydrography") }}
+{{ section_panel_group(biogeo_panels, section_slot, "s-biogeo", "Biogeochemistry") }}
 
 {% for card in extra_cards %}
-<div class="card" id="s-{{ card.id }}">
-  <h2>{{ card.title }}</h2>
-  {% if card.panels | length == 1 %}
-  <div class="plot-wide">
+<h2 id="s-{{ card.id }}">{{ card.title }}</h2>
+{% if card.id == "ladcp" %}
+{{ section_panel_group(card.panels, section_slot, "", "") }}
+{% elif card.panels | length == 1 %}
+<div class="fig-row">
+  <figure class="{{ section_slot }}">
     <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
-  </div>
-  {% else %}
-  <div class="plots">
-    {% for panel in card.panels %}
-    <figure style="text-align:center; margin:0;">
-      <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}"
-           style="max-height:420px; width:auto; border-radius:4px;">
-      <figcaption style="font-size:0.8rem; color:#555; margin-top:0.3rem;">{{ panel.title }}</figcaption>
-    </figure>
-    {% endfor %}
-  </div>
-  {% endif %}
+  </figure>
 </div>
+{% else %}
+<div class="fig-row">
+  {% for panel in card.panels %}
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    <figcaption>{{ panel.title }}</figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% endif %}
 {% endfor %}
 
 """
     + _tmpl.FOOTER_TAIL
+    + _JS_TOP_LINKS
 )
 
 
@@ -200,6 +231,8 @@ def generate_section_page(
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
     dbar_step: int = 1,
+    prev_name: str | None = None,
+    next_name: str | None = None,
 ) -> Path | None:
     """Generate a section HTML report page.
 
@@ -230,6 +263,10 @@ def generate_section_page(
         Subsample the pressure axis by this step before plotting (default 1,
         no subsampling).  ``build_profiles()`` always stores 1-dbar data;
         this controls plot-time resolution only.
+    prev_name:
+        Name of the preceding section (for the ← nav button).  None omits the button.
+    next_name:
+        Name of the following section (for the → nav button).  None omits the button.
 
     Returns
     -------
@@ -288,13 +325,49 @@ def generate_section_page(
             dense_bathy_x = x_total - dense_bathy_x
 
     cruise = ds_all.attrs.get("cruise", "odb2026")
+    ship = ds_all.attrs.get(
+        "ship", ds_all.attrs.get("platform", ds_all.attrs.get("vessel", "UNK"))
+    )
     dist_str = f"{x_vals.max():.1f} km" if len(x_vals) > 1 else "—"
     cast_nums_int = [int(c) for c in sec_cast_nums]
     vmin = vmin_override or {}
     vmax = vmax_override or {}
 
-    panels = []
-    for var, label, short in _SECTION_VARS:
+    # Compute section figsize and CSS slot from section extent.
+    # Use valid-data extent, not pressure coordinate max — the coordinate spans the full
+    # cruise depth (e.g. 2200 dbar) even for shallow sections like KO (450 dbar).
+    _dist_km = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 1.0
+    _ref_var = next((v for v in ("CT", "SA") if v in ds_sec), None)
+    if _ref_var is not None:
+        _ref_data = ds_sec[_ref_var].values
+        _valid_p = np.where(np.any(np.isfinite(_ref_data), axis=0))[0]
+        _p_max_sec = (
+            float(ds_sec["pressure"].values[_valid_p[-1]])
+            if len(_valid_p)
+            else float(ds_sec["pressure"].values.max())
+        )
+    else:
+        _p_max_sec = float(ds_sec["pressure"].values.max())
+    _, section_slot = section_figsize_and_slot(_p_max_sec, _dist_km)
+
+    # Start/end position and time from first/last downcast
+    def _latlon_str(lat: float, lon: float) -> str:
+        lat_h = "N" if lat >= 0 else "S"
+        lon_h = "E" if lon >= 0 else "W"
+        return f"{abs(lat):.4f}°{lat_h}, {abs(lon):.4f}°{lon_h}"
+
+    _lat0, _lon0 = float(lats[0]), float(lons[0])
+    _lat1, _lon1 = float(lats[-1]), float(lons[-1])
+    _ts_vals = ds_sec["time_start"].values if "time_start" in ds_sec else None
+    _te_vals = ds_sec["time_end"].values if "time_end" in ds_sec else None
+    start_pos = _latlon_str(_lat0, _lon0)
+    end_pos = _latlon_str(_lat1, _lon1)
+    start_time = (
+        _fmt_utc(_ts_vals[0]) if _ts_vals is not None and len(_ts_vals) else "—"
+    )
+    end_time = _fmt_utc(_te_vals[-1]) if _te_vals is not None and len(_te_vals) else "—"
+
+    def _section_panel(var: str, label: str, short: str) -> dict:
         b64 = _make_section_b64(
             ds_sec,
             var,
@@ -308,7 +381,10 @@ def generate_section_page(
             vmin=vmin.get(var),
             vmax=vmax.get(var),
         )
-        panels.append({"title": label, "short": short, "b64": b64})
+        return {"title": label, "short": short, "b64": b64}
+
+    physics_panels = [_section_panel(v, l, s) for v, l, s in _PHYSICS_VARS]
+    biogeo_panels = [_section_panel(v, l, s) for v, l, s in _BIOGEO_VARS]
 
     _ts_panels_raw = [
         {
@@ -321,7 +397,7 @@ def generate_section_page(
         },
         {"title": "Median O₂ saturation", "b64": _make_section_ts_o2_b64(ds_sec)},
     ]
-    _ladcp_b64 = (
+    _ladcp_u_b64, _ladcp_v_b64 = (
         _make_ladcp_section_b64(
             cast_nums_int,
             x_vals,
@@ -330,23 +406,32 @@ def generate_section_page(
             lats=lats,
             lons=lons,
             ladcp_pattern=ladcp_pattern,
+            style=section_style,
         )
         if ladcp_dir is not None
-        else None
+        else (None, None)
     )
+    _ladcp_panels = [
+        p
+        for p in (
+            {"b64": _ladcp_u_b64, "title": "U velocity (east +)"},
+            {"b64": _ladcp_v_b64, "title": "V velocity (north +)"},
+        )
+        if p["b64"]
+    ]
     _extra_raw: dict[str, dict | None] = {
         "ladcp": {
             "id": "ladcp",
-            "title": "LADCP velocity (U east, V north)",
-            "short": "LADCP",
-            "panels": [{"b64": _ladcp_b64, "title": "LADCP"}],
+            "title": "Velocity (U east, V north)",
+            "short": "Velocity",
+            "panels": _ladcp_panels,
         }
-        if _ladcp_b64
+        if _ladcp_panels
         else None,
         "ts": {
             "id": "ts",
             "title": "T–S diagrams",
-            "short": "T–S",
+            "short": "T–S diagram",
             "panels": [
                 {"b64": p["b64"], "title": p["title"]}
                 for p in _ts_panels_raw
@@ -365,12 +450,22 @@ def generate_section_page(
         "n_casts": len(sec_cast_nums),
         "dist_str": dist_str,
         "cast_list_str": _compact_cast_list([int(c) for c in sec_cast_nums]),
+        "ship": ship,
+        "p_max_str": f"{_p_max_sec:.0f} dbar",
+        "start_pos": start_pos,
+        "end_pos": end_pos,
+        "start_time": start_time,
+        "end_time": end_time,
         "cast_nums": [f"{n:03d}" for n in cast_nums_int],
         "fig_map_b64": _make_section_map_b64(
             lats, lons, cast_nums_int, title=section_name
         ),
-        "panels": panels,
+        "section_slot": section_slot,
+        "physics_panels": physics_panels,
+        "biogeo_panels": biogeo_panels,
         "extra_cards": extra_cards,
+        "prev_name": prev_name or "",
+        "next_name": next_name or "",
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }

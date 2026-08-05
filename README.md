@@ -1,5 +1,10 @@
 # ctdreport
 
+[![Tests](https://github.com/eleanorfrajka/ctdreport/actions/workflows/tests.yml/badge.svg)](https://github.com/eleanorfrajka/ctdreport/actions/workflows/tests.yml)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%20–%203.13-blue?logo=python&logoColor=white)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
+[![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://eleanorfrajka.github.io/ctdreport/)
+
 Self-contained HTML report generator for shipboard CTD and LADCP data.
 Produces portable HTML files — all figures embedded as base64 PNGs, no external requests —
 for three report types: per-cast station pages, transect section pages, and a cruise-wide

@@ -559,7 +559,7 @@ class TestRun:
         parser = _run.build_parser()
         args = parser.parse_args(["config.yaml", "--force", "--cast", "42"])
         assert args.force is True
-        assert args.cast == 42
+        assert args.cast == [42]
         assert args.config == Path("config.yaml")
         assert args.ctd is False
 
@@ -599,7 +599,7 @@ class TestEntryPoint:
         parser = _report.build_parser()
         args = parser.parse_args(["config.yaml", "--force", "--cast", "42"])
         assert args.force is True
-        assert args.cast == 42
+        assert args.cast == [42]
         assert args.config == Path("config.yaml")
 
     def test_validate_parser_standalone(self):
