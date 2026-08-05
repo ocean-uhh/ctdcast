@@ -348,7 +348,7 @@ def generate_section_page(
         )
     else:
         _p_max_sec = float(ds_sec["pressure"].values.max())
-    _, section_slot = section_figsize_and_slot(_p_max_sec, _dist_km)
+    section_figsize, section_slot = section_figsize_and_slot(_p_max_sec, _dist_km)
 
     # Start/end position and time from first/last downcast
     def _latlon_str(lat: float, lon: float) -> str:
@@ -380,6 +380,7 @@ def generate_section_page(
             cast_labels=cast_nums_int,
             vmin=vmin.get(var),
             vmax=vmax.get(var),
+            figsize=section_figsize,
         )
         return {"title": label, "short": short, "b64": b64}
 

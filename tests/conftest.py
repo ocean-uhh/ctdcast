@@ -5,6 +5,11 @@ from pathlib import Path
 import pytest
 import xarray as xr
 
+import ctdreport.plots as _plots
+
+# Surface plotting failures as test errors rather than silently returning None.
+_plots.RAISE_ON_PLOT_ERROR = True
+
 _HERE = Path(__file__).parent
 FIXTURES_NC = _HERE / "fixtures" / "nc"
 FIXTURES_LADCP = _HERE / "fixtures" / "ladcp"
