@@ -54,4 +54,5 @@ include = ["ctdcast*"]
 [tool.setuptools.package-data]
 "ctdcast" = ["*.mplstyle"]
 "ctdcast.reports" = ["leaflet/*", "templates/*"]
+"ctdcast.config" = ["*.yaml", "conventions/*.yaml"]
 

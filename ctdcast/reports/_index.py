@@ -9,12 +9,12 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-import yaml
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.config.loader import SectionsConfig
 from ctdcast.identity import (
     cast_id_from_name,
     compact_cast_list,
@@ -143,20 +143,20 @@ def report(
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load sections YAML early — needed for cruise_info fallback and cast_notes.
-    yaml_data: dict[str, Any] = {}
-    if section_yaml and section_yaml.exists():
-        with open(section_yaml) as f:
-            yaml_data = yaml.safe_load(f) or {}
+    # Load sections YAML once. SectionsConfig returns empty defaults when absent.
+    _sections_cfg = (
+        SectionsConfig.from_yaml(section_yaml)
+        if section_yaml
+        else SectionsConfig.empty()
+    )
 
     # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.
     # None means "not provided" — use YAML block entirely.
     # {} means "explicitly empty" — suppress YAML block (caller opted out).
-    _yaml_ci: dict[str, Any] = yaml_data.get("cruise_info") or {}
     if cruise_info is None:
-        cruise_info = _yaml_ci
+        cruise_info = _sections_cfg.cruise_info
     else:
-        cruise_info = {**_yaml_ci, **cruise_info}
+        cruise_info = {**_sections_cfg.cruise_info, **cruise_info}
 
     cast_files = _select_cast_files(nc_dir)
     if not cast_files:
@@ -198,8 +198,8 @@ def report(
 
     # Build cruise-wide cast_notes mapping from all sections and timeseries.
     all_cast_notes: dict[int, list[str]] = {}
-    for _grp in ("sections", "timeseries"):
-        for _cfg in (yaml_data.get(_grp) or {}).values():
+    for _grp_dict in (_sections_cfg.sections, _sections_cfg.timeseries):
+        for _cfg in _grp_dict.values():
             if not isinstance(_cfg, dict):
                 continue
             for _cn, _note in (_cfg.get("cast_notes") or {}).items():
@@ -293,8 +293,8 @@ def report(
             print(f"  cast {meta['cast_num_str']}: {_status}")
         print(f"  [stations: {perf_counter() - _t0:.1f}s]")
 
-    sections_cfg: dict[str, Any] = yaml_data.get("sections", {})
-    timeseries_cfg: dict[str, Any] = yaml_data.get("timeseries", {})
+    sections_cfg: dict[str, Any] = _sections_cfg.sections
+    timeseries_cfg: dict[str, Any] = _sections_cfg.timeseries
 
     if gen["sections"]:
         _t0 = perf_counter()
