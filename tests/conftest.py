@@ -11,7 +11,7 @@ import xarray as xr
 # initialise the Tk backend on a runner where Tcl/Tk is not installed.
 matplotlib.use("Agg")
 
-import ctdcast.plots as _plots
+import ctdcast.plotters.plots as _plots
 
 # Surface plotting failures as test errors rather than silently returning None.
 _plots.RAISE_ON_PLOT_ERROR = True

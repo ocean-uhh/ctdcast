@@ -1,13 +1,13 @@
-"""Tier-1 plot helpers: each returns a base64-encoded PNG string or None on error."""
+"""Figure builders: each ``draw_*_fig`` returns a matplotlib Figure or None.
+
+Encoding to base64 PNG for embedding in a page is done separately by the
+``_make_*_b64`` wrappers in :mod:`ctdcast.reports._plots`.
+"""
 
 from __future__ import annotations
 
-import base64
-import dataclasses
-import io
 import math
 import warnings
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +18,23 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import (
-    dense_bathy_along_track,
-    interpolate_bathy_at_casts,
     load_gebco,
 )
 from ctdcast.analysis.teos10 import add_teos10
 from ctdcast.cast.stage2 import split_cast
-from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.config.parameters import (
+    _MAX_SECTION_H,
+    _SECTION_STRETCH,
+    _VAR_CMAPS,
+    _W_FULL,
+    _W_HALF,
+    _W_THIRD,
+    _W_THREE_FIFTHS,
+    _W_TWO_FIFTHS,
+    _W_TWOTHIRDS,
+    VAR_COLORS,
+)
+from ctdcast.readers.ladcp import read_ladcp
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -37,46 +47,19 @@ from ctdcast.readers.ladcp import find_ladcp_file
 GEBCO_PATH: Path | None = None
 
 # Bundled mplstyle — controls font sizes, line widths, figure defaults.
-_MPLSTYLE = Path(__file__).parent / "ctdcast.mplstyle"
+_MPLSTYLE = Path(__file__).parent.parent / "ctdcast.mplstyle"
 
 # Extra margin (degrees) added when loading GEBCO for map rendering.
 # Ensures downsampled pcolormesh edge-cells extend past the axis limits,
 # eliminating white-gap artefacts at map borders.
 _GEBCO_RENDER_PAD: float = 0.5
 
-# Central color registry.
-# Physics (CT/SA/σ₀/U/V/N²/Turner): Okabe-Ito palette — Bang Wong, Nature Methods 8:441 (2011).
-# Biogeochemistry (O₂/fluorescence/turbidity): Paul Tol palette — https://jrnold.github.io/ggthemes/reference/ptol_pal.html
-VAR_COLORS: dict[str, str] = {
-    "CT": "#56B4E9",  # sky blue       — Okabe-Ito
-    "SA": "#E69F00",  # orange         — Okabe-Ito
-    "sigma0": "#009E73",  # bluish green   — Okabe-Ito
-    "U": "#D55E00",  # vermillion     — Okabe-Ito
-    "V": "#0072B2",  # blue           — Okabe-Ito
-    "oxygen_1": "#332288",  # indigo         — Paul Tol
-    "fluorescence": "#117733",  # forest green   — Paul Tol
-    "turbidity": "#661100",  # dark red       — Paul Tol
-    "N2": "#000000",  # black
-    "Turner": "#000000",  # black
-}
 
 # Derived aliases used throughout this module.
 _TS_COLORS = [VAR_COLORS["CT"], VAR_COLORS["SA"], VAR_COLORS["sigma0"]]
 _LADCP_U_COLOR: str = VAR_COLORS["U"]
 _LADCP_V_COLOR: str = VAR_COLORS["V"]
 
-# ColorBrewer colormaps per variable (for pcolormesh / scatter).
-_VAR_CMAPS: dict[str, str] = {
-    "CT": "RdYlBu_r",
-    "temperature_1": "RdYlBu_r",
-    "SA": "YlGnBu_r",
-    "salinity_1": "YlGnBu_r",
-    "oxygen_1": "RdYlGn",
-    "AOU": "RdBu_r",  # blue = near saturation, red = depleted
-    "fluorescence": "YlGn",
-    "turbidity": "YlOrBr",
-    "sigma0": "Purples",
-}
 
 # Upcast trace color (dark grey).  Downcast uses the native per-variable color.
 _UPCAST_COLOR: str = "#666666"
@@ -108,25 +91,9 @@ MAP_LAT_MAX: float | None = None
 MAP_LON_MIN: float | None = None
 MAP_LON_MAX: float | None = None
 
-# Slot widths in inches at savefig.dpi=150 (body usable width = 1086px).
-# PNGs are intentionally wider than the slot (1350px vs 1086px at full width) so that
-# at 10pt labels, displayed font size (~17px) matches the pre-refactor appearance.
-# The browser downscales by ~0.80, giving crisp subpixel rendering.
-_W_FULL: float = 9.0  # 1350px PNG → 1086px display
-_W_TWOTHIRDS: float = 6.0  # 900px PNG  → 719px display
-_W_THREE_FIFTHS: float = 5.4  # 810px PNG  → 652px display (60% slot)
-_W_HALF: float = 4.5  # 675px PNG  → 543px display
-_W_TWO_FIFTHS: float = 3.6  # 540px PNG  → 434px display (40% slot)
-_W_THIRD: float = 3.0  # 450px PNG  → 361px display
 
 # fontsize for ax.clabel() calls (not controlled by mplstyle).
 _CLABEL_FS: int = 8
-
-# Section aspect-ratio scaling.
-# Calibrated so KTout (416 dbar, 94 km) renders at 2.5 in tall at _W_FULL = 9.0 in.
-# (Equivalent to Eleanor's stretch=12.8 at 7.2 in width; scaled proportionally.)
-_SECTION_STRETCH: float = 16.0
-_MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig_w
 
 
 def _map_lim(
@@ -157,58 +124,6 @@ def _hide_outer_spines(*axes: Any) -> None:
 # ---------------------------------------------------------------------------
 # Internal utilities (rendering helpers, no external science dependencies)
 # ---------------------------------------------------------------------------
-
-
-def _fig_to_base64(fig: Any) -> str:
-    """Render *fig* to a PNG and return its base64-encoded bytes as a string."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode("ascii")
-
-
-def render_b64(
-    draw: Callable[..., plt.Figure | None],
-    /,
-    *args: Any,
-    **kwargs: Any,
-) -> str | None:
-    """Run *draw* under the package mplstyle and return its figure as a base64 PNG.
-
-    Parameters
-    ----------
-    draw:
-        A ``draw_*`` function returning a :class:`matplotlib.figure.Figure`, or
-        ``None`` if the dataset lacks the required variables.
-    *args, **kwargs:
-        Forwarded to *draw*.
-
-    Returns
-    -------
-    str or None
-        Base64-encoded PNG bytes, or ``None`` if *draw* returned ``None`` or
-        raised (unless :data:`RAISE_ON_PLOT_ERROR`).
-    """
-    fig = None
-    try:
-        with plt.style.context(str(_MPLSTYLE)):
-            fig = draw(*args, **kwargs)
-            if fig is None:
-                return None
-            fig.tight_layout()
-            return _fig_to_base64(fig)
-    except Exception:
-        if RAISE_ON_PLOT_ERROR:
-            raise
-        warnings.warn(
-            f"{draw.__name__} failed; panel omitted",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return None
-    finally:
-        if fig is not None:
-            plt.close(fig)
 
 
 def _nice_colorbar_bounds(
@@ -412,39 +327,7 @@ def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> No
 
 
 # ---------------------------------------------------------------------------
-# Panel — layout metadata passed from Tier-1 to Tier-2 callers
-# ---------------------------------------------------------------------------
-
-
-@dataclasses.dataclass(frozen=True)
-class Panel:
-    """A rendered figure plus the layout metadata the HTML template needs.
-
-    Attributes
-    ----------
-    b64:
-        Base64-encoded PNG string, or ``None`` when the figure could not be rendered.
-    title:
-        Long descriptive title (used in ``alt`` attributes and headings).
-    short:
-        Short label used in ``<figcaption>`` elements (e.g. ``"CT"``, ``"U"``).
-    figsize:
-        Figure dimensions ``(width, height)`` in inches, as reported by the
-        function that rendered the figure.  ``None`` when not recorded.
-    slot:
-        CSS slot class (e.g. ``"slot-full"``, ``"slot-half"``) that matches the
-        PNG's aspect ratio.  ``None`` when not recorded.
-    """
-
-    b64: str | None
-    title: str = ""
-    short: str = ""
-    figsize: tuple[float, float] | None = None
-    slot: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Tier-1: individual figure functions
+# draw_*_fig — individual figure builders (return a Figure or None)
 # ---------------------------------------------------------------------------
 
 
@@ -497,9 +380,7 @@ def draw_ts_density_fig(
     u: np.ndarray | None = None
     v: np.ndarray | None = None
     if ladcp_available:
-        import scipy.io
-
-        m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
+        m = read_ladcp(ladcp_path)
         dr = m["dr"]
         z = np.asarray(dr.z, dtype=float)
         u = np.asarray(dr.u, dtype=float)
@@ -1884,9 +1765,8 @@ def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
     """Return a LADCP bottom-track U and V vs depth Figure."""
     if ladcp_path is None:
         return None
-    import scipy.io
 
-    m = scipy.io.loadmat(str(ladcp_path), squeeze_me=True, struct_as_record=False)
+    m = read_ladcp(ladcp_path)
     dr = m["dr"]
     if not all(hasattr(dr, f) for f in ("zbot", "ubot", "vbot")):
         return None
@@ -1918,533 +1798,3 @@ def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
         ax.set_xlim(-xlim, xlim)
     _hide_outer_spines(*axes)
     return fig
-
-
-def _make_ts_density_b64(ds: xr.Dataset, ladcp_path: Path | None = None) -> str | None:
-    """Return a base64 PNG of CT/SA/σ₀ profiles, optionally alongside LADCP U/V.
-
-    When *ladcp_path* is ``None``, renders a single-column CT/SA/σ₀ triple-axis
-    profile (downcast only).  When *ladcp_path* is given, renders a two-column layout
-    with LADCP U/V on the right; shows a placeholder when the file does not exist so
-    the cast page keeps a consistent appearance for all LADCP-configured casts.
-    """
-    return render_b64(draw_ts_density_fig, ds, ladcp_path)
-
-
-def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of a T-S diagram colored by O₂ saturation."""
-    return render_b64(draw_ts_diagram_fig, ds)
-
-
-def _make_stability_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of N² and Turner angle (2-panel)."""
-    return render_b64(draw_stability_fig, ds)
-
-
-def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
-    return render_b64(draw_aux_profiles_fig, ds)
-
-
-def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of CT, SA, σ₀ profiles side-by-side (downcast + grey upcast).
-
-    Three-panel figure matching the style of ``_make_aux_profiles_b64``.
-    """
-    return render_b64(draw_ct_sa_sigma0_fig, ds)
-
-
-def _make_ts_updown_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of CT–SA scatter: downcast in blue, upcast in red, σ₀ contours."""
-    return render_b64(draw_ts_updown_fig, ds)
-
-
-def _make_station_map_b64(
-    lat: float,
-    lon: float,
-    all_meta: list[dict],
-    target_h: float = 4.5,
-) -> str | None:
-    """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
-
-    *target_h* controls the figure height in inches; width is computed from the
-    geographic aspect ratio via :func:`_geo_figsize`.
-    """
-    return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h)
-
-
-def _make_cruise_map_b64(all_meta: list[dict], *, target_h: float = 4.0) -> str | None:
-    """Return a base64 PNG of all cast positions (no single-cast highlight).
-
-    Casts are drawn as grey scatter over GEBCO bathymetry.  Cast numbers are
-    annotated for the first and last cast and every 10th in between.
-    """
-    return render_b64(draw_cruise_map_fig, all_meta, target_h=target_h)
-
-
-def _make_section_b64(
-    ds_prof: xr.Dataset,
-    var: str,
-    label: str,
-    x_vals: np.ndarray,
-    x_label: str,
-    title: str = "",
-    style: str = "pcolormesh",
-    bathy_depths: np.ndarray | None = None,
-    bathy_x: np.ndarray | None = None,
-    cast_labels: list | None = None,
-    vmin: float | None = None,
-    vmax: float | None = None,
-    figsize: tuple[float, float] | None = None,
-) -> str | None:
-    """Return a base64 PNG of *var* vs pressure × *x_vals*.
-
-    Parameters
-    ----------
-    title:
-        Ignored (kept for call-site compatibility). Variable label appears on colorbar.
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    bathy_depths:
-        GEBCO water depth (m) for the bathymetry fill.  If *bathy_x* is also provided
-        the fill uses that dense along-track x array; otherwise falls back to *x_vals*.
-    bathy_x:
-        Along-track x positions (km) for *bathy_depths* when a denser grid is used.
-        Must be the same length as *bathy_depths*.
-    cast_labels:
-        Cast numbers shown as ▼ markers and sparse tick labels along the top edge.
-    vmin, vmax:
-        Colormap limit overrides; auto from 2–98th percentile if ``None``.
-    figsize:
-        Figure size ``(width, height)`` in inches.  When supplied by the caller (e.g.
-        from :func:`section_figsize_and_slot`), the caller's figsize is used unchanged so
-        that the CSS slot and the PNG dimensions stay consistent.  When ``None``,
-        :func:`section_figsize_and_slot` is called on the variable's own valid-data extent.
-    """
-    return render_b64(
-        draw_section_fig,
-        ds_prof,
-        var,
-        label,
-        x_vals,
-        x_label,
-        title=title,
-        style=style,
-        bathy_depths=bathy_depths,
-        bathy_x=bathy_x,
-        cast_labels=cast_labels,
-        vmin=vmin,
-        vmax=vmax,
-        figsize=figsize,
-    )
-
-
-def _make_ladcp_section_b64(
-    cast_nums: list[int],
-    x_vals: np.ndarray,
-    x_label: str,
-    ladcp_dir: Path,
-    lats: list[float] | None = None,
-    lons: list[float] | None = None,
-    figsize: tuple[float, float] | None = None,
-    ladcp_pattern: str | None = None,
-    style: str = "pcolormesh",
-) -> list[Panel]:
-    """Return a list of ``Panel`` objects for LADCP U and V sections.
-
-    Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
-    Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
-    when *lats*/*lons* and ``GEBCO_PATH`` are available.
-
-    If *figsize* is given, each panel uses ``(figsize[0], figsize[1] / 2)``.
-    Otherwise ``section_figsize_and_slot`` determines dimensions.
-
-    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
-    with the zero-padded cast number.  Falls back to ``NNN.mat``.
-    """
-    try:
-        import scipy.io
-
-        with plt.style.context(str(_MPLSTYLE)):
-            lat_map = dict(zip(cast_nums, lats)) if lats else {}
-            lon_map = dict(zip(cast_nums, lons)) if lons else {}
-
-            # Load available casts; record x, cast_num, lat, lon, z, u, v
-            loaded: list[
-                tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
-            ] = []
-            for cn, xv in zip(cast_nums, x_vals):
-                mat_path = find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
-                if mat_path is None:
-                    continue
-                try:
-                    m = scipy.io.loadmat(
-                        str(mat_path), squeeze_me=True, struct_as_record=False
-                    )
-                    dr = m["dr"]
-                    loaded.append(
-                        (
-                            float(xv),
-                            int(cn),
-                            lat_map.get(cn, float("nan")),
-                            lon_map.get(cn, float("nan")),
-                            np.asarray(dr.z, dtype=float),
-                            np.asarray(dr.u, dtype=float),
-                            np.asarray(dr.v, dtype=float),
-                        )
-                    )
-                except Exception:  # noqa: BLE001, S112
-                    continue
-
-            if len(loaded) < 2:
-                return []
-
-            x_ladcp = np.array([t[0] for t in loaded])
-            cast_nums_ladcp = [t[1] for t in loaded]
-            filt_lats = [t[2] for t in loaded]
-            filt_lons = [t[3] for t in loaded]
-            n_cast = len(loaded)
-
-            # Interpolate to common 10 m depth grid
-            z_max = float(max(t[4].max() for t in loaded))
-            z_grid = np.arange(0.0, z_max + 10.0, 10.0)
-            n_z = len(z_grid)
-
-            u_grid = np.full((n_cast, n_z), np.nan)
-            v_grid = np.full((n_cast, n_z), np.nan)
-            for i, (*_, z, u, v) in enumerate(loaded):
-                idx = np.argsort(z)
-                z_s, u_s, v_s = z[idx], u[idx], v[idx]
-                in_range = (z_grid >= z_s.min()) & (z_grid <= z_s.max())
-                u_grid[i, in_range] = np.interp(z_grid[in_range], z_s, u_s)
-                v_grid[i, in_range] = np.interp(z_grid[in_range], z_s, v_s)
-
-            # Symmetric RdBu_r colormap centred at zero — matched for both panels
-            all_fin = np.concatenate(
-                [u_grid[np.isfinite(u_grid)], v_grid[np.isfinite(v_grid)]]
-            )
-            if not len(all_fin):
-                return []
-            vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
-            bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
-            cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
-            norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
-
-            # Figure size: caller override (timeseries) or aspect-ratio formula (sections)
-            abs_dist = abs(float(x_ladcp[-1] - x_ladcp[0])) if n_cast > 1 else 10.0
-            if figsize is not None:
-                panel_w, panel_h = float(figsize[0]), float(figsize[1])
-            else:
-                (panel_w, panel_h), _ = section_figsize_and_slot(z_max, abs_dist)
-
-            # Dense bathy (smooth fill); fall back to cast-position bathy
-            dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
-                filt_lats, filt_lons, x_ladcp, path=GEBCO_PATH
-            )
-            bathy_coarse = interpolate_bathy_at_casts(
-                filt_lats, filt_lons, path=GEBCO_PATH
-            )
-            bathy_max = (
-                float(np.nanmax(dense_bathy_d))
-                if dense_bathy_d is not None and len(dense_bathy_d)
-                else float(np.nanmax(bathy_coarse))
-                if bathy_coarse is not None and len(bathy_coarse)
-                else 0.0
-            )
-            y_bottom = max(z_max, bathy_max) * 1.05
-
-            panels: list[Panel] = []
-            for grid_data, panel_title, panel_short, panel_label in (
-                (u_grid, "U velocity (east +)", "U", "U  East +"),
-                (v_grid, "V velocity (north +)", "V", "V  North +"),
-            ):
-                fig, ax = plt.subplots(figsize=(panel_w, panel_h))
-
-                if style == "contourf":
-                    X, Y = np.meshgrid(x_ladcp, z_grid)
-                    Z = np.ma.masked_invalid(grid_data.T)
-                    cf = ax.contourf(
-                        X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both"
-                    )
-                    fig.colorbar(
-                        cf, ax=ax, ticks=bounds[::2], label="Velocity (m s⁻¹)", pad=0.02
-                    )
-                else:
-                    pc = ax.pcolormesh(
-                        x_ladcp,
-                        z_grid,
-                        grid_data.T,
-                        cmap=cmap,
-                        norm=norm,
-                        shading="nearest",
-                    )
-                    fig.colorbar(
-                        pc,
-                        ax=ax,
-                        ticks=bounds[::2],
-                        label="Velocity (m s⁻¹)",
-                        pad=0.02,
-                        extend="both",
-                    )
-
-                # Bathymetry — dense interpolation preferred
-                if dense_bathy_x is not None and dense_bathy_d is not None:
-                    ax.fill_between(
-                        dense_bathy_x, dense_bathy_d, y_bottom, color="black", lw=0
-                    )
-                elif bathy_coarse is not None and len(bathy_coarse) == n_cast:
-                    ax.fill_between(
-                        x_ladcp, bathy_coarse, y_bottom, color="black", step="mid", lw=0
-                    )
-
-                ax.set_ylim(y_bottom, 0)
-                ax.set_ylabel("Depth (m)")
-                ax.set_xlabel(x_label)
-
-                # Cast markers — open triangles matching other section panels
-                _cast_markers(ax, x_ladcp, cast_nums_ladcp)
-
-                ax.text(
-                    0.01,
-                    0.97,
-                    panel_label,
-                    transform=ax.transAxes,
-                    va="top",
-                    ha="left",
-                    fontsize=8,
-                    bbox={
-                        "facecolor": "white",
-                        "alpha": 0.6,
-                        "pad": 2,
-                        "edgecolor": "none",
-                    },
-                )
-                _hide_outer_spines(ax)
-                fig.tight_layout()
-                panels.append(
-                    Panel(b64=_fig_to_base64(fig), title=panel_title, short=panel_short)
-                )
-                plt.close(fig)
-
-            return panels
-    except Exception:
-        if RAISE_ON_PLOT_ERROR:
-            raise
-        warnings.warn(
-            "_make_ladcp_section_b64 failed; panels omitted",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return []
-
-
-def _make_section_ts_profiles_b64(
-    ds_prof: xr.Dataset,
-    x_vals: np.ndarray,
-) -> str | None:
-    """Return a base64 PNG of per-cast CT–SA profiles coloured by along-track distance.
-
-    Each downcast in *ds_prof* is drawn as a CT–SA line with σ₀ background contours.
-    Colour encodes the corresponding *x_vals* value (along-track km).
-    """
-    return render_b64(draw_section_ts_profiles_fig, ds_prof, x_vals)
-
-
-def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
-    """Return a base64 PNG of a CT–SA diagram for all timeseries profiles, coloured by time.
-
-    Each profile (N_PROF) is drawn as a line in CT–SA space.  Colour encodes hours
-    since the first profile so temporal evolution is visible.  σ₀ background contours
-    are overlaid.  Returns None if SA or CT are absent or fewer than two profiles exist.
-
-    Parameters
-    ----------
-    ds_ts:
-        2-D profiles dataset with dims ``(N_PROF, pressure)`` and variables
-        ``SA``, ``CT``, ``time_start``.
-    """
-    return render_b64(draw_ts_diagram_timeseries_fig, ds_ts)
-
-
-def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
-    """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
-    return render_b64(draw_section_ts_histogram_fig, ds_prof)
-
-
-def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
-    """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
-    return render_b64(draw_section_ts_o2_fig, ds_prof)
-
-
-def _make_section_map_b64(
-    lats: list[float],
-    lons: list[float],
-    cast_nums: list[int],
-    title: str = "",
-    min_margin: float = 0.03,
-    min_margin_lon: float | None = None,
-) -> str | None:
-    """Return a base64 PNG of a GEBCO map with the section track.
-
-    *min_margin* sets a floor on the geographic margin for the latitude axis.
-    *min_margin_lon*, when provided, sets a separate floor for the longitude
-    axis and suppresses the N-S-section guard (use for co-located timeseries
-    maps where lat and lon margins should be set independently for a
-    Mercator-square view).
-    """
-    return render_b64(
-        draw_section_map_fig,
-        lats,
-        lons,
-        cast_nums,
-        title=title,
-        min_margin=min_margin,
-        min_margin_lon=min_margin_lon,
-    )
-
-
-def _make_overview_panel_b64(
-    ds_prof: xr.Dataset,
-    var: str,
-    label: str,
-    bathy_depths: np.ndarray | None = None,
-    style: str = "pcolormesh",
-    vmin: float | None = None,
-    vmax: float | None = None,
-    cast_groups: dict[str, list[int]] | None = None,
-) -> str | None:
-    """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
-
-    *ds_prof* must already be filtered to downcasts and sorted by cast_number.
-    X-axis positions are evenly spaced (0, 1, …, N-1) with cast numbers as tick labels.
-    *bathy_depths* (m, same length as N_PROF) draws a filled black bathymetry below data.
-
-    Parameters
-    ----------
-    vmin, vmax:
-        Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    """
-    return render_b64(
-        draw_overview_panel_fig,
-        ds_prof,
-        var,
-        label,
-        bathy_depths=bathy_depths,
-        style=style,
-        vmin=vmin,
-        vmax=vmax,
-        cast_groups=cast_groups,
-    )
-
-
-def _make_all_sections_map_b64(
-    sections_data: list[dict[str, Any]],
-    all_lats: list[float],
-    all_lons: list[float],
-    legend_outside: bool = False,
-    *,
-    target_h: float = 4.5,
-) -> str | None:
-    """Return a base64 PNG showing all section tracks coloured by section.
-
-    Parameters
-    ----------
-    legend_outside:
-        If True, place the legend east of the axes (wider figure).
-    sections_data:
-        List of dicts with keys ``name``, ``color``, ``lats``, ``lons``.
-    all_lats, all_lons:
-        Positions of all casts drawn as a grey background scatter.
-    target_h:
-        Target figure height in inches; width is computed from geographic aspect ratio.
-    """
-    fig_result = None
-    try:
-        with plt.style.context(str(_MPLSTYLE)):
-            fig_result = draw_all_sections_map_fig(
-                sections_data, all_lats, all_lons, legend_outside, target_h=target_h
-            )
-            if fig_result is None:
-                return None
-            fig_result.tight_layout()
-            if legend_outside:
-                fig_result.subplots_adjust(right=0.72)
-            return _fig_to_base64(fig_result)
-    except Exception:
-        if RAISE_ON_PLOT_ERROR:
-            raise
-        warnings.warn(
-            "_make_all_sections_map_b64 failed; panel omitted",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return None
-    finally:
-        if fig_result is not None:
-            plt.close(fig_result)
-
-
-def _make_timeseries_b64(
-    ds_prof: xr.Dataset,
-    var: str,
-    label: str,
-    style: str = "pcolormesh",
-    vmin: float | None = None,
-    vmax: float | None = None,
-    figw: float | None = None,
-) -> str | None:
-    """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
-
-    Parameters
-    ----------
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    vmin, vmax:
-        Colormap limits; if None, 2nd–98th percentile of valid data.
-    figw:
-        Figure width in inches; auto-computed from profile count if None.
-    """
-    return render_b64(
-        draw_timeseries_fig,
-        ds_prof,
-        var,
-        label,
-        style=style,
-        vmin=vmin,
-        vmax=vmax,
-        figw=figw,
-    )
-
-
-def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of primary minus secondary sensor difference profiles.
-
-    Shows T₁–T₂ and S₁–S₂ vs pressure with a fixed ±0.01 x-axis.
-    Returns None if no secondary sensor variables are present.
-    """
-    return render_b64(draw_sensor_diff_fig, ds)
-
-
-def _make_pressure_time_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of pressure vs elapsed time (cast trajectory + bottle stops)."""
-    return render_b64(draw_pressure_time_fig, ds)
-
-
-def _make_updown_diff_b64(ds: xr.Dataset) -> str | None:
-    """Return a base64 PNG of downcast minus upcast profiles: ΔCT, ΔSA, Δσ₀.
-
-    Both casts are interpolated to a shared 1-dbar pressure grid before differencing.
-    Returns None if the overlap region is less than 10 dbar.
-    """
-    return render_b64(draw_updown_diff_fig, ds)
-
-
-def _make_ladcp_bottomtrack_b64(ladcp_path: Path | None) -> str | None:
-    """Return a base64 PNG of LADCP bottom-track U and V vs depth.
-
-    Returns None if *ladcp_path* is None or the .mat file lacks ``zbot``, ``ubot``,
-    or ``vbot`` fields.
-    """
-    return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path)

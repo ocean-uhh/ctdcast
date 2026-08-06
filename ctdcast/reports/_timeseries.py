@@ -20,21 +20,18 @@ from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
 from ctdcast.identity import compact_cast_list
-from ctdcast.plots import (
-    _MAX_SECTION_H,
-    _W_FULL,
-    _W_HALF,
-    _W_THIRD,
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._plots import (
     Panel,
     _make_ladcp_section_b64,
     _make_section_map_b64,
     _make_timeseries_b64,
     _make_ts_diagram_timeseries_b64,
 )
-from ctdcast.reports import _chrome as _tmpl
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._section import _expand_cast_numbers
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,6 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctdcast import plots as _plots
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
@@ -19,7 +18,12 @@ from ctdcast.analysis.bathymetry import (
 from ctdcast.analysis.geometry import along_track_km, section_orientation
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.identity import compact_cast_list
-from ctdcast.plots import (
+from ctdcast.plotters import plots as _plots
+from ctdcast.plotters.plots import section_figsize_and_slot
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._plots import (
     Panel,
     _make_ladcp_section_b64,
     _make_section_b64,
@@ -27,11 +31,7 @@ from ctdcast.plots import (
     _make_section_ts_histogram_b64,
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
-    section_figsize_and_slot,
 )
-from ctdcast.reports import _chrome as _tmpl
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._format import _fmt_utc
 
 # ---------------------------------------------------------------------------
 # Section variables to plot (in order)

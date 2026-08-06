@@ -13,8 +13,8 @@ Maps render without bathymetry if the file is not found.
 
 from pathlib import Path
 
-from ctdcast import plots
 from ctdcast.converters import build_profiles
+from ctdcast.plotters import plots
 from ctdcast.reports._index import report
 
 REPO = Path(__file__).resolve().parent.parent
