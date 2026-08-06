@@ -22,10 +22,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ocean-uhh/ctdcast"
-Source = "https://github.com/ocean-uhh/ctdcast"
-Documentation = "https://ocean-uhh.github.io/ctdcast"
-"Bug Tracker" = "https://github.com/ocean-uhh/ctdcast/issues"
+Homepage = "https://github.com/eleanorfrajka/ctdcast"
+Source = "https://github.com/eleanorfrajka/ctdcast"
+Documentation = "https://eleanorfrajka.github.io/ctdcast"
+"Bug Tracker" = "https://github.com/eleanorfrajka/ctdcast/issues"
 
 [project.optional-dependencies]
 docs = [
