@@ -98,8 +98,12 @@ sections:
   FARDWO:
     description: "FARDWO mooring array"
     color: "#377eb8"
-    cast_numbers: [[20, 35]]
+    cast_numbers: [[20, 35], "22b"]   # add "NNNb" to include a lettered sibling cast
 ```
+
+Cast numbers are kept in the order written. An integer or range selects the
+plain casts; a lettered sibling event (from a ``NNNb`` / ``NNN_b`` file) is a
+distinct cast and must be named explicitly as a quoted ``"NNNb"`` string.
 
 ---
 

@@ -26,6 +26,26 @@ def test_build_profiles_writes_cast_suffix(tmp_path):
     ds.close()
 
 
+def test_profile_cast_suffixes_reads_and_falls_back(tmp_path):
+    import xarray as xr
+
+    from ctdcast.reports._format import profile_cast_suffixes
+
+    out = tmp_path / "profiles.nc"
+    build_profiles(FIXTURES_NC, out, force=True)
+    ds = xr.open_dataset(out, engine="netcdf4").load()
+    # Present: reads the variable (all plain for these fixtures).
+    suffixes = profile_cast_suffixes(ds)
+    assert len(suffixes) == ds.sizes["N_PROF"]
+    assert all(s == "" for s in suffixes)
+    # Fallback: a profiles.nc without cast_suffix reads as all-plain.
+    ds_old = ds.drop_vars("cast_suffix")
+    fallback = profile_cast_suffixes(ds_old)
+    assert len(fallback) == ds_old.sizes["N_PROF"]
+    assert all(s == "" for s in fallback)
+    ds.close()
+
+
 def test_select_cast_files_keeps_plain_and_b_as_distinct(tmp_path):
     # A plain cast and its lettered sibling are separate events; both must survive
     # selection. _select_cast_files only parses filenames, so empty stand-in

@@ -124,9 +124,13 @@ Each entry under ``sections`` is a named transect with the following fields:
        ``"#e41a1c"``).
    * - ``cast_numbers``
      - yes
-     - List of cast numbers belonging to this section.  Each item is either an
-       integer (single cast) or a two-element list ``[first, last]`` (inclusive
-       range).
+     - List of casts belonging to this section.  Each item is either an integer
+       (single cast), a two-element list ``[first, last]`` (inclusive range), or
+       a quoted string such as ``"10b"`` naming a lettered sibling cast.  An
+       integer or range selects the plain casts only; a lettered sibling (a
+       second event occupied at the same station number, from a ``NNNb`` or
+       ``NNN_b`` file) must be named explicitly as a string.  Order is preserved
+       as written, so casts may be listed in geographic order.
 
 Example
 ~~~~~~~
@@ -148,6 +152,11 @@ Example
        description: "Test cast at mooring site"
        color: "#4daf4a"
        cast_numbers: [42]
+
+     WithSibling:
+       description: "Line including a repeat occupation at station 10"
+       color: "#984ea3"
+       cast_numbers: [[9, 12], "10b"]   # plain 9-12 plus the 10b sibling event
 
 ----
 

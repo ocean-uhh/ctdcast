@@ -22,6 +22,13 @@ Data preparation
    :members:
    :undoc-members:
 
+Cast identity
+-------------
+
+.. automodule:: ctdcast.identity
+   :members:
+   :undoc-members:
+
 ----
 
 Figure builders
