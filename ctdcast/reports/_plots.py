@@ -113,29 +113,18 @@ def render_b64(
 
 @dataclasses.dataclass(frozen=True)
 class Panel:
-    """A rendered figure plus the layout metadata the HTML template needs.
-
-    Attributes
-    ----------
-    b64:
-        Base64-encoded PNG string, or ``None`` when the figure could not be rendered.
-    title:
-        Long descriptive title (used in ``alt`` attributes and headings).
-    short:
-        Short label used in ``<figcaption>`` elements (e.g. ``"CT"``, ``"U"``).
-    figsize:
-        Figure dimensions ``(width, height)`` in inches, as reported by the
-        function that rendered the figure.  ``None`` when not recorded.
-    slot:
-        CSS slot class (e.g. ``"slot-full"``, ``"slot-half"``) that matches the
-        PNG's aspect ratio.  ``None`` when not recorded.
-    """
+    """A rendered figure plus the layout metadata the HTML template needs."""
 
     b64: str | None
+    """Base64-encoded PNG string, or ``None`` when the figure could not be rendered."""
     title: str = ""
+    """Long descriptive title (used in ``alt`` attributes and headings)."""
     short: str = ""
+    """Short label used in ``<figcaption>`` elements (e.g. ``"CT"``, ``"U"``)."""
     figsize: tuple[float, float] | None = None
+    """Figure dimensions ``(width, height)`` in inches, or ``None`` when not recorded."""
     slot: str | None = None
+    """CSS slot class (e.g. ``"slot-full"``) matching the PNG aspect ratio, or ``None``."""
 
 
 def _make_ts_density_b64(ds: xr.Dataset, ladcp_path: Path | None = None) -> str | None:
