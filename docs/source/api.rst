@@ -24,14 +24,31 @@ Data preparation
 
 ----
 
-Plot helpers
-------------
+Figure builders
+---------------
 
-These functions return base64-encoded PNG strings.  They are called by the page
-generators and return ``None`` on any exception, so a missing figure never prevents
-a page from being written.
+``draw_*_fig`` functions build and return a matplotlib Figure (or ``None`` when the
+dataset lacks the required variables).
 
-.. automodule:: ctdcast.plots
+.. automodule:: ctdcast.plotters.plots
+   :members:
+   :undoc-members:
+
+Base64 encoders
+---------------
+
+``_make_*_b64`` wrappers render a figure builder's Figure to an embedded base64 PNG,
+returning ``None`` on any exception so a missing figure never prevents a page from
+being written.
+
+.. automodule:: ctdcast.reports._plots
+   :members:
+   :undoc-members:
+
+Plotting parameters
+-------------------
+
+.. automodule:: ctdcast.config.parameters
    :members:
    :undoc-members:
 
