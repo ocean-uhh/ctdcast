@@ -428,6 +428,26 @@ class TestValidate:
         rc = _validate.run(_validate_ns(config=cfg_path, strict=True))
         assert rc == 1
 
+    def test_key_cast_in_section_ok(self, tmp_path):
+        sec_yaml = tmp_path / "sections.yaml"
+        sec_yaml.write_text(
+            "sections:\n  KO:\n    cast_numbers: [[11, 12]]\n"
+            "    key_cast: 11\n    color: '#f00'\n"
+        )
+        cfg_path = self._write_cfg(tmp_path, data={"section_yaml": str(sec_yaml)})
+        rc = _validate.run(_validate_ns(config=cfg_path))
+        assert rc == 0
+
+    def test_key_cast_not_in_section_returns_error(self, tmp_path):
+        sec_yaml = tmp_path / "sections.yaml"
+        sec_yaml.write_text(
+            "sections:\n  KO:\n    cast_numbers: [[11, 12]]\n"
+            "    key_cast: 99\n    color: '#f00'\n"
+        )
+        cfg_path = self._write_cfg(tmp_path, data={"section_yaml": str(sec_yaml)})
+        rc = _validate.run(_validate_ns(config=cfg_path))
+        assert rc == 1
+
 
 # ---------------------------------------------------------------------------
 # oceancast report

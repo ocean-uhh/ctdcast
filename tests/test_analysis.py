@@ -5,13 +5,27 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from ctdcast.analysis.geometry import section_orientation
+from ctdcast.analysis.geometry import distance_from_km, section_orientation
 from ctdcast.cast.stage2 import find_soak_end
 from ctdcast.readers.metadata import parse_sensor_info
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 _NC = _FIXTURES / "nc"
 _CAST_011 = _NC / "mixsed2_011.nc"
+
+
+class TestDistanceFromKm:
+    def test_zero_at_key(self):
+        d = distance_from_km(60.0, -30.0, [60.0, 60.0], [-30.0, -25.0])
+        assert d[0] == 0.0
+        assert d[1] > 0.0
+
+    def test_ordering_matches_geography(self):
+        # Casts at increasing longitude; distance from the westmost is monotonic.
+        lats = [60.0, 60.0, 60.0]
+        lons = [-30.0, -28.0, -25.0]
+        d = distance_from_km(lats[0], lons[0], lats, lons)
+        assert list(d) == sorted(d)
 
 
 class TestSectionOrientation:

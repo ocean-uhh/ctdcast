@@ -180,6 +180,43 @@ class TestSectionPage:
         )
         assert out is not None and out.exists()
 
+    @staticmethod
+    def _pill_order(html):
+        # Cast pills link each selected cast, in the section's plotted order.
+        return re.findall(r"stations/cast_(\w+)\.html", html)
+
+    def test_section_preserves_config_order(self, tmp_path, profiles_nc):
+        # Mode 1: casts appear in the order written, not profiles.nc order.
+        sec_cfg = {
+            "description": "out of order",
+            "cast_numbers": [128, 11, 129, 12],
+            "color": "#1f77b4",
+        }
+        out = generate_section_page("OO", sec_cfg, profiles_nc, tmp_path, force=True)
+        assert self._pill_order(out.read_text(encoding="utf-8")) == [
+            "128",
+            "011",
+            "129",
+            "012",
+        ]
+
+    def test_section_key_cast_orders_by_distance(self, tmp_path, profiles_nc):
+        # Mode 2: key_cast=128 orders casts by distance from 128, regardless of
+        # the written order (fixture geometry: 128,129 are ~30 km from 11,12).
+        sec_cfg = {
+            "description": "key cast",
+            "cast_numbers": [11, 12, 128, 129],
+            "key_cast": 128,
+            "color": "#1f77b4",
+        }
+        out = generate_section_page("KC", sec_cfg, profiles_nc, tmp_path, force=True)
+        assert self._pill_order(out.read_text(encoding="utf-8")) == [
+            "128",
+            "129",
+            "012",
+            "011",
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Timeseries page

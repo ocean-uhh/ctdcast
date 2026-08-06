@@ -15,7 +15,11 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
-from ctdcast.analysis.geometry import along_track_km, section_orientation
+from ctdcast.analysis.geometry import (
+    along_track_km,
+    distance_from_km,
+    section_orientation,
+)
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.identity import compact_cast_list, expand_cast_ids
 from ctdcast.plotters import plots as _plots
@@ -290,25 +294,57 @@ def generate_section_page(
     except Exception:  # noqa: BLE001
         return None
 
-    # Filter to downcast profiles for this section. Identity is the
-    # (cast_number, cast_suffix) pair, so a plain cast and its lettered sibling
-    # are selected independently.
+    # Map each downcast (cast_number, cast_suffix) to its N_PROF index. Identity
+    # is the pair, so a plain cast and its lettered sibling are independent.
     all_cast_nums = ds_all["cast_number"].values
     all_suffix = profile_cast_suffixes(ds_all)
+    all_lats = ds_all["latitude"].values
+    all_lons = ds_all["longitude"].values
     is_down = ds_all["cast_type"].values == "down"
-    wanted = set(cast_ids)
-    in_section = np.array(
-        [(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix)]
-    )
-    mask = in_section & is_down
-    if not mask.any():
+    down_idx_by_id: dict[tuple[int, str], int] = {}
+    for i, (n, s, d) in enumerate(zip(all_cast_nums, all_suffix, is_down)):
+        if d:
+            down_idx_by_id.setdefault((int(n), str(s)), i)
+
+    # Select casts in the order written in the config (mode 1). A cast with no
+    # matching downcast profile is skipped; a cast listed twice is picked twice.
+    picked = [down_idx_by_id[cid] for cid in cast_ids if cid in down_idx_by_id]
+    if not picked:
         ds_all.close()
         return None
 
-    ds_sec = ds_all.isel(N_PROF=mask)
+    # Optional key_cast (mode 2): order casts by geographic distance from that
+    # cast and use that distance as the x-axis. Falls back to mode 1 if the
+    # key_cast is absent from the selected casts.
+    key_cfg = section_cfg.get("key_cast")
+    key_id = None
+    if key_cfg is not None:
+        try:
+            key_id = expand_cast_ids([key_cfg])[0]
+        except (ValueError, IndexError):
+            key_id = None
+    use_key = (
+        key_id is not None and key_id in down_idx_by_id and key_id in set(cast_ids)
+    )
+
+    ds_sec = ds_all.isel(N_PROF=picked)
     if dbar_step > 1:
         p_idx = np.arange(0, ds_sec.sizes["pressure"], dbar_step)
         ds_sec = ds_sec.isel(pressure=p_idx)
+
+    key_lat = key_lon = None
+    if use_key:
+        _ki = down_idx_by_id[key_id]
+        key_lat, key_lon = float(all_lats[_ki]), float(all_lons[_ki])
+        _d = distance_from_km(
+            key_lat,
+            key_lon,
+            ds_sec["latitude"].values.tolist(),
+            ds_sec["longitude"].values.tolist(),
+        )
+        order = np.argsort(_d, kind="stable")
+        ds_sec = ds_sec.isel(N_PROF=order)
+
     ds_sec = add_teos10_profiles(ds_sec)
     ds_sec = add_aou(ds_sec)
 
@@ -317,15 +353,21 @@ def generate_section_page(
     sec_cast_nums = ds_sec["cast_number"].values.tolist()
     sec_cast_suffix = profile_cast_suffixes(ds_sec).tolist()
 
-    # Along-track distance in km; flip to geographic convention (west-left / north-left)
-    x_vals, x_label = along_track_km(lats, lons)
+    if use_key:
+        x_vals = distance_from_km(key_lat, key_lon, lats, lons)
+        x_label = f"Distance from cast {key_id[0]:03d}{key_id[1]} (km)"
+    else:
+        # Cumulative along-track distance from the first cast in config order.
+        x_vals, x_label = along_track_km(lats, lons)
 
     bathy = interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
     dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
         lats, lons, x_vals, path=_plots.GEBCO_PATH
     )
 
-    if section_orientation(lats, lons):
+    # Flip to geographic convention (west-left / north-left) only in mode 1;
+    # key_cast fixes the origin at x=0, so its axis is not flipped.
+    if not use_key and section_orientation(lats, lons):
         x_total = float(x_vals[-1])
         x_vals = x_total - x_vals
         if dense_bathy_x is not None:

@@ -188,6 +188,22 @@ def run(args: argparse.Namespace) -> int:
                 f"section '{sec_name}': duplicate cast(s) {dupes} listed more "
                 "than once (will be plotted more than once)"
             )
+        # key_cast, if set, must be one of the section's casts.
+        key_cfg = sec_cfg.get("key_cast")
+        if key_cfg is not None:
+            try:
+                key_id = expand_cast_ids([key_cfg])[0]
+            except (ValueError, IndexError):
+                errors.append(
+                    f"section '{sec_name}': invalid key_cast {key_cfg!r}: "
+                    "expected an int or a 'NNNb' string."
+                )
+            else:
+                if key_id not in expanded:
+                    errors.append(
+                        f"section '{sec_name}': key_cast {key_cfg!r} is not one of "
+                        "the section's cast_numbers."
+                    )
 
     # Strict: verify the station numbers in section_yaml exist in nc_dir
     if args.strict and nc_dir and nc_dir.exists() and expanded_sections:

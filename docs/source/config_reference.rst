@@ -131,6 +131,25 @@ Each entry under ``sections`` is a named transect with the following fields:
        second event occupied at the same station number, from a ``NNNb`` or
        ``NNN_b`` file) must be named explicitly as a string.  Order is preserved
        as written, so casts may be listed in geographic order.
+   * - ``key_cast``
+     - no
+     - A single cast (integer, or a ``"NNNb"`` string) that anchors the section
+       x-axis.  When set, casts are ordered by geographic distance from this cast
+       and the x-axis is distance-from-key (``0`` at the key cast).  When unset
+       (the default), casts keep the order written in ``cast_numbers`` and the
+       x-axis is cumulative along-track distance from the first listed cast.  Use
+       ``key_cast`` set to a **geographic endpoint** of the transect when the
+       station was occupied out of cast-number order, so the section does not
+       fold back on itself.  Must be one of the section's ``cast_numbers``.
+
+The two ordering modes
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+- **Default (no ``key_cast``):** list the casts in geographic order in
+  ``cast_numbers``; the x-axis is cumulative along-track distance in that order.
+- **``key_cast`` set:** the written order does not matter — casts are sorted by
+  distance from the key cast and the x-axis is that distance.  Fold-free as long
+  as the key cast sits at one end of the transect.
 
 Example
 ~~~~~~~
@@ -147,6 +166,7 @@ Example
        description: "FARDWO mooring array"
        color: "#377eb8"
        cast_numbers: [[20, 35]]
+       key_cast: 20               # x-axis = distance from cast 20 (a transect end)
 
      SingleStation:
        description: "Test cast at mooring site"
