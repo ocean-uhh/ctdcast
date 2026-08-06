@@ -65,6 +65,7 @@ def _fig_to_base64(fig: Any) -> str:
     buf.seek(0)
     return base64.b64encode(buf.read()).decode("ascii")
 
+
 def render_b64(
     draw: Callable[..., plt.Figure | None],
     /,
@@ -108,6 +109,7 @@ def render_b64(
         if fig is not None:
             plt.close(fig)
 
+
 @dataclasses.dataclass(frozen=True)
 class Panel:
     """A rendered figure plus the layout metadata the HTML template needs.
@@ -134,6 +136,7 @@ class Panel:
     figsize: tuple[float, float] | None = None
     slot: str | None = None
 
+
 def _make_ts_density_b64(ds: xr.Dataset, ladcp_path: Path | None = None) -> str | None:
     """Return a base64 PNG of CT/SA/σ₀ profiles, optionally alongside LADCP U/V.
 
@@ -144,17 +147,21 @@ def _make_ts_density_b64(ds: xr.Dataset, ladcp_path: Path | None = None) -> str 
     """
     return render_b64(draw_ts_density_fig, ds, ladcp_path)
 
+
 def _make_ts_diagram_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of a T-S diagram colored by O₂ saturation."""
     return render_b64(draw_ts_diagram_fig, ds)
+
 
 def _make_stability_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of N² and Turner angle (2-panel)."""
     return render_b64(draw_stability_fig, ds)
 
+
 def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
     return render_b64(draw_aux_profiles_fig, ds)
+
 
 def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT, SA, σ₀ profiles side-by-side (downcast + grey upcast).
@@ -163,9 +170,11 @@ def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
     """
     return render_b64(draw_ct_sa_sigma0_fig, ds)
 
+
 def _make_ts_updown_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT–SA scatter: downcast in blue, upcast in red, σ₀ contours."""
     return render_b64(draw_ts_updown_fig, ds)
+
 
 def _make_station_map_b64(
     lat: float,
@@ -180,6 +189,7 @@ def _make_station_map_b64(
     """
     return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h)
 
+
 def _make_cruise_map_b64(all_meta: list[dict], *, target_h: float = 4.0) -> str | None:
     """Return a base64 PNG of all cast positions (no single-cast highlight).
 
@@ -187,6 +197,7 @@ def _make_cruise_map_b64(all_meta: list[dict], *, target_h: float = 4.0) -> str 
     annotated for the first and last cast and every 10th in between.
     """
     return render_b64(draw_cruise_map_fig, all_meta, target_h=target_h)
+
 
 def _make_section_b64(
     ds_prof: xr.Dataset,
@@ -244,6 +255,7 @@ def _make_section_b64(
         figsize=figsize,
     )
 
+
 def _make_ladcp_section_b64(
     cast_nums: list[int],
     x_vals: np.ndarray,
@@ -268,7 +280,6 @@ def _make_ladcp_section_b64(
     with the zero-padded cast number.  Falls back to ``NNN.mat``.
     """
     try:
-
         with plt.style.context(str(_MPLSTYLE)):
             lat_map = dict(zip(cast_nums, lats)) if lats else {}
             lon_map = dict(zip(cast_nums, lons)) if lons else {}
@@ -439,6 +450,7 @@ def _make_ladcp_section_b64(
         )
         return []
 
+
 def _make_section_ts_profiles_b64(
     ds_prof: xr.Dataset,
     x_vals: np.ndarray,
@@ -449,6 +461,7 @@ def _make_section_ts_profiles_b64(
     Colour encodes the corresponding *x_vals* value (along-track km).
     """
     return render_b64(draw_section_ts_profiles_fig, ds_prof, x_vals)
+
 
 def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
     """Return a base64 PNG of a CT–SA diagram for all timeseries profiles, coloured by time.
@@ -465,13 +478,16 @@ def _make_ts_diagram_timeseries_b64(ds_ts: xr.Dataset) -> str | None:
     """
     return render_b64(draw_ts_diagram_timeseries_fig, ds_ts)
 
+
 def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
     return render_b64(draw_section_ts_histogram_fig, ds_prof)
 
+
 def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
     return render_b64(draw_section_ts_o2_fig, ds_prof)
+
 
 def _make_section_map_b64(
     lats: list[float],
@@ -498,6 +514,7 @@ def _make_section_map_b64(
         min_margin=min_margin,
         min_margin_lon=min_margin_lon,
     )
+
 
 def _make_overview_panel_b64(
     ds_prof: xr.Dataset,
@@ -533,6 +550,7 @@ def _make_overview_panel_b64(
         vmax=vmax,
         cast_groups=cast_groups,
     )
+
 
 def _make_all_sections_map_b64(
     sections_data: list[dict[str, Any]],
@@ -580,6 +598,7 @@ def _make_all_sections_map_b64(
         if fig_result is not None:
             plt.close(fig_result)
 
+
 def _make_timeseries_b64(
     ds_prof: xr.Dataset,
     var: str,
@@ -611,6 +630,7 @@ def _make_timeseries_b64(
         figw=figw,
     )
 
+
 def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of primary minus secondary sensor difference profiles.
 
@@ -619,9 +639,11 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
     """
     return render_b64(draw_sensor_diff_fig, ds)
 
+
 def _make_pressure_time_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of pressure vs elapsed time (cast trajectory + bottle stops)."""
     return render_b64(draw_pressure_time_fig, ds)
+
 
 def _make_updown_diff_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of downcast minus upcast profiles: ΔCT, ΔSA, Δσ₀.
@@ -630,6 +652,7 @@ def _make_updown_diff_b64(ds: xr.Dataset) -> str | None:
     Returns None if the overlap region is less than 10 dbar.
     """
     return render_b64(draw_updown_diff_fig, ds)
+
 
 def _make_ladcp_bottomtrack_b64(ladcp_path: Path | None) -> str | None:
     """Return a base64 PNG of LADCP bottom-track U and V vs depth.

@@ -380,7 +380,6 @@ def draw_ts_density_fig(
     u: np.ndarray | None = None
     v: np.ndarray | None = None
     if ladcp_available:
-
         m = read_ladcp(ladcp_path)
         dr = m["dr"]
         z = np.asarray(dr.z, dtype=float)
@@ -1799,5 +1798,3 @@ def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
         ax.set_xlim(-xlim, xlim)
     _hide_outer_spines(*axes)
     return fig
-
-
