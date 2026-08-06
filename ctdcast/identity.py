@@ -40,34 +40,65 @@ def cast_id_from_name(name: str) -> tuple[int, str] | None:
     return int(cast_num_str), cast_suffix
 
 
-def expand_cast_numbers(cast_numbers: list) -> list[int]:
-    """Expand a ``cast_numbers`` spec to a flat list of ints, preserving order.
+_CAST_TOKEN_RE = re.compile(r"(\d+)([a-z]*)")
 
-    Each item is either an int (kept where it sits) or a two-element
-    ``[first, last]`` list (expanded inclusively in place).  Input order is
-    preserved and duplicates are kept — section ordering relies on the author's
-    given order, so sorting and de-duplication are deliberately not applied.
 
-    Raises ``ValueError`` on any item that is neither a plain int nor a
-    two-element list of plain ints, so a malformed config fails loudly rather
-    than silently dropping or coercing casts.
+def _parse_cast_token(item: object) -> list[tuple[int, str]]:
+    """Parse one ``cast_numbers`` entry to a list of ``(number, suffix)`` pairs.
+
+    An int or a ``"NNN"`` string is a plain cast (empty suffix); a ``"NNNb"``
+    string names a lettered sibling event; a two-element ``[first, last]`` list
+    expands to plain casts only.  Raises ``ValueError`` on anything else.
     """
-    result: list[int] = []
-    for item in cast_numbers:
-        if _is_plain_int(item):
-            result.append(item)
-        elif (
-            isinstance(item, list)
-            and len(item) == 2
-            and all(_is_plain_int(x) for x in item)
-        ):
-            result.extend(range(item[0], item[1] + 1))
-        else:
+    if _is_plain_int(item):
+        return [(item, "")]
+    if isinstance(item, str):
+        m = _CAST_TOKEN_RE.fullmatch(item.strip())
+        if m is None:
             raise ValueError(
-                f"Invalid cast_numbers entry {item!r}: expected an int or a "
-                "two-element [first, last] list of ints."
+                f"Invalid cast_numbers entry {item!r}: expected e.g. '10' or '10b'."
             )
+        return [(int(m.group(1)), m.group(2))]
+    if (
+        isinstance(item, list)
+        and len(item) == 2
+        and all(_is_plain_int(x) for x in item)
+    ):
+        return [(n, "") for n in range(item[0], item[1] + 1)]
+    raise ValueError(
+        f"Invalid cast_numbers entry {item!r}: expected an int, a 'NNN'/'NNNb' "
+        "string, or a two-element [first, last] list of ints."
+    )
+
+
+def expand_cast_ids(cast_numbers: list) -> list[tuple[int, str]]:
+    """Expand a ``cast_numbers`` spec to ``(number, suffix)`` pairs, preserving order.
+
+    A plain cast `NNN` and its lettered sibling `NNNb` are distinct events, so
+    identity is the pair, not the bare number.  A bare int or range names plain
+    events only (suffix ``""``); a `"NNNb"` string names the lettered event.
+    Input order is preserved and duplicates are kept — section ordering relies on
+    the author's given order, so sorting and de-duplication are not applied.
+
+    Raises ``ValueError`` on a malformed entry, so a bad config fails loudly
+    rather than silently dropping or coercing casts.
+    """
+    result: list[tuple[int, str]] = []
+    for item in cast_numbers:
+        result.extend(_parse_cast_token(item))
     return result
+
+
+def expand_cast_numbers(cast_numbers: list) -> list[int]:
+    """Expand a ``cast_numbers`` spec to a flat list of station numbers, in order.
+
+    The integer view of :func:`expand_cast_ids` — the letter suffix is dropped,
+    so a `"10b"` entry contributes station ``10``.  Use this where callers key on
+    the integer station (LADCP files, map positions, membership); use
+    :func:`expand_cast_ids` where a plain cast must be distinguished from its
+    lettered sibling (section and timeseries profile selection).
+    """
+    return [num for num, _suffix in expand_cast_ids(cast_numbers)]
 
 
 def compact_cast_list(nums: list[int]) -> str:

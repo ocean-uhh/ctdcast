@@ -21,10 +21,10 @@ from jinja2 import Environment
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
-from ctdcast.identity import compact_cast_list, expand_cast_numbers
+from ctdcast.identity import compact_cast_list, expand_cast_ids
 from ctdcast.reports import _chrome as _tmpl
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
     Panel,
     _make_ladcp_section_b64,
@@ -278,9 +278,10 @@ def generate_timeseries_page(
         return out_file
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    cast_nums = expand_cast_numbers(ts_cfg.get("cast_numbers", []))
-    if not cast_nums:
+    cast_ids = expand_cast_ids(ts_cfg.get("cast_numbers", []))
+    if not cast_ids:
         return None
+    cast_nums = [n for n, _s in cast_ids]
 
     if not profiles_path.exists():
         return None
@@ -292,8 +293,12 @@ def generate_timeseries_page(
     except Exception:  # noqa: BLE001
         return None
 
+    # Identity is the (cast_number, cast_suffix) pair, so a repeat "b" occupation
+    # is selected as a distinct event from its plain sibling.
     all_cast_nums = ds_all["cast_number"].values
-    mask = np.isin(all_cast_nums, cast_nums)
+    all_suffix = profile_cast_suffixes(ds_all)
+    wanted = set(cast_ids)
+    mask = np.array([(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix)])
     if not mask.any():
         ds_all.close()
         return None
@@ -308,6 +313,15 @@ def generate_timeseries_page(
     # Sort all profiles (both down and up) by time_start
     order = np.argsort(ds_ts["time_start"].values)
     ds_ts = ds_ts.isel(N_PROF=order)
+
+    # Distinct suffixed cast ids ("010", "010b") in occupation order, for pills
+    # that link each event to its own cast page.
+    _ts_suffix = profile_cast_suffixes(ds_ts)
+    cast_id_strs: list[str] = []
+    for _n, _s in zip(ds_ts["cast_number"].values, _ts_suffix):
+        _key = f"{int(_n):03d}{_s}"
+        if _key not in cast_id_strs:
+            cast_id_strs.append(_key)
 
     cruise: str = ds_all.attrs.get("cruise", "odb2026")
     ship: str = ds_all.attrs.get(
@@ -450,7 +464,7 @@ def generate_timeseries_page(
         "time_end_str": time_end_str,
         "duration_str": duration_str,
         "cast_list_str": compact_cast_list(cast_nums),
-        "cast_nums": [f"{n:03d}" for n in sorted(cast_nums)],
+        "cast_nums": cast_id_strs,
         "physics_panels": physics_panels,
         "biogeo_panels": biogeo_panels,
         "ts_slot": ts_slot,

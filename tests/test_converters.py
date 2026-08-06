@@ -3,7 +3,7 @@
 import pytest
 from conftest import FIXTURES_NC
 
-from ctdcast.converters import build_profiles
+from ctdcast.converters import _select_cast_files, build_profiles
 
 
 def test_build_profiles_writes_file(tmp_path):
@@ -12,6 +12,34 @@ def test_build_profiles_writes_file(tmp_path):
     assert wrote is True
     assert out.exists()
     assert out.stat().st_size > 0
+
+
+def test_build_profiles_writes_cast_suffix(tmp_path):
+    import xarray as xr
+
+    out = tmp_path / "profiles.nc"
+    build_profiles(FIXTURES_NC, out, force=True)
+    ds = xr.open_dataset(out, engine="netcdf4")
+    assert "cast_suffix" in ds
+    # The committed fixtures are all plain casts, so every suffix is empty.
+    assert all(s == "" for s in ds["cast_suffix"].values.astype(str))
+    ds.close()
+
+
+def test_select_cast_files_keeps_plain_and_b_as_distinct(tmp_path):
+    # A plain cast and its lettered sibling are separate events; both must survive
+    # selection. _select_cast_files only parses filenames, so empty stand-in
+    # files exercise the path without any instrument data.
+    for name in (
+        "mixsed2_010.nc",
+        "mixsed2_010b.nc",
+        "mixsed2_029.nc",
+        "mixsed2_029_b.nc",
+    ):
+        (tmp_path / name).touch()
+    selected = _select_cast_files(tmp_path)
+    ids = [(num, suffix) for num, suffix, _path in selected]
+    assert ids == [(10, ""), (10, "b"), (29, ""), (29, "b")]
 
 
 def test_build_profiles_skips_existing(tmp_path):

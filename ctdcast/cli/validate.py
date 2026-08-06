@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from ctdcast.identity import expand_cast_numbers
+from ctdcast.identity import expand_cast_ids
 
 
 def build_parser(
@@ -170,26 +170,30 @@ def run(args: argparse.Namespace) -> int:
     # Validate each section's cast_numbers: expand once, reporting a malformed
     # spec as an error and duplicated casts as a warning (duplicates are allowed
     # but will double-plot).
-    expanded_sections: dict[str, list[int]] = {}
+    expanded_sections: dict[str, list[tuple[int, str]]] = {}
     for sec_name, sec_cfg in sections_cfg.items():
         try:
-            expanded = expand_cast_numbers(sec_cfg.get("cast_numbers", []))
+            expanded = expand_cast_ids(sec_cfg.get("cast_numbers", []))
         except ValueError as exc:
             errors.append(f"section '{sec_name}': invalid cast_numbers: {exc}")
             continue
         expanded_sections[sec_name] = expanded
-        dupes = sorted({n for n in expanded if expanded.count(n) > 1})
+        # A plain cast and its lettered sibling are distinct, so dedupe on the
+        # (number, suffix) pair.
+        dupes = sorted(
+            {f"{n:03d}{s}" for (n, s) in expanded if expanded.count((n, s)) > 1}
+        )
         if dupes:
             warnings.append(
                 f"section '{sec_name}': duplicate cast(s) {dupes} listed more "
                 "than once (will be plotted more than once)"
             )
 
-    # Strict: verify cast numbers in section_yaml exist in nc_dir
+    # Strict: verify the station numbers in section_yaml exist in nc_dir
     if args.strict and nc_dir and nc_dir.exists() and expanded_sections:
         nc_cast_nums = _parse_cast_nums_from_dir(nc_dir)
         for sec_name, cast_list in expanded_sections.items():
-            for cast_num in cast_list:
+            for cast_num, _suffix in cast_list:
                 if cast_num not in nc_cast_nums:
                     errors.append(
                         f"section '{sec_name}': cast {cast_num} not found in {nc_dir}"
