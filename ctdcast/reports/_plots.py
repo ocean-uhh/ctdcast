@@ -1,10 +1,11 @@
 """Base64 PNG encoders — thin wrappers that render a Figure for a page.
 
 Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in
-:mod:`ctdcast.plotters.plots` and encodes it with :func:`render_b64`.  The two
-special cases (``_make_all_sections_map_b64``, ``_make_ladcp_section_b64``) keep
-inline plotting because they need post-``tight_layout`` handling or return a list
-of :class:`Panel`.
+:mod:`ctdcast.plotters.plots` and encodes it with :func:`render_b64`.  Two use a
+custom wrapper instead of :func:`render_b64`: ``_make_all_sections_map_b64`` still
+delegates drawing to its ``draw_*_fig`` but needs a post-``tight_layout``
+adjustment, and ``_make_ladcp_section_b64`` does its own plotting because it
+returns a list of :class:`Panel` rather than a single figure.
 """
 
 from __future__ import annotations
