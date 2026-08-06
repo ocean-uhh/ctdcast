@@ -1,10 +1,21 @@
-"""Static plotting parameters: colour palettes, colormaps, slot widths.
+"""Package-wide constants: plotting parameters, CNV aliases, variable metadata, CCHDO conventions.
 
 Compile-time constants only — the runtime-mutable display globals (GEBCO_PATH,
 CLEAN_SPINES, figsizes, map bounds) stay in :mod:`ctdcast.plotters.plots`.
+
+Sections
+--------
+- Plotting constants (colours, colormaps, slot widths)
+- CNV input aliases  (SeaBird column name → ctdcast internal name)
+- Variable display metadata  (internal name → units, CF standard_name, colormap, axis limits)
+- CCHDO output convention  (WHP parameter names, QC translation, output format rules)
 """
 
 from __future__ import annotations
+
+# ---------------------------------------------------------------------------
+# Plotting constants
+# ---------------------------------------------------------------------------
 
 # Central color registry.
 # Physics (CT/SA/σ₀/U/V/N²/Turner): Okabe-Ito palette — Bang Wong, Nature Methods 8:441 (2011).
@@ -48,3 +59,300 @@ _W_THIRD: float = 3.0  # 450px PNG  → 361px display
 # (Equivalent to Eleanor's stretch=12.8 at 7.2 in width; scaled proportionally.)
 _SECTION_STRETCH: float = 16.0
 _MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig_w
+
+# ---------------------------------------------------------------------------
+# CNV input aliases
+# ---------------------------------------------------------------------------
+# Maps SeaBird/CNV column names → ctdcast internal variable names.
+# Used by readers/cnv.py to rename columns on ingest.
+# Keys are lowercase; readers must lower-case incoming names before lookup.
+#
+# Entries confirmed from mixsed2_011.nc CNV header (t090C, c0S/m, t190C, c1S/m,
+# altM, flECO-AFL, turbWETntu0, sbeox0PS, sbox0Mm/Kg, sbeox0V).
+# Other entries are plausible SeaBird firmware variants, not yet verified.
+#
+# The _1/_2 suffix is ctdcast's internal convention for primary/secondary sensor.
+# CCHDO read-direction mappings (CTDTMP → temperature_1) belong in CCHDO_VARIABLES below.
+CNV_ALIASES: dict[str, str] = {
+    # Temperature
+    "t090c": "temperature_1",  # SBE 9+ primary, ITS-90
+    "t190c": "temperature_2",  # SBE 9+ secondary, ITS-90
+    "tv290c": "temperature_2",  # some SeaBird firmware variants
+    # Conductivity
+    "c0s/m": "conductivity_1",  # SBE 9+ primary, S/m
+    "c1s/m": "conductivity_2",  # SBE 9+ secondary, S/m
+    # Pressure
+    "prsm": "pressure",  # strain-gauge, metres (rare)
+    "prdm": "pressure",  # strain-gauge, dbar
+    # Salinity (rarely written in CNV; normally derived from C/T/P)
+    "sal00": "salinity_1",
+    "sal11": "salinity_2",
+    # Oxygen — target names (see CCHDO convention note below)
+    "sbeox0ps": "oxsat_1",  # SBE 43, % saturation
+    "sbox0mm/kg": "oxygen_1",  # SBE 43, µmol/kg (CCHDO-aligned target name)
+    "sbeox0v": "oxygen_raw_1",  # SBE 43 raw voltage; not used in normal pipeline
+    # Biogeo
+    "fleco-afl": "fluorescence",  # WET Labs ECO-AFL/FL fluorometer
+    "turbwetntu0": "turbidity",  # WET Labs ECO NTU turbidity sensor
+    "obs": "turbidity",  # OBS turbidity (alternative sensor type)
+    # Navigation (sometimes embedded in CNV)
+    "latitude": "latitude",
+    "longitude": "longitude",
+    # Altimeter
+    "altm": "altimeter",  # sea-floor distance, metres
+}
+
+# ---------------------------------------------------------------------------
+# Variable display metadata
+# ---------------------------------------------------------------------------
+# Maps ctdcast internal variable name → display and CF metadata.
+#
+# standard_name follows CF 1.8 / IOOS vocabulary.
+# cmap: matplotlib colormap name; None for variables with no standard section plot.
+# vmin/vmax: soft default axis limits; override per-cast when data lies outside.
+# reference_scale: only present where the scale is non-trivial (ITS-90, PSS-78, TEOS-10).
+#
+# Note: _VAR_CMAPS above is the plotter-facing subset used for section/scatter figures.
+# VARIABLES is the authoritative source of truth for units, standard_name, and limits.
+VARIABLES: dict[str, dict] = {
+    "pressure": {
+        "long_name": "Sea pressure",
+        "units": "dbar",
+        "standard_name": "sea_water_pressure",
+        "cmap": None,
+        "vmin": 0,
+        "vmax": None,
+    },
+    "temperature_1": {
+        "long_name": "In-situ temperature (primary)",
+        "units": "degC",
+        "standard_name": "sea_water_temperature",
+        "reference_scale": "ITS-90",
+        "cmap": "RdYlBu_r",
+        "vmin": -2,
+        "vmax": 20,
+    },
+    "temperature_2": {
+        "long_name": "In-situ temperature (secondary)",
+        "units": "degC",
+        "standard_name": "sea_water_temperature",
+        "reference_scale": "ITS-90",
+        "cmap": "RdYlBu_r",
+        "vmin": -2,
+        "vmax": 20,
+    },
+    # Best-sensor composite: copy of temperature_1 or temperature_2, whichever was
+    # judged best for this cruise. Which sensor is recorded in
+    # temperature.attrs["preferred_sensor"] ("1" or "2").
+    # CCHDO writer maps this variable to ctd_temperature.
+    "temperature": {
+        "long_name": "In-situ temperature (best sensor)",
+        "units": "degC",
+        "standard_name": "sea_water_temperature",
+        "reference_scale": "ITS-90",
+        "cmap": "RdYlBu_r",
+        "vmin": -2,
+        "vmax": 20,
+    },
+    "conductivity_1": {
+        "long_name": "Conductivity (primary)",
+        "units": "S/m",
+        "standard_name": "sea_water_electrical_conductivity",
+        "cmap": None,
+        "vmin": None,
+        "vmax": None,
+    },
+    "salinity_1": {
+        "long_name": "Practical salinity (primary)",
+        "units": "1",  # PSS-78 is dimensionless per CF convention
+        "standard_name": "sea_water_practical_salinity",
+        "reference_scale": "PSS-78",
+        "cmap": "haline",
+        "vmin": 34.0,
+        "vmax": 35.5,
+    },
+    "salinity_2": {
+        "long_name": "Practical salinity (secondary)",
+        "units": "1",
+        "standard_name": "sea_water_practical_salinity",
+        "reference_scale": "PSS-78",
+        "cmap": "haline",
+        "vmin": 34.0,
+        "vmax": 35.5,
+    },
+    # oxygen_1 = µmol/kg (target name; Phase 3 rename from sbox0Mm_Kg)
+    "oxygen_1": {
+        "long_name": "Dissolved oxygen (primary)",
+        "units": "umol/kg",
+        "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
+        "cmap": "YlOrRd_r",
+        "vmin": 0,
+        "vmax": 350,
+    },
+    # oxsat_1 = % saturation (target name; Phase 3 rename from oxygen_1)
+    # Diagnostic variable; no CCHDO WHP equivalent — excluded from CCHDO output.
+    "oxsat_1": {
+        "long_name": "Dissolved oxygen saturation (primary)",
+        "units": "percent",
+        "standard_name": None,  # no CF standard_name for % saturation
+        "cmap": "YlOrRd_r",
+        "vmin": 0,
+        "vmax": 110,
+    },
+    "fluorescence": {
+        "long_name": "Chlorophyll fluorescence",
+        "units": "mg/m^3",  # uncalibrated; label may vary by cruise
+        "standard_name": None,
+        "cmap": "YlGn",
+        "vmin": 0,
+        "vmax": None,
+    },
+    "turbidity": {
+        "long_name": "Turbidity",
+        "units": "NTU",  # uncalibrated; not guaranteed for all sensors
+        "standard_name": None,
+        "cmap": "YlOrBr",
+        "vmin": 0,
+        "vmax": None,
+    },
+    "altimeter": {
+        "long_name": "Altimeter distance to bottom",
+        "units": "m",
+        "standard_name": None,
+        "cmap": None,
+        "vmin": 0,
+        "vmax": None,
+    },
+    # TEOS-10 derived quantities — computed on-the-fly by add_teos10(), not stored
+    "conservative_temperature": {
+        "long_name": "Conservative Temperature",
+        "units": "degC",
+        "standard_name": "sea_water_conservative_temperature",
+        "reference_scale": "TEOS-10",
+        "cmap": "RdYlBu_r",
+        "vmin": -2,
+        "vmax": 20,
+    },
+    "absolute_salinity": {
+        "long_name": "Absolute Salinity",
+        "units": "g/kg",
+        "standard_name": "sea_water_absolute_salinity",
+        "reference_scale": "TEOS-10",
+        "cmap": "haline",
+        "vmin": 34.0,
+        "vmax": 35.5,
+    },
+    "sigma0": {
+        "long_name": "Potential density anomaly (ref 0 dbar)",
+        "units": "kg/m^3",
+        "standard_name": "sea_water_sigma_theta",
+        "cmap": "Purples",
+        "vmin": 26.5,
+        "vmax": 28.2,
+    },
+}
+
+# ---------------------------------------------------------------------------
+# CCHDO output convention
+# ---------------------------------------------------------------------------
+# Source: 740H20200119_ctd.nc (James Cook JC191, A05 24N Atlantic, 2020-01-19)
+#   Conventions: CF-1.8 CCHDO-1.0 / cchdo_parameters_version: params 0.1.21
+# WHP parameter reference: https://exchange-format.readthedocs.io/en/latest/parameters.html
+
+# Dimension names and order — mirror CCHDO exactly.
+# N_PROF = one element per cast/profile; N_LEVELS = pressure levels per cast.
+CCHDO_DIMS: tuple[str, str] = ("N_PROF", "N_LEVELS")
+
+# Best-sensor composite: CCHDO has one temperature variable (no suffix).
+# Key = ctdcast internal name, value = CCHDO output variable name.
+CCHDO_COMPOSITE: dict[str, str] = {
+    "temperature": "ctd_temperature",
+    "salinity_1": "ctd_salinity",
+    "oxygen_1": "ctd_oxygen",
+}
+
+# Variables NOT written to CCHDO output.
+CCHDO_EXCLUDE: frozenset[str] = frozenset(
+    {
+        "timeJ",  # Julian-day timestamp; CCHDO uses ISO 8601 time coordinate
+        "timeS",  # elapsed seconds; not a scientific variable
+        "speed_of_sound",  # SeaBird bookkeeping
+        "density",  # in-situ density; ctdcast writes sigma0 — no density WHP param
+        "flag",  # SeaBird processing flag, not a QC flag
+        "oxygen_raw_1",  # raw SBE 43 voltage
+        "oxsat_1",  # % saturation diagnostic; no CCHDO WHP equivalent
+    }
+)
+
+# Station/cast identifiers written as coordinates (not data variables).
+CCHDO_IDENTIFIERS: dict[str, str] = {
+    "expocode": "EXPOCODE",
+    "station": "STNNBR",
+    "cast": "CASTNO",
+    "sample": "SAMPNO",
+}
+
+# QARTOD → WOCE CTD QC flag translation.
+# CRITICAL: WOCE 2 = acceptable (good), WOCE 1 = not_calibrated (NOT good).
+# A naive 1→1 pass-through silently labels every good measurement as uncalibrated.
+CCHDO_QC: dict[int, int] = {
+    1: 2,  # pass          → acceptable_measurement
+    2: 1,  # not_evaluated → not_calibrated
+    3: 3,  # suspect       → questionable_measurement
+    4: 4,  # fail          → bad_measurement
+    9: 9,  # missing       → not_sampled
+    # WOCE 5 (not_reported), 6 (interpolated), 7 (despiked) have no QARTOD equivalent;
+    # derive from processing history at write time.
+}
+
+# ctdcast internal name → CCHDO attributes the writer must set on output.
+CCHDO_VARIABLES: dict[str, dict] = {
+    "pressure": {
+        "whp_name": "CTDPRS",
+        "whp_unit": "DBAR",
+        "units": "dbar",
+        "C_format": "%.1f",
+    },
+    # Written as ctd_temperature per CCHDO_COMPOSITE.
+    "temperature": {
+        "whp_name": "CTDTMP",
+        "whp_unit": "ITS-90",
+        "units": "degC",
+        "reference_scale": "ITS-90",
+        "C_format": "%.4f",
+    },
+    # Written as ctd_salinity per CCHDO_COMPOSITE.
+    "salinity_1": {
+        "whp_name": "CTDSAL",
+        "whp_unit": "PSS-78",
+        "units": "1",  # PSS-78 is dimensionless per CF
+        "C_format": "%.4f",
+    },
+    # Written as ctd_oxygen per CCHDO_COMPOSITE.
+    # oxygen_1 = µmol/kg after Phase 3 rename — direct passthrough.
+    "oxygen_1": {
+        "whp_name": "CTDOXY",
+        "whp_unit": "UMOL/KG",
+        "units": "umol/kg",
+        "C_format": "%.1f",
+    },
+    "latitude": {
+        "whp_name": "LATITUDE",
+        "units": "degree_north",
+        "C_format": "%.5f",
+    },
+    "longitude": {
+        "whp_name": "LONGITUDE",
+        "units": "degree_east",
+        "C_format": "%.5f",
+    },
+    # btm_depth: not yet stored in ctdcast netCDF — stub for Phase 4.
+    "btm_depth": {
+        "whp_name": "DEPTH",
+        "whp_unit": "METERS",
+        "units": "meters",
+        "C_format": "%.0f",
+    },
+    # fluorescence and turbidity: no WHP names confirmed from reference file.
+    # Omit from CCHDO output until verified from a biogeo-sensor CCHDO file.
+}
