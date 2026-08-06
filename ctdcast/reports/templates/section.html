@@ -121,17 +121,21 @@
 {{ section_panel_group(card.panels, section_slot, "", "") }}
 {% elif card.panels | length == 1 %}
 <div class="fig-row">
+  {% if card.panels[0].b64 %}
   <figure class="{{ section_slot }}">
     <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
   </figure>
+  {% endif %}
 </div>
 {% else %}
 <div class="fig-row">
   {% for panel in card.panels %}
+  {% if panel.b64 %}
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
+  {% endif %}
   {% endfor %}
 </div>
 {% endif %}

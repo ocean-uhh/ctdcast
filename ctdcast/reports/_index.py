@@ -150,8 +150,13 @@ def report(
             yaml_data = yaml.safe_load(f) or {}
 
     # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.
+    # None means "not provided" — use YAML block entirely.
+    # {} means "explicitly empty" — suppress YAML block (caller opted out).
     _yaml_ci: dict[str, Any] = yaml_data.get("cruise_info") or {}
-    cruise_info = {**_yaml_ci, **(cruise_info or {})}
+    if cruise_info is None:
+        cruise_info = _yaml_ci
+    else:
+        cruise_info = {**_yaml_ci, **cruise_info}
 
     cast_files = _select_cast_files(nc_dir)
     if not cast_files:
@@ -465,6 +470,7 @@ def report(
                 out_dir,
                 force=force,
                 ship_track_nc=ship_track_nc,
+                cruise=cruise,
             )
             print(f"  leaflet map: {'regenerated' if lf_out else 'skipped (no casts)'}")
         except Exception:  # noqa: BLE001
