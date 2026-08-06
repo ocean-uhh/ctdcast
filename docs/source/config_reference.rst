@@ -105,6 +105,20 @@ This file defines two kinds of cast group under two top-level keys: ``sections``
 (named transects plotted as a vertical section against distance) and
 ``timeseries`` (repeat stations plotted against time — see below).
 
+An optional ``cruise_info:`` block at the top level provides cruise and ship
+metadata that appears in page headers and footers.  Values here take precedence
+over any cruise metadata found in the netCDF file attributes:
+
+.. code-block:: yaml
+
+   cruise_info:
+     cruise_id: msm142          # shown in every page header and footer
+     ship: "Maria S. Merian"    # shown in page masthead
+
+Both keys are optional.  If absent, the report falls back to the ``cruise``
+attribute of the first netCDF file (defaulting to ``"odb2026"`` if that
+attribute is not set), and ship shows as ``"UNK"``.
+
 Top-level key: ``sections``
 
 Each entry under ``sections`` is a named transect with the following fields:

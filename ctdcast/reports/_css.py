@@ -101,8 +101,11 @@ footer {
 footer a { color: var(--muted); }
 @media print {
   body { max-width: 100%; }
-  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: 0.78rem; }
   h2 { page-break-after: avoid; }
+  .jump-nav { display: none; }
 }
 """
 

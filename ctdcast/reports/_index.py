@@ -140,9 +140,18 @@ def report(
 
     vmin_override = vmin_override or {}
     vmax_override = vmax_override or {}
-    cruise_info = cruise_info or {}
 
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load sections YAML early — needed for cruise_info fallback and cast_notes.
+    yaml_data: dict[str, Any] = {}
+    if section_yaml and section_yaml.exists():
+        with open(section_yaml) as f:
+            yaml_data = yaml.safe_load(f) or {}
+
+    # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.
+    _yaml_ci: dict[str, Any] = yaml_data.get("cruise_info") or {}
+    cruise_info = {**_yaml_ci, **(cruise_info or {})}
 
     cast_files = _select_cast_files(nc_dir)
     if not cast_files:
@@ -156,7 +165,8 @@ def report(
         key=lambda m: m["time_start"],
         reverse=True,
     )
-    cruise = all_meta[0].get("cruise", "UNK") if all_meta else "UNK"
+    _nc_cruise = all_meta[0].get("cruise") if all_meta else None
+    cruise = cruise_info.get("cruise_id") or _nc_cruise or "UNK"
 
     # Pre-load GEBCO for the cruise area into memory so every map figure
     # subsets from numpy arrays rather than reopening the file from disk.
@@ -180,12 +190,6 @@ def report(
                 float(max(_cast_lons)),
             )
             print(f"  GEBCO preloaded ({perf_counter() - _t0:.1f}s)")
-
-    # Load sections YAML once — needed for cast_notes before stations are written.
-    yaml_data: dict[str, Any] = {}
-    if section_yaml and section_yaml.exists():
-        with open(section_yaml) as f:
-            yaml_data = yaml.safe_load(f) or {}
 
     # Build cruise-wide cast_notes mapping from all sections and timeseries.
     all_cast_notes: dict[int, list[str]] = {}
