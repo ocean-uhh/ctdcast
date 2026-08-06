@@ -17,18 +17,18 @@ from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.geometry import along_track_km
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.identity import compact_cast_list
-from ctdcast.plots import (
-    GEBCO_PATH,
+from ctdcast.plotters import plots as _plots_mod
+from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._cast import _extract_cast_id, generate_station_page
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._plots import (
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
     _make_overview_panel_b64,
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctdcast.readers.ladcp import find_ladcp_file
-from ctdcast.reports import _chrome as _tmpl
-from ctdcast.reports._cast import _extract_cast_id, generate_station_page
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._section import _expand_cast_numbers, generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
 
@@ -478,7 +478,6 @@ def report(
 
     # Pre-load GEBCO for the cruise area into memory so every map figure
     # subsets from numpy arrays rather than reopening the file from disk.
-    from ctdcast import plots as _plots_mod
     from ctdcast.analysis.bathymetry import preload_gebco
 
     _gebco_path = _plots_mod.GEBCO_PATH
@@ -919,7 +918,7 @@ def _write_index(
 
             lats = ds_sorted["latitude"].values.tolist()
             lons = ds_sorted["longitude"].values.tolist()
-            bathy = interpolate_bathy_at_casts(lats, lons, path=GEBCO_PATH)
+            bathy = interpolate_bathy_at_casts(lats, lons, path=_plots_mod.GEBCO_PATH)
 
             vmin = vmin_override or {}
             vmax = vmax_override or {}

@@ -4,7 +4,7 @@ Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/leaflet/`` as package
 data so the generated ``leaflet.html`` requires no internet access at either
 generation or view time.
 
-If ``ctdcast.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
+If ``ctdcast.plotters.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
 (standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,
 6000 m).
@@ -253,7 +253,7 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctdcast import plots
+    from ctdcast.plotters import plots
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
         return None, None, None

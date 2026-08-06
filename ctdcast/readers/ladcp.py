@@ -1,13 +1,25 @@
 """Reader for LDEO IXv14 LADCP ``.mat`` files.
 
-Locates the ``.mat`` file for a cast.  The ``loadmat`` consolidation
-(``read_ladcp``) lands in PR 1b, replacing the repeated ``scipy.io.loadmat``
-calls in the plot functions.
+Locates the ``.mat`` file for a cast (:func:`find_ladcp_file`) and loads it with a
+single set of ``scipy.io.loadmat`` options (:func:`read_ladcp`), so the loader
+options live in one place instead of being repeated in every plot function.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+
+
+def read_ladcp(path: Path | str) -> dict[str, Any]:
+    """Load an LDEO IXv14 LADCP ``.mat`` file.
+
+    Uses ``squeeze_me=True`` and ``struct_as_record=False`` so the LADCP result
+    struct is reachable as ``read_ladcp(path)["dr"]`` with attribute access.
+    """
+    import scipy.io
+
+    return scipy.io.loadmat(str(path), squeeze_me=True, struct_as_record=False)
 
 
 def find_ladcp_file(

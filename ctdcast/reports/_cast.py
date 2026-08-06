@@ -30,7 +30,11 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_teos10
 from ctdcast.cast.stage2 import find_cast_end, find_soak_end
-from ctdcast.plots import (
+from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.readers.metadata import parse_sensor_info
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
@@ -43,10 +47,6 @@ from ctdcast.plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
-from ctdcast.readers.ladcp import find_ladcp_file
-from ctdcast.readers.metadata import parse_sensor_info
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._format import _fmt_utc
 
 # ---------------------------------------------------------------------------
 # HTML template

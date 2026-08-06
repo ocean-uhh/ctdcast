@@ -236,7 +236,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     # Set module-level plot options before any figure code is imported.
-    from ctdcast import plots
+    from ctdcast.plotters import plots
 
     if gebco_path:
         plots.GEBCO_PATH = gebco_path
