@@ -135,6 +135,7 @@ def find_cast_end(
        onward.
 
     Returns ``len(pressure)`` (no trim) if:
+
     - the record is empty or the CTD never returned near the surface
       (``p_deck_median > max_deck_dbar``), or
     - pressure never drops to the threshold on the upcast.

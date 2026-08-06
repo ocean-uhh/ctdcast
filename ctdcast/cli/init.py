@@ -976,6 +976,10 @@ def _detect_groups(
                     f" ({n_g} casts, {path_km:.0f} km)"
                 ),
                 "cast_numbers": cast_numbers,
+                # Draft x-axis origin: the lowest cast number in the group. A true
+                # geographic endpoint only if the section was occupied end-to-end;
+                # the author should repoint it to an actual end if not.
+                "key_cast": int(min(g_casts)),
                 "color": color,
             }
         )
@@ -1111,6 +1115,11 @@ def _format_sections_yaml(
                     lines.append(f"      - [{item[0]}, {item[1]}]")
                 else:
                     lines.append(f"      - {item}")
+            if "key_cast" in entry:
+                lines.append(
+                    f"    key_cast: {entry['key_cast']}"
+                    "   # x-axis origin; repoint to a section endpoint if needed"
+                )
             lines.append(f'    color: "{entry["color"]}"')
             lines.append("")
 

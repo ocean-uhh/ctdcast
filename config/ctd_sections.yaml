@@ -23,6 +23,7 @@ sections:
     name: Kangerlussuaq Outer
     description: Kangerlussuaq Trough outer slope
     cast_numbers: [[11, 23]]
+    key_cast: 11            # x-axis = distance from cast 11; repoint to the other end (23) to test
     color: "#1f77b4"
 
   FD:

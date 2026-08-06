@@ -21,6 +21,23 @@ def along_track_km(lats: list[float], lons: list[float]) -> tuple[np.ndarray, st
         return np.arange(len(lats), dtype=float), "Cast index"
 
 
+def distance_from_km(
+    key_lat: float, key_lon: float, lats: list[float], lons: list[float]
+) -> np.ndarray:
+    """Return great-circle distance in km from a key position to each position.
+
+    Used for ``key_cast`` section ordering: each cast's x-coordinate is its
+    distance from the chosen key cast.  Uses ``gsw.distance`` per pair so the
+    convention matches :func:`along_track_km`.  A position identical to the key
+    yields 0.  A ``gsw.distance`` failure is allowed to propagate rather than
+    being silently substituted with a fabricated distance.
+    """
+    out = np.empty(len(lats), dtype=float)
+    for i, (la, lo) in enumerate(zip(lats, lons)):
+        out[i] = float(gsw.distance([key_lon, lo], [key_lat, la])[0]) / 1000.0
+    return out
+
+
 def section_orientation(lats: list[float], lons: list[float]) -> bool:
     """Return True if the section x-axis should be flipped for geographic convention.
 

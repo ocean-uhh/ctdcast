@@ -15,9 +15,13 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
-from ctdcast.analysis.geometry import along_track_km, section_orientation
+from ctdcast.analysis.geometry import (
+    along_track_km,
+    distance_from_km,
+    section_orientation,
+)
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
-from ctdcast.identity import compact_cast_list, expand_cast_ids
+from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports import _chrome as _tmpl
@@ -290,25 +294,65 @@ def generate_section_page(
     except Exception:  # noqa: BLE001
         return None
 
-    # Filter to downcast profiles for this section. Identity is the
-    # (cast_number, cast_suffix) pair, so a plain cast and its lettered sibling
-    # are selected independently.
+    # Index profiles by (cast_number, cast_suffix). Identity is the pair, so a
+    # plain cast and its lettered sibling are independent. down_idx_by_id drives
+    # selection (downcasts only); pos_by_id gives a cast's position from any
+    # profile so a key_cast without a downcast still resolves its origin.
     all_cast_nums = ds_all["cast_number"].values
     all_suffix = profile_cast_suffixes(ds_all)
+    all_lats = ds_all["latitude"].values
+    all_lons = ds_all["longitude"].values
     is_down = ds_all["cast_type"].values == "down"
-    wanted = set(cast_ids)
-    in_section = np.array(
-        [(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix)]
-    )
-    mask = in_section & is_down
-    if not mask.any():
+    down_idx_by_id: dict[tuple[int, str], int] = {}
+    pos_by_id: dict[tuple[int, str], tuple[float, float]] = {}
+    for i, (n, s, d) in enumerate(zip(all_cast_nums, all_suffix, is_down)):
+        cid = (int(n), str(s))
+        pos_by_id.setdefault(cid, (float(all_lats[i]), float(all_lons[i])))
+        if d:
+            down_idx_by_id.setdefault(cid, i)
+
+    # Select casts in the order written in the config (mode 1). A cast with no
+    # matching downcast profile is skipped; a cast listed twice is picked twice.
+    picked = [down_idx_by_id[cid] for cid in cast_ids if cid in down_idx_by_id]
+    if not picked:
         ds_all.close()
         return None
 
-    ds_sec = ds_all.isel(N_PROF=mask)
+    # Optional key_cast (mode 2): order casts by geographic distance from that
+    # cast and use that distance as the x-axis. key_cast must be a single cast in
+    # the section; otherwise fall back to mode 1 (validate reports the error).
+    key_cfg = section_cfg.get("key_cast")
+    key_id = None
+    if key_cfg is not None:
+        try:
+            _key_ids = expand_cast_ids([key_cfg])
+        except ValueError:
+            _key_ids = []
+        if len(_key_ids) == 1:
+            key_id = _key_ids[0]
+    cast_ids_set = set(cast_ids)
+    use_key = key_id is not None and key_id in cast_ids_set and key_id in pos_by_id
+
+    ds_sec = ds_all.isel(N_PROF=picked)
     if dbar_step > 1:
         p_idx = np.arange(0, ds_sec.sizes["pressure"], dbar_step)
         ds_sec = ds_sec.isel(pressure=p_idx)
+
+    x_vals_key = None
+    if use_key:
+        key_lat, key_lon = pos_by_id[key_id]
+        _d = distance_from_km(
+            key_lat,
+            key_lon,
+            ds_sec["latitude"].values.tolist(),
+            ds_sec["longitude"].values.tolist(),
+        )
+        order = np.argsort(_d, kind="stable")
+        ds_sec = ds_sec.isel(N_PROF=order)
+        # add_teos10/add_aou below don't reorder N_PROF, so the sorted distances
+        # are the final x-axis — no need to recompute after.
+        x_vals_key = _d[order]
+
     ds_sec = add_teos10_profiles(ds_sec)
     ds_sec = add_aou(ds_sec)
 
@@ -317,16 +361,24 @@ def generate_section_page(
     sec_cast_nums = ds_sec["cast_number"].values.tolist()
     sec_cast_suffix = profile_cast_suffixes(ds_sec).tolist()
 
-    # Along-track distance in km; flip to geographic convention (west-left / north-left)
-    x_vals, x_label = along_track_km(lats, lons)
+    if use_key:
+        x_vals = x_vals_key
+        x_label = f"Distance from cast {format_cast_id(*key_id)} (km)"
+    else:
+        # Cumulative along-track distance from the first cast in config order.
+        x_vals, x_label = along_track_km(lats, lons)
 
     bathy = interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
     dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
         lats, lons, x_vals, path=_plots.GEBCO_PATH
     )
 
-    if section_orientation(lats, lons):
-        x_total = float(x_vals[-1])
+    # Flip to geographic convention (west-left / north-left) only in mode 1;
+    # key_cast fixes the origin at x=0, so its axis is not flipped. Mirror about
+    # the maximum (not x_vals[-1], which is only the max when casts are listed in
+    # monotonic geographic order).
+    if not use_key and section_orientation(lats, lons):
+        x_total = float(x_vals.max())
         x_vals = x_total - x_vals
         if dense_bathy_x is not None:
             dense_bathy_x = x_total - dense_bathy_x
@@ -339,14 +391,16 @@ def generate_section_page(
     cast_nums_int = [int(c) for c in sec_cast_nums]
     # Suffixed ids ("010", "010b") for links/pills so a sibling event points at
     # its own cast page.
-    cast_id_strs = [f"{int(n):03d}{s}" for n, s in zip(sec_cast_nums, sec_cast_suffix)]
+    cast_id_strs = [
+        format_cast_id(int(n), s) for n, s in zip(sec_cast_nums, sec_cast_suffix)
+    ]
     vmin = vmin_override or {}
     vmax = vmax_override or {}
 
     # Compute section figsize and CSS slot from section extent.
     # Use valid-data extent, not pressure coordinate max — the coordinate spans the full
     # cruise depth (e.g. 2200 dbar) even for shallow sections like KO (450 dbar).
-    _dist_km = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 1.0
+    _dist_km = float(x_vals.max() - x_vals.min()) if len(x_vals) > 1 else 1.0
     _ref_var = next((v for v in ("CT", "SA") if v in ds_sec), None)
     if _ref_var is not None:
         _ref_data = ds_sec[_ref_var].values

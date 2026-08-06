@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ctdcast.identity import format_cast_id
+
 
 def read_ladcp(path: Path | str) -> dict[str, Any]:
     """Load an LDEO IXv14 LADCP ``.mat`` file.
@@ -36,19 +38,17 @@ def find_ladcp_file(
     ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.
     The first glob match (lexicographic) is returned when multiple files match.
     """
+    _id, _id_plain = format_cast_id(cast_num, cast_suffix), format_cast_id(cast_num)
     if ladcp_pattern:
-        for cast_str in (f"{cast_num:03d}{cast_suffix}", f"{cast_num:03d}"):
+        for cast_str in (_id, _id_plain):
             p = ladcp_dir / ladcp_pattern.replace("*", cast_str)
             if p.exists():
                 return p
-    for name in (f"{cast_num:03d}{cast_suffix}.mat", f"{cast_num:03d}.mat"):
+    for name in (f"{_id}.mat", f"{_id_plain}.mat"):
         p = ladcp_dir / name
         if p.exists():
             return p
-    for glob_pat in (
-        f"*_{cast_num:03d}{cast_suffix}.mat",
-        f"*_{cast_num:03d}.mat",
-    ):
+    for glob_pat in (f"*_{_id}.mat", f"*_{_id_plain}.mat"):
         found = sorted(ladcp_dir.glob(glob_pat))
         if found:
             return found[0]

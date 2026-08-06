@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from ctdcast.identity import expand_cast_ids
+from ctdcast.identity import expand_cast_ids, format_cast_id
 
 
 def build_parser(
@@ -181,13 +181,30 @@ def run(args: argparse.Namespace) -> int:
         # A plain cast and its lettered sibling are distinct, so dedupe on the
         # (number, suffix) pair.
         dupes = sorted(
-            {f"{n:03d}{s}" for (n, s) in expanded if expanded.count((n, s)) > 1}
+            {format_cast_id(n, s) for (n, s) in expanded if expanded.count((n, s)) > 1}
         )
         if dupes:
             warnings.append(
                 f"section '{sec_name}': duplicate cast(s) {dupes} listed more "
                 "than once (will be plotted more than once)"
             )
+        # key_cast, if set, must be a SINGLE cast that is one of the section's casts.
+        key_cfg = sec_cfg.get("key_cast")
+        if key_cfg is not None:
+            try:
+                key_ids = expand_cast_ids([key_cfg])
+            except ValueError:
+                key_ids = []
+            if len(key_ids) != 1:
+                errors.append(
+                    f"section '{sec_name}': key_cast {key_cfg!r} must be a single "
+                    "cast (an int or a 'NNNb' string), not a range or list."
+                )
+            elif key_ids[0] not in expanded:
+                errors.append(
+                    f"section '{sec_name}': key_cast {key_cfg!r} is not one of "
+                    "the section's cast_numbers."
+                )
 
     # Strict: verify the station numbers in section_yaml exist in nc_dir
     if args.strict and nc_dir and nc_dir.exists() and expanded_sections:
