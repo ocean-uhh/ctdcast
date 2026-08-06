@@ -10,21 +10,16 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctdreport import _templates as _tmpl
-from ctdreport import plots as _plots
-from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import (
-    _add_aou,
-    _add_teos10_profiles,
-    _along_track_km,
-    _compact_cast_list,
-    _dense_bathy_along_track,
-    _fmt_utc,
-    _interpolate_bathy_at_casts,
-    _section_orientation,
+from ctdcast import plots as _plots
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.bathymetry import (
+    dense_bathy_along_track,
+    interpolate_bathy_at_casts,
 )
-from ctdreport.plots import (
+from ctdcast.analysis.geometry import along_track_km, section_orientation
+from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.identity import compact_cast_list
+from ctdcast.plots import (
     Panel,
     _make_ladcp_section_b64,
     _make_section_b64,
@@ -34,6 +29,9 @@ from ctdreport.plots import (
     _make_section_ts_profiles_b64,
     section_figsize_and_slot,
 )
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
 
 # ---------------------------------------------------------------------------
 # Section variables to plot (in order)
@@ -304,22 +302,22 @@ def generate_section_page(
     if dbar_step > 1:
         p_idx = np.arange(0, ds_sec.sizes["pressure"], dbar_step)
         ds_sec = ds_sec.isel(pressure=p_idx)
-    ds_sec = _add_teos10_profiles(ds_sec)
-    ds_sec = _add_aou(ds_sec)
+    ds_sec = add_teos10_profiles(ds_sec)
+    ds_sec = add_aou(ds_sec)
 
     lats = ds_sec["latitude"].values.tolist()
     lons = ds_sec["longitude"].values.tolist()
     sec_cast_nums = ds_sec["cast_number"].values.tolist()
 
     # Along-track distance in km; flip to geographic convention (west-left / north-left)
-    x_vals, x_label = _along_track_km(lats, lons)
+    x_vals, x_label = along_track_km(lats, lons)
 
-    bathy = _interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
-    dense_bathy_x, dense_bathy_d = _dense_bathy_along_track(
+    bathy = interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
+    dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
         lats, lons, x_vals, path=_plots.GEBCO_PATH
     )
 
-    if _section_orientation(lats, lons):
+    if section_orientation(lats, lons):
         x_total = float(x_vals[-1])
         x_vals = x_total - x_vals
         if dense_bathy_x is not None:
@@ -449,7 +447,7 @@ def generate_section_page(
         "cruise": cruise,
         "n_casts": len(sec_cast_nums),
         "dist_str": dist_str,
-        "cast_list_str": _compact_cast_list([int(c) for c in sec_cast_nums]),
+        "cast_list_str": compact_cast_list([int(c) for c in sec_cast_nums]),
         "ship": ship,
         "p_max_str": f"{_p_max_sec:.0f} dbar",
         "start_pos": start_pos,

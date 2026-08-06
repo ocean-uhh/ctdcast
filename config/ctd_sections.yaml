@@ -1,77 +1,110 @@
-# CTD section definitions for odb2026 (MIXSED cruise 2).
+# CTD section and timeseries definitions for odb2026 (MIXSED cruise 2).
 #
-# cast_numbers: inclusive ranges or individual cast numbers.
-# Ranges are written as [first, last].  Individual casts are single integers.
-# Mixed lists are allowed: [[10, 23], 45, [50, 60]]
+# Each entry is keyed by a SHORT CODE — used for filenames, hrefs, and the
+# --section / --timeseries CLI options.  Codes must be filename-safe:
+# letters, digits, hyphen and underscore only.  YAML enforces uniqueness.
+#
+#   name:          human-readable title shown on the page and in listings.
+#                  Falls back to the code if omitted.
+#   description:   one line of context, shown under the title.
+#   cast_numbers:  inclusive ranges or individual cast numbers.
+#                  Ranges are [first, last].  Mixed lists allowed:
+#                  [[10, 23], 45, [50, 60]]
+#   color:         line/pill colour.  Should be unique per entry so groups are
+#                  distinguishable on the map and in the index pills.
+#
+# Output filenames come from the code:
+#   sections/section_KO.html      timeseries/timeseries_FDYY.html
 #
 # Verify positions by running notebooks/ctd_odb2026.ipynb section map cell.
 
 sections:
-  Kangerlussuaq Outer (KO):
+  KO:
+    name: Kangerlussuaq Outer
     description: Kangerlussuaq Trough outer slope
     cast_numbers: [[11, 23]]
     color: "#1f77b4"
 
-  Fardwo (FD):
+  FD:
+    name: Fardwo
     description: FARDWO section
     cast_numbers: [[23, 37]]
     color: "#ff7f0e"
 
-  Kangerlussuaq Mid (KM):
+  KM:
+    name: Kangerlussuaq Mid
     description: Kangerlussuaq Trough middle
     cast_numbers: [[39, 49]]
     color: "#2ca02c"
 
-  Latrabjarg (LB2):
+  LB2:
+    name: Latrabjarg
     description: Latrabjarg section
     cast_numbers: [[82, 97]]
     color: "#9467bd"
 
-  Vesturdjup (VD1):
-    description: Vesturdjup 
+  VD1:
+    name: Vesturdjup 1
+    description: Vesturdjup main section
     cast_numbers: [[98, 112]]
     color: "#8c564b"
 
-  Vesturdjup (VD2):
+  VD2:
+    name: Vesturdjup 2
     description: Vesturdjup mini
     cast_numbers: [[122, 127]]
     color: "#7f7f7f"
 
-  Vesturdjup (VD3):
-    description: Vesturdjup 
+  VD3:
+    name: Vesturdjup 3
+    description: Vesturdjup repeat
+    # NOTE: shared "#8c564b" with VD1 in the previous config — see comment at end.
     cast_numbers: [[162, 176]]
     color: "#8c564b"
 
 timeseries:
-  Fardwo yoyo (FDYY):
-    description: Fardwo— 32-cast repeat station
+  FDYY:
+    name: Fardwo yoyo
+    description: Fardwo — 32-cast repeat station
     cast_numbers: [[50, 81]]
     color: "#d62728"
 
-
-  Triangle yoyo (TRYY):
+  TRYY:
+    name: Triangle yoyo
     description: Triangle yoyo — 8-cast repeat station
     cast_numbers: [[114, 121]]
     color: "#e377c2"
 
-  Triangle yoyo (TR700):
+  TR700:
+    name: Triangle 700 m
     description: Triangle ~700 m isobath
     cast_numbers: [128, 129, 130, 132, 135, 137]
     color: "#bcbd22"
 
-  Triangle yoyo (TR1000):
+  TR1000:
+    name: Triangle 1000 m
     description: Triangle ~1000 m isobath
     cast_numbers: [131, 133, 134, 136]
     color: "#17becf"
 
-  Dunes (DU1):
+  DU1:
+    name: Dunes 1
     description: Dunes mini-section
     cast_numbers: [[143, 160]]
     color: "#8c564b"
 
-  
-
-  Dunes (DU2):
+  DU2:
+    name: Dunes 2
     description: Dunes mini-section
+    # NOTE: shared "#8c564b" with DU1 and VD1/VD3 in the previous config.
     cast_numbers: [[178, 189]]
     color: "#8c564b"
+
+# ---------------------------------------------------------------------------
+# Colour collision carried over from the previous config, left unchanged so
+# this is a pure rename:
+#   "#8c564b" is used by VD1, VD3, DU1 and DU2 — four groups that are therefore
+#   indistinguishable in the index pills, on the cruise map and in the Leaflet
+#   layer.  tab20 has unused entries if you want to split them, e.g.
+#   VD3 "#c49c94", DU1 "#aec7e8", DU2 "#98df8a".
+# ---------------------------------------------------------------------------

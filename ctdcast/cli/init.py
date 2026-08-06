@@ -1,4 +1,4 @@
-"""``ctdreport init`` — write config.yaml and optionally ctd_sections_draft.yaml."""
+"""``ctdcast init`` — write config.yaml and optionally ctd_sections_draft.yaml."""
 
 from __future__ import annotations
 
@@ -9,15 +9,15 @@ from pathlib import Path
 from typing import Any
 
 _CONFIG_TEMPLATE = """\
-# ctdreport configuration
-# Run 'ctdreport validate config.yaml' to check all paths before the first run.
+# ctdcast configuration
+# Run 'ctdcast validate config.yaml' to check all paths before the first run.
 
 data:
   # Directory containing per-cast netCDF files (one per cast).
   nc_dir: /path/to/ctd/nc
 
   # Compiled profiles netCDF on a 1 dbar grid (required for sections and timeseries).
-  # Build with: ctdreport convert --build-profiles /path/to/nc/ /path/to/profiles.nc
+  # Build with: ctdcast convert --build-profiles /path/to/nc/ /path/to/profiles.nc
   profiles_nc: /path/to/profiles.nc
 
   # Sections/timeseries definition file (ctd_sections.yaml).
@@ -36,7 +36,7 @@ output:
   # Root directory for all generated HTML files.
   dir: outputs/ctd_report
 
-# Which page types to generate on a plain 'ctdreport report' run.
+# Which page types to generate on a plain 'ctdcast report' run.
 # CLI flags (--stations, --sections, etc.) override these at runtime.
 generate:
   stations: true
@@ -142,16 +142,16 @@ def _angle_diff(b1: float, b2: float) -> float:
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``ctdreport init``."""
+    """Build the argument parser for ``ctdcast init``."""
     _epilog = """
 Examples:
-  ctdreport init                        write template config.yaml here
-  ctdreport init cruise/                write config.yaml inside cruise/
-  ctdreport init myconfig.yaml          write to a specific filename
-  ctdreport init . --sections           also write template ctd_sections.yaml
-  ctdreport init . --force              overwrite existing files
-  ctdreport init --interactive          prompt for paths; auto-detect sections
-  ctdreport init --interactive \\
+  ctdcast init                        write template config.yaml here
+  ctdcast init cruise/                write config.yaml inside cruise/
+  ctdcast init myconfig.yaml          write to a specific filename
+  ctdcast init . --sections           also write template ctd_sections.yaml
+  ctdcast init . --force              overwrite existing files
+  ctdcast init --interactive          prompt for paths; auto-detect sections
+  ctdcast init --interactive \\
     --dx-section 20 --max-turn-deg 45  set detection thresholds explicitly
 """
     kwargs: dict = {
@@ -170,7 +170,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="ctdreport init", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdcast init", **kwargs)
 
     parser.add_argument(
         "dest",
@@ -276,7 +276,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``ctdreport init``."""
+    """Execute ``ctdcast init``."""
     if hasattr(args, "min_run_casts") and args.min_run_casts < 3:
         print("ERROR: --min-run-casts must be >= 3.", file=sys.stderr)
         return 1
@@ -510,7 +510,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
     dest: Path = args.dest
     initial = dest if dest.suffix in {".yaml", ".yml"} else dest / "config.yaml"
 
-    print("\n=== ctdreport init (interactive) ===\n")
+    print("\n=== ctdcast init (interactive) ===\n")
 
     # Pre-populate prompts from an existing config file so the user can press
     # Enter to keep each current value rather than re-entering everything.
@@ -558,7 +558,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
         print("ERROR: nc_dir is required.", file=sys.stderr)
         return 1
     cnv_dir = _prompt(
-        "cnv_dir — raw CNV files directory (for ctdreport run --ctd)",
+        "cnv_dir — raw CNV files directory (for ctdcast run --ctd)",
         default=_ex.get("cnv_dir", ""),
     )
     cnv_pattern = _prompt(
@@ -585,7 +585,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
         default=_ex.get("gebco_nc", ""),
     )
     print(
-        "  ↳ ctdreport reads this YAML when generating reports."
+        "  ↳ ctdcast reads this YAML when generating reports."
         " If detection runs, a draft (ctd_sections_draft.yaml)"
         " is written in the same directory for review."
     )
@@ -618,7 +618,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
     if not profiles_nc:
         print(
             "  (no profiles.nc — skipping detection; "
-            "build one with: ctdreport convert --build-profiles)"
+            "build one with: ctdcast convert --build-profiles)"
         )
     else:
         profiles_path = Path(profiles_nc)
@@ -1090,7 +1090,7 @@ def _format_sections_yaml(
 ) -> str:
     """Return a YAML string for ``ctd_sections_draft.yaml``."""
     lines: list[str] = [
-        "# ctd_sections_draft.yaml — auto-generated by ctdreport init --interactive",
+        "# ctd_sections_draft.yaml — auto-generated by ctdcast init --interactive",
         (
             f"# Detection thresholds: dx_section={dx_section_km} km,"
             f" dx_diameter={dx_diameter_km} km, max_turn={max_turn_deg}°,"
@@ -1178,8 +1178,8 @@ def _build_config_text(
         else "  # gebco_nc: /path/to/GEBCO_2025.nc"
     )
     return (
-        "# ctdreport configuration — generated by ctdreport init --interactive\n"
-        "# Run 'ctdreport validate config.yaml' to check all paths before the first run.\n"
+        "# ctdcast configuration — generated by ctdcast init --interactive\n"
+        "# Run 'ctdcast validate config.yaml' to check all paths before the first run.\n"
         "\n"
         "data:\n"
         f"  nc_dir: {nc_dir}\n"

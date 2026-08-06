@@ -11,7 +11,7 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctdreport import _templates as _tmpl
+from ctdcast.reports import _chrome as _tmpl
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -27,17 +27,10 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
     return f"{d:02d}° {m:05.2f}′ {hemi}"
 
 
-from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import (
-    _add_teos10,
-    _find_cast_end,
-    _find_ladcp_file,
-    _find_soak_end,
-    _fmt_utc,
-    parse_sensor_info,
-)
-from ctdreport.plots import (
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.teos10 import add_teos10
+from ctdcast.cast.stage2 import find_cast_end, find_soak_end
+from ctdcast.plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
@@ -50,6 +43,10 @@ from ctdreport.plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
+from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.readers.metadata import parse_sensor_info
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
 
 # ---------------------------------------------------------------------------
 # HTML template
@@ -330,7 +327,7 @@ def generate_station_page(
         range are excluded from all plots (but the NC file is not modified).
         The count of excluded records is shown in the page header.
     trim_soak:
-        If True, apply pre-soak detection via :func:`~ctdreport.analysis._find_soak_end`.
+        If True, apply pre-soak detection via :func:`~ctdcast.cast.stage2.find_soak_end`.
         Finds the last record within 10 dbar of the surface before the cast
         maximum depth, crawls back up to 20 seconds to the shallowest point
         preceding the real descent, and trims everything up to that point.
@@ -356,7 +353,7 @@ def generate_station_page(
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4").load()
         sensor_info = parse_sensor_info(ds)
-        ds = _add_teos10(ds)
+        ds = add_teos10(ds)
     except Exception:  # noqa: BLE001
         return None
 
@@ -367,8 +364,8 @@ def generate_station_page(
         p = ds["pressure"].values
         t = ds["time"].values
         n_total_records = len(t)
-        soak_end = _find_soak_end(p, t)
-        cast_end = _find_cast_end(p, t)
+        soak_end = find_soak_end(p, t)
+        cast_end = find_cast_end(p, t)
         if cast_end <= soak_end:
             cast_end = n_total_records
         n_soak_trimmed = max(0, soak_end)
@@ -429,7 +426,7 @@ def generate_station_page(
 
     ladcp_path: Path | None = None
     if ladcp_dir is not None:
-        found = _find_ladcp_file(ladcp_dir, cast_num, cast_suffix, ladcp_pattern)
+        found = find_ladcp_file(ladcp_dir, cast_num, cast_suffix, ladcp_pattern)
         # Keep a non-None path even when no file exists so downstream callers
         # that gate on ladcp_dir-is-not-None still get the LADCP plot layout.
         ladcp_path = (

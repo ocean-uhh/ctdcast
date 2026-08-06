@@ -1,11 +1,13 @@
-"""Tests for analysis helpers: _section_orientation, _find_soak_end, parse_sensor_info."""
+"""Tests for analysis helpers: section_orientation, find_soak_end, parse_sensor_info."""
 
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
-from ctdreport.analysis import _find_soak_end, _section_orientation, parse_sensor_info
+from ctdcast.analysis.geometry import section_orientation
+from ctdcast.cast.stage2 import find_soak_end
+from ctdcast.readers.metadata import parse_sensor_info
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 _NC = _FIXTURES / "nc"
@@ -17,44 +19,44 @@ class TestSectionOrientation:
         # First cast west, last cast east → west already on left → no flip
         lats = [60.0, 60.0, 60.0]
         lons = [-30.0, -25.0, -20.0]
-        assert _section_orientation(lats, lons) is False
+        assert section_orientation(lats, lons) is False
 
     def test_ew_east_to_west_flip(self):
         # First cast east, last cast west → needs flip so west is left
         lats = [60.0, 60.0, 60.0]
         lons = [-20.0, -25.0, -30.0]
-        assert _section_orientation(lats, lons) is True
+        assert section_orientation(lats, lons) is True
 
     def test_ns_north_to_south_no_flip(self):
         # First cast north, last cast south → north already on left → no flip
         lats = [65.0, 63.0, 61.0]
         lons = [-25.0, -25.0, -25.0]
-        assert _section_orientation(lats, lons) is False
+        assert section_orientation(lats, lons) is False
 
     def test_ns_south_to_north_flip(self):
         # First cast south, last cast north → needs flip so north is left
         lats = [61.0, 63.0, 65.0]
         lons = [-25.0, -25.0, -25.0]
-        assert _section_orientation(lats, lons) is True
+        assert section_orientation(lats, lons) is True
 
     def test_single_point_no_flip(self):
-        assert _section_orientation([60.0], [-25.0]) is False
+        assert section_orientation([60.0], [-25.0]) is False
 
     def test_ew_dominant_over_ns(self):
         # Large lon span, small lat span → E-W dominant
         lats = [60.0, 60.5]
         lons = [-30.0, -20.0]  # 10° lon vs 0.5° lat → E-W
-        assert _section_orientation(lats, lons) is False  # west-to-east, no flip
+        assert section_orientation(lats, lons) is False  # west-to-east, no flip
 
     def test_ns_dominant_over_ew(self):
         # Large lat span, small lon span → N-S dominant
         lats = [65.0, 60.0]
         lons = [-25.0, -25.2]  # 5° lat vs 0.2° lon → N-S
-        assert _section_orientation(lats, lons) is False  # north-to-south, no flip
+        assert section_orientation(lats, lons) is False  # north-to-south, no flip
 
 
 # ---------------------------------------------------------------------------
-# _find_soak_end
+# find_soak_end
 # ---------------------------------------------------------------------------
 
 
@@ -65,7 +67,7 @@ def _make_times(n: int, dt_seconds: float = 1.0) -> np.ndarray:
 
 
 class TestFindSoakEnd:
-    """Tests for _find_soak_end using the corrected 3-step algorithm.
+    """Tests for find_soak_end using the corrected 3-step algorithm.
 
     Algorithm:
       1. i_max = index of global pressure maximum.
@@ -75,14 +77,14 @@ class TestFindSoakEnd:
     """
 
     def test_empty_array_returns_zero(self):
-        assert _find_soak_end(np.array([]), np.array([])) == 0
+        assert find_soak_end(np.array([]), np.array([])) == 0
 
     def test_no_near_surface_before_max_returns_zero(self):
         # Cast always >= 10 dbar (e.g. deployed from depth, never near surface).
         p = np.ones(200) * 15.0
         t = _make_times(200)
         # No p < 10 anywhere in [0, i_max] → return 0 (no trim).
-        assert _find_soak_end(p, t) == 0
+        assert find_soak_end(p, t) == 0
 
     def test_good_weather_soak_trimmed(self):
         # Realistic good-weather profile:
@@ -101,7 +103,7 @@ class TestFindSoakEnd:
         # Step 2: last p<10 in [0,159]: p[83]≈7.59 < 10; p[84]≈10.13 >= 10 → i_last=83
         # Step 3: 20 s before 83 → window [63,83]; p[63:80]=0.5, p[80]=0
         #         min = 0 at local 17 (= global 80) → return 81
-        result = _find_soak_end(p, t)
+        result = find_soak_end(p, t)
         assert result == 81
 
     def test_upcast_near_surface_not_used(self):
@@ -116,7 +118,7 @@ class TestFindSoakEnd:
         # The upcast (p[100:]=200→0) is entirely past i_max and never considered.
         # Whatever result is returned, it must be <= 10 (only trimming the very
         # start where the CTD was near-surface before descending).
-        result = _find_soak_end(p, t)
+        result = find_soak_end(p, t)
         assert 0 <= result <= 10
 
     def test_aborted_cast_all_near_surface_returns_zero(self):
@@ -129,7 +131,7 @@ class TestFindSoakEnd:
         # → last near = 0; window = p[0:1] = [0.5]; min at 0 → return 1
         # With a cast this shallow there's nothing meaningful to trim — but
         # generate_station_page guards against returning n (empty dataset).
-        result = _find_soak_end(p, t)
+        result = find_soak_end(p, t)
         assert result <= 5  # tiny trim; not n=100
 
     def test_numeric_time_works(self):
@@ -141,7 +143,7 @@ class TestFindSoakEnd:
         p[80:160] = np.linspace(0, 200, 80)
         p[160:] = np.linspace(200, 0, 40)
         t = np.arange(n, dtype=float)
-        assert _find_soak_end(p, t) == 81
+        assert find_soak_end(p, t) == 81
 
     def test_custom_near_surface_dbar(self):
         # With near_surface_dbar=5, threshold is tighter — last p<5 is earlier.
@@ -155,7 +157,7 @@ class TestFindSoakEnd:
         # Step 2: last p<5 in [0,159]: p[81]≈2.53; p[82]≈5.06 → i_last=81
         # Step 3: 20s window [61,81]; p[61:80]=0.5, p[80]=0, p[81]=2.53
         #         min=0 at local 19 (global 80) → return 81
-        result = _find_soak_end(p, t, near_surface_dbar=5.0)
+        result = find_soak_end(p, t, near_surface_dbar=5.0)
         assert result == 81
 
     def test_custom_search_seconds(self):
@@ -169,14 +171,14 @@ class TestFindSoakEnd:
         t = _make_times(n)
         # i_last_near = 83; 5 s window → [78, 83]; p[78:80]=0.5, p[80]=0, p[81:83]<10
         # min = 0 at global 80 → return 81
-        result = _find_soak_end(p, t, search_seconds=5.0)
+        result = find_soak_end(p, t, search_seconds=5.0)
         assert result == 81
 
     def test_result_never_exceeds_array_length(self):
         # The return value must always be a valid slice start (0 <= idx <= n).
         p = np.arange(300, dtype=float)  # monotonically increasing pressure
         t = _make_times(300)
-        idx = _find_soak_end(p, t)
+        idx = find_soak_end(p, t)
         assert 0 <= idx <= 300
 
 

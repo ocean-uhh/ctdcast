@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
-from ctdreport.index import _read_cast_meta
-from ctdreport.station import _cast_id_from_path, generate_station_page
+from ctdcast.reports._cast import _cast_id_from_path, generate_station_page
+from ctdcast.reports._index import _read_cast_meta
 
 
 @pytest.fixture

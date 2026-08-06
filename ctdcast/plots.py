@@ -17,27 +17,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from ctdreport.analysis import (
-    _add_teos10,
-    _dense_bathy_along_track,
-    _find_ladcp_file,
-    _interpolate_bathy_at_casts,
-    _load_gebco,
-    _split_cast,
+from ctdcast.analysis.bathymetry import (
+    dense_bathy_along_track,
+    interpolate_bathy_at_casts,
+    load_gebco,
 )
+from ctdcast.analysis.teos10 import add_teos10
+from ctdcast.cast.stage2 import split_cast
+from ctdcast.readers.ladcp import find_ladcp_file
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 # Path to GEBCO_2025.nc — set this before generating maps, e.g.:
-#   import ctdreport.plots as plots
+#   import ctdcast.plots as plots
 #   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
 GEBCO_PATH: Path | None = None
 
 # Bundled mplstyle — controls font sizes, line widths, figure defaults.
-_MPLSTYLE = Path(__file__).parent / "ctdreport.mplstyle"
+_MPLSTYLE = Path(__file__).parent / "ctdcast.mplstyle"
 
 # Extra margin (degrees) added when loading GEBCO for map rendering.
 # Ensures downsampled pcolormesh edge-cells extend past the axis limits,
@@ -311,7 +311,7 @@ def _gebco_background(
 
     Does nothing if GEBCO_PATH is None or the file cannot be read.
     """
-    gebco = _load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
+    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
     if gebco is not None:
         lons_b, lats_b, depth_b = gebco
         lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
@@ -452,8 +452,8 @@ def draw_ts_density_fig(
     ds: xr.Dataset, ladcp_path: Path | None = None
 ) -> plt.Figure | None:
     """Return a CT/SA/σ₀ profiles Figure, optionally alongside LADCP U/V."""
-    ds_teos = _add_teos10(ds)
-    ds_down, _ = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values
     ct = ds_down["CT"].values
     sa = ds_down["SA"].values
@@ -568,8 +568,8 @@ def draw_ts_density_fig(
 
 def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a T-S diagram Figure colored by O₂ saturation."""
-    ds_teos = _add_teos10(ds)
-    ds_down, _ = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, _ = split_cast(ds_teos)
     sa = ds_down["SA"].values
     ct = ds_down["CT"].values
     if "oxygen_1" not in ds_down:
@@ -617,8 +617,8 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
 
 def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a N² and Turner angle (2-panel) Figure."""
-    ds_teos = _add_teos10(ds)
-    ds_down, _ = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values.astype(float)
     sa = ds_down["SA"].values.astype(float)
     ct = ds_down["CT"].values.astype(float)
@@ -670,7 +670,7 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     available = [(v, lbl) for v, lbl in vars_labels if v in ds]
     if not available:
         return None
-    ds_down, ds_up = _split_cast(ds)
+    ds_down, ds_up = split_cast(ds)
 
     fig, axes = plt.subplots(1, len(available), figsize=(_W_FULL, 5.5), sharey=True)
     if len(available) == 1:
@@ -701,8 +701,8 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
 
 def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a CT, SA, σ₀ profiles side-by-side Figure (downcast + grey upcast)."""
-    ds_teos = _add_teos10(ds)
-    ds_down, ds_up = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, ds_up = split_cast(ds_teos)
 
     vars_labels = [
         ("CT", "CT (°C)"),
@@ -753,8 +753,8 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
 
 def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a CT–SA scatter Figure: downcast in blue, upcast in red, σ₀ contours."""
-    ds_teos = _add_teos10(ds)
-    ds_down, ds_up = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, ds_up = split_cast(ds_teos)
 
     sa_d = ds_down["SA"].values
     ct_d = ds_down["CT"].values
@@ -1352,7 +1352,7 @@ def draw_section_map_fig(
         )
     )
 
-    gebco = _load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
+    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
     bathy_pc = None
     if gebco is not None:
         lons_b, lats_b, depth_b = gebco
@@ -1829,8 +1829,8 @@ def draw_pressure_time_fig(ds: xr.Dataset) -> plt.Figure | None:
 
 def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a downcast minus upcast profiles Figure: ΔCT, ΔSA, Δσ₀."""
-    ds_teos = _add_teos10(ds)
-    ds_down, ds_up = _split_cast(ds_teos)
+    ds_teos = add_teos10(ds)
+    ds_down, ds_up = split_cast(ds_teos)
 
     if len(ds_down["pressure"]) < 5 or len(ds_up["pressure"]) < 5:
         return None
@@ -2074,7 +2074,7 @@ def _make_ladcp_section_b64(
                 tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
             ] = []
             for cn, xv in zip(cast_nums, x_vals):
-                mat_path = _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                mat_path = find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
                 if mat_path is None:
                     continue
                 try:
@@ -2138,10 +2138,10 @@ def _make_ladcp_section_b64(
                 (panel_w, panel_h), _ = section_figsize_and_slot(z_max, abs_dist)
 
             # Dense bathy (smooth fill); fall back to cast-position bathy
-            dense_bathy_x, dense_bathy_d = _dense_bathy_along_track(
+            dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
                 filt_lats, filt_lons, x_ladcp, path=GEBCO_PATH
             )
-            bathy_coarse = _interpolate_bathy_at_casts(
+            bathy_coarse = interpolate_bathy_at_casts(
                 filt_lats, filt_lons, path=GEBCO_PATH
             )
             bathy_max = (

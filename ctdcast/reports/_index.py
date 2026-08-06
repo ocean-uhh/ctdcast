@@ -12,17 +12,12 @@ import xarray as xr
 import yaml
 from jinja2 import Environment
 
-from ctdreport import _templates as _tmpl
-from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import (
-    _add_aou,
-    _add_teos10_profiles,
-    _along_track_km,
-    _compact_cast_list,
-    _interpolate_bathy_at_casts,
-)
-from ctdreport.plots import (
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
+from ctdcast.analysis.geometry import along_track_km
+from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.identity import compact_cast_list
+from ctdcast.plots import (
     GEBCO_PATH,
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
@@ -30,9 +25,12 @@ from ctdreport.plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctdreport.section import _expand_cast_numbers, generate_section_page
-from ctdreport.station import _extract_cast_id, _find_ladcp_file, generate_station_page
-from ctdreport.timeseries import generate_timeseries_page
+from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._cast import _extract_cast_id, generate_station_page
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._section import _expand_cast_numbers, generate_section_page
+from ctdcast.reports._timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -361,7 +359,7 @@ _SECTIONS_TEMPLATE = (
 # ---------------------------------------------------------------------------
 
 
-def generate_ctd_report(
+def report(
     nc_dir: Path,
     out_dir: Path,
     *,
@@ -383,7 +381,7 @@ def generate_ctd_report(
     trim_soak: bool = False,
     dbar_step: int = 1,
 ) -> None:
-    """Generate the full ctdreport HTML report suite.
+    """Generate the full ctdcast HTML report suite.
 
     Parameters
     ----------
@@ -401,7 +399,7 @@ def generate_ctd_report(
     ladcp_pattern:
         Optional filename glob for non-standard LADCP naming, e.g.
         ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the zero-padded
-        cast number.  See :func:`~ctdreport.station._find_ladcp_file`.
+        cast number.  See :func:`~ctdcast.readers.ladcp.find_ladcp_file`.
     ship_track_nc:
         Path to a ship-track netCDF for the Leaflet map background line.
     generate:
@@ -433,7 +431,7 @@ def generate_ctd_report(
     trim_soak:
         If True, apply pre-soak detection on each cast: cut the first 60 s
         (pump activation) and any records up to the last near-surface record
-        after pump-on.  Passed through to :func:`~ctdreport.station.generate_station_page`.
+        after pump-on.  Passed through to :func:`~ctdcast.reports._cast.generate_station_page`.
     dbar_step:
         Subsample the pressure axis by this step for section and timeseries
         plots (default 1, full 1-dbar resolution).  ``build_profiles()``
@@ -480,8 +478,8 @@ def generate_ctd_report(
 
     # Pre-load GEBCO for the cruise area into memory so every map figure
     # subsets from numpy arrays rather than reopening the file from disk.
-    from ctdreport import plots as _plots_mod
-    from ctdreport.analysis import preload_gebco
+    from ctdcast import plots as _plots_mod
+    from ctdcast.analysis.bathymetry import preload_gebco
 
     _gebco_path = _plots_mod.GEBCO_PATH
     if _gebco_path is not None and all_meta:
@@ -551,7 +549,7 @@ def generate_ctd_report(
             # Resolve LADCP mat path before the skip check so it feeds the mtime comparison.
             _mat: Path | None = None
             if ladcp_dir is not None:
-                _mat = _find_ladcp_file(
+                _mat = find_ladcp_file(
                     ladcp_dir, meta["cast_num"], meta["cast_suffix"], ladcp_pattern
                 )
 
@@ -626,7 +624,7 @@ def generate_ctd_report(
                 _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
                 if (
                     any(
-                        _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                        find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
                         is not None
                         for cn in _sec_casts
                     )
@@ -683,7 +681,7 @@ def generate_ctd_report(
                 _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
                 if (
                     any(
-                        _find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
+                        find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
                         is not None
                         for cn in _ts_casts
                     )
@@ -774,7 +772,7 @@ def generate_ctd_report(
 
     if gen["map"]:
         try:
-            from ctdreport.map_leaflet import generate_leaflet_map
+            from ctdcast.reports._leaflet import generate_leaflet_map
 
             lf_out = generate_leaflet_map(
                 all_meta,
@@ -911,8 +909,8 @@ def _write_index(
             ds_all = xr.open_dataset(
                 profiles_path, decode_timedelta=False, engine="netcdf4"
             ).load()
-            ds_all = _add_teos10_profiles(ds_all)
-            ds_all = _add_aou(ds_all)
+            ds_all = add_teos10_profiles(ds_all)
+            ds_all = add_aou(ds_all)
 
             mask_down = ds_all["cast_type"].values == "down"
             ds_down = ds_all.isel(N_PROF=mask_down)
@@ -921,7 +919,7 @@ def _write_index(
 
             lats = ds_sorted["latitude"].values.tolist()
             lons = ds_sorted["longitude"].values.tolist()
-            bathy = _interpolate_bathy_at_casts(lats, lons, path=GEBCO_PATH)
+            bathy = interpolate_bathy_at_casts(lats, lons, path=GEBCO_PATH)
 
             vmin = vmin_override or {}
             vmax = vmax_override or {}
@@ -1023,14 +1021,14 @@ def _write_stations_list(
 ) -> None:
     """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file.
-    # Use _find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
+    # Use find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
     # are handled correctly.
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
         for meta in all_meta:
             cn = meta["cast_num"]
             cs = meta.get("cast_suffix", "")
-            if _find_ladcp_file(ladcp_dir, cn, cs, ladcp_pattern) is not None:
+            if find_ladcp_file(ladcp_dir, cn, cs, ladcp_pattern) is not None:
                 ladcp_cast_nums.add(cn)
 
     # Section name → YAML color; cast → section names
@@ -1167,7 +1165,7 @@ def _write_sections_list(
                 "description": cfg.get("description", ""),
                 "color": cfg.get("color", "#1a3a5c"),
                 "n_casts": n_casts_sec,
-                "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
+                "cast_range": compact_cast_list(cast_nums) if cast_nums else "—",
                 "report_exists": report_path.exists(),
                 "ladcp_has": ladcp_has,
             }
@@ -1185,7 +1183,7 @@ def _write_sections_list(
                     }
                 )
                 if len(sec_lats) >= 2:
-                    _km, _ = _along_track_km(sec_lats, sec_lons)
+                    _km, _ = along_track_km(sec_lats, sec_lons)
                     _sec_dist_list.append(float(_km[-1]))
 
     all_cast_lats = [v[0] for v in cast_pos.values()]
@@ -1354,7 +1352,7 @@ def _write_timeseries_list(
     cruise_info: dict[str, Any] | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
-    from ctdreport.section import _expand_cast_numbers
+    from ctdcast.reports._section import _expand_cast_numbers
 
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
@@ -1406,7 +1404,7 @@ def _write_timeseries_list(
                 "description": cfg.get("description", ""),
                 "color": color,
                 "n_casts": n_casts_ts,
-                "cast_range": _compact_cast_list(cast_nums) if cast_nums else "—",
+                "cast_range": compact_cast_list(cast_nums) if cast_nums else "—",
                 "report_exists": report_path.exists(),
                 "ladcp_has": ladcp_has,
             }

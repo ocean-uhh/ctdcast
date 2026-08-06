@@ -18,16 +18,10 @@ import numpy as np
 import xarray as xr
 from jinja2 import Environment
 
-from ctdreport import _templates as _tmpl
-from ctdreport._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import (
-    _add_aou,
-    _add_teos10_profiles,
-    _compact_cast_list,
-    _fmt_utc,
-)
-from ctdreport.plots import (
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.identity import compact_cast_list
+from ctdcast.plots import (
     _MAX_SECTION_H,
     _W_FULL,
     _W_HALF,
@@ -38,7 +32,10 @@ from ctdreport.plots import (
     _make_timeseries_b64,
     _make_ts_diagram_timeseries_b64,
 )
-from ctdreport.section import _expand_cast_numbers
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._section import _expand_cast_numbers
 
 # ---------------------------------------------------------------------------
 # Variables to plot (in order)
@@ -309,8 +306,8 @@ def generate_timeseries_page(
     if dbar_step > 1:
         p_idx = np.arange(0, ds_ts.sizes["pressure"], dbar_step)
         ds_ts = ds_ts.isel(pressure=p_idx)
-    ds_ts = _add_teos10_profiles(ds_ts)
-    ds_ts = _add_aou(ds_ts)
+    ds_ts = add_teos10_profiles(ds_ts)
+    ds_ts = add_aou(ds_ts)
 
     # Sort all profiles (both down and up) by time_start
     order = np.argsort(ds_ts["time_start"].values)
@@ -456,7 +453,7 @@ def generate_timeseries_page(
         "time_start_str": time_start_str,
         "time_end_str": time_end_str,
         "duration_str": duration_str,
-        "cast_list_str": _compact_cast_list(cast_nums),
+        "cast_list_str": compact_cast_list(cast_nums),
         "cast_nums": [f"{n:03d}" for n in sorted(cast_nums)],
         "physics_panels": physics_panels,
         "biogeo_panels": biogeo_panels,

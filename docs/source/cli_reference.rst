@@ -4,12 +4,12 @@
 CLI reference
 =============
 
-All subcommands are available via the ``ctdreport`` entry point.
-Run ``ctdreport <command> --help`` for the full flag list at any time.
+All subcommands are available via the ``ctdcast`` entry point.
+Run ``ctdcast <command> --help`` for the full flag list at any time.
 
 ----
 
-ctdreport draft
+ctdcast draft
 ---------------
 
 Quick-look pipeline: convert raw CNV files to station pages + index + map in one step.
@@ -17,7 +17,7 @@ No ``config.yaml`` required.  Sections and time series are skipped (require ``pr
 
 .. code-block:: text
 
-   ctdreport draft <cnv_dir> [out_dir] [options]
+   ctdcast draft <cnv_dir> [out_dir] [options]
 
    positional arguments:
      cnv_dir          Directory of raw SBE CNV files (required)
@@ -35,14 +35,14 @@ Requires ``seasenselib`` (``pip install seasenselib``) for CNV conversion.
 
 **Examples**::
 
-   ctdreport draft /data/cnv/
-   ctdreport draft /data/cnv/ ./out/ --cruise odb2026 --ship RRS_Discovery
-   ctdreport draft /data/cnv/ --keep-nc ./nc_out/ --force
-   ctdreport draft /data/cnv/ --dry-run
+   ctdcast draft /data/cnv/
+   ctdcast draft /data/cnv/ ./out/ --cruise odb2026 --ship RRS_Discovery
+   ctdcast draft /data/cnv/ --keep-nc ./nc_out/ --force
+   ctdcast draft /data/cnv/ --dry-run
 
 ----
 
-ctdreport init
+ctdcast init
 --------------
 
 Write a commented template ``config.yaml`` (and optionally auto-detect
@@ -50,7 +50,7 @@ sections/timeseries groups from ``profiles.nc``) in the target directory.
 
 .. code-block:: text
 
-   ctdreport init [dest] [options]
+   ctdcast init [dest] [options]
 
    positional arguments:
      dest                  Destination directory or explicit .yaml path (default: .)
@@ -89,22 +89,22 @@ or in the config's directory).  Review and rename to ``ctd_sections.yaml`` befor
 
 **Examples**::
 
-   ctdreport init                          # write config.yaml in current directory
-   ctdreport init /data/cruise/
-   ctdreport init --sections               # also write a template ctd_sections.yaml
-   ctdreport init --interactive config.yaml --force   # guided setup with auto-detection
-   ctdreport init --auto-section config.yaml --force  # re-detect sections only
+   ctdcast init                          # write config.yaml in current directory
+   ctdcast init /data/cruise/
+   ctdcast init --sections               # also write a template ctd_sections.yaml
+   ctdcast init --interactive config.yaml --force   # guided setup with auto-detection
+   ctdcast init --auto-section config.yaml --force  # re-detect sections only
 
 ----
 
-ctdreport validate
+ctdcast validate
 ------------------
 
 Validate config paths and data before the first run.  Does not write any files.
 
 .. code-block:: text
 
-   ctdreport validate <config> [options]
+   ctdcast validate <config> [options]
 
    positional arguments:
      config           Path to config.yaml
@@ -115,19 +115,19 @@ Validate config paths and data before the first run.  Does not write any files.
 
 **Examples**::
 
-   ctdreport validate config.yaml
-   ctdreport validate config.yaml --strict
+   ctdcast validate config.yaml
+   ctdcast validate config.yaml --strict
 
 ----
 
-ctdreport convert
+ctdcast convert
 -----------------
 
 Convert raw data to netCDF inputs without generating HTML.
 
 .. code-block:: text
 
-   ctdreport convert <config> [options]
+   ctdcast convert <config> [options]
 
    positional arguments:
      config           Path to config.yaml
@@ -144,22 +144,22 @@ Convert raw data to netCDF inputs without generating HTML.
 
 **Examples**::
 
-   ctdreport convert config.yaml                  # build profiles.nc (default)
-   ctdreport convert config.yaml --ctd            # CNV → nc, then profiles.nc
-   ctdreport convert config.yaml --profiles       # rebuild profiles.nc only
-   ctdreport convert config.yaml --ctd --cast 42  # convert one cast
-   ctdreport convert config.yaml --dry-run
+   ctdcast convert config.yaml                  # build profiles.nc (default)
+   ctdcast convert config.yaml --ctd            # CNV → nc, then profiles.nc
+   ctdcast convert config.yaml --profiles       # rebuild profiles.nc only
+   ctdcast convert config.yaml --ctd --cast 42  # convert one cast
+   ctdcast convert config.yaml --dry-run
 
 ----
 
-ctdreport report
+ctdcast report
 ----------------
 
 Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
 
 .. code-block:: text
 
-   ctdreport report <config> [options]
+   ctdcast report <config> [options]
 
    positional arguments:
      config           Path to config.yaml
@@ -179,22 +179,22 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
 
 **Examples**::
 
-   ctdreport report config.yaml                   # generate all enabled page types
-   ctdreport report config.yaml --stations        # station pages only
-   ctdreport report config.yaml --cast 42 --force # rebuild one cast page
-   ctdreport report config.yaml --skip-existing   # fill any missing pages
-   ctdreport report config.yaml --dry-run
+   ctdcast report config.yaml                   # generate all enabled page types
+   ctdcast report config.yaml --stations        # station pages only
+   ctdcast report config.yaml --cast 42 --force # rebuild one cast page
+   ctdcast report config.yaml --skip-existing   # fill any missing pages
+   ctdcast report config.yaml --dry-run
 
 ----
 
-ctdreport run
+ctdcast run
 -------------
 
 Run convert then report in one step (most common workflow).
 
 .. code-block:: text
 
-   ctdreport run <config> [options]
+   ctdcast run <config> [options]
 
    positional arguments:
      config           Path to config.yaml
@@ -207,12 +207,12 @@ Run convert then report in one step (most common workflow).
      --skip-existing  Skip pages whose HTML already exists
      --dry-run        Print what would be done without writing any files
 
-Equivalent to running ``ctdreport convert`` then ``ctdreport report`` in sequence.
+Equivalent to running ``ctdcast convert`` then ``ctdcast report`` in sequence.
 
 **Examples**::
 
-   ctdreport run config.yaml                      # smart update (skips up-to-date pages)
-   ctdreport run config.yaml --force              # rebuild everything
-   ctdreport run config.yaml --cast 42            # rebuild one cast page
-   ctdreport run config.yaml --ctd --force        # full pipeline including CNV conversion
-   ctdreport run config.yaml --dry-run
+   ctdcast run config.yaml                      # smart update (skips up-to-date pages)
+   ctdcast run config.yaml --force              # rebuild everything
+   ctdcast run config.yaml --cast 42            # rebuild one cast page
+   ctdcast run config.yaml --ctd --force        # full pipeline including CNV conversion
+   ctdcast run config.yaml --dry-run

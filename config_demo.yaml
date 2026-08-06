@@ -1,7 +1,7 @@
 # Demo configuration — uses committed fixture casts to verify your installation.
 #
 # Run from the repo root:
-#   ctdreport run config_demo.yaml
+#   ctdcast run config_demo.yaml
 #
 # Output is written to demo_report/ (gitignored).
 # Open demo_report/index.html in any browser to inspect the result.

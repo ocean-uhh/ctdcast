@@ -13,12 +13,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ctdreport.cli import draft as _draft
-from ctdreport.cli import init as _init
-from ctdreport.cli import main as cli_main
-from ctdreport.cli import report as _report
-from ctdreport.cli import run as _run
-from ctdreport.cli import validate as _validate
+from ctdcast.cli import draft as _draft
+from ctdcast.cli import init as _init
+from ctdcast.cli import main as cli_main
+from ctdcast.cli import report as _report
+from ctdcast.cli import run as _run
+from ctdcast.cli import validate as _validate
 
 _HERE = Path(__file__).parent
 _FIXTURES_NC = _HERE.parent / "fixtures" / "nc"
@@ -483,7 +483,7 @@ class TestReport:
         assert not list((tmp_path / "out").glob("stations/*.html"))
 
     def test_stations_only_generates_pages(self, tmp_path):
-        """Confirm the CLI drives generate_ctd_report correctly for stations."""
+        """Confirm the CLI drives report correctly for stations."""
         cfg = self._write_cfg(tmp_path)
         rc = _report.run(
             _report_ns(
@@ -615,7 +615,7 @@ class TestEntryPoint:
 
 
 # ---------------------------------------------------------------------------
-# ctdreport draft
+# ctdcast draft
 # ---------------------------------------------------------------------------
 
 

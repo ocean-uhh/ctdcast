@@ -4,60 +4,60 @@
 Python API
 ============
 
-The primary public entry point is :func:`ctdreport.index.generate_ctd_report`.
+The primary public entry point is :func:`ctdcast.report`.
 
 ----
 
 Main entry point
 ----------------
 
-.. autofunction:: ctdreport.index.generate_ctdreport
+.. autofunction:: ctdcast.reports._index.report
 
 ----
 
-Converters (Tier 0)
--------------------
+Data preparation
+----------------
 
-.. automodule:: ctdreport.converters
+.. automodule:: ctdcast.converters
    :members:
    :undoc-members:
 
 ----
 
-Plot helpers (Tier 1)
----------------------
+Plot helpers
+------------
 
 These functions return base64-encoded PNG strings.  They are called by the page
 generators and return ``None`` on any exception, so a missing figure never prevents
 a page from being written.
 
-.. automodule:: ctdreport.plots
+.. automodule:: ctdcast.plots
    :members:
    :undoc-members:
 
 ----
 
-Page generators (Tier 2)
-------------------------
+Page generators
+---------------
 
-.. automodule:: ctdreport.station
+.. automodule:: ctdcast.reports._cast
    :members:
    :undoc-members:
 
-.. automodule:: ctdreport.section
+.. automodule:: ctdcast.reports._section
    :members:
    :undoc-members:
 
-.. automodule:: ctdreport.timeseries
+.. automodule:: ctdcast.reports._timeseries
    :members:
    :undoc-members:
 
 ----
 
-Interactive map (Tier 2)
-------------------------
+Interactive map
+---------------
 
-.. automodule:: ctdreport.map_leaflet
+.. automodule:: ctdcast.reports._leaflet
    :members:
    :undoc-members:
 
@@ -66,6 +66,36 @@ Interactive map (Tier 2)
 Analysis helpers
 ----------------
 
-.. automodule:: ctdreport.analysis
+.. automodule:: ctdcast.analysis.teos10
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.analysis.geometry
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.analysis.bathymetry
+   :members:
+   :undoc-members:
+
+----
+
+Cast processing
+---------------
+
+.. automodule:: ctdcast.cast.stage2
+   :members:
+   :undoc-members:
+
+----
+
+Readers
+-------
+
+.. automodule:: ctdcast.readers.ladcp
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.readers.metadata
    :members:
    :undoc-members:

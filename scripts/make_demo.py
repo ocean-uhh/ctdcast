@@ -13,9 +13,9 @@ Maps render without bathymetry if the file is not found.
 
 from pathlib import Path
 
-from ctdreport import plots
-from ctdreport.converters import build_profiles
-from ctdreport.index import generate_ctd_report
+from ctdcast import plots
+from ctdcast.converters import build_profiles
+from ctdcast.reports._index import report
 
 REPO = Path(__file__).resolve().parent.parent
 NC_DIR = REPO / "tests" / "fixtures" / "nc"
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     print(f"Generating demo report to {OUT_DIR} ...")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    generate_ctd_report(
+    report(
         NC_DIR,
         OUT_DIR,
         profiles_path=PROFILES_NC,

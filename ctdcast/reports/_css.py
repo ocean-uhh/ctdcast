@@ -1,4 +1,4 @@
-"""Shared CSS for all ctdreport HTML pages.
+"""Shared CSS for all ctdcast HTML pages.
 
 Import ``SHARED_CSS`` and concatenate it into each page template's ``<style>`` block.
 """

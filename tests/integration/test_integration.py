@@ -16,12 +16,12 @@ import xarray as xr
 
 pytestmark = pytest.mark.slow
 
-from ctdreport.analysis import _add_teos10
-from ctdreport.converters import build_profiles, convert_ctd_files
-from ctdreport.index import _read_cast_meta, generate_ctd_report
-from ctdreport.section import generate_section_page
-from ctdreport.station import generate_station_page
-from ctdreport.timeseries import generate_timeseries_page
+from ctdcast.analysis import add_teos10
+from ctdcast.converters import build_profiles, convert_ctd_files
+from ctdcast.reports._cast import generate_station_page
+from ctdcast.reports._index import _read_cast_meta, report
+from ctdcast.reports._section import generate_section_page
+from ctdcast.reports._timeseries import generate_timeseries_page
 
 _HERE = Path(__file__).parent
 _FIXTURES = _HERE.parent / "fixtures"
@@ -229,17 +229,17 @@ class TestTimeseriesPage:
 
 
 # ---------------------------------------------------------------------------
-# Full entry-point: generate_ctd_report
+# Full entry-point: report
 # ---------------------------------------------------------------------------
 
 
 class TestFullReport:
-    """Drive generate_ctd_report end-to-end with section + timeseries YAML."""
+    """Drive report end-to-end with section + timeseries YAML."""
 
     def test_generates_all_station_pages(
         self, tmp_path, section_yaml_path, profiles_nc
     ):
-        generate_ctd_report(
+        report(
             _NC,
             tmp_path,
             profiles_path=profiles_nc,
@@ -252,7 +252,7 @@ class TestFullReport:
             assert p.exists(), f"Missing station page: {p.name}"
 
     def test_generates_section_page(self, tmp_path, section_yaml_path, profiles_nc):
-        generate_ctd_report(
+        report(
             _NC,
             tmp_path,
             profiles_path=profiles_nc,
@@ -262,7 +262,7 @@ class TestFullReport:
         assert (tmp_path / "sections" / "section_KO.html").exists()
 
     def test_generates_timeseries_page(self, tmp_path, section_yaml_path, profiles_nc):
-        generate_ctd_report(
+        report(
             _NC,
             tmp_path,
             profiles_path=profiles_nc,
@@ -272,7 +272,7 @@ class TestFullReport:
         assert (tmp_path / "timeseries" / "timeseries_Triangle.html").exists()
 
     def test_generates_index_pages(self, tmp_path, section_yaml_path, profiles_nc):
-        generate_ctd_report(
+        report(
             _NC,
             tmp_path,
             profiles_path=profiles_nc,
@@ -290,7 +290,7 @@ class TestFullReport:
     def test_no_external_resources_in_station(
         self, tmp_path, section_yaml_path, profiles_nc
     ):
-        generate_ctd_report(
+        report(
             _NC,
             tmp_path,
             profiles_path=profiles_nc,
@@ -302,8 +302,8 @@ class TestFullReport:
         assert _no_external_resources(html) == []
 
     def test_stations_only_no_yaml(self, tmp_path):
-        """generate_ctd_report must work with no section_yaml (stations only)."""
-        generate_ctd_report(
+        """report must work with no section_yaml (stations only)."""
+        report(
             _NC,
             tmp_path,
             generate={
@@ -367,10 +367,10 @@ _OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
 
 @pytest.mark.skipif(not _OXY_CNV.exists(), reason="MSM142 oxygen fixture not present")
 class TestOxygenConversion:
-    """Integration test for µmol/L → % saturation conversion via _add_teos10."""
+    """Integration test for µmol/L → % saturation conversion via add_teos10."""
 
     def test_oxygen_units_converted(self, tmp_path):
-        """convert_ctd_files → _add_teos10 must yield oxygen in % saturation."""
+        """convert_ctd_files → add_teos10 must yield oxygen in % saturation."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
             n = convert_ctd_files(
@@ -394,7 +394,7 @@ class TestOxygenConversion:
 
         with warnings.catch_warnings():
             warnings.simplefilter("always")
-            ds_converted = _add_teos10(ds)
+            ds_converted = add_teos10(ds)
 
         assert ds_converted["oxygen_1"].attrs["units"] == "% saturation", (
             f"Expected '% saturation'; got {ds_converted['oxygen_1'].attrs['units']!r}"
