@@ -21,7 +21,7 @@ from jinja2 import Environment
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
-from ctdcast.identity import compact_cast_list, expand_cast_ids
+from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports import _chrome as _tmpl
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
@@ -319,7 +319,7 @@ def generate_timeseries_page(
     _ts_suffix = profile_cast_suffixes(ds_ts)
     cast_id_strs: list[str] = []
     for _n, _s in zip(ds_ts["cast_number"].values, _ts_suffix):
-        _key = f"{int(_n):03d}{_s}"
+        _key = format_cast_id(int(_n), _s)
         if _key not in cast_id_strs:
             cast_id_strs.append(_key)
 

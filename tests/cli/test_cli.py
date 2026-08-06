@@ -448,6 +448,17 @@ class TestValidate:
         rc = _validate.run(_validate_ns(config=cfg_path))
         assert rc == 1
 
+    def test_key_cast_range_returns_error(self, tmp_path):
+        # key_cast must be a single cast, not a range/list.
+        sec_yaml = tmp_path / "sections.yaml"
+        sec_yaml.write_text(
+            "sections:\n  KO:\n    cast_numbers: [[11, 12]]\n"
+            "    key_cast: [11, 12]\n    color: '#f00'\n"
+        )
+        cfg_path = self._write_cfg(tmp_path, data={"section_yaml": str(sec_yaml)})
+        rc = _validate.run(_validate_ns(config=cfg_path))
+        assert rc == 1
+
 
 # ---------------------------------------------------------------------------
 # oceancast report

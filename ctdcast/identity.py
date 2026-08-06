@@ -1,10 +1,11 @@
 """Cast identity: cast-number parsing, expansion, and compact formatting.
 
-Single home for the three cast-identity operations shared across the package:
+Single home for the cast-identity operations shared across the package:
 parse a cast number and letter suffix from a filename (:func:`cast_id_from_name`),
-expand a ``cast_numbers`` config spec to a flat, order-preserving list of ints
-(:func:`expand_cast_numbers`), and format a list of cast numbers compactly with
-collapsed ranges (:func:`compact_cast_list`).
+expand a ``cast_numbers`` config spec to order-preserving pairs or ints
+(:func:`expand_cast_ids` / :func:`expand_cast_numbers`), format a single cast id as
+a zero-padded string (:func:`format_cast_id`), and format a list of cast numbers
+compactly with collapsed ranges (:func:`compact_cast_list`).
 """
 
 from __future__ import annotations
@@ -17,6 +18,16 @@ _CAST_ID_RE = re.compile(r"_(\d{3,})([a-z]*)(?=_|$)")
 def _is_plain_int(x: object) -> bool:
     """Return True for a real int, excluding bool (which subclasses int)."""
     return isinstance(x, int) and not isinstance(x, bool)
+
+
+def format_cast_id(cast_num: int, cast_suffix: str = "") -> str:
+    """Format a cast identity as a zero-padded id string, e.g. ``(10, "b") -> "010b"``.
+
+    The single formatter for the ``NNN``/``NNNb`` convention used in output
+    filenames (``cast_010b.html``), page labels, and cast pills.  Changing the
+    pad width or suffix rule here changes it everywhere.
+    """
+    return f"{cast_num:03d}{cast_suffix}"
 
 
 def cast_id_from_name(name: str) -> tuple[int, str] | None:

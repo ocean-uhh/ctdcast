@@ -14,9 +14,14 @@ from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
-from ctdcast.analysis.geometry import along_track_km
+from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
-from ctdcast.identity import cast_id_from_name, compact_cast_list, expand_cast_numbers
+from ctdcast.identity import (
+    cast_id_from_name,
+    compact_cast_list,
+    expand_cast_numbers,
+    format_cast_id,
+)
 from ctdcast.plotters import plots as _plots_mod
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _chrome as _tmpl
@@ -314,7 +319,6 @@ _SECTIONS_TEMPLATE = (
     {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
     <div><dt>Sections</dt><dd>{{ sections|length }}</dd></div>
     {% if casts_range %}<div><dt>Casts per section</dt><dd>{{ casts_range }}</dd></div>{% endif %}
-    {% if dist_range %}<div><dt>Distance range</dt><dd>{{ dist_range }}</dd></div>{% endif %}
   </dl>
 </div>
 
@@ -1151,7 +1155,6 @@ def _write_sections_list(
     sections = []
     sections_data: list[dict[str, Any]] = []
     _sec_n_casts_list: list[int] = []
-    _sec_dist_list: list[float] = []
     for name, cfg in sections_cfg.items():
         cast_nums = expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "sections" / f"section_{name}.html"
@@ -1172,6 +1175,20 @@ def _write_sections_list(
         if cast_pos:
             sec_lats = [cast_pos[c][0] for c in cast_nums if c in cast_pos]
             sec_lons = [cast_pos[c][1] for c in cast_nums if c in cast_pos]
+            # Match the section page's key_cast ordering so the sections-map
+            # polyline does not fold when the section is anchored to a distance
+            # origin. (The cruise-track map on index.html keeps occupation order.)
+            key_cfg = cfg.get("key_cast")
+            if key_cfg is not None and len(sec_lats) >= 2:
+                _key_nums = expand_cast_numbers([key_cfg])
+                _kn = _key_nums[0] if len(_key_nums) == 1 else None
+                if _kn in cast_pos:
+                    _kl, _ko = cast_pos[_kn]
+                    _order = np.argsort(
+                        distance_from_km(_kl, _ko, sec_lats, sec_lons), kind="stable"
+                    )
+                    sec_lats = [sec_lats[i] for i in _order]
+                    sec_lons = [sec_lons[i] for i in _order]
             if sec_lats:
                 sections_data.append(
                     {
@@ -1181,9 +1198,6 @@ def _write_sections_list(
                         "lons": sec_lons,
                     }
                 )
-                if len(sec_lats) >= 2:
-                    _km, _ = along_track_km(sec_lats, sec_lons)
-                    _sec_dist_list.append(float(_km[-1]))
 
     all_cast_lats = [v[0] for v in cast_pos.values()]
     all_cast_lons = [v[1] for v in cast_pos.values()]
@@ -1217,10 +1231,6 @@ def _write_sections_list(
     if _sec_n_casts_list:
         mn, mx = min(_sec_n_casts_list), max(_sec_n_casts_list)
         _casts_range = f"{mn}–{mx}" if mn != mx else str(mn)
-    _dist_range = ""
-    if _sec_dist_list:
-        mn_d, mx_d = min(_sec_dist_list), max(_sec_dist_list)
-        _dist_range = f"{mn_d:.0f}–{mx_d:.0f} km" if mn_d != mx_d else f"{mn_d:.0f} km"
 
     ctx: dict[str, Any] = {
         "cruise": cruise,
@@ -1229,7 +1239,6 @@ def _write_sections_list(
         "date_end": _date_end,
         "duration_days": _duration_days,
         "casts_range": _casts_range,
-        "dist_range": _dist_range,
         "sections": sections,
         "sections_map_b64": sections_map_b64,
         "ladcp_configured": ladcp_dir is not None,
@@ -1570,7 +1579,7 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         return {
             "cast_num": cast_num,
             "cast_suffix": cast_suffix,
-            "cast_num_str": f"{cast_num:03d}{cast_suffix}",
+            "cast_num_str": format_cast_id(cast_num, cast_suffix),
             "path": nc_path,
             "lat": lat,
             "lon": lon,

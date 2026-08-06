@@ -29,14 +29,12 @@ def distance_from_km(
     Used for ``key_cast`` section ordering: each cast's x-coordinate is its
     distance from the chosen key cast.  Uses ``gsw.distance`` per pair so the
     convention matches :func:`along_track_km`.  A position identical to the key
-    yields 0.
+    yields 0.  A ``gsw.distance`` failure is allowed to propagate rather than
+    being silently substituted with a fabricated distance.
     """
     out = np.empty(len(lats), dtype=float)
     for i, (la, lo) in enumerate(zip(lats, lons)):
-        try:
-            out[i] = float(gsw.distance([key_lon, lo], [key_lat, la])[0]) / 1000.0
-        except Exception:  # noqa: BLE001
-            out[i] = np.nan
+        out[i] = float(gsw.distance([key_lon, lo], [key_lat, la])[0]) / 1000.0
     return out
 
 

@@ -29,7 +29,7 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_teos10
 from ctdcast.cast.stage2 import find_cast_end, find_soak_end
-from ctdcast.identity import cast_id_from_name
+from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
@@ -343,7 +343,7 @@ def generate_station_page(
     """
     cast_num, cast_suffix = _cast_id_from_path(nc_path)
     if cast_num_str is None:
-        cast_num_str = f"{cast_num:03d}{cast_suffix}"
+        cast_num_str = format_cast_id(cast_num, cast_suffix)
     out_file = out_dir / "stations" / f"cast_{cast_num_str}.html"
     if out_file.exists() and not force:
         return out_file
@@ -432,7 +432,7 @@ def generate_station_page(
         ladcp_path = (
             found
             if found is not None
-            else ladcp_dir / f"{cast_num:03d}{cast_suffix}.mat"
+            else ladcp_dir / f"{format_cast_id(cast_num, cast_suffix)}.mat"
         )
     ladcp_exists = ladcp_path is not None and ladcp_path.exists()
 
