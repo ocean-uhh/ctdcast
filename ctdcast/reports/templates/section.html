@@ -120,20 +120,26 @@
 {% if card.id == "ladcp" %}
 {{ section_panel_group(card.panels, section_slot, "", "") }}
 {% elif card.panels | length == 1 %}
+{% if card.panels[0].b64 %}
 <div class="fig-row">
   <figure class="{{ section_slot }}">
     <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
   </figure>
 </div>
+{% endif %}
 {% else %}
+{% if card.panels | selectattr("b64") | list %}
 <div class="fig-row">
   {% for panel in card.panels %}
+  {% if panel.b64 %}
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
+  {% endif %}
   {% endfor %}
 </div>
+{% endif %}
 {% endif %}
 {% endfor %}
 

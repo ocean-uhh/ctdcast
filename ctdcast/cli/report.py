@@ -163,7 +163,10 @@ def run(args: argparse.Namespace) -> int:
     data = cfg.get("data") or {}
     output = cfg.get("output") or {}
     display = cfg.get("display") or {}
-    cruise_info: dict = cfg.get("cruise_info") or {}
+    # _cruise_info_cfg: local dict for map-bounds lookup (always a dict).
+    # cruise_info: passed to report() — None tells report() to use YAML block.
+    _cruise_info_cfg: dict = cfg.get("cruise_info") or {}
+    cruise_info: dict | None = cfg.get("cruise_info") or None
 
     nc_dir_raw = data.get("nc_dir")
     out_dir_raw = output.get("dir")
@@ -252,7 +255,7 @@ def run(args: argparse.Namespace) -> int:
         ("MAP_LON_MIN", "map_lon_min"),
         ("MAP_LON_MAX", "map_lon_max"),
     ]:
-        val = cruise_info.get(key)
+        val = _cruise_info_cfg.get(key)
         if val is not None:
             setattr(plots, attr, float(val))
 

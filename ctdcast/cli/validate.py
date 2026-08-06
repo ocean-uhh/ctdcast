@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from ctdcast.config.loader import SectionsConfig
 from ctdcast.identity import expand_cast_ids, format_cast_id
 
 
@@ -138,9 +139,8 @@ def run(args: argparse.Namespace) -> int:
             errors.append(f"data.section_yaml not found: {section_yaml}")
         else:
             try:
-                with open(section_yaml) as f:
-                    yaml_data = yaml.safe_load(f) or {}
-                sections_cfg = yaml_data.get("sections", {})
+                _sec_cfg = SectionsConfig.from_yaml(section_yaml)
+                sections_cfg = _sec_cfg.sections
                 print(f"  section_yaml: {len(sections_cfg)} section(s) defined")
             except yaml.YAMLError as exc:
                 errors.append(f"section_yaml parse error: {exc}")

@@ -399,19 +399,21 @@ def generate_leaflet_map(
     out_dir: Path,
     force: bool = False,
     ship_track_nc: Path | None = None,
+    cruise: str = "UNK",
 ) -> Path | None:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
 
     Always regenerates (force is accepted for API symmetry but ignored).
     If ``ship_track_nc`` is provided and the file exists, the ship track is
     loaded, subsampled, and rendered as a grey polyline behind cast markers.
+    ``cruise`` should be the resolved cruise identifier (from ``cruise_info`` or
+    the NC file attribute); it is displayed in the map page title.
     Returns the output path, or None if all_meta is empty.
     """
     if not all_meta:
         return None
 
     out_file = out_dir / "leaflet.html"
-    cruise = str(all_meta[0].get("cruise", "cruise"))
 
     lats = [
         float(m["lat"])
