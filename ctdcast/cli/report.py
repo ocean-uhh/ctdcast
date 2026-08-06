@@ -1,4 +1,4 @@
-"""``ctdreport report`` — generate HTML report pages."""
+"""``ctdcast report`` — generate HTML report pages."""
 
 from __future__ import annotations
 
@@ -12,23 +12,23 @@ import yaml
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``ctdreport report``."""
+    """Build the argument parser for ``ctdcast report``."""
     _epilog = """
 If any page-type flag is given, only those page types are built.
 With no flags, all page types are built (respecting config generate.* values).
 
 Examples:
   # Smart update — only rebuild pages whose source is newer than the output:
-  ctdreport report config.yaml
+  ctdcast report config.yaml
 
   # Force-rebuild everything:
-  ctdreport report config.yaml --force
+  ctdcast report config.yaml --force
 
   # Quick check of a single new cast:
-  ctdreport report config.yaml --cast 42
+  ctdcast report config.yaml --cast 42
 
   # Rebuild section and time series pages after adding 10 new casts:
-  ctdreport report config.yaml --sections --timeseries --force
+  ctdcast report config.yaml --sections --timeseries --force
 """
     kwargs: dict = {
         "description": "Generate HTML report pages from a config file.",
@@ -43,7 +43,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="ctdreport report", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdcast report", **kwargs)
 
     parser.add_argument("config", type=Path, help="Path to config YAML file.")
 
@@ -151,7 +151,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``ctdreport report``."""
+    """Execute ``ctdcast report``."""
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
@@ -236,7 +236,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     # Set module-level plot options before any figure code is imported.
-    from ctdreport import plots
+    from ctdcast import plots
 
     if gebco_path:
         plots.GEBCO_PATH = gebco_path
@@ -263,9 +263,9 @@ def run(args: argparse.Namespace) -> int:
         k: v for k, v in (display.get("vmax") or {}).items() if v is not None
     }
 
-    from ctdreport.index import generate_ctd_report
+    from ctdcast.reports._index import report
 
-    generate_ctd_report(
+    report(
         nc_dir,
         out_dir,
         profiles_path=profiles_path,

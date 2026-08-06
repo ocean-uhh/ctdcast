@@ -1,4 +1,4 @@
-"""``ctdreport run`` — convert profiles and generate HTML reports in one step."""
+"""``ctdcast run`` — convert profiles and generate HTML reports in one step."""
 
 from __future__ import annotations
 
@@ -10,23 +10,23 @@ from pathlib import Path
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``ctdreport run``."""
+    """Build the argument parser for ``ctdcast run``."""
     _epilog = """
-Equivalent to running ``ctdreport convert`` then ``ctdreport report`` in sequence.
+Equivalent to running ``ctdcast convert`` then ``ctdcast report`` in sequence.
 The convert step builds (or skips) profiles.nc; the report step generates HTML.
 
 Examples:
   # Full smart update (profiles if stale, then reports if stale):
-  ctdreport run config.yaml
+  ctdcast run config.yaml
 
   # Rebuild everything:
-  ctdreport run config.yaml --force
+  ctdcast run config.yaml --force
 
   # Include CNV → nc conversion (requires an external backend):
-  ctdreport run config.yaml --ctd
+  ctdcast run config.yaml --ctd
 
   # Regenerate one cast page without rebuilding profiles:
-  ctdreport run config.yaml --cast 42
+  ctdcast run config.yaml --cast 42
 """
     kwargs: dict = {
         "description": "Convert profiles and generate HTML reports in one step.",
@@ -41,7 +41,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="ctdreport run", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdcast run", **kwargs)
 
     parser.add_argument("config", type=Path, help="Path to config YAML file.")
 
@@ -93,7 +93,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``ctdreport run``."""
+    """Execute ``ctdcast run``."""
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)

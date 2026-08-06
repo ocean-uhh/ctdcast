@@ -1,11 +1,11 @@
-"""CLI entry point for ctdreport."""
+"""CLI entry point for ctdcast."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
-from ctdreport._version import __version__
+from ctdcast._version import __version__
 
 from . import convert as _convert
 from . import draft as _draft
@@ -16,24 +16,24 @@ from . import validate as _validate
 
 _EPILOG = """
 Typical mid-cruise workflow:
-  ctdreport init                           write a template config.yaml in the current dir
-  ctdreport validate config.yaml           check paths and data before the first run
-  ctdreport run config.yaml                build profiles.nc then generate all HTML pages
-  ctdreport run config.yaml --cast 42      quickly check a single new cast
-  ctdreport run config.yaml --force        rebuild everything (e.g. end of cruise)
+  ctdcast init                           write a template config.yaml in the current dir
+  ctdcast validate config.yaml           check paths and data before the first run
+  ctdcast run config.yaml                build profiles.nc then generate all HTML pages
+  ctdcast run config.yaml --cast 42      quickly check a single new cast
+  ctdcast run config.yaml --force        rebuild everything (e.g. end of cruise)
 
 Or as separate steps:
-  ctdreport convert config.yaml            build profiles.nc (without generating HTML)
-  ctdreport report config.yaml             generate HTML from existing profiles.nc
+  ctdcast convert config.yaml            build profiles.nc (without generating HTML)
+  ctdcast report config.yaml             generate HTML from existing profiles.nc
 
-Run 'ctdreport <command> --help' for command-specific options.
+Run 'ctdcast <command> --help' for command-specific options.
 """
 
 
 def main() -> None:
-    """Run the ctdreport command-line interface."""
+    """Run the ctdcast command-line interface."""
     parser = argparse.ArgumentParser(
-        prog="ctdreport",
+        prog="ctdcast",
         description=(
             "Generate self-contained HTML reports from shipboard CTD and LADCP data."
         ),

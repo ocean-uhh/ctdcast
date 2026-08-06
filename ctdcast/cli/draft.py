@@ -1,4 +1,4 @@
-"""``ctdreport draft`` — quick-look CNV → HTML pipeline with no config file required."""
+"""``ctdcast draft`` — quick-look CNV → HTML pipeline with no config file required."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
-    """Build the argument parser for ``ctdreport draft``."""
+    """Build the argument parser for ``ctdcast draft``."""
     _epilog = """
 Converts raw CNV files to netCDF via seasenselib, then generates station pages,
 an index page, and a Leaflet map — all in one step with no config.yaml required.
@@ -18,25 +18,25 @@ Sections and time-series pages are skipped (they need a compiled profiles.nc).
 
 Examples:
   # Quick look at today's casts:
-  ctdreport draft /data/cnv/ ./draft_out/
+  ctdcast draft /data/cnv/ ./draft_out/
 
   # Keep the intermediate netCDF files for later use:
-  ctdreport draft /data/cnv/ ./draft_out/ --keep-nc ./nc_out/
+  ctdcast draft /data/cnv/ ./draft_out/ --keep-nc ./nc_out/
 
   # Tag the report with a cruise ID:
-  ctdreport draft /data/cnv/ --cruise odb2026
+  ctdcast draft /data/cnv/ --cruise odb2026
 
   # See what would happen without writing anything:
-  ctdreport draft /data/cnv/ --dry-run
+  ctdcast draft /data/cnv/ --dry-run
 
   # Process only 1 Hz files (skip 24 Hz or other variants):
-  ctdreport draft /data/cnv/ --pattern "msm*1sec.cnv"
+  ctdcast draft /data/cnv/ --pattern "msm*1sec.cnv"
 
   # Exclude pre-soak and anomalous records by salinity bounds:
-  ctdreport draft /data/cnv/ --sal 30 36
+  ctdcast draft /data/cnv/ --sal 30 36
 
   # Auto-detect and strip the CTD soak (pump-on window + near-surface dip):
-  ctdreport draft /data/cnv/ --trim-soak
+  ctdcast draft /data/cnv/ --trim-soak
 """
     kwargs: dict = {
         "description": (
@@ -54,7 +54,7 @@ Examples:
         )
         parser.set_defaults(func=run)
     else:
-        parser = argparse.ArgumentParser(prog="ctdreport draft", **kwargs)
+        parser = argparse.ArgumentParser(prog="ctdcast draft", **kwargs)
 
     parser.add_argument(
         "cnv_dir",
@@ -133,7 +133,7 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``ctdreport draft``."""
+    """Execute ``ctdcast draft``."""
     import tempfile
 
     cnv_dir: Path = args.cnv_dir
@@ -167,13 +167,13 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     try:
-        from ctdreport.converters import get_ctd_backend
+        from ctdcast.converters import get_ctd_backend
 
         get_ctd_backend("seasenselib")
     except ImportError as exc:
         print(
             f"Error: {exc}\n"
-            "Install seasenselib to use ctdreport draft:\n"
+            "Install seasenselib to use ctdcast draft:\n"
             "  pip install seasenselib",
             file=sys.stderr,
         )
@@ -213,7 +213,7 @@ def run(args: argparse.Namespace) -> int:
             trim_soak,
         )
 
-    with tempfile.TemporaryDirectory(prefix="ctdreport_draft_") as _tmp:
+    with tempfile.TemporaryDirectory(prefix="ctdcast_draft_") as _tmp:
         nc_dir = Path(_tmp)
         return _run_pipeline(
             cnv_dir,
@@ -240,8 +240,8 @@ def _run_pipeline(
     trim_soak: bool = False,
 ) -> int:
     """Convert CNV files then generate HTML; return exit code."""
-    from ctdreport.converters import build_profiles, convert_ctd_files
-    from ctdreport.index import generate_ctd_report
+    from ctdcast.converters import build_profiles, convert_ctd_files
+    from ctdcast.reports._index import report
 
     n = convert_ctd_files(
         cnv_dir, nc_dir, backend="seasenselib", force=force, pattern=pattern
@@ -264,7 +264,7 @@ def _run_pipeline(
         print(f"  profiles: skipped ({exc})")
         profiles_path = None
 
-    generate_ctd_report(
+    report(
         nc_dir,
         out_dir,
         profiles_path=profiles_path,

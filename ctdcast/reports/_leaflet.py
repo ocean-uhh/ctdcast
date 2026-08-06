@@ -1,10 +1,10 @@
 """Tier-2: self-contained interactive cruise map using Leaflet.js.
 
-Leaflet JS/CSS (~160 KB) is bundled in ``ctdreport/leaflet/`` as package
+Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/leaflet/`` as package
 data so the generated ``leaflet.html`` requires no internet access at either
 generation or view time.
 
-If ``ctdreport.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
+If ``ctdcast.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
 (standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,
 6000 m).
@@ -30,10 +30,10 @@ from typing import Any
 import numpy as np
 from jinja2 import Environment
 
-from ctdreport import _templates as _tmpl
-from ctdreport._version import __version__ as _VERSION
-from ctdreport.analysis import _load_gebco
-from ctdreport.section import _expand_cast_numbers
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.bathymetry import load_gebco
+from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._section import _expand_cast_numbers
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"
@@ -253,7 +253,7 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctdreport import plots
+    from ctdcast import plots
 
     if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
         return None, None, None
@@ -261,7 +261,7 @@ def _make_gebco_layers(
     try:
         import matplotlib.pyplot as plt
 
-        _gebco = _load_gebco(
+        _gebco = load_gebco(
             lat_min,
             lat_max,
             lon_min,
@@ -272,7 +272,7 @@ def _make_gebco_layers(
         if _gebco is None:
             return None, None, None
         lon_vals, lat_vals, depth = _gebco
-        # _load_gebco stores depth positive-down; downstream code uses elevation (+up).
+        # load_gebco stores depth positive-down; downstream code uses elevation (+up).
         elev = (-depth).astype(np.float32)
 
         if elev.size == 0:

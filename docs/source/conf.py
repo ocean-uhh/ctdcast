@@ -4,7 +4,7 @@ import datetime
 
 year = datetime.datetime.now(tz=datetime.timezone.utc).date().year
 
-project = "ctdreport"
+project = "ctdcast"
 author = "Eleanor Frajka-Williams"
 copyright = f"{year}, {author}"
 release = "v0.1.0"

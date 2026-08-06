@@ -3,7 +3,7 @@
 import pytest
 from conftest import FIXTURES_NC
 
-from ctdreport.converters import build_profiles
+from ctdcast.converters import build_profiles
 
 
 def test_build_profiles_writes_file(tmp_path):
