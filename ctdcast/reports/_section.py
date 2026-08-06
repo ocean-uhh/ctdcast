@@ -17,12 +17,12 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.geometry import along_track_km, section_orientation
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
-from ctdcast.identity import compact_cast_list
+from ctdcast.identity import compact_cast_list, expand_cast_ids
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports import _chrome as _tmpl
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
     Panel,
     _make_ladcp_section_b64,
@@ -276,8 +276,8 @@ def generate_section_page(
         return out_file
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    cast_nums = _expand_cast_numbers(section_cfg.get("cast_numbers", []))
-    if not cast_nums:
+    cast_ids = expand_cast_ids(section_cfg.get("cast_numbers", []))
+    if not cast_ids:
         return None
 
     if not profiles_path.exists():
@@ -290,10 +290,17 @@ def generate_section_page(
     except Exception:  # noqa: BLE001
         return None
 
-    # Filter to downcast profiles for this section
+    # Filter to downcast profiles for this section. Identity is the
+    # (cast_number, cast_suffix) pair, so a plain cast and its lettered sibling
+    # are selected independently.
     all_cast_nums = ds_all["cast_number"].values
+    all_suffix = profile_cast_suffixes(ds_all)
     is_down = ds_all["cast_type"].values == "down"
-    mask = np.isin(all_cast_nums, cast_nums) & is_down
+    wanted = set(cast_ids)
+    in_section = np.array(
+        [(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix)]
+    )
+    mask = in_section & is_down
     if not mask.any():
         ds_all.close()
         return None
@@ -308,6 +315,7 @@ def generate_section_page(
     lats = ds_sec["latitude"].values.tolist()
     lons = ds_sec["longitude"].values.tolist()
     sec_cast_nums = ds_sec["cast_number"].values.tolist()
+    sec_cast_suffix = profile_cast_suffixes(ds_sec).tolist()
 
     # Along-track distance in km; flip to geographic convention (west-left / north-left)
     x_vals, x_label = along_track_km(lats, lons)
@@ -329,6 +337,9 @@ def generate_section_page(
     )
     dist_str = f"{x_vals.max():.1f} km" if len(x_vals) > 1 else "—"
     cast_nums_int = [int(c) for c in sec_cast_nums]
+    # Suffixed ids ("010", "010b") for links/pills so a sibling event points at
+    # its own cast page.
+    cast_id_strs = [f"{int(n):03d}{s}" for n, s in zip(sec_cast_nums, sec_cast_suffix)]
     vmin = vmin_override or {}
     vmax = vmax_override or {}
 
@@ -454,7 +465,7 @@ def generate_section_page(
         "end_pos": end_pos,
         "start_time": start_time,
         "end_time": end_time,
-        "cast_nums": [f"{n:03d}" for n in cast_nums_int],
+        "cast_nums": cast_id_strs,
         "fig_map_b64": _make_section_map_b64(
             lats, lons, cast_nums_int, title=section_name
         ),
@@ -478,14 +489,3 @@ def generate_section_page(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _expand_cast_numbers(cast_numbers: list) -> list[int]:
-    """Expand a cast_numbers list (ranges + individuals) to a flat list of ints."""
-    result: list[int] = []
-    for item in cast_numbers:
-        if isinstance(item, list) and len(item) == 2:
-            result.extend(range(int(item[0]), int(item[1]) + 1))
-        else:
-            result.append(int(item))
-    return sorted(set(result))

@@ -11,7 +11,6 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
-import re
 import sys
 import warnings
 from pathlib import Path
@@ -20,12 +19,10 @@ from typing import Protocol
 import numpy as np
 import xarray as xr
 
+from ctdcast.identity import cast_id_from_name
+
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
-
-# Finds the last 3+-digit group in a stem, with optional letter suffix.
-# Handles mixsed2_004, mixsed2_004b, mixsed2_004_b, msm_142_1_001_1sec, etc.
-_CAST_STEM_RE = re.compile(r"_(\d{3,})([a-z]*)(?=_|$)")
 
 
 class CtdBackend(Protocol):
@@ -208,25 +205,23 @@ def convert_ctd_files(
 # ---------------------------------------------------------------------------
 
 
-def _select_cast_files(nc_dir: Path) -> list[tuple[int, Path]]:
-    """Return sorted (cast_num, path) pairs from nc_dir, preferring _b variants.
+def _select_cast_files(nc_dir: Path) -> list[tuple[int, str, Path]]:
+    """Return sorted ``(cast_num, cast_suffix, path)`` triples, one per distinct cast.
 
     Recognises any ``*.nc`` file whose stem contains a 3+-digit cast number.
     The **last** such group is taken as the cast number, so cruise/leg numbers
     earlier in the name (e.g. ``142`` in ``msm_142_1_001_1sec``) are ignored.
-    When both a plain and a ``_b`` variant exist for the same cast, ``_b`` wins.
+    A plain cast ``NNN`` and its lettered sibling ``NNNb``/``NNN_b`` are **distinct
+    events**, so both are returned; identity is the ``(number, suffix)`` pair.
+    If the same pair appears in more than one file, the last in sorted order wins.
     """
-    chosen: dict[int, Path] = {}
+    chosen: dict[tuple[int, str], Path] = {}
     for p in sorted(nc_dir.glob("*.nc")):
-        matches = _CAST_STEM_RE.findall(p.stem)
-        if not matches:
+        _id = cast_id_from_name(p.stem)
+        if _id is None:
             continue
-        cast_num_str, cast_suffix = matches[-1]
-        cast_num = int(cast_num_str)
-        is_b = cast_suffix == "b"
-        if cast_num not in chosen or is_b:
-            chosen[cast_num] = p
-    return sorted(chosen.items())
+        chosen[_id] = p
+    return sorted((num, suffix, p) for (num, suffix), p in chosen.items())
 
 
 def _turnaround_index(pressure: np.ndarray) -> int:
@@ -319,14 +314,14 @@ def build_profiles(
 
     # Pass 1: determine global pressure range for the shared grid
     p_max_global = 0.0
-    for _, path in cast_list:
+    for _, _suffix, path in cast_list:
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
     p_grid = np.arange(1, int(p_max_global) + 1, dtype=np.float32)
 
     # Get variable names and cruise attr from the first file
-    ds0 = xr.open_dataset(cast_list[0][1], engine="netcdf4", decode_timedelta=False)
+    ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
     var_names = [v for v in ds0.data_vars if v not in _SKIP_VARS]
     cruise = ds0.attrs.get("cruise", "UNK")
     ds0.close()
@@ -341,6 +336,7 @@ def build_profiles(
     }
     n_prof_vals = np.full(n_profiles, np.nan, dtype=np.float64)
     cast_nums = np.full(n_profiles, -1, dtype=np.int32)
+    cast_suffixes: list[str] = []
     cast_types: list[str] = []
     lats = np.full(n_profiles, np.nan, dtype=np.float64)
     lons = np.full(n_profiles, np.nan, dtype=np.float64)
@@ -348,7 +344,7 @@ def build_profiles(
     time_ends = np.empty(n_profiles, dtype="datetime64[ns]")
 
     # Pass 2: split and bin each cast
-    for rank, (cast_num, path) in enumerate(cast_list, start=1):
+    for rank, (cast_num, cast_suffix, path) in enumerate(cast_list, start=1):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
@@ -368,6 +364,7 @@ def build_profiles(
 
             n_prof_vals[prof_idx] = rank + (0.0 if direction == "down" else 0.5)
             cast_nums[prof_idx] = cast_num
+            cast_suffixes.append(cast_suffix)
             cast_types.append(direction)
             lats[prof_idx] = lat
             lons[prof_idx] = lon
@@ -395,6 +392,17 @@ def build_profiles(
                 ["N_PROF"],
                 cast_nums,
                 {"long_name": "original cast number from filename"},
+            ),
+            "cast_suffix": (
+                ["N_PROF"],
+                np.array(cast_suffixes),
+                {
+                    "long_name": "cast letter suffix from filename",
+                    "comment": (
+                        "empty for a plain cast; a letter (e.g. 'b') marks a "
+                        "distinct sibling event at the same station number"
+                    ),
+                },
             ),
             "cast_type": (
                 ["N_PROF"],

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +29,7 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_teos10
 from ctdcast.cast.stage2 import find_cast_end, find_soak_end
+from ctdcast.identity import cast_id_from_name
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
@@ -486,41 +486,10 @@ def generate_station_page(
     return out_file
 
 
-def _extract_cast_id(stem: str) -> tuple[int, str] | None:
-    """Extract ``(cast_num, cast_suffix)`` from a NC file stem.
-
-    Handles directly-appended suffixes (``mixsed2_004b``) and
-    underscore-separated suffixes (``mixsed2_004_b``), while ignoring
-    cruise/leg numbers earlier in the stem (e.g. ``142`` in
-    ``msm_142_1_001_1sec``).  Returns ``None`` if no 3+-digit group is found.
-    """
-    matches = re.findall(r"_(\d{3,})([a-z]*)(?=_|$)", stem)
-    if not matches:
-        return None
-    cast_num_str, cast_suffix = matches[-1]
-    if not cast_suffix:
-        m = re.search(rf"_{re.escape(cast_num_str)}_([a-z]+)$", stem)
-        if m:
-            cast_suffix = m.group(1)
-    return int(cast_num_str), cast_suffix
-
-
 def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
     """Return ``(cast_num, cast_suffix)`` from a cast filename.
 
-    Uses the last 3+-digit group in the stem as the cast number so that
-    cruise/leg numbers earlier in the name (e.g. ``142`` in
-    ``msm_142_1_001_1sec.nc``) are not confused with cast numbers.
-    Letter suffixes directly appended (``004b``) or underscore-separated
-    (``004_b``) at the very end of the stem are both handled.
-    Returns ``(0, "")`` if no 3+-digit group is found.
+    Thin wrapper over :func:`ctdcast.identity.cast_id_from_name` that falls back
+    to ``(0, "")`` when the stem contains no 3+-digit cast number.
     """
-    return _extract_cast_id(nc_path.stem) or (0, "")
-
-
-def _cast_num_from_path(nc_path: Path) -> int:
-    """Return the integer cast number from a filename like ``mixsed2_042.nc``.
-
-    Deprecated: use :func:`_cast_id_from_path` to also retrieve the suffix.
-    """
-    return _cast_id_from_path(nc_path)[0]
+    return cast_id_from_name(nc_path.stem) or (0, "")
