@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set masthead_bg = "#8e44ad" %}
+
+{% block title %}Sections — {{ cruise }}{% endblock %}
+{% block masthead_type %}Section index{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Sections index */
+.sec-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.sec-card {
+  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
+  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.sec-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
+.sec-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+.sec-card .info { font-size: 0.82rem; color: #777; }
+.btn-card {
+  display: inline-block; background: #8e44ad; color: #fff;
+  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
+  font-size: 0.8rem; margin-top: 0.6rem;
+}
+.btn-card:hover { opacity: 0.85; }
+.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
+.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>Sections</dt><dd>{{ sections|length }}</dd></div>
+    {% if casts_range %}<div><dt>Casts per section</dt><dd>{{ casts_range }}</dd></div>{% endif %}
+  </dl>
+{% endblock %}
+
+{% block content %}
+{% if sections_map_b64 %}
+<h2 id="s-map">Section tracks</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ sections_map_b64 }}" alt="Sections overview map">
+  </figure>
+</div>
+{% endif %}
+
+<h2 id="s-list">Sections</h2>
+<div class="sec-grid">
+{% for sec in sections %}
+<div class="sec-card" style="border-left-color:{{ sec.color }}">
+  <h3>{{ sec.name }}</h3>
+  <div class="desc">{{ sec.description }}</div>
+  <div class="info">{{ sec.n_casts }} casts &nbsp;·&nbsp; {{ sec.cast_range }}</div>
+  {% if ladcp_configured %}
+  <div style="margin-top:0.4rem;">
+    {% if sec.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if sec.report_exists %}
+  <a class="btn-card" href="sections/section_{{ sec.name }}.html">view section →</a>
+  {% else %}
+  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+{{ js_top_links }}
+{% endblock %}

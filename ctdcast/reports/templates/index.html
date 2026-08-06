@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set masthead_bg = "#2980b9" %}
+
+{% block title %}CTD Report — {{ cruise }}{% endblock %}
+{% block masthead_type %}CTD Report{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if project %}<div><dt>Project</dt><dd>{{ project }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if n_days %}<div><dt>Duration</dt><dd>{{ n_days }} d</dd></div>{% endif %}
+    <div><dt>CTD casts</dt><dd>{{ n_casts }}</dd></div>
+    <div><dt>Sections</dt><dd>{{ n_sections }}</dd></div>
+    <div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block content %}
+<div class="jump-nav">
+  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
+  {% if physics_panels | selectattr("b64") | list %}<a href="#s-hydro">Hydrography</a>{% endif %}
+  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
+  {% if ts_b64 %}<a href="#s-ts">T–S diagram</a>{% endif %}
+</div>
+
+{% if fig_map_b64 %}
+<h2 id="s-map">Map</h2>
+<div class="fig-row" style="justify-content:center;">
+  <figure class="slot-half">
+    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
+  </figure>
+</div>
+{% endif %}
+
+{% if physics_panels | selectattr("b64") | list %}
+<h2 id="s-hydro">Hydrography</h2>
+{% for panel in physics_panels %}{% if panel.b64 %}
+<p class="note">{{ panel.title }}</p>
+<div class="fig-row">
+  <figure class="slot-full">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
+
+{% if biogeo_panels | selectattr("b64") | list %}
+<h2 id="s-biogeo">Biogeochemistry</h2>
+{% for panel in biogeo_panels %}{% if panel.b64 %}
+<p class="note">{{ panel.title }}</p>
+<div class="fig-row">
+  <figure class="slot-full">
+    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+  </figure>
+</div>
+{% endif %}{% endfor %}
+{% endif %}
+
+{% if ts_b64 %}
+<h2 id="s-ts">T-S diagram</h2>
+<p class="note">All downcast profiles</p>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">
+  </figure>
+</div>
+{% endif %}
+
+{{ js_top_links }}
+{% endblock %}

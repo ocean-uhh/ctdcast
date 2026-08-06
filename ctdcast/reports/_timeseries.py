@@ -16,14 +16,14 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
-from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._chrome import EXTRA_CARD_ORDER
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
     Panel,
@@ -52,161 +52,6 @@ _TIMESERIES_BIOGEO_VARS: list[tuple[str, str, str]] = [
 # ---------------------------------------------------------------------------
 # HTML template
 # ---------------------------------------------------------------------------
-
-_TIMESERIES_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ ts_name }} — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Timeseries page */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.25rem; font-size: 0.85rem;
-}
-.breadcrumb a { color: var(--ocean); text-decoration: none; }
-.breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
-.cast-pill {
-  display: inline-block; background: #4a6fa5; color: #fff;
-  padding: 0.2rem 0.6rem; border-radius: 999px;
-  font-size: 0.78rem; text-decoration: none; margin: 0.1rem 0.05rem;
-}
-.cast-pill:hover { opacity: 0.85; }
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="topbar">
-  <nav class="breadcrumb">
-    <a href="../index.html">Index</a>
-    <span class="sep">›</span>
-    <a href="../timeseries.html">Timeseries</a>
-    <span class="sep">›</span>
-    <span>{{ ts_name }}</span>
-  </nav>
-  <div class="nav-btns">
-    {% if prev_name %}<a class="btn-nav" href="timeseries_{{ prev_name }}.html">← {{ prev_name }}</a>{% endif %}
-    {% if next_name %}<a class="btn-nav" href="timeseries_{{ next_name }}.html">{{ next_name }} →</a>{% endif %}
-  </div>
-</div>
-
-<div class="masthead" style="background:#27ae60;">
-  <div class="masthead-header">
-    <h1>{{ ts_name }}</h1>
-    <span class="masthead-type">Timeseries</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="../index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="../station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
-    <a href="../sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
-    <a href="../timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60;opacity:0.55">Timeseries</a>
-    <a href="../leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    <div><dt>Ship</dt><dd>{{ ship }}</dd></div>
-    <div><dt>CTD casts</dt><dd>{{ n_casts }}</dd></div>
-    <div><dt>Start</dt><dd>{{ time_start_str }}</dd></div>
-    <div><dt>End</dt><dd>{{ time_end_str }}</dd></div>
-    <div><dt>Duration</dt><dd>{{ duration_str }}</dd></div>
-  </dl>
-</div>
-
-<div class="jump-nav">
-  {% if fig_location_b64 %}<a href="#s-map">Map</a>{% endif %}
-  {% if physics_panels | selectattr("b64") | list %}<a href="#s-physics">Hydrography</a>{% endif %}
-  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
-  {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
-</div>
-
-<div style="margin-bottom:1rem;">
-  {% for cn in cast_nums %}
-  <a class="cast-pill" href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
-  {% endfor %}
-</div>
-
-{% macro ts_panel_group(panels, slot, anchor, heading) %}
-{% if panels | selectattr("b64") | list %}
-{% if heading %}<h2 id="{{ anchor }}">{{ heading }}</h2>{% endif %}
-{% if slot == "slot-third" %}
-<div class="fig-row">
-  {% for panel in panels %}{% if panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% elif slot == "slot-half" %}
-{% for row in panels | batch(2, None) %}
-<div class="fig-row">
-  {% for panel in row %}{% if panel and panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% endfor %}
-{% else %}
-{% for panel in panels %}{% if panel.b64 %}
-<div class="fig-row">
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-{% endif %}
-{% endmacro %}
-
-{% if fig_location_b64 %}
-<h2 id="s-map">Map</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map">
-  </figure>
-</div>
-{% endif %}
-
-{{ ts_panel_group(physics_panels, ts_slot, "s-physics", "Hydrography") }}
-{{ ts_panel_group(biogeo_panels, ts_slot, "s-biogeo", "Biogeochemistry") }}
-
-{% if not physics_panels and not biogeo_panels %}
-<p style="color:#888">No data available for these casts.</p>
-{% endif %}
-
-{% for card in extra_cards %}
-<h2 id="s-{{ card.id }}">{{ card.title }}</h2>
-{% if card.id == "ts" %}
-<div class="fig-row">
-  {% for panel in card.panels %}{% if panel.b64 %}
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% else %}
-{{ ts_panel_group(card.panels, ts_slot, "", "") }}
-{% endif %}
-{% endfor %}
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
-
 
 # ---------------------------------------------------------------------------
 # Public function
@@ -451,7 +296,7 @@ def generate_timeseries_page(
         if _ts_diagram_b64
         else None,
     }
-    extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
+    extra_cards = [_extra_raw[k] for k in EXTRA_CARD_ORDER if _extra_raw.get(k)]
 
     ctx: dict[str, Any] = {
         "ts_name": ts_name,
@@ -476,8 +321,14 @@ def generate_timeseries_page(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
-    env = Environment(autoescape=True)
-    html = env.from_string(_TIMESERIES_TEMPLATE).render(**ctx)
+    html = get_template("timeseries_page.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="../",
+        nav_current="timeseries",
+        masthead_bg="#27ae60",
+    )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()
     return out_file

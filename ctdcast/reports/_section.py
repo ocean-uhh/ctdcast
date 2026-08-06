@@ -8,7 +8,6 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import (
@@ -24,8 +23,9 @@ from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
-from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._chrome import EXTRA_CARD_ORDER
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
     Panel,
@@ -56,166 +56,6 @@ _BIOGEO_VARS: list[tuple[str, str, str]] = [
 # ---------------------------------------------------------------------------
 # HTML template
 # ---------------------------------------------------------------------------
-
-_SECTION_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ section_name }} — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Section page */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.25rem; font-size: 0.85rem;
-}
-.breadcrumb a { color: var(--ocean); text-decoration: none; }
-.breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
-.cast-pill {
-  display: inline-block; background: #4a6fa5; color: #fff;
-  padding: 0.2rem 0.6rem; border-radius: 999px;
-  font-size: 0.78rem; text-decoration: none; margin: 0.1rem 0.05rem;
-}
-.cast-pill:hover { opacity: 0.85; }
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="topbar">
-  <nav class="breadcrumb">
-    <a href="../index.html">Index</a>
-    <span class="sep">›</span>
-    <a href="../sections.html">Sections</a>
-    <span class="sep">›</span>
-    <span>{{ section_name }}</span>
-  </nav>
-  <div class="nav-btns">
-    {% if prev_name %}<a class="btn-nav" href="section_{{ prev_name }}.html">← {{ prev_name }}</a>{% endif %}
-    {% if next_name %}<a class="btn-nav" href="section_{{ next_name }}.html">{{ next_name }} →</a>{% endif %}
-  </div>
-</div>
-
-<div class="masthead" style="background:#8e44ad;">
-  <div class="masthead-header">
-    <h1>{{ section_name }}</h1>
-    <span class="masthead-type">Section</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="../index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="../station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
-    <a href="../sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad;opacity:0.55">Sections</a>
-    <a href="../timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
-    <a href="../leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    <div><dt>Ship</dt><dd>{{ ship }}</dd></div>
-    <div><dt>Description</dt><dd>{{ section_description }}</dd></div>
-    <div><dt>CTD casts</dt><dd>{{ cast_list_str }}</dd></div>
-    <div><dt>Distance</dt><dd>{{ dist_str }}</dd></div>
-    <div><dt>Max depth</dt><dd>{{ p_max_str }}</dd></div>
-    <div><dt>Start position</dt><dd>{{ start_pos }}</dd></div>
-    <div><dt>Start time</dt><dd>{{ start_time }}</dd></div>
-    <div><dt>End position</dt><dd>{{ end_pos }}</dd></div>
-    <div><dt>End time</dt><dd>{{ end_time }}</dd></div>
-  </dl>
-</div>
-
-<div class="jump-nav">
-  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
-  {% if physics_panels | selectattr("b64") | list %}<a href="#s-physics">Hydrography</a>{% endif %}
-  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
-  {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
-</div>
-
-<div style="margin-bottom:1rem;">
-  {% for cn in cast_nums %}
-  <a class="cast-pill" href="../stations/cast_{{ cn }}.html">{{ cn }}</a>
-  {% endfor %}
-</div>
-
-{% if fig_map_b64 %}
-<h2 id="s-map">Map</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Section map">
-  </figure>
-</div>
-{% endif %}
-
-{% macro section_panel_group(panels, slot, anchor, heading) %}
-{% if panels | selectattr("b64") | list %}
-{% if heading %}<h2 id="{{ anchor }}">{{ heading }}</h2>{% endif %}
-{% if slot == "slot-third" %}
-<div class="fig-row">
-  {% for panel in panels %}{% if panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.short }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% elif slot == "slot-half" %}
-{% for row in panels | batch(2, None) %}
-<div class="fig-row">
-  {% for panel in row %}{% if panel and panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.short }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% endfor %}
-{% else %}
-{% for panel in panels %}{% if panel.b64 %}
-<div class="fig-row">
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-{% endif %}
-{% endmacro %}
-
-{{ section_panel_group(physics_panels, section_slot, "s-physics", "Hydrography") }}
-{{ section_panel_group(biogeo_panels, section_slot, "s-biogeo", "Biogeochemistry") }}
-
-{% for card in extra_cards %}
-<h2 id="s-{{ card.id }}">{{ card.title }}</h2>
-{% if card.id == "ladcp" %}
-{{ section_panel_group(card.panels, section_slot, "", "") }}
-{% elif card.panels | length == 1 %}
-<div class="fig-row">
-  <figure class="{{ section_slot }}">
-    <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
-  </figure>
-</div>
-{% else %}
-<div class="fig-row">
-  {% for panel in card.panels %}
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endfor %}
-</div>
-{% endif %}
-{% endfor %}
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
-
 
 # ---------------------------------------------------------------------------
 # Public function
@@ -504,7 +344,7 @@ def generate_section_page(
         if any(p.b64 for p in _ts_panels_raw)
         else None,
     }
-    extra_cards = [_extra_raw[k] for k in _tmpl.EXTRA_CARD_ORDER if _extra_raw.get(k)]
+    extra_cards = [_extra_raw[k] for k in EXTRA_CARD_ORDER if _extra_raw.get(k)]
 
     ctx: dict[str, Any] = {
         "section_name": section_name,
@@ -533,8 +373,14 @@ def generate_section_page(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
-    env = Environment(autoescape=True)
-    html = env.from_string(_SECTION_TEMPLATE).render(**ctx)
+    html = get_template("section.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="../",
+        nav_current="sections",
+        masthead_bg="#8e44ad",
+    )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()
     return out_file

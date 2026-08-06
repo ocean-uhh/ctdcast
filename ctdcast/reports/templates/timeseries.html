@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% set masthead_bg = "#27ae60" %}
+
+{% block title %}Timeseries — {{ cruise }}{% endblock %}
+{% block masthead_type %}Timeseries index{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Timeseries index */
+.ts-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.ts-card {
+  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
+  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.ts-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
+.ts-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+.ts-card .info { font-size: 0.82rem; color: #777; }
+.btn-card {
+  display: inline-block; background: #27ae60; color: #fff;
+  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
+  font-size: 0.8rem; margin-top: 0.6rem;
+}
+.btn-card:hover { opacity: 0.85; }
+.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
+.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>Timeseries groups</dt><dd>{{ timeseries|length }}</dd></div>
+    {% if ts_casts_range %}<div><dt>Casts per group</dt><dd>{{ ts_casts_range }}</dd></div>{% endif %}
+    {% if ts_dur_range %}<div><dt>Duration range</dt><dd>{{ ts_dur_range }}</dd></div>{% endif %}
+  </dl>
+{% endblock %}
+
+{% block content %}
+{% if timeseries_map_b64 %}
+<h2 id="s-map">Timeseries locations</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
+  </figure>
+</div>
+{% endif %}
+
+<h2 id="s-list">Timeseries groups</h2>
+<div class="ts-grid">
+{% for ts in timeseries %}
+<div class="ts-card" style="border-left-color:{{ ts.color }}">
+  <h3>{{ ts.name }}</h3>
+  <div class="desc">{{ ts.description }}</div>
+  <div class="info">{{ ts.n_casts }} casts &nbsp;·&nbsp; {{ ts.cast_range }}</div>
+  {% if ladcp_configured %}
+  <div style="margin-top:0.4rem;">
+    {% if ts.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if ts.report_exists %}
+  <a class="btn-card" href="timeseries/timeseries_{{ ts.name }}.html">view timeseries →</a>
+  {% else %}
+  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
+  {% endif %}
+</div>
+{% endfor %}
+{% if not timeseries %}
+<p style="color:#888">No timeseries groups configured.</p>
+{% endif %}
+</div>
+
+{{ js_top_links }}
+{% endblock %}

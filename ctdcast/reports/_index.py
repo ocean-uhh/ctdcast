@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 import xarray as xr
 import yaml
-from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
@@ -24,9 +23,9 @@ from ctdcast.identity import (
 )
 from ctdcast.plotters import plots as _plots_mod
 from ctdcast.readers.ladcp import find_ladcp_file
-from ctdcast.reports import _chrome as _tmpl
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._env import get_template
 from ctdcast.reports._plots import (
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
@@ -36,327 +35,6 @@ from ctdcast.reports._plots import (
 )
 from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
-
-# ---------------------------------------------------------------------------
-# HTML templates
-# ---------------------------------------------------------------------------
-
-_INDEX_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CTD Report — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="masthead" style="background:#2980b9;">
-  <div class="masthead-header">
-    <h1>{{ cruise }}</h1>
-    <span class="masthead-type">CTD Report</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9;opacity:0.55">Summary</a>
-    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
-    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
-    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
-    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
-    {% if project %}<div><dt>Project</dt><dd>{{ project }}</dd></div>{% endif %}
-    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
-    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
-    {% if n_days %}<div><dt>Duration</dt><dd>{{ n_days }} d</dd></div>{% endif %}
-    <div><dt>CTD casts</dt><dd>{{ n_casts }}</dd></div>
-    <div><dt>Sections</dt><dd>{{ n_sections }}</dd></div>
-    <div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>
-  </dl>
-</div>
-
-<div class="jump-nav">
-  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
-  {% if physics_panels | selectattr("b64") | list %}<a href="#s-hydro">Hydrography</a>{% endif %}
-  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
-  {% if ts_b64 %}<a href="#s-ts">T–S diagram</a>{% endif %}
-</div>
-
-{% if fig_map_b64 %}
-<h2 id="s-map">Map</h2>
-<div class="fig-row" style="justify-content:center;">
-  <figure class="slot-half">
-    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
-  </figure>
-</div>
-{% endif %}
-
-{% if physics_panels | selectattr("b64") | list %}
-<h2 id="s-hydro">Hydrography</h2>
-{% for panel in physics_panels %}{% if panel.b64 %}
-<p class="note">{{ panel.title }}</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-
-{% if biogeo_panels | selectattr("b64") | list %}
-<h2 id="s-biogeo">Biogeochemistry</h2>
-{% for panel in biogeo_panels %}{% if panel.b64 %}
-<p class="note">{{ panel.title }}</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-
-{% if ts_b64 %}
-<h2 id="s-ts">T-S diagram</h2>
-<p class="note">All downcast profiles</p>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">
-  </figure>
-</div>
-{% endif %}
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
-
-
-_STATIONS_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Station index — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Stations index */
-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; overflow-x: auto; display: block; }
-th {
-  background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
-  text-align: left; position: sticky; top: 0; z-index: 1;
-}
-td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; vertical-align: middle; }
-tbody tr { cursor: pointer; }
-tbody tr:hover td { background: var(--seafoam); }
-  .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
-  .cast-link:hover { text-decoration: underline; }
-  .filename { font-family: monospace; font-size: 0.82rem; color: #444; }
-  .depth-pill {
-    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
-    font-size: 0.78rem; font-weight: 600; white-space: nowrap;
-  }
-  .pill-btn {
-    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
-    font-size: 0.75rem; text-decoration: none; white-space: nowrap; margin: 0.1rem 0.05rem;
-  }
-  .pill-profile { background: #1a3a5c; color: #fff; }
-  .pill-section { background: #2c6e49; color: #fff; }
-  .pill-btn:hover { opacity: 0.85; }
-  .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-  .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="masthead" style="background:#1a3a5c;">
-  <div class="masthead-header">
-    <h1>{{ cruise }}</h1>
-    <span class="masthead-type">Station index</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c;opacity:0.55">Stations</a>
-    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
-    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
-    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
-    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
-    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
-    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
-    <div><dt>CTD casts</dt><dd>{{ stations|length }}</dd></div>
-    {% if max_depth_str %}<div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>{% endif %}
-  </dl>
-</div>
-
-{% if cruise_map_b64 %}
-<h2 id="s-map">Map</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
-  </figure>
-</div>
-{% endif %}
-
-<h2 id="s-table">Casts</h2>
-<table>
-    <thead>
-      <tr>
-        <th>Cast</th>
-        <th>File</th>
-        <th>Start (UTC)</th>
-        <th>Latitude</th>
-        <th>Longitude</th>
-        <th>Depth</th>
-        {% if ladcp_configured %}<th>LADCP</th>{% endif %}
-        <th>Links</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for s in stations %}
-      <tr onclick="window.location='stations/cast_{{ s.cast_num }}.html'">
-        <td><a class="cast-link" href="stations/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a></td>
-        <td class="filename">{{ s.filename }}</td>
-        <td>{{ s.time_start_str }}</td>
-        <td>{{ s.lat_str }}</td>
-        <td>{{ s.lon_str }}</td>
-        <td><span class="depth-pill" style="background:{{ s.depth_bg }};color:{{ s.depth_fg }};">{{ s.max_depth_str }} dbar</span></td>
-        {% if ladcp_configured %}
-        <td>{% if s.ladcp_has %}<span class="ladcp-yes">✓</span>{% else %}<span class="ladcp-no">–</span>{% endif %}</td>
-        {% endif %}
-        <td>
-          <a class="pill-btn pill-profile" href="stations/cast_{{ s.cast_num }}.html">Profile</a>
-          {% for sec in s.sections %}
-          <a class="pill-btn" style="background:{{ sec.color }};color:#fff;" href="sections/section_{{ sec.name }}.html">{{ sec.name }}</a>
-          {% endfor %}
-          {% for ts in s.timeseries %}
-          <a class="pill-btn" style="background:{{ ts.color }};color:#fff;" href="timeseries/timeseries_{{ ts.name }}.html">{{ ts.name }}</a>
-          {% endfor %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
-
-
-_SECTIONS_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sections — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Sections index */
-.sec-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem; margin-bottom: 1.5rem;
-}
-.sec-card {
-  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
-  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.sec-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
-.sec-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
-.sec-card .info { font-size: 0.82rem; color: #777; }
-.btn-card {
-  display: inline-block; background: #8e44ad; color: #fff;
-  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
-  font-size: 0.8rem; margin-top: 0.6rem;
-}
-.btn-card:hover { opacity: 0.85; }
-.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="masthead" style="background:#8e44ad;">
-  <div class="masthead-header">
-    <h1>{{ cruise }}</h1>
-    <span class="masthead-type">Section index</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
-    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad;opacity:0.55">Sections</a>
-    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
-    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
-    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
-    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
-    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
-    <div><dt>Sections</dt><dd>{{ sections|length }}</dd></div>
-    {% if casts_range %}<div><dt>Casts per section</dt><dd>{{ casts_range }}</dd></div>{% endif %}
-  </dl>
-</div>
-
-{% if sections_map_b64 %}
-<h2 id="s-map">Section tracks</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ sections_map_b64 }}" alt="Sections overview map">
-  </figure>
-</div>
-{% endif %}
-
-<h2 id="s-list">Sections</h2>
-<div class="sec-grid">
-{% for sec in sections %}
-<div class="sec-card" style="border-left-color:{{ sec.color }}">
-  <h3>{{ sec.name }}</h3>
-  <div class="desc">{{ sec.description }}</div>
-  <div class="info">{{ sec.n_casts }} casts &nbsp;·&nbsp; {{ sec.cast_range }}</div>
-  {% if ladcp_configured %}
-  <div style="margin-top:0.4rem;">
-    {% if sec.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
-  </div>
-  {% endif %}
-  {% if sec.report_exists %}
-  <a class="btn-card" href="sections/section_{{ sec.name }}.html">view section →</a>
-  {% else %}
-  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
-  {% endif %}
-</div>
-{% endfor %}
-</div>
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
-
 
 # ---------------------------------------------------------------------------
 # Public entry point
@@ -970,8 +648,13 @@ def _write_index(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    env = Environment(autoescape=True)
-    html = env.from_string(_INDEX_TEMPLATE).render(**ctx)
+    html = get_template("index.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="",
+        nav_current="summary",
+    )
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
 
@@ -1118,8 +801,13 @@ def _write_stations_list(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    env = Environment(autoescape=True)
-    html = env.from_string(_STATIONS_TEMPLATE).render(**ctx)
+    html = get_template("station_index.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="",
+        nav_current="stations",
+    )
     (out_dir / "station_index.html").write_text(html, encoding="utf-8")
 
 
@@ -1245,110 +933,14 @@ def _write_sections_list(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    env = Environment(autoescape=True)
-    html = env.from_string(_SECTIONS_TEMPLATE).render(**ctx)
+    html = get_template("sections.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="",
+        nav_current="sections",
+    )
     (out_dir / "sections.html").write_text(html, encoding="utf-8")
-
-
-_TIMESERIES_LIST_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Timeseries — {{ cruise }}</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Timeseries index */
-.ts-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem; margin-bottom: 1.5rem;
-}
-.ts-card {
-  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
-  padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.ts-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
-.ts-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
-.ts-card .info { font-size: 0.82rem; color: #777; }
-.btn-card {
-  display: inline-block; background: #27ae60; color: #fff;
-  padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
-  font-size: 0.8rem; margin-top: 0.6rem;
-}
-.btn-card:hover { opacity: 0.85; }
-.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="masthead" style="background:#27ae60;">
-  <div class="masthead-header">
-    <h1>{{ cruise }}</h1>
-    <span class="masthead-type">Timeseries index</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c">Stations</a>
-    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
-    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60;opacity:0.55">Timeseries</a>
-    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
-    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
-    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
-    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
-    <div><dt>Timeseries groups</dt><dd>{{ timeseries|length }}</dd></div>
-    {% if ts_casts_range %}<div><dt>Casts per group</dt><dd>{{ ts_casts_range }}</dd></div>{% endif %}
-    {% if ts_dur_range %}<div><dt>Duration range</dt><dd>{{ ts_dur_range }}</dd></div>{% endif %}
-  </dl>
-</div>
-
-{% if timeseries_map_b64 %}
-<h2 id="s-map">Timeseries locations</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
-  </figure>
-</div>
-{% endif %}
-
-<h2 id="s-list">Timeseries groups</h2>
-<div class="ts-grid">
-{% for ts in timeseries %}
-<div class="ts-card" style="border-left-color:{{ ts.color }}">
-  <h3>{{ ts.name }}</h3>
-  <div class="desc">{{ ts.description }}</div>
-  <div class="info">{{ ts.n_casts }} casts &nbsp;·&nbsp; {{ ts.cast_range }}</div>
-  {% if ladcp_configured %}
-  <div style="margin-top:0.4rem;">
-    {% if ts.ladcp_has %}<span class="ladcp-yes">✓ LADCP</span>{% else %}<span class="ladcp-no">– LADCP</span>{% endif %}
-  </div>
-  {% endif %}
-  {% if ts.report_exists %}
-  <a class="btn-card" href="timeseries/timeseries_{{ ts.name }}.html">view timeseries →</a>
-  {% else %}
-  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
-  {% endif %}
-</div>
-{% endfor %}
-{% if not timeseries %}
-<p style="color:#888">No timeseries groups configured.</p>
-{% endif %}
-</div>
-
-"""
-    + _tmpl.FOOTER_TAIL
-    + _JS_TOP_LINKS
-)
 
 
 def _write_timeseries_list(
@@ -1474,8 +1066,13 @@ def _write_timeseries_list(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    env = Environment(autoescape=True)
-    html = env.from_string(_TIMESERIES_LIST_TEMPLATE).render(**ctx)
+    html = get_template("timeseries.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="",
+        nav_current="timeseries",
+    )
     (out_dir / "timeseries.html").write_text(html, encoding="utf-8")
 
 

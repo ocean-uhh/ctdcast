@@ -8,9 +8,8 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-from jinja2 import Environment
 
-from ctdcast.reports import _chrome as _tmpl
+from ctdcast.reports._env import get_template
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -51,228 +50,6 @@ from ctdcast.reports._plots import (
 # ---------------------------------------------------------------------------
 # HTML template
 # ---------------------------------------------------------------------------
-
-_STATION_TEMPLATE = (
-    """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cast {{ cast_num }} — {{ cruise }} CTD</title>
-<style>
-"""
-    + SHARED_CSS
-    + """\
-/* Station page */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.25rem; font-size: 0.85rem;
-}
-.breadcrumb a { color: var(--ocean); text-decoration: none; }
-.breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
-.cast-note {
-  background: #f0f0f0; border-left: 4px solid #888; border-radius: 4px;
-  padding: 0.5rem 1rem; margin-bottom: 0.5rem;
-  font-size: 0.87rem; color: #333;
-}
-.trim-note {
-  background: #f0f0f0; border-left: 4px solid #888; border-radius: 4px;
-  padding: 0.5rem 1rem; margin-bottom: 0.5rem;
-  font-size: 0.87rem; color: #333;
-}
-details.sensor-details {
-  margin-bottom: 0.75rem; font-size: 0.82rem; color: var(--muted);
-}
-details.sensor-details summary { cursor: pointer; user-select: none; padding: 0.2rem 0; }
-.sensor-table { border-collapse: collapse; font-size: 0.8rem; margin-top: 0.4rem; }
-.sensor-table th, .sensor-table td {
-  padding: 0.2rem 0.75rem 0.2rem 0; text-align: left; vertical-align: top;
-}
-.sensor-table th {
-  color: var(--ocean); font-weight: 600; border-bottom: 1px solid var(--seafoam);
-}
-</style>
-</head>
-<body>
-<div id="top"></div>
-
-<div class="topbar">
-  <nav class="breadcrumb">
-    <a href="../index.html">Index</a>
-    <span class="sep">›</span>
-    <a href="../station_index.html">Stations</a>
-    <span class="sep">›</span>
-    <span>Cast {{ cast_num }}</span>
-  </nav>
-  <div class="nav-btns">
-    {% if next_num %}<a class="btn-nav" href="cast_{{ next_num }}.html">← {{ next_num }}</a>{% endif %}
-    {% if prev_num %}<a class="btn-nav" href="cast_{{ prev_num }}.html">{{ prev_num }} →</a>{% endif %}
-  </div>
-</div>
-
-<div class="masthead" style="background:#1a3a5c;">
-  <div class="masthead-header">
-    <h1>Cast {{ cast_num }}</h1>
-    <span class="masthead-type">Station</span>
-  </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="../index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="../station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c;opacity:0.55">Stations</a>
-    <a href="../sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
-    <a href="../timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
-    <a href="../leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
-  </div>
-  <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
-    <div><dt>Ship</dt><dd>{{ ship }}</dd></div>
-    <div><dt>Latitude</dt><dd>{{ lat_str }}</dd></div>
-    <div><dt>Longitude</dt><dd>{{ lon_str }}</dd></div>
-    <div><dt>Start</dt><dd>{{ datetime_str }}</dd></div>
-    <div><dt>End</dt><dd>{{ time_end_str }}</dd></div>
-    <div><dt>Duration</dt><dd>{{ duration_str }}</dd></div>
-    <div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>
-    {% if ladcp_configured and not ladcp_available %}
-    <div><dt>LADCP</dt><dd style="color:#f5a623;">⚠ not processed</dd></div>
-    {% endif %}
-  </dl>
-</div>
-
-{% if trim_note %}<div class="trim-note">⚠ {{ trim_note }}</div>{% endif %}
-{% for note in cast_notes %}<p class="cast-note">⚠ {{ note }}</p>{% endfor %}
-
-<div class="jump-nav">
-  <a href="#s-overview">Overview</a>
-  <a href="#s-profiles">Hydrography</a>
-  <a href="#s-aux">Biogeochemistry</a>
-  <a href="#s-ts">T–S diagram</a>
-  <a href="#s-stability">Stability</a>
-  <a href="#s-diagnostics">Diagnostics</a>
-  {% if fig_ladcp_bottomtrack_b64 %}<a href="#s-ladcp">Velocity ▼</a>{% endif %}
-</div>
-
-<h2 id="s-overview">Overview</h2>
-<p class="note">CT/SA/σ₀{% if ladcp_configured %} + LADCP U/V{% endif %} profiles; station location; T–S down vs up</p>
-<div class="fig-row">
-  {% if fig_ts_density_b64 %}
-  <figure class="slot-three-fifths">
-    <img src="data:image/png;base64,{{ fig_ts_density_b64 }}" alt="CT/SA/σ₀{% if ladcp_configured %} + LADCP U/V{% endif %} profiles">
-  </figure>
-  {% endif %}
-  <div class="fig-col slot-two-fifths">
-    {% if fig_station_map_b64 %}
-    <figure>
-      <img src="data:image/png;base64,{{ fig_station_map_b64 }}" alt="Station map">
-    </figure>
-    {% endif %}
-    {% if fig_ts_updown_b64 %}
-    <figure>
-      <img src="data:image/png;base64,{{ fig_ts_updown_b64 }}" alt="T–S down vs up">
-    </figure>
-    {% endif %}
-  </div>
-</div>
-
-{% if fig_ct_sa_sigma0_b64 %}
-<h2 id="s-profiles">Hydrography</h2>
-<p class="note">CT · SA · σ₀ vs pressure — downcast in colour, upcast in grey</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ fig_ct_sa_sigma0_b64 }}" alt="CT · SA · σ₀ profiles">
-  </figure>
-</div>
-{% endif %}
-
-{% if fig_aux_b64 %}
-<h2 id="s-aux">Biogeochemistry</h2>
-<p class="note">O₂ saturation · fluorescence · turbidity</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ fig_aux_b64 }}" alt="Auxiliary profiles">
-  </figure>
-</div>
-{% endif %}
-
-{% if fig_ts_diagram_b64 %}
-<h2 id="s-ts">T–S diagram</h2>
-<p class="note">Coloured by O₂ saturation — downcast only</p>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_ts_diagram_b64 }}" alt="T-S diagram">
-    <figcaption>Contours: σ₀ (kg m⁻³) — potential density referenced to surface</figcaption>
-  </figure>
-</div>
-{% endif %}
-
-{% if fig_stability_b64 %}
-<h2 id="s-stability">Stability</h2>
-<p class="note">N² and Turner angle — downcast only</p>
-<div class="fig-row">
-  <figure class="slot-twothirds">
-    <img src="data:image/png;base64,{{ fig_stability_b64 }}" alt="Stability">
-  </figure>
-</div>
-{% endif %}
-
-{% if fig_sensor_diff_b64 or fig_pressure_time_b64 or fig_updown_diff_b64 %}
-<h2 id="s-diagnostics">Diagnostics</h2>
-<div class="fig-row">
-  {% if fig_pressure_time_b64 %}
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_pressure_time_b64 }}" alt="Pressure vs time">
-    <figcaption>Cast trajectory: pressure vs elapsed time</figcaption>
-  </figure>
-  {% endif %}
-  {% if fig_sensor_diff_b64 %}
-  <figure class="slot-twothirds">
-    <img src="data:image/png;base64,{{ fig_sensor_diff_b64 }}" alt="Sensor 1 − Sensor 2">
-    <figcaption>T₁−T₂, S₁−S₂: primary minus secondary sensor. Ideal: scatter around zero with ±0.01 spread.</figcaption>
-  </figure>
-  {% endif %}
-</div>
-{% if fig_updown_diff_b64 %}
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ fig_updown_diff_b64 }}" alt="Down − up cast differences">
-    <figcaption>ΔCT, ΔSA, Δσ₀ downcast minus upcast on 1-dbar grid — measures hysteresis from pump lag or sensor response time</figcaption>
-  </figure>
-</div>
-{% endif %}
-{% endif %}
-
-{% if fig_ladcp_bottomtrack_b64 %}
-<h2 id="s-ladcp">Velocity (bottom track)</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_ladcp_bottomtrack_b64 }}" alt="LADCP bottom track">
-  </figure>
-</div>
-{% endif %}
-
-{% if sensor_info %}
-<h2 id="s-sensors">Sensors</h2>
-<details class="sensor-details">
-  <summary>{{ sensor_info | length }} sensor(s)</summary>
-  <table class="sensor-table">
-    <tr><th>Sensor</th><th>S/N</th><th>Cal date</th></tr>
-    {% for s in sensor_info %}
-    <tr>
-      <td>{{ s.sensor_type }}</td>
-      <td>{{ s.serial_number }}</td>
-      <td>{{ s.calibration_date }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</details>
-{% endif %}
-
-"""
-    + _JS_TOP_LINKS
-    + _tmpl.FOOTER_TAIL
-)
-
 
 # ---------------------------------------------------------------------------
 # Public function
@@ -479,8 +256,14 @@ def generate_station_page(
         else None,
     }
 
-    env = Environment(autoescape=True)
-    html = env.from_string(_STATION_TEMPLATE).render(**ctx)
+    html = get_template("cast.html").render(
+        **ctx,
+        css=SHARED_CSS,
+        js_top_links=_JS_TOP_LINKS,
+        nav_prefix="../",
+        nav_current="stations",
+        masthead_bg="#1a3a5c",
+    )
     out_file.write_text(html, encoding="utf-8")
     ds.close()
     return out_file
