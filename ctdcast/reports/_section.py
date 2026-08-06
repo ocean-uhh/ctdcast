@@ -17,7 +17,7 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.geometry import along_track_km, section_orientation
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
-from ctdcast.identity import compact_cast_list
+from ctdcast.identity import compact_cast_list, expand_cast_numbers
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports import _chrome as _tmpl
@@ -276,7 +276,7 @@ def generate_section_page(
         return out_file
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    cast_nums = _expand_cast_numbers(section_cfg.get("cast_numbers", []))
+    cast_nums = expand_cast_numbers(section_cfg.get("cast_numbers", []))
     if not cast_nums:
         return None
 
@@ -478,14 +478,3 @@ def generate_section_page(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _expand_cast_numbers(cast_numbers: list) -> list[int]:
-    """Expand a cast_numbers list (ranges + individuals) to a flat list of ints."""
-    result: list[int] = []
-    for item in cast_numbers:
-        if isinstance(item, list) and len(item) == 2:
-            result.extend(range(int(item[0]), int(item[1]) + 1))
-        else:
-            result.append(int(item))
-    return sorted(set(result))

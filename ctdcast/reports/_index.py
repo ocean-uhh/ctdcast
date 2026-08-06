@@ -16,11 +16,11 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.geometry import along_track_km
 from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
-from ctdcast.identity import compact_cast_list
+from ctdcast.identity import cast_id_from_name, compact_cast_list, expand_cast_numbers
 from ctdcast.plotters import plots as _plots_mod
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _chrome as _tmpl
-from ctdcast.reports._cast import _extract_cast_id, generate_station_page
+from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._plots import (
     _make_all_sections_map_b64,
@@ -29,7 +29,7 @@ from ctdcast.reports._plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctdcast.reports._section import _expand_cast_numbers, generate_section_page
+from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
@@ -599,7 +599,7 @@ def report(
                     f" [html: {_html_mtime_str},"
                     f" nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
                 )
-            print(f"  station cast_{meta['cast_num_str']}: {_status}")
+            print(f"  cast {meta['cast_num_str']}: {_status}")
         print(f"  [stations: {perf_counter() - _t0:.1f}s]")
 
     sections_cfg: dict[str, Any] = yaml_data.get("sections", {})
@@ -620,7 +620,7 @@ def report(
             )
             _sec_note = ""
             if _sec_skip and ladcp_dir is not None:
-                _sec_casts = _expand_cast_numbers(sec_cfg.get("cast_numbers", []))
+                _sec_casts = expand_cast_numbers(sec_cfg.get("cast_numbers", []))
                 if (
                     any(
                         find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
@@ -677,7 +677,7 @@ def report(
             )
             _ts_note = ""
             if _ts_skip and ladcp_dir is not None:
-                _ts_casts = _expand_cast_numbers(ts_cfg.get("cast_numbers", []))
+                _ts_casts = expand_cast_numbers(ts_cfg.get("cast_numbers", []))
                 if (
                     any(
                         find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
@@ -847,7 +847,7 @@ def _write_index(
     # cast_groups: color → set of cast numbers (for overview panel top markers)
     cast_groups: dict[str, list[int]] = {}
     for grp_name, grp_cfg in _all_groups.items():
-        cast_nums_grp = _expand_cast_numbers(grp_cfg.get("cast_numbers", []))
+        cast_nums_grp = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         color = grp_cfg.get("color", "#888888")
         if cast_nums_grp:
             cast_groups[color] = cast_groups.get(color, []) + list(cast_nums_grp)
@@ -859,7 +859,7 @@ def _write_index(
         if np.isfinite(m.get("lat", np.nan))
     }
     for grp_name, grp_cfg in sections_cfg.items():
-        cast_nums_grp = _expand_cast_numbers(grp_cfg.get("cast_numbers", []))
+        cast_nums_grp = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         lats_g = [cast_pos[cn][0] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         lons_g = [cast_pos[cn][1] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         if lats_g:
@@ -872,7 +872,7 @@ def _write_index(
                 }
             )
     for grp_name, grp_cfg in _ts_cfg.items():
-        cast_nums_grp = _expand_cast_numbers(grp_cfg.get("cast_numbers", []))
+        cast_nums_grp = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         lats_g = [cast_pos[cn][0] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         lons_g = [cast_pos[cn][1] for cn in sorted(cast_nums_grp) if cn in cast_pos]
         if lats_g:
@@ -1036,7 +1036,7 @@ def _write_stations_list(
     }
     cast_to_sections: dict[int, list[str]] = {}
     for sec_name, sec_cfg in (sections_cfg or {}).items():
-        for cn in _expand_cast_numbers(sec_cfg.get("cast_numbers", [])):
+        for cn in expand_cast_numbers(sec_cfg.get("cast_numbers", [])):
             cast_to_sections.setdefault(cn, []).append(sec_name)
 
     # Timeseries name → YAML color; cast → timeseries names
@@ -1046,7 +1046,7 @@ def _write_stations_list(
     }
     cast_to_timeseries: dict[int, list[str]] = {}
     for ts_name, ts_cfg in (timeseries_cfg or {}).items():
-        for cn in _expand_cast_numbers(ts_cfg.get("cast_numbers", [])):
+        for cn in expand_cast_numbers(ts_cfg.get("cast_numbers", [])):
             cast_to_timeseries.setdefault(cn, []).append(ts_name)
 
     all_depths = [
@@ -1153,7 +1153,7 @@ def _write_sections_list(
     _sec_n_casts_list: list[int] = []
     _sec_dist_list: list[float] = []
     for name, cfg in sections_cfg.items():
-        cast_nums = _expand_cast_numbers(cfg.get("cast_numbers", []))
+        cast_nums = expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "sections" / f"section_{name}.html"
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
         n_casts_sec = len(cast_nums)
@@ -1351,8 +1351,6 @@ def _write_timeseries_list(
     cruise_info: dict[str, Any] | None = None,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
-    from ctdcast.reports._section import _expand_cast_numbers
-
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
         for f in ladcp_dir.glob("*.mat"):
@@ -1380,7 +1378,7 @@ def _write_timeseries_list(
     _ts_n_casts_list: list[int] = []
     _ts_dur_h_list: list[float] = []
     for name, cfg in timeseries_cfg.items():
-        cast_nums = _expand_cast_numbers(cfg.get("cast_numbers", []))
+        cast_nums = expand_cast_numbers(cfg.get("cast_numbers", []))
         report_path = out_dir / "timeseries" / f"timeseries_{name}.html"
         color = cfg.get("color", "#7b2d8b")
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
@@ -1541,7 +1539,7 @@ def _select_cast_files(nc_dir: Path) -> list[Path]:
     """
     results: list[tuple[int, str, Path]] = []
     for p in sorted(nc_dir.glob("*.nc")):
-        _id = _extract_cast_id(p.stem)
+        _id = cast_id_from_name(p.stem)
         if _id is None:
             continue
         results.append((_id[0], _id[1], p))
@@ -1553,7 +1551,7 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
-        _id = _extract_cast_id(nc_path.stem)
+        _id = cast_id_from_name(nc_path.stem)
         if _id is None:
             return None
         cast_num, cast_suffix = _id

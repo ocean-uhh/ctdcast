@@ -11,7 +11,6 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
-import re
 import sys
 import warnings
 from pathlib import Path
@@ -20,12 +19,10 @@ from typing import Protocol
 import numpy as np
 import xarray as xr
 
+from ctdcast.identity import cast_id_from_name
+
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
-
-# Finds the last 3+-digit group in a stem, with optional letter suffix.
-# Handles mixsed2_004, mixsed2_004b, mixsed2_004_b, msm_142_1_001_1sec, etc.
-_CAST_STEM_RE = re.compile(r"_(\d{3,})([a-z]*)(?=_|$)")
 
 
 class CtdBackend(Protocol):
@@ -218,11 +215,10 @@ def _select_cast_files(nc_dir: Path) -> list[tuple[int, Path]]:
     """
     chosen: dict[int, Path] = {}
     for p in sorted(nc_dir.glob("*.nc")):
-        matches = _CAST_STEM_RE.findall(p.stem)
-        if not matches:
+        _id = cast_id_from_name(p.stem)
+        if _id is None:
             continue
-        cast_num_str, cast_suffix = matches[-1]
-        cast_num = int(cast_num_str)
+        cast_num, cast_suffix = _id
         is_b = cast_suffix == "b"
         if cast_num not in chosen or is_b:
             chosen[cast_num] = p

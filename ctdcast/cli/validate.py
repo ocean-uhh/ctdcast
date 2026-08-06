@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from ctdcast.identity import expand_cast_numbers
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -165,11 +167,29 @@ def run(args: argparse.Namespace) -> int:
             except OSError as exc:
                 errors.append(f"output.dir not writable: {exc}")
 
+    # Validate each section's cast_numbers: expand once, reporting a malformed
+    # spec as an error and duplicated casts as a warning (duplicates are allowed
+    # but will double-plot).
+    expanded_sections: dict[str, list[int]] = {}
+    for sec_name, sec_cfg in sections_cfg.items():
+        try:
+            expanded = expand_cast_numbers(sec_cfg.get("cast_numbers", []))
+        except ValueError as exc:
+            errors.append(f"section '{sec_name}': invalid cast_numbers: {exc}")
+            continue
+        expanded_sections[sec_name] = expanded
+        dupes = sorted({n for n in expanded if expanded.count(n) > 1})
+        if dupes:
+            warnings.append(
+                f"section '{sec_name}': duplicate cast(s) {dupes} listed more "
+                "than once (will be plotted more than once)"
+            )
+
     # Strict: verify cast numbers in section_yaml exist in nc_dir
-    if args.strict and nc_dir and nc_dir.exists() and sections_cfg:
+    if args.strict and nc_dir and nc_dir.exists() and expanded_sections:
         nc_cast_nums = _parse_cast_nums_from_dir(nc_dir)
-        for sec_name, sec_cfg in sections_cfg.items():
-            for cast_num in _expand_cast_numbers(sec_cfg.get("cast_numbers", [])):
+        for sec_name, cast_list in expanded_sections.items():
+            for cast_num in cast_list:
                 if cast_num not in nc_cast_nums:
                     errors.append(
                         f"section '{sec_name}': cast {cast_num} not found in {nc_dir}"
@@ -201,14 +221,3 @@ def _parse_cast_nums_from_dir(nc_dir: Path) -> set[int]:
             except ValueError:
                 pass
     return nums
-
-
-def _expand_cast_numbers(cast_numbers: list) -> list[int]:
-    """Expand cast_numbers spec (list of ints and [start, end] ranges) to a flat list."""
-    result: list[int] = []
-    for item in cast_numbers:
-        if isinstance(item, int):
-            result.append(item)
-        elif isinstance(item, list) and len(item) == 2:
-            result.extend(range(item[0], item[1] + 1))
-    return result

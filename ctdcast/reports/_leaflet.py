@@ -32,8 +32,8 @@ from jinja2 import Environment
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import load_gebco
+from ctdcast.identity import expand_cast_numbers
 from ctdcast.reports import _chrome as _tmpl
-from ctdcast.reports._section import _expand_cast_numbers
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"
@@ -607,14 +607,14 @@ def generate_leaflet_map(
     cast_section: dict[int, tuple[str, str]] = {}
     for sname, scfg in sections_cfg.items():
         color = str(scfg.get("color", _SECTION_COLOR_DEFAULT))
-        for cn in _expand_cast_numbers(scfg.get("cast_numbers", [])):
+        for cn in expand_cast_numbers(scfg.get("cast_numbers", [])):
             if cn not in cast_section:
                 cast_section[cn] = (sname, color)
 
     sections_data: list[dict[str, Any]] = []
     for sname, scfg in sections_cfg.items():
         color = str(scfg.get("color", _SECTION_COLOR_DEFAULT))
-        cast_nums = _expand_cast_numbers(scfg.get("cast_numbers", []))
+        cast_nums = expand_cast_numbers(scfg.get("cast_numbers", []))
         latlons: list[list[float]] = []
         for cn in cast_nums:
             if cn in meta_lookup:
