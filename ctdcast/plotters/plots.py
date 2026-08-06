@@ -32,6 +32,7 @@ from ctdcast.config.parameters import (
     _W_THREE_FIFTHS,
     _W_TWO_FIFTHS,
     _W_TWOTHIRDS,
+    TEOS10_SHORT,
     VAR_COLORS,
 )
 from ctdcast.readers.ladcp import read_ladcp
@@ -56,7 +57,11 @@ _GEBCO_RENDER_PAD: float = 0.5
 
 
 # Derived aliases used throughout this module.
-_TS_COLORS = [VAR_COLORS["CT"], VAR_COLORS["SA"], VAR_COLORS["sigma0"]]
+_TS_COLORS = [
+    VAR_COLORS["conservative_temperature"],
+    VAR_COLORS["absolute_salinity"],
+    VAR_COLORS["sigma0"],
+]
 _LADCP_U_COLOR: str = VAR_COLORS["U"]
 _LADCP_V_COLOR: str = VAR_COLORS["V"]
 
@@ -293,7 +298,7 @@ def _discrete_norm(
     unless overridden by *vmin*/*vmax*.  Includes the oxygen-specific fixed step
     and a guard against degenerate ranges.
     """
-    cmap_name = _VAR_CMAPS.get(var, "viridis")
+    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
     v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:
@@ -560,7 +565,7 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     p_down = ds_down["pressure"].values
     max_p = float(np.nanmax(p_down))
     for ax, (var, label) in zip(axes, available):
-        color = VAR_COLORS.get(var, "#000000")
+        color = VAR_COLORS.get(TEOS10_SHORT.get(var, var), "#000000")
         ax.plot(ds_down[var].values, p_down, color=color, label="downcast")
         if var in ds_up and len(ds_up["pressure"]) > 2:
             ax.plot(
@@ -602,7 +607,7 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
     max_p = float(np.nanmax(p_down))
 
     for ax, (var, label) in zip(axes, available):
-        color = VAR_COLORS.get(var, "#000000")
+        color = VAR_COLORS.get(TEOS10_SHORT.get(var, var), "#000000")
         d_vals = ds_down[var].values
         d_fin = d_vals[np.isfinite(d_vals)]
         ax.plot(d_vals, p_down, color=color, label="downcast")
@@ -854,7 +859,7 @@ def draw_section_fig(
         return None
 
     cmap, norm, bounds = _discrete_norm(d_fin, var, vmin, vmax)
-    cmap_name = _VAR_CMAPS.get(var, "viridis")
+    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
 
     dist = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 10.0
     p_max_data = float(p_trim[-1])
@@ -1319,7 +1324,7 @@ def draw_overview_panel_fig(
     if not len(d_fin):
         return None
 
-    cmap_name = _VAR_CMAPS.get(var, "viridis")
+    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
     v0 = vmin if vmin is not None else float(np.percentile(d_fin, 1))
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 99))
     if var == "oxygen_1":
@@ -1665,7 +1670,14 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     idx = 0
     if has_t:
         dt = ds["temperature_1"].values - ds["temperature_2"].values
-        axes[idx].plot(dt, p, ".", color=VAR_COLORS["CT"], markersize=1.5, linewidth=0)
+        axes[idx].plot(
+            dt,
+            p,
+            ".",
+            color=VAR_COLORS["conservative_temperature"],
+            markersize=1.5,
+            linewidth=0,
+        )
         axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
         axes[idx].set_xlabel("T₁ − T₂ (°C)")
         axes[idx].set_xlim(-0.01, 0.01)
@@ -1674,7 +1686,12 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     if has_s:
         ds_diff = ds["salinity_1"].values - ds["salinity_2"].values
         axes[idx].plot(
-            ds_diff, p, ".", color=VAR_COLORS["SA"], markersize=1.5, linewidth=0
+            ds_diff,
+            p,
+            ".",
+            color=VAR_COLORS["absolute_salinity"],
+            markersize=1.5,
+            linewidth=0,
         )
         axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
         axes[idx].set_xlabel("S₁ − S₂ (PSU)")
