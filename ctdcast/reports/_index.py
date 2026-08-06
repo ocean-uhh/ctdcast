@@ -151,12 +151,14 @@ def report(
     )
 
     # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.
-    # None means "not provided" — use YAML block entirely.
-    # {} means "explicitly empty" — suppress YAML block (caller opted out).
+    # None  → not provided: use YAML block entirely.
+    # {}    → explicitly empty: suppress YAML block (caller opted out).
+    # {...} → caller-provided: merge YAML as base, caller's keys override.
     if cruise_info is None:
         cruise_info = _sections_cfg.cruise_info
-    else:
+    elif cruise_info:
         cruise_info = {**_sections_cfg.cruise_info, **cruise_info}
+    # else: cruise_info == {} → keep as-is, YAML block suppressed
 
     cast_files = _select_cast_files(nc_dir)
     if not cast_files:
