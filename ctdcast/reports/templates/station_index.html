@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% set masthead_bg = "#1a3a5c" %}
+
+{% block title %}Station index — {{ cruise }}{% endblock %}
+{% block masthead_type %}Station index{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Stations index */
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; overflow-x: auto; display: block; }
+th {
+  background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
+  text-align: left; position: sticky; top: 0; z-index: 1;
+}
+td { padding: 0.42rem 0.75rem; border-bottom: 1px solid #eee; vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--seafoam); }
+  .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
+  .cast-link:hover { text-decoration: underline; }
+  .filename { font-family: monospace; font-size: 0.82rem; color: #444; }
+  .depth-pill {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  }
+  .pill-btn {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.75rem; text-decoration: none; white-space: nowrap; margin: 0.1rem 0.05rem;
+  }
+  .pill-profile { background: #1a3a5c; color: #fff; }
+  .pill-section { background: #2c6e49; color: #fff; }
+  .pill-btn:hover { opacity: 0.85; }
+  .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
+  .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>
+    {% if ship %}<div><dt>Ship</dt><dd>{{ ship }}</dd></div>{% endif %}
+    {% if date_start %}<div><dt>Departure</dt><dd>{{ date_start }}</dd></div>{% endif %}
+    {% if date_end %}<div><dt>Arrival</dt><dd>{{ date_end }}</dd></div>{% endif %}
+    {% if duration_days %}<div><dt>Duration</dt><dd>{{ duration_days }} d</dd></div>{% endif %}
+    <div><dt>CTD casts</dt><dd>{{ stations|length }}</dd></div>
+    {% if max_depth_str %}<div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>{% endif %}
+  </dl>
+{% endblock %}
+
+{% block content %}
+{% if cruise_map_b64 %}
+<h2 id="s-map">Map</h2>
+<div class="fig-row">
+  <figure class="slot-third">
+    <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
+  </figure>
+</div>
+{% endif %}
+
+<h2 id="s-table">Casts</h2>
+<table>
+    <thead>
+      <tr>
+        <th>Cast</th>
+        <th>File</th>
+        <th>Start (UTC)</th>
+        <th>Latitude</th>
+        <th>Longitude</th>
+        <th>Depth</th>
+        {% if ladcp_configured %}<th>LADCP</th>{% endif %}
+        <th>Links</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in stations %}
+      <tr onclick="window.location='stations/cast_{{ s.cast_num }}.html'">
+        <td><a class="cast-link" href="stations/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a></td>
+        <td class="filename">{{ s.filename }}</td>
+        <td>{{ s.time_start_str }}</td>
+        <td>{{ s.lat_str }}</td>
+        <td>{{ s.lon_str }}</td>
+        <td><span class="depth-pill" style="background:{{ s.depth_bg }};color:{{ s.depth_fg }};">{{ s.max_depth_str }} dbar</span></td>
+        {% if ladcp_configured %}
+        <td>{% if s.ladcp_has %}<span class="ladcp-yes">✓</span>{% else %}<span class="ladcp-no">–</span>{% endif %}</td>
+        {% endif %}
+        <td>
+          <a class="pill-btn pill-profile" href="stations/cast_{{ s.cast_num }}.html">Profile</a>
+          {% for sec in s.sections %}
+          <a class="pill-btn" style="background:{{ sec.color }};color:#fff;" href="sections/section_{{ sec.name }}.html">{{ sec.name }}</a>
+          {% endfor %}
+          {% for ts in s.timeseries %}
+          <a class="pill-btn" style="background:{{ ts.color }};color:#fff;" href="timeseries/timeseries_{{ ts.name }}.html">{{ ts.name }}</a>
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+{{ js_top_links | safe }}
+{% endblock %}

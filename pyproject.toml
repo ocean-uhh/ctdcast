@@ -53,5 +53,5 @@ include = ["ctdcast*"]
 
 [tool.setuptools.package-data]
 "ctdcast" = ["*.mplstyle"]
-"ctdcast.reports" = ["leaflet/*"]
+"ctdcast.reports" = ["leaflet/*", "templates/*"]
 
