@@ -232,7 +232,7 @@ def report(
             next_cast_str = (
                 cast_num_strs[orig_i + 1] if orig_i < len(all_meta) - 1 else None
             )
-            _expected = out_dir / "stations" / f"cast_{meta['cast_num_str']}.html"
+            _expected = out_dir / "casts" / f"cast_{meta['cast_num_str']}.html"
             _was_new = not _expected.exists()
             _html_mtime_str = _fmt_mtime(
                 _expected
@@ -293,7 +293,7 @@ def report(
                     f" nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
                 )
             print(f"  cast {meta['cast_num_str']}: {_status}")
-        print(f"  [stations: {perf_counter() - _t0:.1f}s]")
+        print(f"  [casts: {perf_counter() - _t0:.1f}s]")
 
     sections_cfg: dict[str, Any] = _sections_cfg.sections
     timeseries_cfg: dict[str, Any] = _sections_cfg.timeseries
@@ -808,7 +808,7 @@ def _write_stations_list(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="stations",
+        nav_current="casts",
     )
     (out_dir / "station_index.html").write_text(html, encoding="utf-8")
 

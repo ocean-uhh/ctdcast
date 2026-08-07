@@ -79,7 +79,7 @@ def test_station_skips_existing(tmp_path, meta_011):
 
 def test_station_output_path(tmp_path, meta_011):
     out = generate_station_page(CAST_011, tmp_path, all_meta=[meta_011], force=True)
-    assert out == tmp_path / "stations" / "cast_011.html"
+    assert out == tmp_path / "casts" / "cast_011.html"
 
 
 # --- HTML structure ----------------------------------------------------------

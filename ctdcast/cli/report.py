@@ -248,7 +248,8 @@ def run(args: argparse.Namespace) -> int:
     plots.PROFILE_FIGSIZE = (float(pf[0]), float(pf[1]))
     ov = display.get("overview_figsize", [12, 4])
     plots.OVERVIEW_FIGSIZE = (float(ov[0]), float(ov[1]))
-    plots._VAR_CMAPS.update(display.get("var_cmaps") or {})
+    if display.get("var_cmaps"):
+        plots._VAR_CMAPS = {**plots._VAR_CMAPS, **display["var_cmaps"]}
     for attr, key in [
         ("MAP_LAT_MIN", "map_lat_min"),
         ("MAP_LAT_MAX", "map_lat_max"),

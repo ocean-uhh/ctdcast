@@ -68,7 +68,8 @@ def _cast_panel_html(
 ) -> str:
     """Return HTML for the info panel when a cast marker is hovered."""
     cn = int(m["cast_num"])
-    cast_url = f"stations/cast_{cn:03d}.html"
+    cast_id = m.get("cast_num_str", f"{cn:03d}")
+    cast_url = f"casts/cast_{cast_id}.html"
     dt = str(m.get("time_start", ""))[:16].replace("T", " ")
     lat = float(m.get("lat", float("nan")))
     lon = float(m.get("lon", float("nan")))
@@ -77,7 +78,7 @@ def _cast_panel_html(
     lon_str = f"{abs(lon):.4f}°{'E' if lon >= 0 else 'W'}"
 
     parts = [
-        f"<strong>Cast {cn:03d}</strong>",
+        f"<strong>Cast {cast_id}</strong>",
         dt or "—",
         f"{lat_str} &nbsp; {lon_str}",
         f"{depth:.0f} dbar",
@@ -463,6 +464,7 @@ def generate_leaflet_map(
     casts_data: list[dict[str, Any]] = []
     for m in all_meta:
         cn = int(m["cast_num"])
+        cast_id = m.get("cast_num_str", f"{cn:03d}")
         lat_f = float(m.get("lat", float("nan")))
         lon_f = float(m.get("lon", float("nan")))
         if not (np.isfinite(lat_f) and np.isfinite(lon_f)):
@@ -474,8 +476,8 @@ def generate_leaflet_map(
                 "lat": lat_f,
                 "lon": lon_f,
                 "color": color_c,
-                "num": cn,
-                "url": f"stations/cast_{cn:03d}.html",
+                "num": cast_id,
+                "url": f"casts/cast_{cast_id}.html",
                 "info": _cast_panel_html(m, sname_c, section_url),
             }
         )

@@ -21,7 +21,7 @@ Directory layout
        station_index.html      sortable table of all casts
        sections.html           section overview cards
        timeseries.html         cruise-wide time series
-       stations/
+       casts/
            cast_001.html
            cast_002.html
            ...
@@ -62,7 +62,7 @@ section page.
 
 ----
 
-Station pages — ``stations/cast_NNN.html``
+Cast pages — ``casts/cast_NNN.html``
 ------------------------------------------
 
 One page per cast.  Panels shown:

@@ -71,7 +71,7 @@ def generate_station_page(
     cast_notes: list[str] | None = None,
     cruise_info: dict | None = None,
 ) -> Path | None:
-    """Generate a per-cast HTML report page and write it to *out_dir/stations/*.
+    """Generate a per-cast HTML report page and write it to *out_dir/casts/*.
 
     Parameters
     ----------
@@ -121,7 +121,7 @@ def generate_station_page(
     cast_num, cast_suffix = _cast_id_from_path(nc_path)
     if cast_num_str is None:
         cast_num_str = format_cast_id(cast_num, cast_suffix)
-    out_file = out_dir / "stations" / f"cast_{cast_num_str}.html"
+    out_file = out_dir / "casts" / f"cast_{cast_num_str}.html"
     if out_file.exists() and not force:
         return out_file
 
@@ -261,7 +261,7 @@ def generate_station_page(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
-        nav_current="stations",
+        nav_current="casts",
         masthead_bg="#1a3a5c",
     )
     out_file.write_text(html, encoding="utf-8")

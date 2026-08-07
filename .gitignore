@@ -29,3 +29,8 @@ htmlcov/
 # Outputs (generated HTML reports)
 outputs/
 demo_report/
+
+# Data files — large and generally not for version control
+*.nc
+# Exceptions: committed test fixtures
+!tests/fixtures/**/*.nc

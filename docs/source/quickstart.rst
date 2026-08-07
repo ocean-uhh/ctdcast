@@ -146,7 +146,7 @@ copy the entire output directory anywhere and it works offline.
        station_index.html      sortable table of all casts
        sections.html           section cards with links
        timeseries.html         T, S, O₂ hovmöller diagrams
-       stations/
+       casts/
            cast_001.html
            ...
        sections/
