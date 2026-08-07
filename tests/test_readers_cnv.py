@@ -4,6 +4,8 @@ import pytest
 import xarray as xr
 from conftest import FIXTURES_CNV, FIXTURES_OXY
 
+pytest.importorskip("seasenselib")
+
 CNV_MIXSED_004 = FIXTURES_CNV / "mixsed2_004.cnv"
 CNV_MIXSED_004B = FIXTURES_CNV / "mixsed2_004_b.cnv"
 CNV_MSM_017 = FIXTURES_CNV / "msm_142_1_017_1sec.cnv"

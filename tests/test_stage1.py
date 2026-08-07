@@ -1,8 +1,10 @@
-"""Tests for ctdcast.cast.stage1 (stage1(), get_ctd_backend())."""
+"""Tests for ctdcast.processors.stage1 (stage1(), get_ctd_backend())."""
 
 import pytest
 import xarray as xr
 from conftest import FIXTURES_CNV
+
+pytest.importorskip("seasenselib")
 
 
 class TestGetCtdBackend:

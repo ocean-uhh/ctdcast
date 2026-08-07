@@ -1,4 +1,4 @@
-"""Shared scientific analysis: TEOS-10, cast geometry, GEBCO bathymetry."""
+"""Shared scientific analysis: TEOS-10 derived variables, cast geometry, GEBCO bathymetry."""
 
 from ctdcast.analysis.derive import (
     derive_AOU,
