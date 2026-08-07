@@ -13,7 +13,7 @@ Maps render without bathymetry if the file is not found.
 
 from pathlib import Path
 
-from ctdcast.converters import build_profiles
+from ctdcast.processors.profiles import build_profiles
 from ctdcast.plotters import plots
 from ctdcast.reports._index import report
 

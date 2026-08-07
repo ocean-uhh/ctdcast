@@ -84,7 +84,9 @@ def resolve_stage(stage: int | str) -> Stage:
     if stage is None:
         raise ValueError("stage must be a number or name, not None")
     for s in STAGES:
-        if stage == s.number or (isinstance(stage, str) and stage.lower() == s.name):
+        if not isinstance(stage, bool) and (
+            stage == s.number or (isinstance(stage, str) and stage.lower() == s.name)
+        ):
             return s
     valid = ", ".join(
         [str(s.number) for s in STAGES if s.number is not None]

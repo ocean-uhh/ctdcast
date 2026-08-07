@@ -71,6 +71,7 @@ def render_b64(
     draw: Callable[..., plt.Figure | None],
     /,
     *args: Any,
+    optional: bool = False,
     **kwargs: Any,
 ) -> str | None:
     """Run *draw* under the package mplstyle and return its figure as a base64 PNG.
@@ -82,6 +83,13 @@ def render_b64(
         ``None`` if the dataset lacks the required variables.
     *args, **kwargs:
         Forwarded to *draw*.
+    optional:
+        ``True`` when this panel is legitimately absent for some casts — e.g. a
+        secondary sensor is not fitted, LADCP bottom-track fields are missing, or
+        a biogeochemical variable was not measured.  When ``False`` (default) and
+        :data:`ctdcast.plotters.plots.RAISE_ON_PLOT_ERROR` is set, a ``None``
+        return from *draw* raises :exc:`RuntimeError` so tests catch silently
+        dropped required panels.
 
     Returns
     -------
@@ -94,6 +102,11 @@ def render_b64(
         with plt.style.context(str(_MPLSTYLE)):
             fig = draw(*args, **kwargs)
             if fig is None:
+                if _pp.RAISE_ON_PLOT_ERROR and not optional:
+                    raise RuntimeError(
+                        f"{draw.__name__} returned None for a required panel; "
+                        "check that all required variables are present in the dataset."
+                    )
                 return None
             fig.tight_layout()
             return _fig_to_base64(fig)
@@ -150,7 +163,7 @@ def _make_stability_b64(ds: xr.Dataset) -> str | None:
 
 def _make_aux_profiles_b64(ds: xr.Dataset) -> str | None:
     """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
-    return render_b64(draw_aux_profiles_fig, ds)
+    return render_b64(draw_aux_profiles_fig, ds, optional=True)
 
 
 def _make_ct_sa_sigma0_b64(ds: xr.Dataset) -> str | None:
@@ -476,7 +489,7 @@ def _make_section_ts_histogram_b64(ds_prof: xr.Dataset) -> str | None:
 
 def _make_section_ts_o2_b64(ds_prof: xr.Dataset) -> str | None:
     """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
-    return render_b64(draw_section_ts_o2_fig, ds_prof)
+    return render_b64(draw_section_ts_o2_fig, ds_prof, optional=True)
 
 
 def _make_section_map_b64(
@@ -515,6 +528,7 @@ def _make_overview_panel_b64(
     vmin: float | None = None,
     vmax: float | None = None,
     cast_groups: dict[str, list[int]] | None = None,
+    optional: bool = False,
 ) -> str | None:
     """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
 
@@ -528,6 +542,8 @@ def _make_overview_panel_b64(
         Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
     style:
         ``"pcolormesh"`` (default) or ``"contourf"``.
+    optional:
+        Pass ``True`` for biogeochemical variables that may be absent in some casts.
     """
     return render_b64(
         draw_overview_panel_fig,
@@ -539,6 +555,7 @@ def _make_overview_panel_b64(
         vmin=vmin,
         vmax=vmax,
         cast_groups=cast_groups,
+        optional=optional,
     )
 
 
@@ -597,6 +614,7 @@ def _make_timeseries_b64(
     vmin: float | None = None,
     vmax: float | None = None,
     figw: float | None = None,
+    optional: bool = False,
 ) -> str | None:
     """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
 
@@ -608,6 +626,8 @@ def _make_timeseries_b64(
         Colormap limits; if None, 2nd–98th percentile of valid data.
     figw:
         Figure width in inches; auto-computed from profile count if None.
+    optional:
+        Pass ``True`` for biogeochemical variables that may be absent in some casts.
     """
     return render_b64(
         draw_timeseries_fig,
@@ -618,6 +638,7 @@ def _make_timeseries_b64(
         vmin=vmin,
         vmax=vmax,
         figw=figw,
+        optional=optional,
     )
 
 
@@ -627,7 +648,7 @@ def _make_sensor_diff_b64(ds: xr.Dataset) -> str | None:
     Shows T₁–T₂ and S₁–S₂ vs pressure with a fixed ±0.01 x-axis.
     Returns None if no secondary sensor variables are present.
     """
-    return render_b64(draw_sensor_diff_fig, ds)
+    return render_b64(draw_sensor_diff_fig, ds, optional=True)
 
 
 def _make_pressure_time_b64(ds: xr.Dataset) -> str | None:
@@ -652,4 +673,4 @@ def _make_ladcp_bottomtrack_b64(ladcp_path: Path | None) -> str | None:
     """
     if ladcp_path is None:
         return None
-    return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path)
+    return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path, optional=True)

@@ -835,7 +835,7 @@ def draw_section_fig(
     label: str,
     x_vals: np.ndarray,
     x_label: str,
-    title: str = "",
+    title: str = "",  # noqa: ARG001
     style: str = "pcolormesh",
     bathy_depths: np.ndarray | None = None,
     bathy_x: np.ndarray | None = None,

@@ -8,8 +8,12 @@ from pathlib import Path
 
 import yaml
 
-_STAGE_CHOICES = ("1", "2", "3", "profiles")
-_CANONICAL_ORDER = ("1", "2", "3", "profiles")
+from ctdcast.processors import STAGES
+
+# Derived from STAGES — single source of truth for the valid stage set and run order.
+_STAGE_CHOICES: tuple[str, ...] = tuple(
+    str(s.number) if s.number is not None else s.name for s in STAGES
+)
 
 
 def build_parser(
@@ -172,7 +176,7 @@ def run(args: argparse.Namespace) -> int:
     profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
 
     # Deduplicate and force canonical order
-    requested = [s for s in _CANONICAL_ORDER if s in args.stage]
+    requested = [s for s in _STAGE_CHOICES if s in args.stage]
 
     # Cast filter: set of zero-padded 3-digit tags, or None for all
     cast_tags: set[str] | None = {f"{c:03d}" for c in args.cast} if args.cast else None
@@ -211,7 +215,7 @@ def _run_stage1(
     nc_dir: Path,
     cast_tags: set[str] | None,
     data: dict,
-    processing_cfg: dict,
+    processing_cfg: dict,  # noqa: ARG001
 ) -> int:
     """Stage 1: CNV → per-cast netCDF."""
     from ctdcast.processors.stage1 import stage1

@@ -27,6 +27,7 @@ from ctdcast.config.parameters import (
     _W_THIRD,
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
+    UNKNOWN_CRUISE_ID,
     VARIABLES,
     vlabel,
 )
@@ -64,7 +65,7 @@ def generate_timeseries_page(
     section_style: str = "contourf",
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
-    all_meta: list[dict] | None = None,
+    all_meta: list[dict] | None = None,  # noqa: ARG001
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
     dbar_step: int = 1,
@@ -165,7 +166,7 @@ def generate_timeseries_page(
         if _key not in cast_id_strs:
             cast_id_strs.append(_key)
 
-    cruise: str = ds_all.attrs.get("cruise", "odb2026")
+    cruise: str = ds_all.attrs.get("cruise", UNKNOWN_CRUISE_ID)
     ship: str = ds_all.attrs.get(
         "ship",
         ds_all.attrs.get("platform", ds_all.attrs.get("vessel", "UNK")),

@@ -398,7 +398,7 @@ def generate_leaflet_map(
     all_meta: list[dict[str, Any]],
     sections_cfg: dict[str, Any],
     out_dir: Path,
-    force: bool = False,
+    force: bool = False,  # noqa: ARG001
     ship_track_nc: Path | None = None,
     cruise: str = "UNK",
 ) -> Path | None:

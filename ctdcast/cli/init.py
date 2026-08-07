@@ -330,7 +330,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
     import yaml
 
     config_path = Path(args.dest)
-    if not config_path.suffix in {".yaml", ".yml"}:
+    if config_path.suffix not in {".yaml", ".yml"}:
         config_path = config_path / "config.yaml"
     if not config_path.exists():
         print(f"ERROR: config file not found: {config_path}", file=sys.stderr)

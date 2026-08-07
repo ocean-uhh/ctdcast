@@ -236,6 +236,16 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
             # Pre-Phase-3 NC files stored % saturation under "oxygen_1".
             # Rename to the canonical "oxsat_1" so panels find it.
             ds = ds.rename({"oxygen_1": "oxsat_1"})
+        else:
+            import warnings
+
+            warnings.warn(
+                f"oxygen_1 has unrecognised units {units!r}; oxsat_1 not derived. "
+                "Biogeo panels will be absent. Expected 'umol', 'µmol', '%', "
+                "'sat', or 'percent'.",
+                UserWarning,
+                stacklevel=4,
+            )
     return ds
 
 

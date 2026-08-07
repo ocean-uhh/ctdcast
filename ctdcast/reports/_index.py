@@ -16,7 +16,12 @@ from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.loader import SectionsConfig
-from ctdcast.config.parameters import SECTION_BIOGEO_VARS, SECTION_PHYSICS_VARS, vlabel
+from ctdcast.config.parameters import (
+    SECTION_BIOGEO_VARS,
+    SECTION_PHYSICS_VARS,
+    UNKNOWN_CRUISE_ID,
+    vlabel,
+)
 from ctdcast.identity import (
     cast_id_from_name,
     compact_cast_list,
@@ -494,7 +499,7 @@ def _write_index(
     sections_cfg: dict[str, Any],
     cruise: str,
     out_dir: Path,
-    force: bool,
+    force: bool,  # noqa: ARG001
     profiles_path: Path | None = None,
     section_style: str = "pcolormesh",
     vmin_override: dict[str, float] | None = None,
@@ -528,7 +533,7 @@ def _write_index(
     sections_data_map: list[dict[str, Any]] = []
     # cast_groups: color → set of cast numbers (for overview panel top markers)
     cast_groups: dict[str, list[int]] = {}
-    for grp_name, grp_cfg in _all_groups.items():
+    for _grp_name, grp_cfg in _all_groups.items():
         cast_nums_grp = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         color = grp_cfg.get("color", "#888888")
         if cast_nums_grp:
@@ -1173,7 +1178,7 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         time_start = ds["time"].values[0]
         time_end = ds["time"].values[-1]
         raw_filename = ds.attrs.get("raw_filename", nc_path.stem + ".cnv")
-        cruise = ds.attrs.get("cruise", "odb2026")
+        cruise = ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
         ds.close()
         return {
             "cast_num": cast_num,

@@ -19,6 +19,15 @@ who may change it and what breaks when they do:
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
+# Sentinel values  [Contract — changing breaks output provenance]
+# ---------------------------------------------------------------------------
+# Fallback cruise identifier used in report titles and metadata when the netCDF
+# attributes contain no ``cruise`` key and no cruise_id is supplied via
+# cruise_info.  "UNK" is deliberately conspicuous so mislabelled output is
+# obvious rather than plausible.
+UNKNOWN_CRUISE_ID: str = "UNKCRUISE"
+
+# ---------------------------------------------------------------------------
 # Slot widths  [Derived — from dpi and browser scaling maths]
 # ---------------------------------------------------------------------------
 # Slot widths in inches at savefig.dpi=150 (body usable width = 1086px).
@@ -249,8 +258,8 @@ VARIABLES: dict[str, dict] = {
         "units": "m s-1",
         "standard_name": "eastward_sea_water_velocity",
         "cmap": None,
-        "vmin": None,
-        "vmax": None,
+        "vmin": -2.0,
+        "vmax": 2.0,
     },
     "V": {
         "label": "V",
@@ -259,8 +268,8 @@ VARIABLES: dict[str, dict] = {
         "units": "m s-1",
         "standard_name": "northward_sea_water_velocity",
         "cmap": None,
-        "vmin": None,
-        "vmax": None,
+        "vmin": -2.0,
+        "vmax": 2.0,
     },
     # Stability diagnostics
     "N2": {
