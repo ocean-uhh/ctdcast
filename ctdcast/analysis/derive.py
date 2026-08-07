@@ -8,7 +8,7 @@ derive_salinity   SP from conductivity/temperature/pressure
 derive_SA         Absolute Salinity from SP/pressure/lat/lon
 derive_CT         Conservative Temperature from SA/in-situ-T/pressure
 derive_sigma0     Potential density anomaly from SA/CT
-derive_AOU        Apparent Oxygen Utilization from oxygen_1 (% sat)
+derive_AOU        Apparent Oxygen Utilization from oxsat_1 (% sat)
 derive_teos10     Convenience: SA + CT + sigma0 + optional O2 unit conversion
 
 Profiles (2-D, dims N_PROF × pressure) functions
@@ -200,9 +200,13 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with SA, CT, sigma0 added (1-D per-cast Dataset, dim=time).
 
     Convenience function that calls :func:`derive_SA` → :func:`derive_CT` →
-    :func:`derive_sigma0` in order.  Also converts ``oxygen_1`` from µmol/L
-    or µmol/kg to % saturation when the variable's ``units`` attribute
-    indicates a molar concentration.
+    :func:`derive_sigma0` in order.  Also handles ``oxygen_1`` in two cases:
+
+    - If ``oxygen_1`` carries molar units (µmol/L or µmol/kg), derives
+      ``oxsat_1`` (% saturation) and adds it; ``oxygen_1`` is left unchanged.
+    - If ``oxygen_1`` already carries % saturation units (pre-Phase-3 NC files
+      where the variable was stored under the wrong name), renames it to
+      ``oxsat_1`` so the plotting pipeline finds it under the canonical name.
 
     Parameters
     ----------
@@ -219,12 +223,19 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     ds = derive_CT(ds)
     ds = derive_sigma0(ds)
     if "oxygen_1" in ds:
-        sa = ds["absolute_salinity"].values.astype(float)
-        ct = ds["conservative_temperature"].values.astype(float)
-        p = ds["pressure"].values.astype(float)
-        lat = float(np.nanmedian(ds["latitude"].values))
-        lon = float(np.nanmedian(ds["longitude"].values))
-        ds = _convert_oxygen_to_pct_sat(ds, sa, ct, p, lat, lon)
+        units = ds["oxygen_1"].attrs.get("units", "")
+        u_lower = units.lower()
+        if "umol" in u_lower or "µmol" in u_lower:
+            sa = ds["absolute_salinity"].values.astype(float)
+            ct = ds["conservative_temperature"].values.astype(float)
+            p = ds["pressure"].values.astype(float)
+            lat = float(np.nanmedian(ds["latitude"].values))
+            lon = float(np.nanmedian(ds["longitude"].values))
+            ds = _derive_oxsat_from_oxygen(ds, sa, ct, p, lat, lon)
+        elif "%" in u_lower or "sat" in u_lower or "percent" in u_lower:
+            # Pre-Phase-3 NC files stored % saturation under "oxygen_1".
+            # Rename to the canonical "oxsat_1" so panels find it.
+            ds = ds.rename({"oxygen_1": "oxsat_1"})
     return ds
 
 
@@ -295,31 +306,31 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
 
 
 def derive_AOU(ds: xr.Dataset) -> xr.Dataset:
-    """Return *ds* with AOU added as 100 - oxygen_1 (O₂ saturation deficit, % sat).
+    """Return *ds* with AOU added as 100 - oxsat_1 (O₂ saturation deficit, % sat).
 
     Note: this is a saturation-deficit proxy, not the traditional AOU in
-    µmol/kg, because the input data contains oxygen_1 in % saturation.
-    When dissolved O₂ in µmol/kg becomes available, replace with
-    ``gsw.O2sol(SA, CT, p, lon, lat) - O2_measured``.
+    µmol/kg, because it uses ``oxsat_1`` (% saturation) rather than
+    dissolved O₂ in µmol/kg.  When ``oxygen_1`` (µmol/kg) is available,
+    the traditional AOU is ``gsw.O2sol(SA, CT, p, lon, lat) - oxygen_1``.
 
-    Returns *ds* unchanged if ``oxygen_1`` is absent or ``AOU`` already exists.
+    Returns *ds* unchanged if ``oxsat_1`` is absent or ``AOU`` already exists.
 
     Parameters
     ----------
     ds:
-        Dataset (any dimensionality) with ``oxygen_1`` in % saturation.
+        Dataset (any dimensionality) with ``oxsat_1`` in % saturation.
 
     Returns
     -------
     xr.Dataset
         New Dataset with ``AOU`` added; input is not mutated.
     """
-    if "AOU" in ds or "oxygen_1" not in ds:
+    if "AOU" in ds or "oxsat_1" not in ds:
         return ds
     ds = ds.copy()
-    dims = ds["oxygen_1"].dims
+    dims = ds["oxsat_1"].dims
     ds["AOU"] = xr.DataArray(
-        (100.0 - ds["oxygen_1"].values).astype(np.float32),
+        (100.0 - ds["oxsat_1"].values).astype(np.float32),
         dims=dims,
         attrs={"long_name": "O₂ saturation deficit", "units": "% sat"},
     )
@@ -331,7 +342,7 @@ def derive_AOU(ds: xr.Dataset) -> xr.Dataset:
 # ---------------------------------------------------------------------------
 
 
-def _convert_oxygen_to_pct_sat(
+def _derive_oxsat_from_oxygen(
     ds: xr.Dataset,
     sa: np.ndarray,
     ct: np.ndarray,
@@ -339,16 +350,17 @@ def _convert_oxygen_to_pct_sat(
     lat: float,
     lon: float,
 ) -> xr.Dataset:
-    """Convert ``oxygen_1`` from µmol/L or µmol/kg to % saturation.
+    """Derive ``oxsat_1`` (% saturation) from ``oxygen_1`` (µmol/L or µmol/kg).
 
-    Does nothing if ``oxygen_1`` units already indicate % saturation or if the
-    units attribute is absent.  Records the original units and the conversion
-    method in ``oxygen_1`` attributes for provenance.
+    Adds ``oxsat_1`` to *ds*; leaves ``oxygen_1`` unchanged.  Does nothing if
+    ``oxygen_1`` units do not indicate a molar concentration.  Records the
+    conversion method in ``oxsat_1`` attributes for provenance.
 
     Parameters
     ----------
     ds:
-        Dataset containing ``oxygen_1``; must already have SA/CT computed.
+        Dataset containing ``oxygen_1`` in molar units; must already have SA/CT
+        computed (i.e. call after :func:`derive_SA` / :func:`derive_CT`).
     sa, ct, p:
         Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar)
         arrays matching the ``oxygen_1`` dimension.
@@ -374,21 +386,20 @@ def _convert_oxygen_to_pct_sat(
             rho = gsw.rho(sa, ct, p)  # kg/m³
         o2_sat_umol_l = o2_sat_umol_kg * rho / 1000.0
         pct_sat = measured / o2_sat_umol_l * 100.0
-        method = f"converted from {units} via gsw.O2sol + gsw.rho"
+        method = f"derived from oxygen_1 ({units}) via gsw.O2sol + gsw.rho"
     else:
         pct_sat = measured / o2_sat_umol_kg * 100.0
-        method = f"converted from {units} via gsw.O2sol"
+        method = f"derived from oxygen_1 ({units}) via gsw.O2sol"
 
-    warnings.warn(
-        f"oxygen_1: {method}; values overwritten in-place.",
-        stacklevel=3,
-    )
-    new_attrs = dict(ds["oxygen_1"].attrs)
-    new_attrs["units"] = "% saturation"
-    new_attrs["original_units"] = units
-    new_attrs["oxygen_conversion"] = method
+    new_attrs = {
+        "units": "% saturation",
+        "long_name": "O₂ saturation",
+        "source_units": units,
+        "oxygen_conversion": method,
+    }
     dim = ds["oxygen_1"].dims[0]
-    ds["oxygen_1"] = xr.DataArray(
+    ds = ds.copy()
+    ds["oxsat_1"] = xr.DataArray(
         pct_sat.astype(np.float32),
         dims=[dim],
         attrs=new_attrs,

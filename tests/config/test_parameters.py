@@ -12,6 +12,8 @@ from ctdcast.config.parameters import (
     CCHDO_QC,
     CCHDO_VARIABLES,
     CNV_ALIASES,
+    SECTION_BIOGEO_VARS,
+    SECTION_PHYSICS_VARS,
     VAR_COLORS,
     VARIABLES,
 )
@@ -73,6 +75,26 @@ def test_cnv_aliases_values_in_variables() -> None:
     targets_as_vars = set(CNV_ALIASES.values()) - _coords - _pipeline_excluded
     missing = targets_as_vars - set(VARIABLES)
     assert not missing, f"CNV_ALIASES targets missing from VARIABLES: {missing}"
+
+
+def test_section_panel_vars_in_variables() -> None:
+    """Every variable in SECTION_PHYSICS_VARS and SECTION_BIOGEO_VARS must be in VARIABLES.
+
+    Ensures the three report modules (section, timeseries, index) cannot silently
+    produce blank panels because a variable was renamed in VARIABLES without updating
+    the panel lists.
+    """
+    all_panel_vars = set(SECTION_PHYSICS_VARS) | set(SECTION_BIOGEO_VARS)
+    missing = all_panel_vars - set(VARIABLES)
+    assert not missing, f"Panel variables missing from VARIABLES: {missing}"
+
+
+def test_section_panel_vars_have_label_and_label_units() -> None:
+    """Every panel variable must have both 'label' and 'label_units' entries in VARIABLES."""
+    for var in (*SECTION_PHYSICS_VARS, *SECTION_BIOGEO_VARS):
+        entry = VARIABLES[var]
+        assert "label" in entry, f"{var!r} is missing 'label' in VARIABLES"
+        assert "label_units" in entry, f"{var!r} is missing 'label_units' in VARIABLES"
 
 
 def test_load_display_config_merges_overrides() -> None:

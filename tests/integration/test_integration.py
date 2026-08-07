@@ -6,6 +6,7 @@ They are slower than the unit tests (~30 s total) and are kept in a
 separate directory so they can be targeted with ``pytest tests/integration/``.
 """
 
+import importlib
 import re
 import warnings
 from pathlib import Path
@@ -402,7 +403,10 @@ class TestCastNotes:
 _OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
 
 
-@pytest.mark.skipif(not _OXY_CNV.exists(), reason="MSM142 oxygen fixture not present")
+@pytest.mark.skipif(
+    not _OXY_CNV.exists() or importlib.util.find_spec("seasenselib") is None,
+    reason="MSM142 oxygen fixture or seasenselib not present",
+)
 class TestOxygenConversion:
     """Integration test for µmol/L → % saturation conversion via add_teos10."""
 
@@ -433,14 +437,16 @@ class TestOxygenConversion:
             warnings.simplefilter("always")
             ds_converted = add_teos10(ds)
 
-        assert ds_converted["oxygen_1"].attrs["units"] == "% saturation", (
-            f"Expected '% saturation'; got {ds_converted['oxygen_1'].attrs['units']!r}"
+        # After add_teos10, oxsat_1 = derived % saturation; oxygen_1 unchanged (µmol)
+        assert "oxsat_1" in ds_converted, "oxsat_1 missing after add_teos10"
+        assert ds_converted["oxsat_1"].attrs["units"] == "% saturation", (
+            f"Expected '% saturation'; got {ds_converted['oxsat_1'].attrs['units']!r}"
         )
-        assert "original_units" in ds_converted["oxygen_1"].attrs, (
-            "original_units attribute must be preserved after conversion"
+        assert "source_units" in ds_converted["oxsat_1"].attrs, (
+            "source_units attribute must be preserved in oxsat_1 after conversion"
         )
 
-        vals = ds_converted["oxygen_1"].values
+        vals = ds_converted["oxsat_1"].values
         finite = vals[~np.isnan(vals)]
         assert len(finite) > 0, "No finite oxygen values after conversion"
         assert finite.min() >= 0.0, f"Negative % saturation: min={finite.min():.2f}"

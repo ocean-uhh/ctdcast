@@ -47,7 +47,7 @@ Config files
 
 The two YAML files used to generate this demo are available to download and adapt:
 
-- `config_demo.yaml <https://github.com/eleanorfrajka/ctdcast/blob/main/config_demo.yaml>`_ — top-level config (paths, cruise info, which pages to build); also at the repo root
+- `config_demo.yaml <https://github.com/ocean-uhh/ctdcast/blob/main/config_demo.yaml>`_ — top-level config (paths, cruise info, which pages to build); also at the repo root
 - `ctd_sections_demo.yaml <_static/ctd_sections_demo.yaml>`_ — section and timeseries definitions
 
 ----

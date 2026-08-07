@@ -6,8 +6,26 @@ build-backend = "setuptools.build_meta"
 name = "ctdcast"
 version = "0.1.0"
 description = "Self-contained HTML report generator for shipboard CTD and LADCP data"
+readme = "README.md"
 license = {text = "MIT"}
-authors = [{name = "Eleanor Frajka-Williams", email = "eleanorfrajka@gmail.com"}]
+authors = [
+    {name = "Eleanor Frajka-Williams", email = "eleanorfrajka@gmail.com"},
+    {name = "Angel Ruiz-Angulo"},
+]
+keywords = ["oceanography", "CTD", "LADCP", "shipboard", "seawater", "report"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "gsw>=3.6",
@@ -22,10 +40,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/eleanorfrajka/ctdcast"
-Source = "https://github.com/eleanorfrajka/ctdcast"
-Documentation = "https://eleanorfrajka.github.io/ctdcast"
-"Bug Tracker" = "https://github.com/eleanorfrajka/ctdcast/issues"
+Homepage = "https://github.com/ocean-uhh/ctdcast"
+Source = "https://github.com/ocean-uhh/ctdcast"
+Documentation = "https://ocean-uhh.github.io/ctdcast"
+"Bug Tracker" = "https://github.com/ocean-uhh/ctdcast/issues"
 
 [project.optional-dependencies]
 docs = [

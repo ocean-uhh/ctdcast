@@ -21,6 +21,12 @@ from ctdcast.analysis.geometry import (
     distance_from_km,
     section_orientation,
 )
+from ctdcast.config.parameters import (
+    SECTION_BIOGEO_VARS,
+    SECTION_PHYSICS_VARS,
+    VARIABLES,
+    vlabel,
+)
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
@@ -38,21 +44,9 @@ from ctdcast.reports._plots import (
     _make_section_ts_profiles_b64,
 )
 
-# ---------------------------------------------------------------------------
-# Section variables to plot (in order)
-# ---------------------------------------------------------------------------
-
-_PHYSICS_VARS: list[tuple[str, str, str]] = [
-    ("CT", "Conservative Temperature (°C)", "CT"),
-    ("SA", "Absolute Salinity (g kg⁻¹)", "SA"),
-    ("sigma0", "Potential density σ₀ (kg m⁻³)", "σ₀"),
-]
-
-_BIOGEO_VARS: list[tuple[str, str, str]] = [
-    ("oxygen_1", "O₂ saturation (%)", "O₂ (%)"),
-    ("fluorescence", "Fluorescence (mg m⁻³)", "Fluor"),
-    ("turbidity", "Turbidity (NTU)", "Turb"),
-]
+# Panel variables are defined in ctdcast.config.parameters:
+#   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _timeseries.py)
+# Labels come from vlabel() so they stay in sync with VARIABLES.
 
 # ---------------------------------------------------------------------------
 # HTML template
@@ -242,7 +236,10 @@ def generate_section_page(
     # Use valid-data extent, not pressure coordinate max — the coordinate spans the full
     # cruise depth (e.g. 2200 dbar) even for shallow sections like KO (450 dbar).
     _dist_km = float(x_vals.max() - x_vals.min()) if len(x_vals) > 1 else 1.0
-    _ref_var = next((v for v in ("CT", "SA") if v in ds_sec), None)
+    _ref_var = next(
+        (v for v in ("conservative_temperature", "absolute_salinity") if v in ds_sec),
+        None,
+    )
     if _ref_var is not None:
         _ref_data = ds_sec[_ref_var].values
         _valid_p = np.where(np.any(np.isfinite(_ref_data), axis=0))[0]
@@ -289,8 +286,13 @@ def generate_section_page(
         )
         return Panel(b64=b64, title=label, short=short)
 
-    physics_panels = [_section_panel(v, l, s) for v, l, s in _PHYSICS_VARS]
-    biogeo_panels = [_section_panel(v, l, s) for v, l, s in _BIOGEO_VARS]
+    physics_panels = [
+        _section_panel(v, vlabel(v), VARIABLES[v]["label"])
+        for v in SECTION_PHYSICS_VARS
+    ]
+    biogeo_panels = [
+        _section_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_BIOGEO_VARS
+    ]
 
     _ts_panels_raw = [
         Panel(

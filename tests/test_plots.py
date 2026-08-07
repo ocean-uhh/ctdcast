@@ -27,10 +27,10 @@ _LADCP_011 = FIXTURES_LADCP / "011.mat"
 _LADCP_128 = FIXTURES_LADCP / "128.mat"
 
 
-def _is_valid(result):
-    """Return True if result is None or a PNG base64 string."""
+def _is_valid(result, *, may_be_none: bool = False) -> bool:
+    """Return True if result is a PNG base64 string, or None when may_be_none is set."""
     if result is None:
-        return True
+        return may_be_none
     return isinstance(result, str) and result.startswith("iVBOR")
 
 

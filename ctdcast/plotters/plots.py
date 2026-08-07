@@ -305,7 +305,7 @@ def _discrete_norm(
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:
         v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
-    if var == "oxygen_1":
+    if var == "oxsat_1":
         _o2_step = 2.5
         _o2_lo = math.floor(v0 / _o2_step) * _o2_step
         _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
@@ -460,9 +460,9 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
     ds_down, _ = split_cast(ds_teos)
     sa = ds_down["absolute_salinity"].values
     ct = ds_down["conservative_temperature"].values
-    if "oxygen_1" not in ds_down:
+    if "oxsat_1" not in ds_down:
         return None
-    o2 = ds_down["oxygen_1"].values
+    o2 = ds_down["oxsat_1"].values
 
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)
     sa, ct, o2 = sa[mask], ct[mask], o2[mask]
@@ -495,7 +495,7 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label(vlabel("oxygen_1"))
+    cb.set_label(vlabel("oxsat_1"))
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
@@ -551,7 +551,7 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
 def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
     vars_labels = [
-        ("oxygen_1", vlabel("oxygen_1")),
+        ("oxsat_1", vlabel("oxsat_1")),
         ("fluorescence", vlabel("fluorescence")),
         ("turbidity", vlabel("turbidity")),
     ]
@@ -1120,12 +1120,12 @@ def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     if (
         "absolute_salinity" not in ds_prof
         or "conservative_temperature" not in ds_prof
-        or "oxygen_1" not in ds_prof
+        or "oxsat_1" not in ds_prof
     ):
         return None
     sa = ds_prof["absolute_salinity"].values.ravel()
     ct = ds_prof["conservative_temperature"].values.ravel()
-    o2 = ds_prof["oxygen_1"].values.ravel()
+    o2 = ds_prof["oxsat_1"].values.ravel()
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)
     sa, ct, o2 = sa[mask], ct[mask], o2[mask]
     if len(sa) < 10:
