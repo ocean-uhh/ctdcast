@@ -354,7 +354,7 @@ class TestFullReport:
             force=True,
         )
         for cast_num in (11, 12, 128, 129):
-            assert (tmp_path / "stations" / f"cast_{cast_num:03d}.html").exists()
+            assert (tmp_path / "casts" / f"cast_{cast_num:03d}.html").exists()
 
 
 class TestCastNotes:
