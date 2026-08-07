@@ -1,8 +1,8 @@
 .. _demo:
 
-===========
-CTD report
-===========
+==========================
+About the demo report
+==========================
 
 The pages below are generated from the four committed fixture casts (cruise **odb26**, ship *Odon de Buen*, North Atlantic July 2026) using the same pipeline you would run on your own data.
 They cover: two casts on a short transect (casts 011–012, section "KO") and two casts at a repeat station (casts 128–129, timeseries "Triangle"), all with LADCP.
