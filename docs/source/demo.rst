@@ -27,7 +27,7 @@ or from the terminal::
 
    * - `Summary (index) <_static/demo/index.html>`_
      - Front page — cruise map, cast count, navigation to all sections
-   * - `Station index <_static/demo/station_index.html>`_
+   * - `Cast index <_static/demo/casts.html>`_
      - Sortable table of all casts with position, depth, and time
    * - `Cast 011 <_static/demo/casts/cast_011.html>`_
      - Station page — CT/SA/σ₀ profiles, T–S diagram, LADCP, altimeter

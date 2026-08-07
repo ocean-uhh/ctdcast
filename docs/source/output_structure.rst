@@ -18,7 +18,7 @@ Directory layout
 
    <output.dir>/
        index.html              front page
-       station_index.html      sortable table of all casts
+       casts.html      sortable table of all casts
        sections.html           section overview cards
        timeseries.html         cruise-wide time series
        casts/
@@ -45,7 +45,7 @@ The front page shows:
 
 ----
 
-station_index.html
+casts.html
 ------------------
 
 A sortable table listing every cast: cast number, date/time, latitude, longitude, and

@@ -71,7 +71,7 @@ Examples:
         "--index",
         action="store_true",
         default=False,
-        help="Generate navigation pages (index.html, station_index.html, sections.html).",
+        help="Generate navigation pages (index.html, casts.html, sections.html).",
     )
     page.add_argument(
         "--map",

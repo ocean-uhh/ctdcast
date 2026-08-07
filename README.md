@@ -118,7 +118,7 @@ distinct cast and must be named explicitly as a quoted ``"NNNb"`` string.
 ```
 <output.dir>/
     index.html              front page — map + stats + navigation
-    station_index.html      table of all casts (latest first)
+    casts.html      table of all casts (latest first)
     sections.html           section cards with links
     timeseries.html         T, S, O₂ vs time × pressure
     casts/

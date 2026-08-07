@@ -319,7 +319,7 @@ class TestFullReport:
         )
         for name in (
             "index.html",
-            "station_index.html",
+            "casts.html",
             "sections.html",
             "leaflet.html",
         ):

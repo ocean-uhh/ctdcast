@@ -440,7 +440,7 @@ def report(
             ladcp_pattern=ladcp_pattern,
             cruise_info=cruise_info,
         )
-        print(f"  [station_index.html: {perf_counter() - _t0:.1f}s]")
+        print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
         _write_sections_list(
             sections_cfg,
@@ -707,7 +707,7 @@ def _write_stations_list(
     ladcp_pattern: str | None = None,
     cruise_info: dict[str, Any] | None = None,
 ) -> None:
-    """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
+    """Write casts.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file.
     # Use find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
     # are handled correctly.
@@ -803,14 +803,14 @@ def _write_stations_list(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    html = get_template("station_index.html").render(
+    html = get_template("casts.html").render(
         **ctx,
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
         nav_current="casts",
     )
-    (out_dir / "station_index.html").write_text(html, encoding="utf-8")
+    (out_dir / "casts.html").write_text(html, encoding="utf-8")
 
 
 def _write_sections_list(
