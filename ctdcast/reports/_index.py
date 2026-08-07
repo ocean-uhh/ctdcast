@@ -16,6 +16,7 @@ from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.parameters import SECTION_BIOGEO_VARS, SECTION_PHYSICS_VARS, vlabel
 from ctdcast.identity import (
     cast_id_from_name,
     compact_cast_list,
@@ -487,18 +488,6 @@ def report(
 # Page writers
 # ---------------------------------------------------------------------------
 
-_OVERVIEW_PHYSICS_VARS: list[tuple[str, str]] = [
-    ("CT", "Conservative Temperature (°C)"),
-    ("SA", "Absolute Salinity (g kg⁻¹)"),
-    ("sigma0", "Potential density σ₀ (kg m⁻³)"),
-]
-
-_OVERVIEW_BIOGEO_VARS: list[tuple[str, str]] = [
-    ("oxygen_1", "O₂ saturation (%)"),
-    ("fluorescence", "Fluorescence (mg m⁻³)"),
-    ("turbidity", "Turbidity (NTU)"),
-]
-
 
 def _write_index(
     all_meta: list[dict[str, Any]],
@@ -629,8 +618,10 @@ def _write_index(
                 )
                 return {"title": label, "b64": b64}
 
-            physics_panels_idx = [_idx_panel(v, l) for v, l in _OVERVIEW_PHYSICS_VARS]
-            biogeo_panels_idx = [_idx_panel(v, l) for v, l in _OVERVIEW_BIOGEO_VARS]
+            physics_panels_idx = [
+                _idx_panel(v, vlabel(v)) for v in SECTION_PHYSICS_VARS
+            ]
+            biogeo_panels_idx = [_idx_panel(v, vlabel(v)) for v in SECTION_BIOGEO_VARS]
 
             ts_b64 = _make_section_ts_histogram_b64(ds_sorted)
             ds_all.close()

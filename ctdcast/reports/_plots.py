@@ -650,4 +650,6 @@ def _make_ladcp_bottomtrack_b64(ladcp_path: Path | None) -> str | None:
     Returns None if *ladcp_path* is None or the .mat file lacks ``zbot``, ``ubot``,
     or ``vbot`` fields.
     """
+    if ladcp_path is None:
+        return None
     return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path)

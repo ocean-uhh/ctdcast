@@ -1,9 +1,9 @@
 # ctdcast
 
-[![Tests](https://github.com/eleanorfrajka/ctdcast/actions/workflows/tests.yml/badge.svg)](https://github.com/eleanorfrajka/ctdcast/actions/workflows/tests.yml)
+[![Tests](https://github.com/ocean-uhh/ctdcast/actions/workflows/tests.yml/badge.svg)](https://github.com/ocean-uhh/ctdcast/actions/workflows/tests.yml)
 [![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%20–%203.13-blue?logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
-[![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://eleanorfrajka.github.io/ctdcast/)
+[![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://ocean-uhh.github.io/ctdcast/)
 
 Self-contained HTML report generator for shipboard CTD and LADCP data.
 Produces portable HTML files — all figures embedded as base64 PNGs, no external requests —
@@ -18,7 +18,7 @@ All output files are fully self-contained and work offline.
 ## Install
 
 ```bash
-git clone https://github.com/eleanorfrajka/ctdcast
+git clone https://github.com/ocean-uhh/ctdcast
 cd ctdcast
 python -m venv venv
 source venv/bin/activate        # macOS / Linux
@@ -36,7 +36,7 @@ To verify the installation, run the bundled demo against the committed fixture c
 ctdcast run config_demo.yaml   # writes demo_report/index.html
 ```
 
-For a full walkthrough see the [Quickstart guide](https://eleanorfrajka.github.io/ctdcast/quickstart.html).
+For a full walkthrough see the [Quickstart guide](https://ocean-uhh.github.io/ctdcast/quickstart.html).
 
 ---
 
@@ -139,4 +139,4 @@ The file (~8 GB) is not bundled. Maps render without bathymetry if the path is m
 
 ## Documentation
 
-Full documentation: [eleanorfrajka.github.io/ctdcast](https://eleanorfrajka.github.io/ctdcast/)
+Full documentation: [ocean-uhh.github.io/ctdcast](https://ocean-uhh.github.io/ctdcast/)

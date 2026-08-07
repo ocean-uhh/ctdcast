@@ -20,7 +20,16 @@ import xarray as xr
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
-from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
+from ctdcast.config.parameters import (
+    _MAX_SECTION_H,
+    _W_FULL,
+    _W_HALF,
+    _W_THIRD,
+    SECTION_BIOGEO_VARS,
+    SECTION_PHYSICS_VARS,
+    VARIABLES,
+    vlabel,
+)
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
@@ -34,21 +43,8 @@ from ctdcast.reports._plots import (
     _make_ts_diagram_timeseries_b64,
 )
 
-# ---------------------------------------------------------------------------
-# Variables to plot (in order)
-# ---------------------------------------------------------------------------
-
-_TIMESERIES_PHYSICS_VARS: list[tuple[str, str, str]] = [
-    ("CT", "Conservative Temperature (°C)", "CT"),
-    ("SA", "Absolute Salinity (g kg⁻¹)", "SA"),
-    ("sigma0", "Potential density σ₀ (kg m⁻³)", "σ₀"),
-]
-
-_TIMESERIES_BIOGEO_VARS: list[tuple[str, str, str]] = [
-    ("oxygen_1", "O₂ saturation (%)", "O₂"),
-    ("fluorescence", "Fluorescence (mg m⁻³)", "Fluor"),
-    ("turbidity", "Turbidity (NTU)", "Turb"),
-]
+# Panel variables are defined in ctdcast.config.parameters:
+#   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _section.py)
 
 # ---------------------------------------------------------------------------
 # HTML template
@@ -250,8 +246,12 @@ def generate_timeseries_page(
         )
         return Panel(b64=b64, title=label, short=short)
 
-    physics_panels = [_ts_panel(*t) for t in _TIMESERIES_PHYSICS_VARS]
-    biogeo_panels = [_ts_panel(*t) for t in _TIMESERIES_BIOGEO_VARS]
+    physics_panels = [
+        _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_PHYSICS_VARS
+    ]
+    biogeo_panels = [
+        _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_BIOGEO_VARS
+    ]
 
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
 

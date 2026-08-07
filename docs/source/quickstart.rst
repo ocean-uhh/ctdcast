@@ -34,7 +34,7 @@ Python 3.10–3.13 is required.  Create a virtual environment and install from s
 
 .. code-block:: bash
 
-   git clone https://github.com/eleanorfrajka/ctdcast
+   git clone https://github.com/ocean-uhh/ctdcast
    cd ctdcast
    python -m venv venv
    source venv/bin/activate        # macOS / Linux

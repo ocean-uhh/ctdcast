@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, consider citing it as below."
+type: software
+title: "ctdcast: Shipboard CTD and LADCP HTML report generator"
+abstract: "Self-contained HTML report generator for shipboard CTD and LADCP data. Produces fully self-contained HTML files (all figures embedded as base64 data URIs) for per-cast station pages, transect section pages, and cruise-wide time series pages."
+authors:
+- family-names: Frajka-Williams
+  given-names: Eleanor
+  orcid: https://orcid.org/0000-0001-8773-7838
+  affiliation: "University of Hamburg, Institut für Meereskunde, Bundesstraße 53, 20146 Hamburg, Germany"
+- family-names: Ruiz-Angulo
+  given-names: Angel
+  orcid: https://orcid.org/0000-0002-7292-3002
+  affiliation: "Institute of Earth Sciences, University of Iceland, Reykjavik, Iceland"
+version: "0.1.0"
+date-released: "2026-08-07"
+url: "https://github.com/ocean-uhh/ctdcast"
+repository-code: "https://github.com/ocean-uhh/ctdcast"
+license: MIT
+keywords:
+  - oceanography
+  - CTD
+  - LADCP
+  - shipboard
+  - data visualization

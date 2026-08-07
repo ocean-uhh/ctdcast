@@ -81,6 +81,8 @@ def resolve_stage(stage: int | str) -> Stage:
         If *stage* matches no entry in :data:`STAGES`.  The message lists
         every valid value.
     """
+    if stage is None:
+        raise ValueError("stage must be a number or name, not None")
     for s in STAGES:
         if stage == s.number or (isinstance(stage, str) and stage.lower() == s.name):
             return s

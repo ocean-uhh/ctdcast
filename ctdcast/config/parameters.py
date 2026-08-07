@@ -298,7 +298,7 @@ VAR_COLORS: dict[str, str] = {
     "sigma0": "#009E73",  # bluish green — Okabe-Ito
     "U": "#D55E00",  # vermillion   — Okabe-Ito
     "V": "#0072B2",  # blue         — Okabe-Ito
-    "oxygen_1": "#332288",  # indigo       — Paul Tol
+    "oxsat_1": "#332288",  # indigo       — Paul Tol
     "fluorescence": "#117733",  # forest green — Paul Tol
     "turbidity": "#661100",  # dark red     — Paul Tol
     "N2": "#000000",
@@ -309,6 +309,24 @@ VAR_COLORS: dict[str, str] = {
 _VAR_CMAPS: dict[str, str] = {
     k: v["cmap"] for k, v in VARIABLES.items() if v.get("cmap") is not None
 }
+
+
+#: Physics variables drawn on section, overview, and timeseries pages, in order.
+#: Use ``vlabel(var)`` for the axis/panel label and ``VARIABLES[var]["label"]``
+#: for the short caption.  Defined here so the three report modules share one
+#: source of truth and cannot silently diverge from each other or from VARIABLES.
+SECTION_PHYSICS_VARS: tuple[str, ...] = (
+    "conservative_temperature",
+    "absolute_salinity",
+    "sigma0",
+)
+
+#: Biogeochemical variables drawn on section, overview, and timeseries pages, in order.
+SECTION_BIOGEO_VARS: tuple[str, ...] = (
+    "oxsat_1",
+    "fluorescence",
+    "turbidity",
+)
 
 
 def vlabel(var: str, prefix: str = "") -> str:
