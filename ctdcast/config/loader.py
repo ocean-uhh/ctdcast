@@ -40,11 +40,6 @@ class SectionsConfig:
             cruise_info=data.get("cruise_info") or {},
         )
 
-    @classmethod
-    def empty(cls) -> SectionsConfig:
-        """Return an all-empty ``SectionsConfig`` (no YAML loaded)."""
-        return cls()
-
 
 def load_display_config(cruise_cfg: dict[str, Any]) -> dict[str, dict]:
     """Return VARIABLES with cruise-level overrides applied.

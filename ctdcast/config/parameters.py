@@ -57,6 +57,8 @@ _MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig
 #         vmax: 25
 VARIABLES: dict[str, dict] = {
     "pressure": {
+        "label": "Pressure",
+        "label_units": "dbar",
         "long_name": "Sea pressure",
         "units": "dbar",
         "standard_name": "sea_water_pressure",
@@ -65,6 +67,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "temperature_1": {
+        "label": "T₁",
+        "label_units": "°C",
         "long_name": "In-situ temperature (primary)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -74,6 +78,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     "temperature_2": {
+        "label": "T₂",
+        "label_units": "°C",
         "long_name": "In-situ temperature (secondary)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -86,6 +92,8 @@ VARIABLES: dict[str, dict] = {
     # judged best for this cruise. Which sensor is in temperature.attrs["preferred_sensor"].
     # CCHDO writer maps this to ctd_temperature (see CCHDO_COMPOSITE).
     "temperature": {
+        "label": "T",
+        "label_units": "°C",
         "long_name": "In-situ temperature (best sensor)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -95,6 +103,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     "conductivity_1": {
+        "label": "C₁",
+        "label_units": "S m⁻¹",
         "long_name": "Conductivity (primary)",
         "units": "S m-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -102,7 +112,19 @@ VARIABLES: dict[str, dict] = {
         "vmin": None,
         "vmax": None,
     },
+    "conductivity_2": {
+        "label": "C₂",
+        "label_units": "S m⁻¹",
+        "long_name": "Conductivity (secondary)",
+        "units": "S m-1",
+        "standard_name": "sea_water_electrical_conductivity",
+        "cmap": None,
+        "vmin": None,
+        "vmax": None,
+    },
     "salinity_1": {
+        "label": "SP₁",
+        "label_units": "PSU",
         "long_name": "Practical salinity (primary)",
         "units": "1",  # PSS-78 is dimensionless per CF
         "standard_name": "sea_water_practical_salinity",
@@ -112,6 +134,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 35.5,
     },
     "salinity_2": {
+        "label": "SP₂",
+        "label_units": "PSU",
         "long_name": "Practical salinity (secondary)",
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
@@ -122,6 +146,8 @@ VARIABLES: dict[str, dict] = {
     },
     # oxygen_1 = µmol/kg — target name (Phase 3 rename from sbox0Mm_Kg in fixture NC)
     "oxygen_1": {
+        "label": "O₂",
+        "label_units": "µmol kg⁻¹",
         "long_name": "Dissolved oxygen (primary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -132,6 +158,8 @@ VARIABLES: dict[str, dict] = {
     # oxsat_1 = % saturation — target name (Phase 3 rename from oxygen_1 in fixture NC)
     # No CF standard_name and no CCHDO WHP equivalent — excluded from CCHDO output.
     "oxsat_1": {
+        "label": "O₂ sat",
+        "label_units": "%",
         "long_name": "Dissolved oxygen saturation (primary)",
         "units": "percent",
         "standard_name": None,
@@ -140,6 +168,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 110,
     },
     "fluorescence": {
+        "label": "Fluorescence",
+        "label_units": "mg m⁻³",
         "long_name": "Chlorophyll fluorescence",
         "units": "mg m-3",  # uncalibrated; label may vary by cruise
         "standard_name": None,
@@ -148,6 +178,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "turbidity": {
+        "label": "Turbidity",
+        "label_units": "NTU",
         "long_name": "Turbidity",
         "units": "NTU",  # uncalibrated; NTU not guaranteed for all sensors
         "standard_name": None,
@@ -156,6 +188,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "altimeter": {
+        "label": "Altimeter",
+        "label_units": "m",
         "long_name": "Altimeter distance to bottom",
         "units": "m",
         "standard_name": None,
@@ -163,8 +197,10 @@ VARIABLES: dict[str, dict] = {
         "vmin": 0,
         "vmax": None,
     },
-    # TEOS-10 derived — computed on-the-fly by add_teos10(), not stored in NC
+    # TEOS-10 derived — computed on-the-fly by derive_teos10(), not stored in NC
     "conservative_temperature": {
+        "label": "CT",
+        "label_units": "°C",
         "long_name": "Conservative Temperature",
         "units": "degree_Celsius",
         "standard_name": "sea_water_conservative_temperature",
@@ -174,6 +210,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     "absolute_salinity": {
+        "label": "SA",
+        "label_units": "g kg⁻¹",
         "long_name": "Absolute Salinity",
         "units": "g kg-1",
         "standard_name": "sea_water_absolute_salinity",
@@ -183,6 +221,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": 35.5,
     },
     "sigma0": {
+        "label": "σ₀",
+        "label_units": "kg m⁻³",
         "long_name": "Potential density anomaly (ref 0 dbar)",
         "units": "kg m-3",
         "standard_name": "sea_water_sigma_theta",
@@ -192,6 +232,8 @@ VARIABLES: dict[str, dict] = {
     },
     # Derived diagnostics
     "AOU": {
+        "label": "AOU",
+        "label_units": "µmol kg⁻¹",
         "long_name": "Apparent Oxygen Utilization",
         "units": "umol kg-1",
         "standard_name": None,
@@ -201,6 +243,8 @@ VARIABLES: dict[str, dict] = {
     },
     # LADCP velocity components
     "U": {
+        "label": "U",
+        "label_units": "m s⁻¹",
         "long_name": "Eastward velocity",
         "units": "m s-1",
         "standard_name": "eastward_sea_water_velocity",
@@ -209,6 +253,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "V": {
+        "label": "V",
+        "label_units": "m s⁻¹",
         "long_name": "Northward velocity",
         "units": "m s-1",
         "standard_name": "northward_sea_water_velocity",
@@ -218,6 +264,8 @@ VARIABLES: dict[str, dict] = {
     },
     # Stability diagnostics
     "N2": {
+        "label": "N²",
+        "label_units": "s⁻²",  # rad² is conventional to omit on oceanographic plots
         "long_name": "Squared buoyancy frequency",
         "units": "rad2 s-2",
         "standard_name": "square_of_brunt_vaisala_frequency_in_sea_water",
@@ -226,6 +274,8 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "Turner": {
+        "label": "Turner angle",
+        "label_units": "°",
         "long_name": "Turner angle",
         "units": "degree",
         "standard_name": None,
@@ -257,16 +307,37 @@ VAR_COLORS: dict[str, str] = {
 
 #: Plotter-facing colormap lookup, derived from VARIABLES so the two cannot drift.
 _VAR_CMAPS: dict[str, str] = {
-    k: v["cmap"] for k, v in VARIABLES.items() if v.get("cmap")
+    k: v["cmap"] for k, v in VARIABLES.items() if v.get("cmap") is not None
 }
 
-# Short dataset variable names → VARIABLES keys.
-# add_teos10() stores Conservative Temperature as "CT" and Absolute Salinity as "SA"
-# in the xarray dataset; plots.py uses this map to resolve colours and colormaps.
-TEOS10_SHORT: dict[str, str] = {
-    "CT": "conservative_temperature",
-    "SA": "absolute_salinity",
-}
+
+def vlabel(var: str, prefix: str = "") -> str:
+    """Return a matplotlib axis label for *var* using the VARIABLES registry.
+
+    Format is ``"Label (units)"`` when ``label_units`` is non-empty, or just
+    ``"Label"`` when there are no units (e.g. dimensionless quantities).
+    Units are always in the Unicode display form from ``label_units`` — never
+    the ASCII-safe ``units`` string used for netCDF attributes.
+
+    Parameters
+    ----------
+    var:
+        VARIABLES key (e.g. ``"conservative_temperature"``).
+    prefix:
+        Optional prefix prepended to the label component only, not the units.
+        Use ``"Δ"`` to produce difference labels such as ``"ΔCT (°C)"``.
+
+    Returns
+    -------
+    str
+        Ready-to-use axis label string.  Falls back to *var* itself when *var*
+        is not in VARIABLES.
+    """
+    entry = VARIABLES.get(var, {})
+    lbl = f"{prefix}{entry.get('label', var)}"
+    lu = entry.get("label_units", "")
+    return f"{lbl} ({lu})" if lu else lbl
+
 
 # ---------------------------------------------------------------------------
 # CNV input aliases  [Science — firmware column names, not per-cruise choices]

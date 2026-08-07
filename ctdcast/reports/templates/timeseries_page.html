@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}{{ ts_name }} — {{ cruise }}{% endblock %}
-{% block masthead_title %}{{ ts_name }}{% endblock %}
+{% block title %}{{ ts_name }}{% if ts_description %} — {{ ts_description }}{% endif %} — {{ cruise }}{% endblock %}
+{% block masthead_title %}{{ ts_name }}{% if ts_description %} — {{ ts_description }}{% endif %}{% endblock %}
 {% block masthead_type %}Timeseries{% endblock %}
 
 {% block head_extra %}
@@ -30,7 +30,7 @@
     <span class="sep">›</span>
     <a href="{{ nav_prefix }}timeseries.html">Timeseries</a>
     <span class="sep">›</span>
-    <span>{{ ts_name }}</span>
+    <span>{{ ts_name }}{% if ts_description %} — {{ ts_description }}{% endif %}</span>
   </nav>
   <div class="nav-btns">
     {% if prev_name %}<a class="btn-nav" href="timeseries_{{ prev_name }}.html">← {{ prev_name }}</a>{% endif %}

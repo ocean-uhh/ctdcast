@@ -31,8 +31,8 @@ from ctdcast.config.parameters import (
     _W_THREE_FIFTHS,
     _W_TWO_FIFTHS,
     _W_TWOTHIRDS,
-    TEOS10_SHORT,
     VAR_COLORS,
+    vlabel,
 )
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
@@ -291,14 +291,16 @@ def _discrete_norm(
     vmin: float | None,
     vmax: float | None,
     n: int = 20,
-) -> tuple[Any, Any, np.ndarray]:
-    """Return ``(cmap, norm, bounds)`` for a discrete pcolormesh colorbar.
+) -> tuple[Any, Any, np.ndarray, str]:
+    """Return ``(cmap, norm, bounds, cmap_name)`` for a discrete colorbar.
 
     Percentile limits (2nd–98th) are computed from *d_fin* (finite data values)
     unless overridden by *vmin*/*vmax*.  Includes the oxygen-specific fixed step
-    and a guard against degenerate ranges.
+    and a guard against degenerate ranges.  The fourth return value is the
+    colormap name string, needed when calling ``ax.contourf`` which accepts a
+    name rather than a ``Colormap`` object.
     """
-    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
+    cmap_name = _VAR_CMAPS.get(var, "viridis")
     v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:
@@ -312,7 +314,7 @@ def _discrete_norm(
         bounds = _nice_colorbar_bounds(v0, v1, n=n, hard_min=vmin, hard_max=vmax)
     cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
-    return cmap, norm, bounds
+    return cmap, norm, bounds, cmap_name
 
 
 def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> None:
@@ -343,8 +345,8 @@ def draw_ts_density_fig(
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values
-    ct = ds_down["CT"].values
-    sa = ds_down["SA"].values
+    ct = ds_down["conservative_temperature"].values
+    sa = ds_down["absolute_salinity"].values
     sig = ds_down["sigma0"].values
 
     if ladcp_path is None:
@@ -370,10 +372,10 @@ def draw_ts_density_fig(
                 pad = max((hi - lo) * 0.05, 1e-6)
                 ax.set_xlim(lo - pad, hi + pad)
         ax0.set_ylim(float(np.nanmax(p)), 0)
-        ax0.set_ylabel("Pressure (dbar)")
-        ax0.set_xlabel("CT (°C)", color=_TS_COLORS[0])
-        ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
-        ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
+        ax0.set_ylabel(vlabel("pressure"))
+        ax0.set_xlabel(vlabel("conservative_temperature"), color=_TS_COLORS[0])
+        ax1.set_xlabel(vlabel("absolute_salinity"), color=_TS_COLORS[1])
+        ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
         ax0.grid(True)
         if CLEAN_SPINES:
             ax0.spines["right"].set_visible(False)
@@ -417,10 +419,10 @@ def draw_ts_density_fig(
         ax.spines["top"].set_edgecolor(line.get_color())
         ax.spines["top"].set_linewidth(0.6)
 
-    ax_ctd.set_ylabel("Pressure (dbar)")
-    ax_ctd.set_xlabel("CT (°C)", color=_TS_COLORS[0])
-    ax1.set_xlabel("SA (g kg⁻¹)", color=_TS_COLORS[1])
-    ax2.set_xlabel("σ₀ (kg m⁻³)", color=_TS_COLORS[2])
+    ax_ctd.set_ylabel(vlabel("pressure"))
+    ax_ctd.set_xlabel(vlabel("conservative_temperature"), color=_TS_COLORS[0])
+    ax1.set_xlabel(vlabel("absolute_salinity"), color=_TS_COLORS[1])
+    ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
     ax_ctd.legend(handles=[l0, l1, l2], loc="center left", fontsize=7, framealpha=0.7)
     ax_ctd.grid(True)
     if CLEAN_SPINES:
@@ -456,8 +458,8 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a T-S diagram Figure colored by O₂ saturation."""
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
-    sa = ds_down["SA"].values
-    ct = ds_down["CT"].values
+    sa = ds_down["absolute_salinity"].values
+    ct = ds_down["conservative_temperature"].values
     if "oxygen_1" not in ds_down:
         return None
     o2 = ds_down["oxygen_1"].values
@@ -493,10 +495,10 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("O₂ saturation (%)")
+    cb.set_label(vlabel("oxygen_1"))
 
-    ax.set_xlabel("SA (g kg⁻¹)")
-    ax.set_ylabel("CT (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     _hide_outer_spines(ax)
     return fig
 
@@ -506,8 +508,8 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values.astype(float)
-    sa = ds_down["SA"].values.astype(float)
-    ct = ds_down["CT"].values.astype(float)
+    sa = ds_down["absolute_salinity"].values.astype(float)
+    ct = ds_down["conservative_temperature"].values.astype(float)
     lat = float(np.nanmedian(ds["latitude"].values))
 
     if len(p) < 3:
@@ -527,8 +529,8 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_n2.plot(n2, p_n2, color="k")
     ax_n2.axvline(0, color="0.6", lw=0.8, ls="--")
     ax_n2.set_ylim(float(np.nanmax(p_n2)), 0)
-    ax_n2.set_xlabel("N² (s⁻²)")
-    ax_n2.set_ylabel("Pressure (dbar)")
+    ax_n2.set_xlabel(vlabel("N2"))
+    ax_n2.set_ylabel(vlabel("pressure"))
     ax_n2.grid(True)
 
     ax_tu.axvspan(-90, -45, color="#f4a582", alpha=0.35, label="salt fingering")
@@ -538,7 +540,7 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_tu.axvline(45, color="k", lw=0.8, ls="--")
     ax_tu.plot(tu, p_tu, color="#333333")
     ax_tu.set_xlim(-90, 90)
-    ax_tu.set_xlabel("Turner angle (°)")
+    ax_tu.set_xlabel(vlabel("Turner"))
     ax_tu.legend(loc="lower right", fontsize=7)
     ax_tu.grid(True)
     _hide_outer_spines(ax_n2, ax_tu)
@@ -549,9 +551,9 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
 def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
     vars_labels = [
-        ("oxygen_1", "O₂ saturation (%)"),
-        ("fluorescence", "Fluorescence (mg m⁻³)"),
-        ("turbidity", "Turbidity (NTU)"),
+        ("oxygen_1", vlabel("oxygen_1")),
+        ("fluorescence", vlabel("fluorescence")),
+        ("turbidity", vlabel("turbidity")),
     ]
     available = [(v, lbl) for v, lbl in vars_labels if v in ds]
     if not available:
@@ -565,7 +567,7 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     p_down = ds_down["pressure"].values
     max_p = float(np.nanmax(p_down))
     for ax, (var, label) in zip(axes, available):
-        color = VAR_COLORS.get(TEOS10_SHORT.get(var, var), "#000000")
+        color = VAR_COLORS.get(var, "#000000")
         ax.plot(ds_down[var].values, p_down, color=color, label="downcast")
         if var in ds_up and len(ds_up["pressure"]) > 2:
             ax.plot(
@@ -578,7 +580,7 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
         ax.set_xlabel(label)
         ax.grid(True)
 
-    axes[0].set_ylabel("Pressure (dbar)")
+    axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left", fontsize="small")
     _hide_outer_spines(*axes)
@@ -591,9 +593,9 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
     ds_down, ds_up = split_cast(ds_teos)
 
     vars_labels = [
-        ("CT", "CT (°C)"),
-        ("SA", "SA (g kg⁻¹)"),
-        ("sigma0", "σ₀ (kg m⁻³)"),
+        ("conservative_temperature", vlabel("conservative_temperature")),
+        ("absolute_salinity", vlabel("absolute_salinity")),
+        ("sigma0", vlabel("sigma0")),
     ]
     available = [(v, lbl) for v, lbl in vars_labels if v in ds_down]
     if not available:
@@ -607,7 +609,7 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
     max_p = float(np.nanmax(p_down))
 
     for ax, (var, label) in zip(axes, available):
-        color = VAR_COLORS.get(TEOS10_SHORT.get(var, var), "#000000")
+        color = VAR_COLORS.get(var, "#000000")
         d_vals = ds_down[var].values
         d_fin = d_vals[np.isfinite(d_vals)]
         ax.plot(d_vals, p_down, color=color, label="downcast")
@@ -630,7 +632,7 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
             pad = max((p99 - p1) * 0.05, 1e-6)
             ax.set_xlim(p1 - pad, p99 + pad)
 
-    axes[0].set_ylabel("Pressure (dbar)")
+    axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left", fontsize="small")
     _hide_outer_spines(*axes)
@@ -642,10 +644,10 @@ def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
 
-    sa_d = ds_down["SA"].values
-    ct_d = ds_down["CT"].values
-    sa_u = ds_up["SA"].values
-    ct_u = ds_up["CT"].values
+    sa_d = ds_down["absolute_salinity"].values
+    ct_d = ds_down["conservative_temperature"].values
+    sa_u = ds_up["absolute_salinity"].values
+    ct_u = ds_up["conservative_temperature"].values
 
     mask_d = np.isfinite(sa_d) & np.isfinite(ct_d)
     mask_u = np.isfinite(sa_u) & np.isfinite(ct_u)
@@ -691,8 +693,8 @@ def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
         )
     ax.set_xlim(sa_lo - sa_pad, sa_hi + sa_pad)
     ax.set_ylim(ct_lo - ct_pad, ct_hi + ct_pad)
-    ax.set_xlabel("SA (g kg⁻¹)")
-    ax.set_ylabel("CT (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     ax.legend(loc="best", markerscale=2, fontsize=8)
     ax.grid(False)
     _hide_outer_spines(ax)
@@ -858,8 +860,7 @@ def draw_section_fig(
     if not len(d_fin):
         return None
 
-    cmap, norm, bounds = _discrete_norm(d_fin, var, vmin, vmax)
-    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
+    cmap, norm, bounds, cmap_name = _discrete_norm(d_fin, var, vmin, vmax)
 
     dist = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 10.0
     p_max_data = float(p_trim[-1])
@@ -916,7 +917,8 @@ def draw_section_fig(
 
     cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
-    ax.set_ylabel("Pressure (dbar)")
+    ax.set_xlim(float(x_vals[0]), float(x_vals[-1]))
+    ax.set_ylabel(vlabel("pressure"))
     ax.set_xlabel(x_label)
 
     if cast_labels is not None and len(cast_labels) == len(x_vals):
@@ -930,10 +932,10 @@ def draw_section_ts_profiles_fig(
     x_vals: np.ndarray,
 ) -> plt.Figure | None:
     """Return a Figure of per-cast CT–SA profiles coloured by along-track distance."""
-    if "SA" not in ds_prof or "CT" not in ds_prof:
+    if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
         return None
-    sa_all = ds_prof["SA"].values  # (N_PROF, N_P)
-    ct_all = ds_prof["CT"].values  # (N_PROF, N_P)
+    sa_all = ds_prof["absolute_salinity"].values  # (N_PROF, N_P)
+    ct_all = ds_prof["conservative_temperature"].values  # (N_PROF, N_P)
     sa_fin = sa_all[np.isfinite(sa_all)]
     ct_fin = ct_all[np.isfinite(ct_all)]
     if not len(sa_fin) or not len(ct_fin):
@@ -982,8 +984,8 @@ def draw_section_ts_profiles_fig(
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
-    ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
-    ax.set_ylabel("Conservative Temperature (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
     _hide_outer_spines(ax)
     return fig
@@ -991,10 +993,10 @@ def draw_section_ts_profiles_fig(
 
 def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
     """Return a CT–SA diagram Figure for all timeseries profiles, coloured by time."""
-    if "SA" not in ds_ts or "CT" not in ds_ts:
+    if "absolute_salinity" not in ds_ts or "conservative_temperature" not in ds_ts:
         return None
-    sa_all = ds_ts["SA"].values  # (N_PROF, N_P)
-    ct_all = ds_ts["CT"].values
+    sa_all = ds_ts["absolute_salinity"].values  # (N_PROF, N_P)
+    ct_all = ds_ts["conservative_temperature"].values
     if sa_all.shape[0] < 2:
         return None
 
@@ -1049,8 +1051,8 @@ def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
-    ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
-    ax.set_ylabel("Conservative Temperature (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
     _hide_outer_spines(ax)
     return fig
@@ -1058,10 +1060,10 @@ def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
 
 def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     """Return a CT–SA 2-D count histogram Figure (log₁₀ colour) for section profiles."""
-    if "SA" not in ds_prof or "CT" not in ds_prof:
+    if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
         return None
-    sa = ds_prof["SA"].values.ravel()
-    ct = ds_prof["CT"].values.ravel()
+    sa = ds_prof["absolute_salinity"].values.ravel()
+    ct = ds_prof["conservative_temperature"].values.ravel()
     mask = np.isfinite(sa) & np.isfinite(ct)
     sa, ct = sa[mask], ct[mask]
     if len(sa) < 10:
@@ -1106,8 +1108,8 @@ def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
-    ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
-    ax.set_ylabel("Conservative Temperature (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
     _hide_outer_spines(ax)
     return fig
@@ -1115,10 +1117,14 @@ def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
 
 def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     """Return a CT–SA histogram Figure coloured by median O₂ saturation per bin."""
-    if "SA" not in ds_prof or "CT" not in ds_prof or "oxygen_1" not in ds_prof:
+    if (
+        "absolute_salinity" not in ds_prof
+        or "conservative_temperature" not in ds_prof
+        or "oxygen_1" not in ds_prof
+    ):
         return None
-    sa = ds_prof["SA"].values.ravel()
-    ct = ds_prof["CT"].values.ravel()
+    sa = ds_prof["absolute_salinity"].values.ravel()
+    ct = ds_prof["conservative_temperature"].values.ravel()
     o2 = ds_prof["oxygen_1"].values.ravel()
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)
     sa, ct, o2 = sa[mask], ct[mask], o2[mask]
@@ -1181,8 +1187,8 @@ def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
-    ax.set_xlabel("Absolute Salinity (g kg⁻¹)")
-    ax.set_ylabel("Conservative Temperature (°C)")
+    ax.set_xlabel(vlabel("absolute_salinity"))
+    ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
     _hide_outer_spines(ax)
     return fig
@@ -1324,18 +1330,7 @@ def draw_overview_panel_fig(
     if not len(d_fin):
         return None
 
-    cmap_name = _VAR_CMAPS.get(TEOS10_SHORT.get(var, var), "viridis")
-    v0 = vmin if vmin is not None else float(np.percentile(d_fin, 1))
-    v1 = vmax if vmax is not None else float(np.percentile(d_fin, 99))
-    if var == "oxygen_1":
-        _o2_step = 2.5
-        _o2_lo = math.floor(v0 / _o2_step) * _o2_step
-        _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
-        bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
-    else:
-        bounds = _nice_colorbar_bounds(v0, v1, n=20, hard_min=vmin, hard_max=vmax)
-    cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
-    norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+    cmap, norm, bounds, cmap_name = _discrete_norm(d_fin, var, vmin, vmax)
 
     x_pos = np.arange(len(cast_nums), dtype=float)
 
@@ -1407,7 +1402,7 @@ def draw_overview_panel_fig(
 
     cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
-    ax.set_ylabel("Pressure (dbar)")
+    ax.set_ylabel(vlabel("pressure"))
     ax.set_xlabel("Cast number")
 
     # Tick marks at multiples of 5 or 10, matching the grid lines
@@ -1553,7 +1548,7 @@ def draw_timeseries_fig(
     if not len(d_fin):
         return None
 
-    cmap, norm, bounds = _discrete_norm(d_fin, var, vmin, vmax)
+    cmap, norm, bounds, _ = _discrete_norm(d_fin, var, vmin, vmax)
 
     t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
     n_prof = len(t_mpl)
@@ -1649,7 +1644,7 @@ def draw_timeseries_fig(
             down_count += 1
 
     ax.set_ylim(float(p_trim[-1]), float(p_trim[0]))
-    ax.set_ylabel("Pressure (dbar)")
+    ax.set_ylabel(vlabel("pressure"))
     return fig
 
 
@@ -1698,7 +1693,7 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
         axes[idx].set_xlim(-0.01, 0.01)
         axes[idx].grid(True)
 
-    axes[0].set_ylabel("Pressure (dbar)")
+    axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     _hide_outer_spines(*axes)
     return fig
@@ -1719,7 +1714,7 @@ def draw_pressure_time_fig(ds: xr.Dataset) -> plt.Figure | None:
     max_p = float(np.nanmax(p))
     ax.set_ylim(max_p, 0)
     ax.set_xlabel("Elapsed time (min)")
-    ax.set_ylabel("Pressure (dbar)")
+    ax.set_ylabel(vlabel("pressure"))
     ax.grid(True)
     _hide_outer_spines(ax)
     return fig
@@ -1749,8 +1744,11 @@ def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
 
     diffs, labels, colors = [], [], []
     for var, label, color in zip(
-        ("CT", "SA", "sigma0"),
-        ("ΔCT (°C)", "ΔSA (g kg⁻¹)", "Δσ₀ (kg m⁻³)"),
+        ("conservative_temperature", "absolute_salinity", "sigma0"),
+        (
+            vlabel(v, prefix="Δ")
+            for v in ("conservative_temperature", "absolute_salinity", "sigma0")
+        ),
         _TS_COLORS,
     ):
         if var not in ds_down or var not in ds_up:
@@ -1772,7 +1770,7 @@ def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
         ax.axvline(0, color="0.6", linewidth=0.6, linestyle="--")
         ax.set_xlabel(label)
         ax.grid(True)
-    axes[0].set_ylabel("Pressure (dbar)")
+    axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
     _hide_outer_spines(*axes)
     return fig
