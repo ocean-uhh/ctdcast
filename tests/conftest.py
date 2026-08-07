@@ -19,6 +19,8 @@ _plots.RAISE_ON_PLOT_ERROR = True
 _HERE = Path(__file__).parent
 FIXTURES_NC = _HERE / "fixtures" / "nc"
 FIXTURES_LADCP = _HERE / "fixtures" / "ladcp"
+FIXTURES_CNV = _HERE / "fixtures" / "cnv"
+FIXTURES_OXY = _HERE / "fixtures" / "oxy"
 
 CAST_011 = FIXTURES_NC / "mixsed2_011.nc"
 CAST_012 = FIXTURES_NC / "mixsed2_012.nc"

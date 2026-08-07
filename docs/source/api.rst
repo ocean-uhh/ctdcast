@@ -90,7 +90,7 @@ Interactive map
 Analysis helpers
 ----------------
 
-.. automodule:: ctdcast.analysis.teos10
+.. automodule:: ctdcast.analysis.derive
    :members:
    :undoc-members:
 
@@ -107,7 +107,23 @@ Analysis helpers
 Cast processing
 ---------------
 
-.. automodule:: ctdcast.cast.stage2
+.. automodule:: ctdcast.processors.stage1
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.processors.stage2
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.processors.stage3
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.processors.qc
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.processors.profiles
    :members:
    :undoc-members:
 

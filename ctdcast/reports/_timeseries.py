@@ -18,7 +18,8 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
+from ctdcast.analysis.derive import derive_AOU as add_aou
+from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.config.parameters import _MAX_SECTION_H, _W_FULL, _W_HALF, _W_THIRD
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER

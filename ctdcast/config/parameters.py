@@ -13,6 +13,7 @@ who may change it and what breaks when they do:
               ``config.yaml``; use :func:`ctdcast.config.loader.load_display_config`.
   Derived   — computed from another constant; must live here to avoid drift.
   Deferred  — belongs in ``oceanvis`` once that package exists.
+
 """
 
 from __future__ import annotations

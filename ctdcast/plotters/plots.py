@@ -20,8 +20,7 @@ import xarray as xr
 from ctdcast.analysis.bathymetry import (
     load_gebco,
 )
-from ctdcast.analysis.teos10 import add_teos10
-from ctdcast.cast.stage2 import split_cast
+from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
     _MAX_SECTION_H,
     _SECTION_STRETCH,
@@ -35,6 +34,7 @@ from ctdcast.config.parameters import (
     TEOS10_SHORT,
     VAR_COLORS,
 )
+from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
 
 # ---------------------------------------------------------------------------
