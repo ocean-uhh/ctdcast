@@ -10,7 +10,7 @@ so the output files work fully offline on a research vessel.
 
 Three report types are produced:
 
-- **Station pages** — one page per cast, with hydrographic profiles, T-S diagram, and a
+- **Cast pages** — one page per cast, with hydrographic profiles, T-S diagram, and a
   cruise-track map highlighting the cast location.
 - **Section pages** — transect sections showing T, S, σ₀, and O₂ across user-defined groups
   of casts.
