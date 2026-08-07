@@ -6,9 +6,25 @@ descriptors for the cast page.
 
 from __future__ import annotations
 
+import datetime
 import json
 
 import xarray as xr
+
+
+def _normalise_calibration_date(raw: str) -> str:
+    """Return *raw* reformatted as ``YYYY-MMM-DD``, or *raw* unchanged on failure.
+
+    SeaBird writes dates in ``DD-Mon-YY`` or ``DD-Mon-YYYY`` form
+    (e.g. ``"17-Feb-26"`` or ``"17-Feb-2026"``).
+    """
+    for fmt in ("%d-%b-%y", "%d-%b-%Y"):
+        try:
+            return datetime.datetime.strptime(raw, fmt).date().strftime("%Y-%b-%d")  # noqa: DTZ007
+        except ValueError:
+            continue
+    return raw
+
 
 # Human-readable display names for SBE sensor type strings.
 _SENSOR_LABELS: dict[str, str] = {
@@ -77,7 +93,9 @@ def parse_sensor_info(ds: xr.Dataset) -> list[dict[str, str]]:
             {
                 "sensor_type": label,
                 "serial_number": serial,
-                "calibration_date": entry.get("calibration_date", ""),
+                "calibration_date": _normalise_calibration_date(
+                    entry.get("calibration_date", "")
+                ),
             }
         )
     return results

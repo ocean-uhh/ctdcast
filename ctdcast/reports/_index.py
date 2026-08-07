@@ -146,9 +146,7 @@ def report(
 
     # Load sections YAML once. SectionsConfig returns empty defaults when absent.
     _sections_cfg = (
-        SectionsConfig.from_yaml(section_yaml)
-        if section_yaml
-        else SectionsConfig.empty()
+        SectionsConfig.from_yaml(section_yaml) if section_yaml else SectionsConfig()
     )
 
     # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.

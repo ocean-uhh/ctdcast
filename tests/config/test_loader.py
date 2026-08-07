@@ -62,8 +62,8 @@ def test_from_yaml_partial(tmp_path: Path) -> None:
 
 
 def test_empty() -> None:
-    """SectionsConfig.empty() returns an all-empty config."""
-    cfg = SectionsConfig.empty()
+    """SectionsConfig() with no args returns an all-empty config."""
+    cfg = SectionsConfig()
     assert cfg.sections == {}
     assert cfg.timeseries == {}
     assert cfg.cruise_info == {}

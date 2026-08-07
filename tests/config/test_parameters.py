@@ -11,6 +11,7 @@ from ctdcast.config.parameters import (
     CCHDO_COMPOSITE,
     CCHDO_QC,
     CCHDO_VARIABLES,
+    CNV_ALIASES,
     VAR_COLORS,
     VARIABLES,
 )
@@ -57,6 +58,21 @@ def test_cchdo_qc_woce_inversion() -> None:
     assert CCHDO_QC[3] == 3
     assert CCHDO_QC[4] == 4
     assert CCHDO_QC[9] == 9
+
+
+def test_cnv_aliases_values_in_variables() -> None:
+    """Every CNV_ALIASES target variable must have an entry in VARIABLES.
+
+    Exceptions: coordinate names (latitude, longitude) and oxygen_raw_1
+    (raw SBE 43 voltage, intentionally excluded from the plotting pipeline).
+    Without this check, a new alias can silently fall back to 'viridis'
+    if the target name is absent from VARIABLES.
+    """
+    _coords = {"latitude", "longitude"}
+    _pipeline_excluded = {"oxygen_raw_1"}
+    targets_as_vars = set(CNV_ALIASES.values()) - _coords - _pipeline_excluded
+    missing = targets_as_vars - set(VARIABLES)
+    assert not missing, f"CNV_ALIASES targets missing from VARIABLES: {missing}"
 
 
 def test_load_display_config_merges_overrides() -> None:

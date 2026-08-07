@@ -1,9 +1,6 @@
 """Derived physical quantities computed from raw CTD measurements.
 
 All functions use GSW — the same library oceanographers use directly.
-Naming follows GSW conventions (SA = Absolute Salinity, CT = Conservative
-Temperature, SP = Practical Salinity) so the origin of each quantity is
-unambiguous.
 
 Per-cast (1-D, dim=time) functions
 ------------------------------------
@@ -17,6 +14,10 @@ derive_teos10     Convenience: SA + CT + sigma0 + optional O2 unit conversion
 Profiles (2-D, dims N_PROF × pressure) functions
 --------------------------------------------------
 derive_teos10_profiles   SA + CT + sigma0 for compiled profiles datasets
+
+Output variable names match the VARIABLES registry in
+``ctdcast.config.parameters``: ``absolute_salinity``,
+``conservative_temperature``, ``sigma0``.
 """
 
 from __future__ import annotations
@@ -112,7 +113,7 @@ def derive_SA(ds: xr.Dataset) -> xr.Dataset:
     Returns
     -------
     xr.Dataset
-        New Dataset with ``ds["SA"]`` added; input is not mutated.
+        New Dataset with ``ds["absolute_salinity"]`` added; input is not mutated.
     """
     ds = ds.copy()
     sp = ds["salinity_1"].values.astype(float)
@@ -123,7 +124,7 @@ def derive_SA(ds: xr.Dataset) -> xr.Dataset:
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
         sa = gsw.SA_from_SP(sp, p, lon, lat)
     dim = ds["pressure"].dims[0]
-    ds["SA"] = xr.DataArray(
+    ds["absolute_salinity"] = xr.DataArray(
         sa.astype(np.float32),
         dims=[dim],
         attrs={"long_name": "Absolute Salinity", "units": "g kg-1"},
@@ -134,32 +135,32 @@ def derive_SA(ds: xr.Dataset) -> xr.Dataset:
 def derive_CT(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with Conservative Temperature (CT) added.
 
-    Requires ``ds["SA"]`` to already be present (call :func:`derive_SA` first).
+    Requires ``ds["absolute_salinity"]`` to already be present (call :func:`derive_SA` first).
     Uses ``gsw.CT_from_t`` with in-situ ``temperature_1`` and ``pressure``.
 
     Parameters
     ----------
     ds:
-        Per-cast Dataset (dim=time) with ``SA``, ``temperature_1``,
+        Per-cast Dataset (dim=time) with ``absolute_salinity``, ``temperature_1``,
         ``pressure``.
 
     Returns
     -------
     xr.Dataset
-        New Dataset with ``ds["CT"]`` added; input is not mutated.
+        New Dataset with ``ds["conservative_temperature"]`` added; input is not mutated.
     """
     ds = ds.copy()
-    sa = ds["SA"].values.astype(float)
+    sa = ds["absolute_salinity"].values.astype(float)
     t = ds["temperature_1"].values.astype(float)
     p = ds["pressure"].values.astype(float)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
         ct = gsw.CT_from_t(sa, t, p)
     dim = ds["pressure"].dims[0]
-    ds["CT"] = xr.DataArray(
+    ds["conservative_temperature"] = xr.DataArray(
         ct.astype(np.float32),
         dims=[dim],
-        attrs={"long_name": "Conservative Temperature", "units": "degC"},
+        attrs={"long_name": "Conservative Temperature", "units": "degree_Celsius"},
     )
     return ds
 
@@ -167,13 +168,13 @@ def derive_CT(ds: xr.Dataset) -> xr.Dataset:
 def derive_sigma0(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with potential density anomaly (sigma0) added.
 
-    Requires ``ds["SA"]`` and ``ds["CT"]`` to already be present.
+    Requires ``ds["absolute_salinity"]`` and ``ds["conservative_temperature"]`` to already be present.
     Uses ``gsw.sigma0``.
 
     Parameters
     ----------
     ds:
-        Per-cast Dataset (dim=time) with ``SA`` and ``CT``.
+        Per-cast Dataset (dim=time) with ``absolute_salinity`` and ``conservative_temperature``.
 
     Returns
     -------
@@ -181,12 +182,12 @@ def derive_sigma0(ds: xr.Dataset) -> xr.Dataset:
         New Dataset with ``ds["sigma0"]`` added; input is not mutated.
     """
     ds = ds.copy()
-    sa = ds["SA"].values.astype(float)
-    ct = ds["CT"].values.astype(float)
+    sa = ds["absolute_salinity"].values.astype(float)
+    ct = ds["conservative_temperature"].values.astype(float)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
         sig0 = gsw.sigma0(sa, ct)
-    dim = ds["SA"].dims[0]
+    dim = ds["absolute_salinity"].dims[0]
     ds["sigma0"] = xr.DataArray(
         sig0.astype(np.float32),
         dims=[dim],
@@ -218,8 +219,8 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     ds = derive_CT(ds)
     ds = derive_sigma0(ds)
     if "oxygen_1" in ds:
-        sa = ds["SA"].values.astype(float)
-        ct = ds["CT"].values.astype(float)
+        sa = ds["absolute_salinity"].values.astype(float)
+        ct = ds["conservative_temperature"].values.astype(float)
         p = ds["pressure"].values.astype(float)
         lat = float(np.nanmedian(ds["latitude"].values))
         lon = float(np.nanmedian(ds["longitude"].values))
@@ -250,7 +251,11 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
     xr.Dataset
         New Dataset with SA, CT, sigma0 added; input is not mutated.
     """
-    if "CT" in ds and "SA" in ds and "sigma0" in ds:
+    if (
+        "conservative_temperature" in ds
+        and "absolute_salinity" in ds
+        and "sigma0" in ds
+    ):
         return ds
     ds = ds.copy()
     p = ds["pressure"].values.astype(float)  # (N_P,)
@@ -266,15 +271,15 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
         ct = gsw.CT_from_t(sa, t, p[np.newaxis, :])
         sig0 = gsw.sigma0(sa, ct)
     dims = tuple(ds["temperature_1"].dims)
-    ds["SA"] = xr.DataArray(
+    ds["absolute_salinity"] = xr.DataArray(
         sa.astype(np.float32),
         dims=dims,
         attrs={"long_name": "Absolute Salinity", "units": "g kg-1"},
     )
-    ds["CT"] = xr.DataArray(
+    ds["conservative_temperature"] = xr.DataArray(
         ct.astype(np.float32),
         dims=dims,
-        attrs={"long_name": "Conservative Temperature", "units": "degC"},
+        attrs={"long_name": "Conservative Temperature", "units": "degree_Celsius"},
     )
     ds["sigma0"] = xr.DataArray(
         sig0.astype(np.float32),
