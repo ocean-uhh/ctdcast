@@ -26,7 +26,7 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.analysis.teos10 import add_teos10
+from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file

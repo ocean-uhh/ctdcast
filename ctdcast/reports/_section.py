@@ -14,12 +14,13 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
+from ctdcast.analysis.derive import derive_AOU as add_aou
+from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import (
     along_track_km,
     distance_from_km,
     section_orientation,
 )
-from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot

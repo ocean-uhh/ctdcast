@@ -90,7 +90,7 @@ Interactive map
 Analysis helpers
 ----------------
 
-.. automodule:: ctdcast.analysis.teos10
+.. automodule:: ctdcast.analysis.derive
    :members:
    :undoc-members:
 

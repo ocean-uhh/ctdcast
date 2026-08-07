@@ -12,8 +12,9 @@ import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
+from ctdcast.analysis.derive import derive_AOU as add_aou
+from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
-from ctdcast.analysis.teos10 import add_aou, add_teos10_profiles
 from ctdcast.config.loader import SectionsConfig
 from ctdcast.identity import (
     cast_id_from_name,

@@ -16,7 +16,7 @@ import xarray as xr
 
 pytestmark = pytest.mark.slow
 
-from ctdcast.analysis import add_teos10
+from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.converters import build_profiles, convert_ctd_files
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._index import _read_cast_meta, report
