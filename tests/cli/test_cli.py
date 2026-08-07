@@ -511,7 +511,7 @@ class TestReport:
         )
         rc = _report.run(_report_ns(config=p))
         assert rc == 0
-        assert not list((tmp_path / "out").glob("stations/*.html"))
+        assert not list((tmp_path / "out").glob("casts/*.html"))
 
     def test_stations_only_generates_pages(self, tmp_path):
         """Confirm the CLI drives report correctly for stations."""
@@ -526,15 +526,15 @@ class TestReport:
         assert rc == 0
         for cast_num in (11, 12, 128, 129):
             assert (
-                tmp_path / "out" / "stations" / f"cast_{cast_num:03d}.html"
+                tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html"
             ).exists()
 
     def test_cast_flag_generates_single_station(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
         rc = _report.run(_report_ns(config=cfg, cast=11, force=True))
         assert rc == 0
-        assert (tmp_path / "out" / "stations" / "cast_011.html").exists()
-        assert not (tmp_path / "out" / "stations" / "cast_012.html").exists()
+        assert (tmp_path / "out" / "casts" / "cast_011.html").exists()
+        assert not (tmp_path / "out" / "casts" / "cast_012.html").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -575,7 +575,7 @@ class TestRun:
         assert rc == 0
         for cast_num in (11, 12, 128, 129):
             assert (
-                tmp_path / "out" / "stations" / f"cast_{cast_num:03d}.html"
+                tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html"
             ).exists()
 
     def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
@@ -583,8 +583,8 @@ class TestRun:
         cfg = self._write_cfg(tmp_path)
         rc = _run.run(_run_ns(config=cfg, cast=11, force=True))
         assert rc == 0
-        assert (tmp_path / "out" / "stations" / "cast_011.html").exists()
-        assert not (tmp_path / "out" / "stations" / "cast_012.html").exists()
+        assert (tmp_path / "out" / "casts" / "cast_011.html").exists()
+        assert not (tmp_path / "out" / "casts" / "cast_012.html").exists()
 
     def test_run_parser_standalone(self):
         parser = _run.build_parser()
@@ -608,7 +608,7 @@ class TestRun:
         """--skip-existing leaves existing station pages untouched."""
         cfg = self._write_cfg(tmp_path)
         _run.run(_run_ns(config=cfg, force=True))
-        page = tmp_path / "out" / "stations" / "cast_011.html"
+        page = tmp_path / "out" / "casts" / "cast_011.html"
         mtime_before = page.stat().st_mtime
         _run.run(_run_ns(config=cfg, skip_existing=True))
         assert page.stat().st_mtime == mtime_before

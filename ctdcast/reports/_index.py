@@ -232,7 +232,7 @@ def report(
             next_cast_str = (
                 cast_num_strs[orig_i + 1] if orig_i < len(all_meta) - 1 else None
             )
-            _expected = out_dir / "stations" / f"cast_{meta['cast_num_str']}.html"
+            _expected = out_dir / "casts" / f"cast_{meta['cast_num_str']}.html"
             _was_new = not _expected.exists()
             _html_mtime_str = _fmt_mtime(
                 _expected
@@ -293,7 +293,7 @@ def report(
                     f" nc: {_fmt_mtime(meta['path'])}{_ladcp_part}]"
                 )
             print(f"  cast {meta['cast_num_str']}: {_status}")
-        print(f"  [stations: {perf_counter() - _t0:.1f}s]")
+        print(f"  [casts: {perf_counter() - _t0:.1f}s]")
 
     sections_cfg: dict[str, Any] = _sections_cfg.sections
     timeseries_cfg: dict[str, Any] = _sections_cfg.timeseries
@@ -440,7 +440,7 @@ def report(
             ladcp_pattern=ladcp_pattern,
             cruise_info=cruise_info,
         )
-        print(f"  [station_index.html: {perf_counter() - _t0:.1f}s]")
+        print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
         _write_sections_list(
             sections_cfg,
@@ -707,7 +707,7 @@ def _write_stations_list(
     ladcp_pattern: str | None = None,
     cruise_info: dict[str, Any] | None = None,
 ) -> None:
-    """Write station_index.html with cruise map, depth pills, and section/timeseries links."""
+    """Write casts.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file.
     # Use find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
     # are handled correctly.
@@ -803,14 +803,14 @@ def _write_stations_list(
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
-    html = get_template("station_index.html").render(
+    html = get_template("casts.html").render(
         **ctx,
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="stations",
+        nav_current="casts",
     )
-    (out_dir / "station_index.html").write_text(html, encoding="utf-8")
+    (out_dir / "casts.html").write_text(html, encoding="utf-8")
 
 
 def _write_sections_list(

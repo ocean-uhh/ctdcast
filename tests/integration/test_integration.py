@@ -184,7 +184,7 @@ class TestSectionPage:
     @staticmethod
     def _pill_order(html):
         # Cast pills link each selected cast, in the section's plotted order.
-        return re.findall(r"stations/cast_(\w+)\.html", html)
+        return re.findall(r"casts/cast_(\w+)\.html", html)
 
     def test_section_preserves_config_order(self, tmp_path, profiles_nc):
         # Mode 1: casts appear in the order written, not profiles.nc order.
@@ -286,8 +286,8 @@ class TestFullReport:
             force=True,
         )
         for cast_num in (11, 12, 128, 129):
-            p = tmp_path / "stations" / f"cast_{cast_num:03d}.html"
-            assert p.exists(), f"Missing station page: {p.name}"
+            p = tmp_path / "casts" / f"cast_{cast_num:03d}.html"
+            assert p.exists(), f"Missing cast page: {p.name}"
 
     def test_generates_section_page(self, tmp_path, section_yaml_path, profiles_nc):
         report(
@@ -319,7 +319,7 @@ class TestFullReport:
         )
         for name in (
             "index.html",
-            "station_index.html",
+            "casts.html",
             "sections.html",
             "leaflet.html",
         ):
@@ -336,7 +336,7 @@ class TestFullReport:
             ladcp_dir=_LADCP,
             force=True,
         )
-        html = (tmp_path / "stations" / "cast_011.html").read_text(encoding="utf-8")
+        html = (tmp_path / "casts" / "cast_011.html").read_text(encoding="utf-8")
         assert _no_external_resources(html) == []
 
     def test_stations_only_no_yaml(self, tmp_path):
@@ -354,7 +354,7 @@ class TestFullReport:
             force=True,
         )
         for cast_num in (11, 12, 128, 129):
-            assert (tmp_path / "stations" / f"cast_{cast_num:03d}.html").exists()
+            assert (tmp_path / "casts" / f"cast_{cast_num:03d}.html").exists()
 
 
 class TestCastNotes:

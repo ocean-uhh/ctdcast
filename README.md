@@ -18,6 +18,12 @@ All output files are fully self-contained and work offline.
 ## Install
 
 ```bash
+pip install ctdcast
+```
+
+For development (editable install from source):
+
+```bash
 git clone https://github.com/ocean-uhh/ctdcast
 cd ctdcast
 python -m venv venv
@@ -112,10 +118,10 @@ distinct cast and must be named explicitly as a quoted ``"NNNb"`` string.
 ```
 <output.dir>/
     index.html              front page — map + stats + navigation
-    station_index.html      table of all casts (latest first)
+    casts.html      table of all casts (latest first)
     sections.html           section cards with links
     timeseries.html         T, S, O₂ vs time × pressure
-    stations/
+    casts/
         cast_001.html
         cast_002.html
         ...

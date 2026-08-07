@@ -143,10 +143,10 @@ copy the entire output directory anywhere and it works offline.
 
    <output.dir>/
        index.html              front page — map, cast count, navigation
-       station_index.html      sortable table of all casts
+       casts.html      sortable table of all casts
        sections.html           section cards with links
        timeseries.html         T, S, O₂ hovmöller diagrams
-       stations/
+       casts/
            cast_001.html
            ...
        sections/

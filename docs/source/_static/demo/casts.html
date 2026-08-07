@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Station index — odb2026</title>
+<title>Station index — odb26</title>
 <style>
 :root {
   --ocean: #1a3a5c;
@@ -100,9 +100,16 @@ footer {
 footer a { color: var(--muted); }
 @media print {
   body { max-width: 100%; }
-  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: 0.78rem; }
   h2 { page-break-after: avoid; }
+  .jump-nav { display: none; }
 }
+
+</style>
+
+<style>
 /* Stations index */
 table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; overflow-x: auto; display: block; }
 th {
@@ -129,26 +136,30 @@ tbody tr:hover td { background: var(--seafoam); }
   .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
   .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
 </style>
+
 </head>
 <body>
 <div id="top"></div>
 
+
+
 <div class="masthead" style="background:#1a3a5c;">
   <div class="masthead-header">
-    <h1>odb2026</h1>
+    <h1>odb26</h1>
     <span class="masthead-type">Station index</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-06 09:19 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-07 10:53 UTC</p>
   <div style="margin-top:0.65rem;margin-bottom:0.5rem">
     <span style="font-size:0.72rem;opacity:0.75;margin-right:0.3rem;">Pages:</span>
     <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#2980b9">Summary</a>
-    <a href="station_index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c;opacity:0.55">Stations</a>
+    <a href="casts.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#1a3a5c;opacity:0.55">Casts</a>
     <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#8e44ad">Sections</a>
     <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#27ae60">Timeseries</a>
     <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:4px;font-size:0.78rem;font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:#EE3377">Interactive</a>
   </div>
+  
   <dl class="meta-grid">
-    <div><dt>Cruise</dt><dd>odb2026</dd></div>
+    <div><dt>Cruise</dt><dd>odb26</dd></div>
     <div><dt>Ship</dt><dd>Odon de Buen</dd></div>
     <div><dt>Departure</dt><dd>2026-07-12</dd></div>
     <div><dt>Arrival</dt><dd>2026-07-22</dd></div>
@@ -156,7 +167,9 @@ tbody tr:hover td { background: var(--seafoam); }
     <div><dt>CTD casts</dt><dd>4</dd></div>
     <div><dt>Max depth</dt><dd>718 dbar</dd></div>
   </dl>
+
 </div>
+
 
 
 <h2 id="s-map">Map</h2>
@@ -183,8 +196,8 @@ tbody tr:hover td { background: var(--seafoam); }
     </thead>
     <tbody>
     
-      <tr onclick="window.location='stations/cast_129.html'">
-        <td><a class="cast-link" href="stations/cast_129.html">129</a></td>
+      <tr onclick="window.location='casts/cast_129.html'">
+        <td><a class="cast-link" href="casts/cast_129.html">129</a></td>
         <td class="filename">mixsed2_129.cnv</td>
         <td>2026-07-22 09:22</td>
         <td>65°34.998′N</td>
@@ -194,7 +207,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td><span class="ladcp-yes">✓</span></td>
         
         <td>
-          <a class="pill-btn pill-profile" href="stations/cast_129.html">Profile</a>
+          <a class="pill-btn pill-profile" href="casts/cast_129.html">Profile</a>
           
           
           <a class="pill-btn" style="background:#d62728;color:#fff;" href="timeseries/timeseries_Triangle.html">Triangle</a>
@@ -202,8 +215,8 @@ tbody tr:hover td { background: var(--seafoam); }
         </td>
       </tr>
     
-      <tr onclick="window.location='stations/cast_128.html'">
-        <td><a class="cast-link" href="stations/cast_128.html">128</a></td>
+      <tr onclick="window.location='casts/cast_128.html'">
+        <td><a class="cast-link" href="casts/cast_128.html">128</a></td>
         <td class="filename">mixsed2_128.cnv</td>
         <td>2026-07-22 03:33</td>
         <td>65°35.108′N</td>
@@ -213,7 +226,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td><span class="ladcp-yes">✓</span></td>
         
         <td>
-          <a class="pill-btn pill-profile" href="stations/cast_128.html">Profile</a>
+          <a class="pill-btn pill-profile" href="casts/cast_128.html">Profile</a>
           
           
           <a class="pill-btn" style="background:#d62728;color:#fff;" href="timeseries/timeseries_Triangle.html">Triangle</a>
@@ -221,8 +234,8 @@ tbody tr:hover td { background: var(--seafoam); }
         </td>
       </tr>
     
-      <tr onclick="window.location='stations/cast_012.html'">
-        <td><a class="cast-link" href="stations/cast_012.html">012</a></td>
+      <tr onclick="window.location='casts/cast_012.html'">
+        <td><a class="cast-link" href="casts/cast_012.html">012</a></td>
         <td class="filename">mixsed2_012.cnv</td>
         <td>2026-07-12 03:55</td>
         <td>65°50.719′N</td>
@@ -232,7 +245,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td><span class="ladcp-yes">✓</span></td>
         
         <td>
-          <a class="pill-btn pill-profile" href="stations/cast_012.html">Profile</a>
+          <a class="pill-btn pill-profile" href="casts/cast_012.html">Profile</a>
           
           <a class="pill-btn" style="background:#1f77b4;color:#fff;" href="sections/section_KO.html">KO</a>
           
@@ -240,8 +253,8 @@ tbody tr:hover td { background: var(--seafoam); }
         </td>
       </tr>
     
-      <tr onclick="window.location='stations/cast_011.html'">
-        <td><a class="cast-link" href="stations/cast_011.html">011</a></td>
+      <tr onclick="window.location='casts/cast_011.html'">
+        <td><a class="cast-link" href="casts/cast_011.html">011</a></td>
         <td class="filename">mixsed2_011.cnv</td>
         <td>2026-07-12 02:40</td>
         <td>65°51.622′N</td>
@@ -251,7 +264,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td><span class="ladcp-yes">✓</span></td>
         
         <td>
-          <a class="pill-btn pill-profile" href="stations/cast_011.html">Profile</a>
+          <a class="pill-btn pill-profile" href="casts/cast_011.html">Profile</a>
           
           <a class="pill-btn" style="background:#1f77b4;color:#fff;" href="sections/section_KO.html">KO</a>
           
@@ -262,12 +275,16 @@ tbody tr:hover td { background: var(--seafoam); }
     </tbody>
   </table>
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb2026 &nbsp;·&nbsp; 2026-08-06 09:19 UTC</footer>
-</body>
-</html><script>
+<script>
 document.querySelectorAll('h2').forEach(h => {
   const a = document.createElement('a');
   a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
   h.appendChild(a);
 });
 </script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-07 10:53 UTC</footer>
+</body>
+</html>

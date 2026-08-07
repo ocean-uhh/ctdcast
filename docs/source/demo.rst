@@ -27,11 +27,11 @@ or from the terminal::
 
    * - `Summary (index) <_static/demo/index.html>`_
      - Front page — cruise map, cast count, navigation to all sections
-   * - `Station index <_static/demo/station_index.html>`_
+   * - `Cast index <_static/demo/casts.html>`_
      - Sortable table of all casts with position, depth, and time
-   * - `Cast 011 <_static/demo/stations/cast_011.html>`_
+   * - `Cast 011 <_static/demo/casts/cast_011.html>`_
      - Station page — CT/SA/σ₀ profiles, T–S diagram, LADCP, altimeter
-   * - `Cast 128 <_static/demo/stations/cast_128.html>`_
+   * - `Cast 128 <_static/demo/casts/cast_128.html>`_
      - Deeper cast (686 dbar)
    * - `Section KO <_static/demo/sections/section_KO.html>`_
      - Two-cast transect section (CT, SA, σ₀, O₂)
