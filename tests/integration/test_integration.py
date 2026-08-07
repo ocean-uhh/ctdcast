@@ -6,6 +6,7 @@ They are slower than the unit tests (~30 s total) and are kept in a
 separate directory so they can be targeted with ``pytest tests/integration/``.
 """
 
+import importlib
 import re
 import warnings
 from pathlib import Path
@@ -402,7 +403,10 @@ class TestCastNotes:
 _OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
 
 
-@pytest.mark.skipif(not _OXY_CNV.exists(), reason="MSM142 oxygen fixture not present")
+@pytest.mark.skipif(
+    not _OXY_CNV.exists() or importlib.util.find_spec("seasenselib") is None,
+    reason="MSM142 oxygen fixture or seasenselib not present",
+)
 class TestOxygenConversion:
     """Integration test for µmol/L → % saturation conversion via add_teos10."""
 
