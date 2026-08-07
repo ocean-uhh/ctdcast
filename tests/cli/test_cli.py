@@ -525,9 +525,7 @@ class TestReport:
         )
         assert rc == 0
         for cast_num in (11, 12, 128, 129):
-            assert (
-                tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html"
-            ).exists()
+            assert (tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html").exists()
 
     def test_cast_flag_generates_single_station(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
@@ -574,9 +572,7 @@ class TestRun:
         rc = _run.run(_run_ns(config=cfg, force=True))
         assert rc == 0
         for cast_num in (11, 12, 128, 129):
-            assert (
-                tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html"
-            ).exists()
+            assert (tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html").exists()
 
     def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
         """--cast N skips convert entirely; generates only the one station page."""
