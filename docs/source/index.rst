@@ -27,9 +27,10 @@ Contents
    quickstart
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Demo
 
+   Demo report <https://ocean-uhh.github.io/ctdcast/_static/demo/index.html>
    demo
 
 
