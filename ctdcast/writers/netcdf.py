@@ -1,0 +1,89 @@
+"""CF-compliant netCDF writer for per-cast Datasets.
+
+Augments the variable attributes produced by seasenselib with proper CF
+metadata from ``ctdcast.config.parameters.VARIABLES`` and writes QARTOD flag
+variables with the CF flag_values / flag_meanings convention.  Writes
+atomically via a ``.nc.tmp`` intermediary.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import xarray as xr
+
+from ctdcast.config.parameters import VARIABLES
+
+_QARTOD_FLAG_VALUES = np.array([1, 2, 3, 4, 9], dtype=np.int8)
+_QARTOD_FLAG_MEANINGS = (
+    "pass not_evaluated suspect_or_of_high_interest fail missing_data"
+)
+
+
+def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
+    """Write *ds* to *path* with CF-1.13 attributes and QARTOD flag metadata.
+
+    For each variable present in both *ds* and ``VARIABLES``, applies
+    ``units``, ``long_name``, and ``standard_name`` (when defined).  For
+    each ``{var}_qc`` variable, generates complete CF flag attributes.
+    Appends ``Conventions = "CF-1.13"`` to the global attrs.
+
+    Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
+    replaces *path* so a failed write never leaves a partial file.
+
+    Parameters
+    ----------
+    ds:
+        Dataset to write (per-cast, dim=time, or profiles N_PROF×pressure).
+    path:
+        Output netCDF path.
+    encoding:
+        Optional xarray encoding dict passed through to ``to_netcdf``.
+    """
+    ds = ds.copy()
+
+    # Apply CF metadata from VARIABLES for each known variable.
+    for var, meta in VARIABLES.items():
+        if var not in ds:
+            continue
+        existing = dict(ds[var].attrs)
+        if meta.get("long_name"):
+            existing.setdefault("long_name", meta["long_name"])
+        if meta.get("units"):
+            existing["units"] = meta["units"]  # always override — CF canonical form
+        if meta.get("standard_name"):
+            existing.setdefault("standard_name", meta["standard_name"])
+        ds[var].attrs = existing
+
+    # Apply CF flag metadata for QARTOD _qc variables.
+    for var in list(ds.data_vars):
+        if not var.endswith("_qc"):
+            continue
+        base = var[:-3]  # strip "_qc"
+        standard_name = None
+        if base in VARIABLES and VARIABLES[base].get("standard_name"):
+            standard_name = f"{VARIABLES[base]['standard_name']} status_flag"
+
+        attrs = dict(ds[var].attrs)
+        attrs["flag_values"] = _QARTOD_FLAG_VALUES
+        attrs["flag_meanings"] = _QARTOD_FLAG_MEANINGS
+        attrs.setdefault("conventions", "QARTOD")
+        attrs.setdefault("long_name", f"Quality flag for {base}")
+        attrs["valid_min"] = np.int8(1)
+        attrs["valid_max"] = np.int8(9)
+        if standard_name:
+            attrs["standard_name"] = standard_name
+        ds[var].attrs = attrs
+
+    global_attrs = dict(ds.attrs)
+    global_attrs["Conventions"] = "CF-1.13"
+    ds.attrs = global_attrs
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".nc.tmp")
+    kw: dict = {}
+    if encoding:
+        kw["encoding"] = encoding
+    ds.to_netcdf(str(tmp), **kw)
+    tmp.replace(path)

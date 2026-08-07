@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.geometry import distance_from_km, section_orientation
-from ctdcast.cast.stage2 import find_soak_end
+from ctdcast.processors.stage2 import find_soak_end
 from ctdcast.readers.metadata import parse_sensor_info
 
 _FIXTURES = Path(__file__).parent / "fixtures"

@@ -27,8 +27,8 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.teos10 import add_teos10
-from ctdcast.cast.stage2 import find_cast_end, find_soak_end
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
@@ -104,7 +104,7 @@ def generate_station_page(
         range are excluded from all plots (but the NC file is not modified).
         The count of excluded records is shown in the page header.
     trim_soak:
-        If True, apply pre-soak detection via :func:`~ctdcast.cast.stage2.find_soak_end`.
+        If True, apply pre-soak detection via :func:`~ctdcast.processors.stage2.find_soak_end`.
         Finds the last record within 10 dbar of the surface before the cast
         maximum depth, crawls back up to 20 seconds to the shallowest point
         preceding the real descent, and trims everything up to that point.

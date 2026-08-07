@@ -1,9 +1,13 @@
 """Stage 2 — trim.
 
 Downcast/upcast splitting and soak / back-on-deck detection.  This is processing,
-not analysis: it decides which scans belong to the real cast.  In the target
-pipeline stage2 flags rather than deletes (architecture plan §3); for now these
-functions return indices the callers slice on.
+not analysis: it decides which scans belong to the real cast.
+
+``apply_stage2()`` is the pipeline entry point: it sets QARTOD flag 4 on soak
+and post-recovery deck records and records the parameters used in
+``ds.attrs["history"]``.  ``find_soak_end`` and ``find_cast_end`` are kept public
+because ``reports._cast`` calls them directly for report-time plot trimming (that
+coupling will be removed in a later phase when reports read flags from the files).
 
 The turnaround convention (last pressure within 2 dbar of the maximum) and the
 soak/deck algorithms are deliberate — see the individual docstrings.
@@ -11,8 +15,108 @@ soak/deck algorithms are deliberate — see the individual docstrings.
 
 from __future__ import annotations
 
+import datetime
+from pathlib import Path
+
 import numpy as np
 import xarray as xr
+
+from ctdcast.processors.qc import _qc_attrs
+
+# _SKIP_STAGE2_QC: variables that are coordinates or administrative — not physical
+# measurements, so they do not get a _qc flag from stage2.
+_SKIP_STAGE2_QC: frozenset[str] = frozenset(
+    {"pressure", "latitude", "longitude", "time", "timeJ", "timeS"}
+)
+
+
+def apply_stage2(
+    ds: xr.Dataset,
+    *,
+    near_surface_dbar: float = 10.0,
+    search_seconds: float = 20.0,
+    deck_window_seconds: float = 20.0,
+    margin_dbar: float = 0.5,
+    max_deck_dbar: float = 20.0,
+) -> xr.Dataset:
+    """Apply QARTOD flag 4 to soak and post-recovery deck records.
+
+    Creates ``{var}_qc`` arrays (int8, flag 1=pass) for each physical data
+    variable, then sets flag 4 (fail) on the pre-descent soak window and
+    the post-recovery on-deck window.  Records the parameters used in
+    ``ds.attrs["history"]`` so the treatment is reproducible from the output
+    file alone.
+
+    Parameters
+    ----------
+    ds:
+        Per-cast Dataset (dim=time).
+    near_surface_dbar:
+        Passed to ``find_soak_end`` — pressure threshold for last near-surface
+        crossing before the real descent.
+    search_seconds:
+        Passed to ``find_soak_end`` — backward-crawl window width.
+    deck_window_seconds:
+        Passed to ``find_cast_end`` — tail window for on-deck reference pressure.
+    margin_dbar:
+        Passed to ``find_cast_end`` — added to on-deck median to form the cut.
+    max_deck_dbar:
+        Passed to ``find_cast_end`` — if on-deck median exceeds this, no trim.
+
+    Returns
+    -------
+    xr.Dataset
+        New Dataset; input is not mutated.
+    """
+    ds = ds.copy()
+    pressure = ds["pressure"].values
+    times = ds["time"].values
+    dim = ds["pressure"].dims[0]
+    n = ds.sizes[dim]
+
+    i_soak = find_soak_end(
+        pressure,
+        times,
+        near_surface_dbar=near_surface_dbar,
+        search_seconds=search_seconds,
+    )
+    i_deck = find_cast_end(
+        pressure,
+        times,
+        deck_window_seconds=deck_window_seconds,
+        margin_dbar=margin_dbar,
+        max_deck_dbar=max_deck_dbar,
+    )
+
+    for var in list(ds.data_vars):
+        if var in _SKIP_STAGE2_QC or var.endswith("_qc"):
+            continue
+        qc_name = f"{var}_qc"
+        if qc_name not in ds:
+            sname = ds[var].attrs.get("standard_name")
+            ds[qc_name] = xr.DataArray(
+                np.ones(n, dtype=np.int8),
+                dims=[dim],
+                attrs=_qc_attrs(var, sname),
+            )
+        qc = ds[qc_name].values.copy()
+        if i_soak > 0:
+            qc[:i_soak] = np.int8(4)
+        if i_deck < n:
+            qc[i_deck:] = np.int8(4)
+        ds[qc_name] = xr.DataArray(qc, dims=[dim], attrs=ds[qc_name].attrs)
+
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    params = (
+        f"near_surface_dbar={near_surface_dbar}, search_seconds={search_seconds}, "
+        f"deck_window_seconds={deck_window_seconds}, margin_dbar={margin_dbar}, "
+        f"max_deck_dbar={max_deck_dbar}"
+    )
+    entry = f"{stamp} ctdcast apply_stage2: soak_end_idx={i_soak}, deck_start_idx={i_deck}; {params}"
+    prev = ds.attrs.get("history", "")
+    ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
+
+    return ds
 
 
 def split_cast(ds: xr.Dataset) -> tuple[xr.Dataset, xr.Dataset]:
@@ -192,3 +296,51 @@ def find_cast_end(
         return n
 
     return i_max + int(below[0])
+
+
+def run(proc_dir: Path, *, force: bool = False, **kw) -> int:
+    """Apply stage2 (soak/deck flagging) to all NC files in ``proc_dir/nc/``.
+
+    Reads each ``*.nc`` file, applies :func:`apply_stage2`, and writes the
+    result back in place using :func:`ctdcast.writers.netcdf.write`.  Called
+    by :func:`ctdcast.processors.process` with ``stage=2`` or
+    ``stage="stage2"``.
+
+    Parameters
+    ----------
+    proc_dir:
+        Base processing directory.  NC files are read from and written back
+        to ``proc_dir/nc/``.
+    force:
+        Accepted for API consistency but ignored — stage2 always rewrites.
+    **kw:
+        Passed to :func:`apply_stage2` (e.g. ``near_surface_dbar``).
+
+    Returns
+    -------
+    int
+        Number of files processed.
+    """
+    import xarray as xr
+
+    from ctdcast.writers.netcdf import write
+
+    _STAGE2_KWARGS = frozenset(
+        {
+            "near_surface_dbar",
+            "search_seconds",
+            "deck_window_seconds",
+            "margin_dbar",
+            "max_deck_dbar",
+        }
+    )
+    stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
+
+    nc_dir = proc_dir / "nc"
+    n = 0
+    for nc_path in sorted(nc_dir.glob("*.nc")):
+        ds = xr.open_dataset(nc_path, engine="netcdf4").load()
+        ds_out = apply_stage2(ds, **stage2_kw)
+        write(ds_out, nc_path)
+        n += 1
+    return n
