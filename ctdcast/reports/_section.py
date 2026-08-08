@@ -270,7 +270,19 @@ def generate_section_page(
     )
     end_time = _fmt_utc(_te_vals[-1]) if _te_vals is not None and len(_te_vals) else "—"
 
-    def _section_panel(var: str, label: str, short: str) -> Panel:
+    def _section_panel(
+        var: str,
+        label: str,
+        short: str,
+        *,
+        optional: bool = False,
+        canonical: str | None = None,
+    ) -> Panel:
+        # Look up color limits by resolved name first, then by the canonical
+        # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
+        _key = canonical or var
+        _vmin = vmin.get(var) if vmin.get(var) is not None else vmin.get(_key)
+        _vmax = vmax.get(var) if vmax.get(var) is not None else vmax.get(_key)
         b64 = _make_section_b64(
             ds_sec,
             var,
@@ -281,18 +293,42 @@ def generate_section_page(
             bathy_depths=dense_bathy_d if dense_bathy_d is not None else bathy,
             bathy_x=dense_bathy_x,
             cast_labels=cast_nums_int,
-            vmin=vmin.get(var),
-            vmax=vmax.get(var),
+            vmin=_vmin,
+            vmax=_vmax,
             figsize=section_figsize,
+            optional=optional,
         )
         return Panel(b64=b64, title=label, short=short)
+
+    def _resolve_section_var(var: str) -> str:
+        """Return the name to use for *var* in ds_sec.
+
+        Handles the single/dual-sensor naming rule: ctd_oxygen_1 → ctd_oxygen
+        when only one sensor is present (and vice versa).
+        """
+        if var in ds_sec:
+            return var
+        # Suffixed var not found; try the plain (single-sensor) form
+        if var.endswith("_1") and var[:-2] in ds_sec:
+            return var[:-2]
+        # Plain var not found; try the suffixed form
+        if not var.endswith(("_1", "_2")) and f"{var}_1" in ds_sec:
+            return f"{var}_1"
+        return var  # not found; draw_section_fig will return None
 
     physics_panels = [
         _section_panel(v, vlabel(v), VARIABLES[v]["label"])
         for v in SECTION_PHYSICS_VARS
     ]
     biogeo_panels = [
-        _section_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_BIOGEO_VARS
+        _section_panel(
+            _resolve_section_var(v),
+            vlabel(v),
+            VARIABLES[v]["label"],
+            optional=True,
+            canonical=v,
+        )
+        for v in SECTION_BIOGEO_VARS
     ]
 
     _ts_panels_raw = [

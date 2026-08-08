@@ -68,7 +68,7 @@ _MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig
 # To override for a cruise, add to config.yaml:
 #   display:
 #     variables:
-#       temperature_1:
+#       ctd_temperature_1:
 #         vmin: 4
 #         vmax: 25
 VARIABLES: dict[str, dict] = {
@@ -82,7 +82,7 @@ VARIABLES: dict[str, dict] = {
         "vmin": 0,
         "vmax": None,
     },
-    "temperature_1": {
+    "ctd_temperature_1": {
         "label": "T₁",
         "label_units": "°C",
         "long_name": "In-situ temperature (primary)",
@@ -93,7 +93,7 @@ VARIABLES: dict[str, dict] = {
         "vmin": -2,
         "vmax": 20,
     },
-    "temperature_2": {
+    "ctd_temperature_2": {
         "label": "T₂",
         "label_units": "°C",
         "long_name": "In-situ temperature (secondary)",
@@ -104,13 +104,13 @@ VARIABLES: dict[str, dict] = {
         "vmin": -2,
         "vmax": 20,
     },
-    # Best-sensor composite: copy of temperature_1 or temperature_2, whichever was
-    # judged best for this cruise. Which sensor is in temperature.attrs["preferred_sensor"].
-    # CCHDO writer maps this to ctd_temperature (see CCHDO_COMPOSITE).
-    "temperature": {
+    # Best-sensor composite: copy of ctd_temperature_1 or ctd_temperature_2, whichever
+    # is set as preferred in config.yaml. Which sensor is in attrs["preferred_sensor"].
+    # Created by stage3 when preferred_temperature_sensor is configured; absent otherwise.
+    "ctd_temperature": {
         "label": "T",
         "label_units": "°C",
-        "long_name": "In-situ temperature (best sensor)",
+        "long_name": "In-situ temperature (preferred sensor)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
         "reference_scale": "ITS-90",
@@ -138,7 +138,7 @@ VARIABLES: dict[str, dict] = {
         "vmin": None,
         "vmax": None,
     },
-    "salinity_1": {
+    "ctd_salinity_1": {
         "label": "SP₁",
         "label_units": "PSU",
         "long_name": "Practical salinity (primary)",
@@ -149,7 +149,7 @@ VARIABLES: dict[str, dict] = {
         "vmin": 34.0,
         "vmax": 35.5,
     },
-    "salinity_2": {
+    "ctd_salinity_2": {
         "label": "SP₂",
         "label_units": "PSU",
         "long_name": "Practical salinity (secondary)",
@@ -160,8 +160,19 @@ VARIABLES: dict[str, dict] = {
         "vmin": 34.0,
         "vmax": 35.5,
     },
-    # oxygen_1 = µmol/kg — target name (Phase 3 rename from sbox0Mm_Kg in fixture NC)
-    "oxygen_1": {
+    # ctd_salinity: preferred sensor composite — see ctd_temperature note above.
+    "ctd_salinity": {
+        "label": "SP",
+        "label_units": "PSU",
+        "long_name": "Practical salinity (preferred sensor)",
+        "units": "1",
+        "standard_name": "sea_water_practical_salinity",
+        "reference_scale": "PSS-78",
+        "cmap": "YlGnBu_r",
+        "vmin": 34.0,
+        "vmax": 35.5,
+    },
+    "ctd_oxygen_1": {
         "label": "O₂",
         "label_units": "µmol kg⁻¹",
         "long_name": "Dissolved oxygen (primary)",
@@ -171,44 +182,65 @@ VARIABLES: dict[str, dict] = {
         "vmin": 0,
         "vmax": 350,
     },
-    # oxsat_1 = % saturation — target name (Phase 3 rename from oxygen_1 in fixture NC)
-    # No CF standard_name and no CCHDO WHP equivalent — excluded from CCHDO output.
-    "oxsat_1": {
+    "ctd_oxygen_2": {
+        "label": "O₂ (2)",
+        "label_units": "µmol kg⁻¹",
+        "long_name": "Dissolved oxygen (secondary)",
+        "units": "umol kg-1",
+        "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
+        "cmap": "RdYlGn",
+        "vmin": 0,
+        "vmax": 350,
+    },
+    # ctd_oxygen: preferred sensor composite — see ctd_temperature note above.
+    "ctd_oxygen": {
+        "label": "O₂",
+        "label_units": "µmol kg⁻¹",
+        "long_name": "Dissolved oxygen (preferred sensor)",
+        "units": "umol kg-1",
+        "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
+        "cmap": "RdYlGn",
+        "vmin": 0,
+        "vmax": 350,
+    },
+    # oxygen_saturation: derived on demand from ctd_oxygen + T/S/P; not stored.
+    # Entry kept for vlabel() and plot metadata; no netCDF write.
+    "oxygen_saturation": {
         "label": "O₂ sat",
         "label_units": "%",
-        "long_name": "Dissolved oxygen saturation (primary)",
+        "long_name": "Dissolved oxygen saturation",
         "units": "percent",
         "standard_name": None,
         "cmap": "RdYlGn",
         "vmin": 0,
         "vmax": 110,
     },
-    "fluorescence": {
+    "ctd_fluor": {
         "label": "Fluorescence",
         "label_units": "mg m⁻³",
         "long_name": "Chlorophyll fluorescence",
-        "units": "mg m-3",  # uncalibrated; label may vary by cruise
-        "standard_name": None,
+        "units": "mg m-3",
+        "standard_name": "mass_concentration_of_chlorophyll_in_sea_water",
         "cmap": "YlGn",
         "vmin": 0,
         "vmax": None,
     },
-    "turbidity": {
+    "ctd_turbidity": {
         "label": "Turbidity",
         "label_units": "NTU",
         "long_name": "Turbidity",
-        "units": "NTU",  # uncalibrated; NTU not guaranteed for all sensors
-        "standard_name": None,
+        "units": "1",  # dimensionless per CF for NTU
+        "standard_name": "sea_water_turbidity",
         "cmap": "YlOrBr",
         "vmin": 0,
         "vmax": None,
     },
-    "altimeter": {
+    "ctd_altimeter": {
         "label": "Altimeter",
         "label_units": "m",
-        "long_name": "Altimeter distance to bottom",
+        "long_name": "Altimeter distance to seafloor",
         "units": "m",
-        "standard_name": None,
+        "standard_name": "altitude_of_sea_floor",
         "cmap": None,
         "vmin": 0,
         "vmax": None,
@@ -314,9 +346,9 @@ VAR_COLORS: dict[str, str] = {
     "sigma0": "#009E73",  # bluish green — Okabe-Ito
     "U": "#D55E00",  # vermillion   — Okabe-Ito
     "V": "#0072B2",  # blue         — Okabe-Ito
-    "oxsat_1": "#332288",  # indigo       — Paul Tol
-    "fluorescence": "#117733",  # forest green — Paul Tol
-    "turbidity": "#661100",  # dark red     — Paul Tol
+    "ctd_oxygen_1": "#332288",  # indigo       — Paul Tol
+    "ctd_fluor": "#117733",  # forest green — Paul Tol
+    "ctd_turbidity": "#661100",  # dark red     — Paul Tol
     "N2": "#000000",
     "Turner": "#000000",
 }
@@ -339,9 +371,9 @@ SECTION_PHYSICS_VARS: tuple[str, ...] = (
 
 #: Biogeochemical variables drawn on section, overview, and timeseries pages, in order.
 SECTION_BIOGEO_VARS: tuple[str, ...] = (
-    "oxsat_1",
-    "fluorescence",
-    "turbidity",
+    "ctd_oxygen_1",
+    "ctd_fluor",
+    "ctd_turbidity",
 )
 
 
@@ -386,32 +418,52 @@ def vlabel(var: str, prefix: str = "") -> str:
 #
 # CCHDO read-direction mappings (CTDTMP → temperature_1) belong in CCHDO_VARIABLES below.
 CNV_ALIASES: dict[str, str] = {
-    # Temperature
-    "t090c": "temperature_1",  # SBE 9+ primary, ITS-90
-    "t190c": "temperature_2",  # SBE 9+ secondary, ITS-90
-    "tv290c": "temperature_2",  # some SeaBird firmware variants
-    # Conductivity
+    # -------------------------------------------------------------------
+    # Raw CNV column names (SBE firmware names, lowercase)
+    # Used when a future backend reads CNV directly without pre-sanitization.
+    # -------------------------------------------------------------------
+    # Temperature — CCHDO nc_var names with _1/_2 suffix for dual sensors
+    "t090c": "ctd_temperature_1",  # SBE 9+ primary, ITS-90
+    "t190c": "ctd_temperature_2",  # SBE 9+ secondary, ITS-90
+    "tv290c": "ctd_temperature_2",  # some SeaBird firmware variants
+    # Conductivity — no CCHDO equivalent; keep plain names
     "c0s/m": "conductivity_1",  # SBE 9+ primary, S/m
     "c1s/m": "conductivity_2",  # SBE 9+ secondary, S/m
     # Pressure
     "prsm": "pressure",  # strain-gauge, metres (rare)
     "prdm": "pressure",  # strain-gauge, dbar
     # Salinity (rarely written in CNV; normally derived from C/T/P)
-    "sal00": "salinity_1",
-    "sal11": "salinity_2",
-    # Oxygen — target names (see CCHDO_COMPOSITE for output mapping)
-    "sbeox0ps": "oxsat_1",  # SBE 43, % saturation
-    "sbox0mm/kg": "oxygen_1",  # SBE 43, µmol/kg (CCHDO-aligned target name)
+    "sal00": "ctd_salinity_1",
+    "sal11": "ctd_salinity_2",
+    # Oxygen — µmol/kg only; % saturation is derived on demand, not stored
+    "sbox0mm/kg": "ctd_oxygen_1",  # SBE 43, µmol/kg
     "sbeox0v": "oxygen_raw_1",  # SBE 43 raw voltage; not used in normal pipeline
     # Biogeo
-    "fleco-afl": "fluorescence",  # WET Labs ECO-AFL/FL fluorometer
-    "turbwetntu0": "turbidity",  # WET Labs ECO NTU turbidity sensor
-    "obs": "turbidity",  # OBS turbidity (alternative sensor type)
+    "fleco-afl": "ctd_fluor",  # WET Labs ECO-AFL/FL fluorometer
+    "turbwetntu0": "ctd_turbidity",  # WET Labs ECO NTU turbidity sensor
+    "obs": "ctd_turbidity",  # OBS turbidity (alternative sensor type)
     # Navigation (sometimes embedded in CNV)
     "latitude": "latitude",
     "longitude": "longitude",
     # Altimeter
-    "altm": "altimeter",  # sea-floor distance, metres
+    # -------------------------------------------------------------------
+    # seasenselib-sanitized names — seasenselib applies its own mapping
+    # before returning the Dataset, so _normalise() sees these names, not
+    # the raw CNV column names above.  Both sets must be present so that
+    # _normalise() is backend-agnostic.
+    # -------------------------------------------------------------------
+    "temperature_1": "ctd_temperature_1",
+    "temperature_2": "ctd_temperature_2",
+    "salinity_1": "ctd_salinity_1",
+    "salinity_2": "ctd_salinity_2",
+    # Note: seasenselib's oxygen_1/oxygen_2 are % saturation (from sbeox0PS),
+    # not µmol/kg.  They are dropped in _normalise(); the µmol/kg value comes
+    # from sbox0Mm/Kg → ctd_oxygen_1 via the raw CNV alias above.
+    "fluorescence": "ctd_fluor",
+    "turbidity": "ctd_turbidity",
+    "altimeter": "ctd_altimeter",
+    # Raw CNV altimeter column name
+    "altm": "ctd_altimeter",  # sea-floor distance, metres
 }
 
 # ---------------------------------------------------------------------------
@@ -425,12 +477,15 @@ CNV_ALIASES: dict[str, str] = {
 # N_PROF = one element per cast/profile; N_LEVELS = pressure levels per cast.
 CCHDO_DIMS: tuple[str, str] = ("N_PROF", "N_LEVELS")
 
-# Best-sensor composite: CCHDO has one temperature variable (no suffix).
-# Key = ctdcast internal name, value = CCHDO output variable name.
+# Best-sensor composite: maps the plain (unsuffixed) ctdcast name to the CCHDO
+# nc_var name. The plain name exists only when preferred_sensor is configured in
+# config.yaml and stage3 has promoted one of the suffixed channels. If not set,
+# the CCHDO writer falls back to the _1 sensor.
+# Under the CCHDO naming scheme these are identity mappings — the names already match.
 CCHDO_COMPOSITE: dict[str, str] = {
-    "temperature": "ctd_temperature",
-    "salinity_1": "ctd_salinity",
-    "oxygen_1": "ctd_oxygen",
+    "ctd_temperature": "ctd_temperature",
+    "ctd_salinity": "ctd_salinity",
+    "ctd_oxygen": "ctd_oxygen",
 }
 
 # Variables NOT written to CCHDO output.
@@ -442,7 +497,7 @@ CCHDO_EXCLUDE: frozenset[str] = frozenset(
         "density",  # in-situ density; ctdcast writes sigma0 — no density WHP param
         "flag",  # SeaBird processing flag, not a QC flag
         "oxygen_raw_1",  # raw SBE 43 voltage
-        "oxsat_1",  # % saturation diagnostic; no CCHDO WHP equivalent
+        # oxygen_saturation is not stored (derived on demand) — no entry needed here
     }
 )
 
@@ -475,24 +530,22 @@ CCHDO_VARIABLES: dict[str, dict] = {
         "units": "dbar",
         "C_format": "%.1f",
     },
-    # Written as ctd_temperature per CCHDO_COMPOSITE.
-    "temperature": {
+    # ctd_temperature: written directly (names already match CCHDO nc_var).
+    # Prefer the plain name (preferred sensor); fall back to ctd_temperature_1.
+    "ctd_temperature": {
         "whp_name": "CTDTMP",
         "whp_unit": "ITS-90",
         "units": "degC",  # CCHDO uses degC, not degree_Celsius
         "reference_scale": "ITS-90",
         "C_format": "%.4f",
     },
-    # Written as ctd_salinity per CCHDO_COMPOSITE.
-    "salinity_1": {
+    "ctd_salinity": {
         "whp_name": "CTDSAL",
         "whp_unit": "PSS-78",
         "units": "1",  # PSS-78 is dimensionless per CF
         "C_format": "%.4f",
     },
-    # Written as ctd_oxygen per CCHDO_COMPOSITE.
-    # oxygen_1 = µmol/kg after Phase 3 rename — direct passthrough.
-    "oxygen_1": {
+    "ctd_oxygen": {
         "whp_name": "CTDOXY",
         "whp_unit": "UMOL/KG",
         "units": "umol/kg",  # CCHDO uses umol/kg, not umol kg-1

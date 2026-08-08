@@ -305,7 +305,7 @@ def _discrete_norm(
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:
         v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
-    if var == "oxsat_1":
+    if var in ("oxsat_1", "oxygen_saturation"):
         _o2_step = 2.5
         _o2_lo = math.floor(v0 / _o2_step) * _o2_step
         _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
@@ -460,9 +460,12 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
     ds_down, _ = split_cast(ds_teos)
     sa = ds_down["absolute_salinity"].values
     ct = ds_down["conservative_temperature"].values
-    if "oxsat_1" not in ds_down:
+    _oxsat_var = next(
+        (v for v in ("oxygen_saturation", "oxsat_1") if v in ds_down), None
+    )
+    if _oxsat_var is None:
         return None
-    o2 = ds_down["oxsat_1"].values
+    o2 = ds_down[_oxsat_var].values
 
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)
     sa, ct, o2 = sa[mask], ct[mask], o2[mask]
@@ -495,7 +498,7 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label(vlabel("oxsat_1"))
+    cb.set_label(vlabel("oxygen_saturation"))
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
@@ -551,11 +554,20 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
 def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
     vars_labels = [
-        ("oxsat_1", vlabel("oxsat_1")),
-        ("fluorescence", vlabel("fluorescence")),
-        ("turbidity", vlabel("turbidity")),
+        (
+            next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds), None),
+            vlabel("oxygen_saturation"),
+        ),
+        (
+            next((v for v in ("ctd_fluor", "fluorescence") if v in ds), None),
+            vlabel("ctd_fluor"),
+        ),
+        (
+            next((v for v in ("ctd_turbidity", "turbidity") if v in ds), None),
+            vlabel("ctd_turbidity"),
+        ),
     ]
-    available = [(v, lbl) for v, lbl in vars_labels if v in ds]
+    available = [(v, lbl) for v, lbl in vars_labels if v is not None]
     if not available:
         return None
     ds_down, ds_up = split_cast(ds)
@@ -1117,15 +1129,16 @@ def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
 
 def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     """Return a CT–SA histogram Figure coloured by median O₂ saturation per bin."""
+    _o2_var = next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds_prof), None)
     if (
         "absolute_salinity" not in ds_prof
         or "conservative_temperature" not in ds_prof
-        or "oxsat_1" not in ds_prof
+        or _o2_var is None
     ):
         return None
     sa = ds_prof["absolute_salinity"].values.ravel()
     ct = ds_prof["conservative_temperature"].values.ravel()
-    o2 = ds_prof["oxsat_1"].values.ravel()
+    o2 = ds_prof[_o2_var].values.ravel()
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)
     sa, ct, o2 = sa[mask], ct[mask], o2[mask]
     if len(sa) < 10:
@@ -1651,8 +1664,12 @@ def draw_timeseries_fig(
 def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a primary minus secondary sensor difference profiles Figure."""
     p = ds["pressure"].values
-    has_t = "temperature_1" in ds and "temperature_2" in ds
-    has_s = "salinity_1" in ds and "salinity_2" in ds
+    _t1 = next((v for v in ("ctd_temperature_1", "temperature_1") if v in ds), None)
+    _t2 = next((v for v in ("ctd_temperature_2", "temperature_2") if v in ds), None)
+    _s1 = next((v for v in ("ctd_salinity_1", "salinity_1") if v in ds), None)
+    _s2 = next((v for v in ("ctd_salinity_2", "salinity_2") if v in ds), None)
+    has_t = _t1 is not None and _t2 is not None
+    has_s = _s1 is not None and _s2 is not None
     if not has_t and not has_s:
         return None
 
@@ -1664,7 +1681,7 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     max_p = float(np.nanmax(p))
     idx = 0
     if has_t:
-        dt = ds["temperature_1"].values - ds["temperature_2"].values
+        dt = ds[_t1].values - ds[_t2].values
         axes[idx].plot(
             dt,
             p,
@@ -1679,7 +1696,7 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
         axes[idx].grid(True)
         idx += 1
     if has_s:
-        ds_diff = ds["salinity_1"].values - ds["salinity_2"].values
+        ds_diff = ds[_s1].values - ds[_s2].values
         axes[idx].plot(
             ds_diff,
             p,

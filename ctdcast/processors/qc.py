@@ -17,11 +17,24 @@ import xarray as xr
 # not oceanographic anomalies.  Per-cruise tightening goes in config.yaml
 # under qc.gross_range.<variable>.
 GROSS_RANGE_DEFAULTS: dict[str, tuple[float, float]] = {
-    "temperature_1": (-2.5, 40.0),
-    "temperature_2": (-2.5, 40.0),
-    "temperature": (-2.5, 40.0),
+    # CCHDO canonical names (current)
+    "ctd_temperature": (-2.5, 40.0),
+    "ctd_temperature_1": (-2.5, 40.0),
+    "ctd_temperature_2": (-2.5, 40.0),
     "conductivity_1": (0.0, 7.0),
     "conductivity_2": (0.0, 7.0),
+    "ctd_salinity": (2.0, 42.0),
+    "ctd_salinity_1": (2.0, 42.0),
+    "ctd_salinity_2": (2.0, 42.0),
+    "ctd_oxygen": (0.0, 450.0),
+    "ctd_oxygen_1": (0.0, 450.0),
+    "ctd_oxygen_2": (0.0, 450.0),
+    "oxygen_saturation": (0.0, 200.0),
+    "ctd_fluor": (0.0, 50.0),
+    "ctd_turbidity": (0.0, 50.0),
+    # Pre-rename names (backward compat with NC files written before stage1-normalise)
+    "temperature_1": (-2.5, 40.0),
+    "temperature_2": (-2.5, 40.0),
     "salinity_1": (2.0, 42.0),
     "salinity_2": (2.0, 42.0),
     "oxygen_1": (0.0, 450.0),
@@ -48,7 +61,7 @@ def apply_gross_range(
         Per-cast Dataset (dim=time).  Modified variables are those present
         in both ``ds`` and the merged threshold dict.
     thresholds:
-        Per-variable overrides: ``{"salinity_1": (30.0, 40.0)}``.
+        Per-variable overrides: ``{"ctd_salinity_1": (30.0, 40.0)}``.
         Caller-supplied values replace the defaults for that variable.
 
     Returns

@@ -216,6 +216,7 @@ def _make_section_b64(
     vmin: float | None = None,
     vmax: float | None = None,
     figsize: tuple[float, float] | None = None,
+    optional: bool = False,
 ) -> str | None:
     """Return a base64 PNG of *var* vs pressure × *x_vals*.
 
@@ -240,6 +241,10 @@ def _make_section_b64(
         from :func:`section_figsize_and_slot`), the caller's figsize is used unchanged so
         that the CSS slot and the PNG dimensions stay consistent.  When ``None``,
         :func:`section_figsize_and_slot` is called on the variable's own valid-data extent.
+    optional:
+        When ``True``, a ``None`` return from :func:`draw_section_fig` is silently
+        accepted (variable absent from this cruise).  When ``False`` (default), ``None``
+        raises :exc:`RuntimeError` if :data:`RAISE_ON_PLOT_ERROR` is set.
     """
     return render_b64(
         draw_section_fig,
@@ -256,6 +261,7 @@ def _make_section_b64(
         vmin=vmin,
         vmax=vmax,
         figsize=figsize,
+        optional=optional,
     )
 
 

@@ -235,23 +235,57 @@ def generate_timeseries_page(
         ts_slot = "slot-third"
         ts_figw = _W_THIRD
 
-    def _ts_panel(var: str, label: str, short: str) -> Panel:
+    def _ts_panel(
+        var: str,
+        label: str,
+        short: str,
+        *,
+        optional: bool = False,
+        canonical: str | None = None,
+    ) -> Panel:
+        # Look up color limits by resolved name first, then by the canonical
+        # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
+        _key = canonical or var
+        _vmin = vmin.get(var) if vmin.get(var) is not None else vmin.get(_key)
+        _vmax = vmax.get(var) if vmax.get(var) is not None else vmax.get(_key)
         b64 = _make_timeseries_b64(
             ds_ts,
             var,
             label,
             style=section_style,
-            vmin=vmin.get(var),
-            vmax=vmax.get(var),
+            vmin=_vmin,
+            vmax=_vmax,
             figw=ts_figw,
+            optional=optional,
         )
         return Panel(b64=b64, title=label, short=short)
+
+    def _resolve_ts_var(var: str) -> str:
+        """Return the name to use for *var* in ds_ts.
+
+        Handles the single/dual-sensor naming rule: ctd_oxygen_1 → ctd_oxygen
+        when only one sensor is present (and vice versa).
+        """
+        if var in ds_ts:
+            return var
+        if var.endswith("_1") and var[:-2] in ds_ts:
+            return var[:-2]
+        if not var.endswith(("_1", "_2")) and f"{var}_1" in ds_ts:
+            return f"{var}_1"
+        return var
 
     physics_panels = [
         _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_PHYSICS_VARS
     ]
     biogeo_panels = [
-        _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_BIOGEO_VARS
+        _ts_panel(
+            _resolve_ts_var(v),
+            vlabel(v),
+            VARIABLES[v]["label"],
+            optional=True,
+            canonical=v,
+        )
+        for v in SECTION_BIOGEO_VARS
     ]
 
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)

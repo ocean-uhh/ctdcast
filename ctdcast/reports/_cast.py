@@ -160,9 +160,12 @@ def generate_station_page(
     # Salinity range trim (applied after soak trim)
     n_sal_trimmed = 0
     sal_lo = sal_hi = 0.0
-    if sal_range is not None and "salinity_1" in ds:
+    _sal_var = next(
+        (v for v in ("ctd_salinity", "ctd_salinity_1", "salinity_1") if v in ds), None
+    )
+    if sal_range is not None and _sal_var is not None:
         sal_lo, sal_hi = sal_range
-        sal_vals = ds["salinity_1"].values
+        sal_vals = ds[_sal_var].values
         mask = (sal_vals >= sal_lo) & (sal_vals <= sal_hi) & np.isfinite(sal_vals)
         n_sal_trimmed = int((~mask).sum())
         if n_sal_trimmed > 0:

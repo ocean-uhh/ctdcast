@@ -284,16 +284,28 @@ Each file covers one CTD cast.  The required dimension and variables are:
      - Time coordinate (1-D, one value per scan).
    * - ``pressure``
      - Sea pressure in dbar.
-   * - ``temperature_1``
-     - In-situ temperature in °C (ITS-90).
-   * - ``salinity_1``
+   * - ``ctd_temperature`` / ``ctd_temperature_1`` / ``ctd_temperature_2``
+     - In-situ temperature in °C (ITS-90). Plain name for single-sensor instruments; ``_1``/``_2`` suffix for dual-sensor rigs.
+   * - ``ctd_salinity`` / ``ctd_salinity_1`` / ``ctd_salinity_2``
      - Practical salinity (PSU).
-   * - ``oxygen_1``
-     - Dissolved oxygen in percent saturation.
-   * - ``fluorescence``
-     - Fluorescence (arbitrary instrument units).
-   * - ``turbidity``
-     - Turbidity (arbitrary instrument units).
+   * - ``ctd_oxygen`` / ``ctd_oxygen_1`` / ``ctd_oxygen_2``
+     - Dissolved oxygen in µmol kg⁻¹.
+   * - ``ctd_fluor``
+     - Fluorescence in µg L⁻¹ (chlorophyll-a equivalent).
+   * - ``ctd_turbidity``
+     - Turbidity in NTU.
+   * - ``ctd_altimeter``
+     - Altimeter distance to seafloor in m.
+   * - ``conductivity_1`` / ``conductivity_2``
+     - Electrical conductivity in mS cm⁻¹ (no CCHDO equivalent; keeps ``_1``/``_2`` suffix always).
+   * - ``transmissometer``
+     - Beam transmittance in % (WET Labs C-Star; no CCHDO equivalent).
+   * - ``par``
+     - Photosynthetically active radiation in µmol photons m⁻² s⁻¹ (Biospherical/Licor/Chelsea).
+   * - ``spar``
+     - Surface PAR in µmol photons m⁻² s⁻¹ (deck-mounted reference sensor).
+   * - ``volt{N}_raw``
+     - Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. ``N`` is the zero-based voltage channel index.
 
 Global attributes used: ``raw_filename``, ``cruise``.
 
@@ -320,9 +332,9 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
      - Start time of the cast (datetime64).
    * - ``time_end``
      - End time of the cast (datetime64).
-   * - ``temperature_1``
+   * - ``ctd_temperature`` / ``ctd_temperature_1``
      - In-situ temperature on the 1 dbar grid.
-   * - ``salinity_1``
+   * - ``ctd_salinity`` / ``ctd_salinity_1``
      - Practical salinity on the 1 dbar grid.
-   * - ``oxygen_1``
-     - Dissolved oxygen (percent saturation) on the 1 dbar grid.
+   * - ``ctd_oxygen`` / ``ctd_oxygen_1``
+     - Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.

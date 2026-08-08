@@ -409,10 +409,10 @@ _OXY_CNV = _FIXTURES / "oxy" / "msm_142_1_056_1sec.cnv"
     reason="MSM142 oxygen fixture or seasenselib not present",
 )
 class TestOxygenConversion:
-    """Integration test for µmol/L → % saturation conversion via add_teos10."""
+    """Integration test for µmol/L → µmol/kg conversion (stage1) and % saturation derivation."""
 
     def test_oxygen_units_converted(self, tmp_path):
-        """convert_ctd_files → add_teos10 must yield oxygen in % saturation."""
+        """stage1 must yield ctd_oxygen_1 in µmol/kg; add_teos10 must add oxygen_saturation."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
             n = convert_ctd_files(
@@ -427,27 +427,35 @@ class TestOxygenConversion:
         assert nc_path.exists()
 
         ds = xr.open_dataset(nc_path, engine="netcdf4")
-        assert "oxygen_1" in ds, "oxygen_1 variable missing from converted NC"
+        # After normalise, MSM oxygen (2 sensors) appears as ctd_oxygen_1/ctd_oxygen_2
+        oxy_var = next((v for v in ("ctd_oxygen", "ctd_oxygen_1") if v in ds), None)
+        assert oxy_var is not None, (
+            "No ctd_oxygen or ctd_oxygen_1 in converted NC; "
+            f"vars present: {sorted(ds.data_vars)}"
+        )
 
-        raw_units = ds["oxygen_1"].attrs.get("units", "")
+        raw_units = ds[oxy_var].attrs.get("units", "")
         assert any(tok in raw_units.lower() for tok in ("umol", "µmol")), (
-            f"Expected µmol units before conversion; got {raw_units!r}"
+            f"Expected µmol units; got {raw_units!r}"
         )
 
         with warnings.catch_warnings():
             warnings.simplefilter("always")
             ds_converted = add_teos10(ds)
 
-        # After add_teos10, oxsat_1 = derived % saturation; oxygen_1 unchanged (µmol)
-        assert "oxsat_1" in ds_converted, "oxsat_1 missing after add_teos10"
-        assert ds_converted["oxsat_1"].attrs["units"] == "% saturation", (
-            f"Expected '% saturation'; got {ds_converted['oxsat_1'].attrs['units']!r}"
+        # After add_teos10, oxygen_saturation = derived % saturation; oxy_var unchanged
+        assert "oxygen_saturation" in ds_converted, (
+            "oxygen_saturation missing after add_teos10"
         )
-        assert "source_units" in ds_converted["oxsat_1"].attrs, (
-            "source_units attribute must be preserved in oxsat_1 after conversion"
+        assert ds_converted["oxygen_saturation"].attrs["units"] == "% saturation", (
+            f"Expected '% saturation'; got "
+            f"{ds_converted['oxygen_saturation'].attrs['units']!r}"
+        )
+        assert "source_units" in ds_converted["oxygen_saturation"].attrs, (
+            "source_units attribute must be preserved in oxygen_saturation after conversion"
         )
 
-        vals = ds_converted["oxsat_1"].values
+        vals = ds_converted["oxygen_saturation"].values
         finite = vals[~np.isnan(vals)]
         assert len(finite) > 0, "No finite oxygen values after conversion"
         assert finite.min() >= 0.0, f"Negative % saturation: min={finite.min():.2f}"
