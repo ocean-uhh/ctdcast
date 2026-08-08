@@ -8,7 +8,8 @@ from pathlib import Path
 
 import yaml
 
-from ctdcast.processors import STAGES
+from ctdcast.config.parameters import CAST_TAG_WIDTH
+from ctdcast.processors import STAGES, resolve_stage
 
 # Derived from STAGES — single source of truth for the valid stage set and run order.
 _STAGE_CHOICES: tuple[str, ...] = tuple(
@@ -165,21 +166,23 @@ def run(args: argparse.Namespace) -> int:
         cfg = yaml.safe_load(f) or {}
     data = cfg.get("data") or {}
     processing_cfg = cfg.get("processing") or {}
+    trim_cfg = processing_cfg.get("trim") or {}
 
     nc_dir_raw = data.get("nc_dir")
     if not nc_dir_raw:
         print("Config error: data.nc_dir is required.", file=sys.stderr)
         return 1
     nc_dir = Path(nc_dir_raw)
-
     cnv_dir = Path(data["cnv_dir"]) if data.get("cnv_dir") else None
     profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
 
     # Deduplicate and force canonical order
     requested = [s for s in _STAGE_CHOICES if s in args.stage]
 
-    # Cast filter: set of zero-padded 3-digit tags, or None for all
-    cast_tags: set[str] | None = {f"{c:03d}" for c in args.cast} if args.cast else None
+    # Cast filter: set of zero-padded tags, or None for all
+    cast_tags: set[str] | None = (
+        {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.cast} if args.cast else None
+    )
 
     # Pre-flight checks
     if "1" in requested:
@@ -196,201 +199,67 @@ def run(args: argparse.Namespace) -> int:
         )
         return 1
 
-    rc = 0
-    for stage in requested:
-        if stage == "1":
-            rc |= _run_stage1(args, cnv_dir, nc_dir, cast_tags, data, processing_cfg)
-        elif stage == "2":
-            rc |= _run_stage2(args, nc_dir, processing_cfg, cast_tags)
-        elif stage == "3":
-            rc |= _run_stage3(args, nc_dir, processing_cfg, cast_tags)
-        elif stage == "profiles":
-            rc |= _run_profiles(args, nc_dir, profiles_path)
-    return rc
-
-
-def _run_stage1(
-    args: argparse.Namespace,
-    cnv_dir: Path,
-    nc_dir: Path,
-    cast_tags: set[str] | None,
-    data: dict,
-    processing_cfg: dict,  # noqa: ARG001
-) -> int:
-    """Stage 1: CNV → per-cast netCDF."""
-    from ctdcast.processors.stage1 import stage1
-
-    cfg_pattern: str = data.get("cnv_pattern") or "*.cnv"
-    pattern = args.pattern or cfg_pattern
-
-    # cast_tags → cast_filter int if exactly one cast requested, else list
-    cast_filter = None
-    if cast_tags is not None:
-        cast_filter = [int(t) for t in cast_tags]
-        if len(cast_filter) == 1:
-            cast_filter = cast_filter[0]
-
-    if args.dry_run:
-        print(
-            f"[dry-run] stage 1: {cnv_dir} → {nc_dir}"
-            f"  (backend={args.backend}, pattern={pattern})"
-        )
-        return 0
-
-    try:
-        n = stage1(
-            cnv_dir,
-            nc_dir,
-            backend=args.backend,
-            force=args.force,
-            cast_filter=cast_filter,
-            pattern=pattern,
-        )
-    except (NotImplementedError, ImportError) as exc:
-        print(f"stage 1 error: {exc}", file=sys.stderr)
-        return 1
-    print(f"stage 1: converted {n} cast(s).")
-    return 0
-
-
-def _run_stage2(
-    args: argparse.Namespace,
-    nc_dir: Path,
-    processing_cfg: dict,
-    cast_tags: set[str] | None,
-) -> int:
-    """Stage 2: flag pre-soak and post-recovery records."""
-    import xarray as xr
-
-    from ctdcast.processors.stage2 import apply_stage2
-    from ctdcast.writers.netcdf import write
-
-    if not nc_dir.exists():
-        print(f"nc_dir not found: {nc_dir}", file=sys.stderr)
-        return 1
-
-    # Build stage-2 kwargs: CLI overrides > config > processor defaults
-    trim_cfg = processing_cfg.get("trim") or {}
-    kw: dict = {
-        "near_surface_dbar": args.near_surface_dbar
-        or trim_cfg.get("near_surface_dbar", 10.0),
-        "search_seconds": args.search_seconds or trim_cfg.get("search_seconds", 20.0),
-        "deck_window_seconds": args.deck_window_seconds
-        or trim_cfg.get("deck_window_seconds", 20.0),
-        "margin_dbar": args.margin_dbar or trim_cfg.get("margin_dbar", 0.5),
-        "max_deck_dbar": args.max_deck_dbar or trim_cfg.get("max_deck_dbar", 20.0),
+    # Per-stage path and tuning kwargs
+    stage_kw: dict[str, dict] = {
+        "stage1": {
+            "cnv_dir": cnv_dir,
+            "nc_dir": nc_dir,
+            "backend": args.backend,
+            "pattern": args.pattern or data.get("cnv_pattern") or "*.cnv",
+        },
+        "stage2": {
+            "nc_dir": nc_dir,
+            "near_surface_dbar": (
+                args.near_surface_dbar
+                if args.near_surface_dbar is not None
+                else trim_cfg.get("near_surface_dbar", 10.0)
+            ),
+            "search_seconds": (
+                args.search_seconds
+                if args.search_seconds is not None
+                else trim_cfg.get("search_seconds", 20.0)
+            ),
+            "deck_window_seconds": (
+                args.deck_window_seconds
+                if args.deck_window_seconds is not None
+                else trim_cfg.get("deck_window_seconds", 20.0)
+            ),
+            "margin_dbar": (
+                args.margin_dbar
+                if args.margin_dbar is not None
+                else trim_cfg.get("margin_dbar", 0.5)
+            ),
+            "max_deck_dbar": (
+                args.max_deck_dbar
+                if args.max_deck_dbar is not None
+                else trim_cfg.get("max_deck_dbar", 20.0)
+            ),
+        },
+        "stage3": {"nc_dir": nc_dir, "cruise_cfg": processing_cfg},
+        "profiles": {
+            "nc_dir": nc_dir,
+            "profiles_path": profiles_path,
+            "gebco_path": args.gebco,
+        },
     }
 
-    nc_files = _filter_nc_files(nc_dir, cast_tags)
-    if not nc_files:
-        print("stage 2: no netCDF files matched.", file=sys.stderr)
-        return 1
-
-    n = 0
-    for nc_path in nc_files:
-        if args.dry_run:
-            print(f"  [dry-run] stage 2 would flag: {nc_path.name}")
-            continue
+    rc = 0
+    for stage_token in requested:
+        s = resolve_stage(stage_token)
         try:
-            ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-            already_flagged = any(v.endswith("_qc") for v in ds.data_vars)
-            if already_flagged and not args.force:
-                print(f"  skip (already flagged): {nc_path.name}")
-                ds.close()
-                continue
-            ds_out = apply_stage2(ds, **kw)
-            ds.close()
-            write(ds_out, nc_path)
-            print(f"  ok: {nc_path.name}")
-            n += 1
-        except Exception as exc:  # noqa: BLE001
-            print(
-                f"  FAILED: {nc_path.name}  ({type(exc).__name__}: {exc})",
-                file=sys.stderr,
+            _result = s.run(
+                force=args.force,
+                dry_run=args.dry_run,
+                cast_tags=cast_tags,
+                **stage_kw[s.name],
             )
-    if not args.dry_run:
-        print(f"stage 2: {n}/{len(nc_files)} file(s) updated.")
-    return 0
-
-
-def _run_stage3(
-    args: argparse.Namespace,
-    nc_dir: Path,
-    processing_cfg: dict,
-    cast_tags: set[str] | None,
-) -> int:
-    """Stage 3: gross-range QC and conductivity calibration."""
-    import xarray as xr
-
-    from ctdcast.processors.stage3 import stage3
-    from ctdcast.writers.netcdf import write
-
-    if not nc_dir.exists():
-        print(f"nc_dir not found: {nc_dir}", file=sys.stderr)
-        return 1
-
-    nc_files = _filter_nc_files(nc_dir, cast_tags)
-    if not nc_files:
-        print("stage 3: no netCDF files matched.", file=sys.stderr)
-        return 1
-
-    n = 0
-    for nc_path in nc_files:
-        if args.dry_run:
-            print(f"  [dry-run] stage 3 would process: {nc_path.name}")
+        except (ImportError, NotImplementedError) as exc:
+            print(f"{s.name} error: {exc}", file=sys.stderr)
+            rc = 1
             continue
-        try:
-            ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-            ds_out = stage3(ds, cruise_cfg=processing_cfg)
-            ds.close()
-            write(ds_out, nc_path)
-            print(f"  ok: {nc_path.name}")
-            n += 1
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"  FAILED: {nc_path.name}  ({type(exc).__name__}: {exc})",
-                file=sys.stderr,
-            )
-    if not args.dry_run:
-        print(f"stage 3: {n}/{len(nc_files)} file(s) updated.")
-    return 0
-
-
-def _run_profiles(
-    args: argparse.Namespace,
-    nc_dir: Path,
-    profiles_path: Path,
-) -> int:
-    """Stage profiles: bin per-cast netCDF to profiles.nc."""
-    from ctdcast.processors.profiles import build_profiles
-
-    if args.dry_run:
-        print(f"[dry-run] profiles: {nc_dir} → {profiles_path}")
-        return 0
-
-    try:
-        wrote = build_profiles(
-            nc_dir, profiles_path, force=args.force, gebco_path=args.gebco
-        )
-    except ValueError as exc:
-        print(f"profiles error: {exc}", file=sys.stderr)
-        return 1
-    except Exception as exc:  # noqa: BLE001
-        print(f"profiles error: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return 1
-
-    if wrote:
-        print(f"profiles: wrote {profiles_path}")
-    else:
-        print(
-            f"profiles: skipped (already exists; use --force to overwrite): {profiles_path}"
-        )
-    return 0
-
-
-def _filter_nc_files(nc_dir: Path, cast_tags: set[str] | None) -> list[Path]:
-    """Return sorted .nc files in *nc_dir*, optionally filtered by *cast_tags*."""
-    files = sorted(nc_dir.glob("*.nc"))
-    if cast_tags is not None:
-        files = [p for p in files if any(t in p.stem for t in cast_tags)]
-    return files
+            print(f"{s.name} error: {type(exc).__name__}: {exc}", file=sys.stderr)
+            rc = 1
+            continue
+        # All summary printing happens inside each stage's run() — nothing to do here.
+    return rc

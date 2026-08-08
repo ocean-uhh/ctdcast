@@ -16,17 +16,30 @@ soak/deck algorithms are deliberate — see the individual docstrings.
 from __future__ import annotations
 
 import datetime
+import sys
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 from ctdcast.processors.qc import _qc_attrs
+from ctdcast.writers.netcdf import write as _write_nc
 
 # _SKIP_STAGE2_QC: variables that are coordinates or administrative — not physical
 # measurements, so they do not get a _qc flag from stage2.
 _SKIP_STAGE2_QC: frozenset[str] = frozenset(
     {"pressure", "latitude", "longitude", "time", "timeJ", "timeS"}
+)
+
+# Keyword arguments accepted by apply_stage2(); others in **kw are dropped.
+_STAGE2_KWARGS: frozenset[str] = frozenset(
+    {
+        "near_surface_dbar",
+        "search_seconds",
+        "deck_window_seconds",
+        "margin_dbar",
+        "max_deck_dbar",
+    }
 )
 
 
@@ -298,8 +311,15 @@ def find_cast_end(
     return i_max + int(below[0])
 
 
-def run(proc_dir: Path, *, force: bool = False, **kw) -> int:  # noqa: ARG001
-    """Apply stage2 (soak/deck flagging) to all NC files in ``proc_dir/nc/``.
+def run(
+    nc_dir: Path,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    **kw: object,
+) -> int:
+    """Apply stage2 (soak/deck flagging) to NC files in *nc_dir*.
 
     Reads each ``*.nc`` file, applies :func:`apply_stage2`, and writes the
     result back in place using :func:`ctdcast.writers.netcdf.write`.  Called
@@ -308,39 +328,67 @@ def run(proc_dir: Path, *, force: bool = False, **kw) -> int:  # noqa: ARG001
 
     Parameters
     ----------
-    proc_dir:
-        Base processing directory.  NC files are read from and written back
-        to ``proc_dir/nc/``.
+    nc_dir:
+        Directory of per-cast netCDF files (read and written in place).
     force:
-        Accepted for API consistency but ignored — stage2 always rewrites.
+        Reprocess files that already carry ``_qc`` flag variables.  Without
+        ``force``, already-flagged files are skipped.
+    dry_run:
+        Print which files would be processed without writing any output.
+    cast_tags:
+        If given, process only files whose stem contains one of the zero-padded
+        3-digit cast numbers (e.g. ``{"042", "043"}``).
     **kw:
         Passed to :func:`apply_stage2` (e.g. ``near_surface_dbar``).
 
     Returns
     -------
     int
-        Number of files processed.
+        Number of files written (0 for dry_run).
+
+    Raises
+    ------
+    FileNotFoundError
+        If *nc_dir* does not exist or is not a directory.
     """
-    import xarray as xr
+    if not nc_dir.is_dir():
+        raise FileNotFoundError(f"nc_dir not found: {nc_dir}")
 
-    from ctdcast.writers.netcdf import write
-
-    _STAGE2_KWARGS = frozenset(
-        {
-            "near_surface_dbar",
-            "search_seconds",
-            "deck_window_seconds",
-            "margin_dbar",
-            "max_deck_dbar",
-        }
-    )
     stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
 
-    nc_dir = proc_dir / "nc"
-    n = 0
-    for nc_path in sorted(nc_dir.glob("*.nc")):
-        ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-        ds_out = apply_stage2(ds, **stage2_kw)
-        write(ds_out, nc_path)
-        n += 1
+    nc_files = sorted(nc_dir.glob("*.nc"))
+    if cast_tags is not None:
+        nc_files = [p for p in nc_files if any(t in p.stem for t in cast_tags)]
+
+    n = n_skipped = n_failed = 0
+    for nc_path in nc_files:
+        if dry_run:
+            print(f"  [dry-run] stage 2 would flag: {nc_path.name}")
+            continue
+        ds = None
+        try:
+            ds = xr.open_dataset(nc_path, engine="netcdf4").load()
+            already_flagged = any(v.endswith("_qc") for v in ds.data_vars)
+            if already_flagged and not force:
+                print(f"  skip (already flagged): {nc_path.name}")
+                n_skipped += 1
+                continue
+            ds_out = apply_stage2(ds, **stage2_kw)
+            _write_nc(ds_out, nc_path)
+            print(f"  ok: {nc_path.name}")
+            n += 1
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"  FAILED: {nc_path.name}  ({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
+            n_failed += 1
+        finally:
+            if ds is not None:
+                ds.close()
+    if not dry_run:
+        parts = [f"{n} written", f"{n_skipped} skipped"]
+        if n_failed:
+            parts.append(f"{n_failed} FAILED")
+        print(f"stage 2: {', '.join(parts)}.")
     return n

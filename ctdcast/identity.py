@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import re
 
+from ctdcast.config.parameters import CAST_TAG_WIDTH
+
 _CAST_ID_RE = re.compile(r"_(\d{3,})([a-z]*)(?=_|$)")
 
 
@@ -27,7 +29,7 @@ def format_cast_id(cast_num: int, cast_suffix: str = "") -> str:
     filenames (``cast_010b.html``), page labels, and cast pills.  Changing the
     pad width or suffix rule here changes it everywhere.
     """
-    return f"{cast_num:03d}{cast_suffix}"
+    return f"{cast_num:0{CAST_TAG_WIDTH}d}{cast_suffix}"
 
 
 def cast_id_from_name(name: str) -> tuple[int, str] | None:
