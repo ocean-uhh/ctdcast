@@ -46,6 +46,11 @@ _DERIVE_ON_DEMAND: frozenset[str] = frozenset(
     {"oxsat_1", "sbeox0PS", "sbeox0ps", "oxygen_1", "oxygen_2"}
 )
 
+# Variables to keep even if absent from VARIABLES: raw sensor channels useful
+# for QC / sensor drift analysis but not plotted directly.  Listed in
+# CCHDO_EXCLUDE so they are never written to CCHDO exchange output.
+_KEEP_VARS: frozenset[str] = frozenset({"oxygen_raw_1", "oxygen_raw_2"})
+
 
 def _normalise(ds: xr.Dataset) -> xr.Dataset:
     """Rename variables to ctdcast canonical names and drop non-standard columns.
@@ -98,10 +103,12 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
     # µmol/kg → rename to ctd_oxygen_N (step 4 will strip _1 if single-sensor).
     # µmol/L → convert to µmol/kg using density from the dataset, then rename.
     # Density is available here from seasenselib and is dropped in step 2.
-    for _v in ("oxygen_1", "oxygen_2"):
+    # Also handles the seasenselib hex-reader names ('oxygen', 'oxygen2') which
+    # omit the _N suffix.  Suffix "1" = primary sensor, "2" = secondary.
+    for _v in ("oxygen_1", "oxygen_2", "oxygen", "oxygen2"):
         if _v not in ds.data_vars:
             continue
-        _suffix = _v[-1]  # "1" or "2"
+        _suffix = "1" if _v in ("oxygen_1", "oxygen") else "2"
         _target = f"ctd_oxygen_{_suffix}"
         _units = ds[_v].attrs.get("units", "").lower().strip()
         if "umol/kg" in _units or "µmol/kg" in _units:
@@ -135,9 +142,13 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
     if to_drop:
         ds = ds.drop_vars(to_drop)
 
-    # Step 3: drop anything not in VARIABLES and not a coordinate
+    # Step 3: drop anything not in VARIABLES, not a coordinate, and not in _KEEP_VARS
     _KEEP_COORDS = {"latitude", "longitude", "time"}
-    unknown = [v for v in ds.data_vars if v not in VARIABLES and v not in _KEEP_COORDS]
+    unknown = [
+        v
+        for v in ds.data_vars
+        if v not in VARIABLES and v not in _KEEP_COORDS and v not in _KEEP_VARS
+    ]
     if unknown:
         ds = ds.drop_vars(unknown)
 

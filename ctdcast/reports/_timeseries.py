@@ -235,14 +235,26 @@ def generate_timeseries_page(
         ts_slot = "slot-third"
         ts_figw = _W_THIRD
 
-    def _ts_panel(var: str, label: str, short: str, *, optional: bool = False) -> Panel:
+    def _ts_panel(
+        var: str,
+        label: str,
+        short: str,
+        *,
+        optional: bool = False,
+        canonical: str | None = None,
+    ) -> Panel:
+        # Look up color limits by resolved name first, then by the canonical
+        # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
+        _key = canonical or var
+        _vmin = vmin.get(var) if vmin.get(var) is not None else vmin.get(_key)
+        _vmax = vmax.get(var) if vmax.get(var) is not None else vmax.get(_key)
         b64 = _make_timeseries_b64(
             ds_ts,
             var,
             label,
             style=section_style,
-            vmin=vmin.get(var),
-            vmax=vmax.get(var),
+            vmin=_vmin,
+            vmax=_vmax,
             figw=ts_figw,
             optional=optional,
         )
@@ -266,7 +278,13 @@ def generate_timeseries_page(
         _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_PHYSICS_VARS
     ]
     biogeo_panels = [
-        _ts_panel(_resolve_ts_var(v), vlabel(v), VARIABLES[v]["label"], optional=True)
+        _ts_panel(
+            _resolve_ts_var(v),
+            vlabel(v),
+            VARIABLES[v]["label"],
+            optional=True,
+            canonical=v,
+        )
         for v in SECTION_BIOGEO_VARS
     ]
 

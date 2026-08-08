@@ -555,24 +555,19 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
     vars_labels = [
         (
-            next(
-                (v for v in ("oxygen_saturation", "oxsat_1") if v in ds),
-                "oxygen_saturation",
-            ),
+            next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds), None),
             vlabel("oxygen_saturation"),
         ),
         (
-            next((v for v in ("ctd_fluor", "fluorescence") if v in ds), "ctd_fluor"),
+            next((v for v in ("ctd_fluor", "fluorescence") if v in ds), None),
             vlabel("ctd_fluor"),
         ),
         (
-            next(
-                (v for v in ("ctd_turbidity", "turbidity") if v in ds), "ctd_turbidity"
-            ),
+            next((v for v in ("ctd_turbidity", "turbidity") if v in ds), None),
             vlabel("ctd_turbidity"),
         ),
     ]
-    available = [(v, lbl) for v, lbl in vars_labels if v in ds]
+    available = [(v, lbl) for v, lbl in vars_labels if v is not None]
     if not available:
         return None
     ds_down, ds_up = split_cast(ds)

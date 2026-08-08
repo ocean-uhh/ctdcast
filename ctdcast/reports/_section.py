@@ -271,8 +271,18 @@ def generate_section_page(
     end_time = _fmt_utc(_te_vals[-1]) if _te_vals is not None and len(_te_vals) else "—"
 
     def _section_panel(
-        var: str, label: str, short: str, *, optional: bool = False
+        var: str,
+        label: str,
+        short: str,
+        *,
+        optional: bool = False,
+        canonical: str | None = None,
     ) -> Panel:
+        # Look up color limits by resolved name first, then by the canonical
+        # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
+        _key = canonical or var
+        _vmin = vmin.get(var) if vmin.get(var) is not None else vmin.get(_key)
+        _vmax = vmax.get(var) if vmax.get(var) is not None else vmax.get(_key)
         b64 = _make_section_b64(
             ds_sec,
             var,
@@ -283,8 +293,8 @@ def generate_section_page(
             bathy_depths=dense_bathy_d if dense_bathy_d is not None else bathy,
             bathy_x=dense_bathy_x,
             cast_labels=cast_nums_int,
-            vmin=vmin.get(var),
-            vmax=vmax.get(var),
+            vmin=_vmin,
+            vmax=_vmax,
             figsize=section_figsize,
             optional=optional,
         )
@@ -312,7 +322,11 @@ def generate_section_page(
     ]
     biogeo_panels = [
         _section_panel(
-            _resolve_section_var(v), vlabel(v), VARIABLES[v]["label"], optional=True
+            _resolve_section_var(v),
+            vlabel(v),
+            VARIABLES[v]["label"],
+            optional=True,
+            canonical=v,
         )
         for v in SECTION_BIOGEO_VARS
     ]

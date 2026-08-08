@@ -95,9 +95,11 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
     p = ds["pressure"].values.astype(float)
     t = ds[temp_var].values.astype(float)
 
-    # Pairs: (conductivity var, salinity output var — CCHDO name)
+    # On single-sensor casts _normalise promotes ctd_salinity_1 → ctd_salinity;
+    # write to whichever name is live in ds so the promoted plain name is kept current.
+    _sal1_out = _resolve_var(ds, "ctd_salinity", "ctd_salinity_1") or "ctd_salinity_1"
     pairs = [
-        ("conductivity_1", "ctd_salinity_1"),
+        ("conductivity_1", _sal1_out),
         ("conductivity_2", "ctd_salinity_2"),
     ]
     for c_var, s_out in pairs:
@@ -190,6 +192,8 @@ def derive_CT(ds: xr.Dataset) -> xr.Dataset:
     """
     temp_var = _resolve_var(ds, *_TEMP_CANDIDATES)
     if temp_var is None:
+        return ds
+    if "absolute_salinity" not in ds:
         return ds
     ds = ds.copy()
     sa = ds["absolute_salinity"].values.astype(float)
