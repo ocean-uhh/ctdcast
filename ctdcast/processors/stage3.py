@@ -10,12 +10,14 @@ Phase 5 scope; this module covers only the post-conversion treatment.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import xarray as xr
 
 from ctdcast.analysis.derive import derive_salinity
 from ctdcast.processors import qc
+from ctdcast.writers.netcdf import write as _write_nc
 
 
 def stage3(
@@ -97,12 +99,14 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
 
 
 def run(
-    proc_dir: Path,
+    nc_dir: Path,
     *,
-    force: bool = False,  # noqa: ARG001
-    cruise_cfg: dict | None = None,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    **kw: object,
 ) -> int:
-    """Apply stage3 (QC + calibration) to all NC files in ``proc_dir/nc/``.
+    """Apply stage3 (QC + calibration) to NC files in *nc_dir*.
 
     Reads each ``*.nc`` file, applies :func:`stage3`, and writes the result
     back in place using :func:`ctdcast.writers.netcdf.write`.  Called by
@@ -111,28 +115,69 @@ def run(
 
     Parameters
     ----------
-    proc_dir:
-        Base processing directory.  NC files are read from and written back
-        to ``proc_dir/nc/``.
+    nc_dir:
+        Directory of per-cast netCDF files (read and written in place).
     force:
-        Accepted for API consistency but ignored — stage3 always rewrites.
-    cruise_cfg:
-        Passed to :func:`stage3`.
+        Reprocess files that already carry QC flag variables.  Without
+        ``force``, already-QC'd files are skipped.
+    dry_run:
+        Print which files would be processed without writing any output.
+    cast_tags:
+        If given, process only files whose stem contains one of the zero-padded
+        3-digit cast numbers (e.g. ``{"042", "043"}``).
+    **kw:
+        Passed to :func:`stage3` (e.g. ``cruise_cfg``).
 
     Returns
     -------
     int
-        Number of files processed.
+        Number of files written (0 for dry_run).
+
+    Raises
+    ------
+    FileNotFoundError
+        If *nc_dir* does not exist or is not a directory.
     """
-    import xarray as xr
+    if not nc_dir.is_dir():
+        raise FileNotFoundError(f"nc_dir not found: {nc_dir}")
 
-    from ctdcast.writers.netcdf import write
+    cruise_cfg: dict | None = kw.get("cruise_cfg")  # type: ignore[assignment]
 
-    nc_dir = proc_dir / "nc"
-    n = 0
-    for nc_path in sorted(nc_dir.glob("*.nc")):
-        ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-        ds_out = stage3(ds, cruise_cfg=cruise_cfg)
-        write(ds_out, nc_path)
-        n += 1
+    nc_files = sorted(nc_dir.glob("*.nc"))
+    if cast_tags is not None:
+        nc_files = [p for p in nc_files if any(t in p.stem for t in cast_tags)]
+
+    n = n_skipped = n_failed = 0
+    for nc_path in nc_files:
+        if dry_run:
+            print(f"  [dry-run] stage 3 would process: {nc_path.name}")
+            continue
+        ds = None
+        try:
+            ds = xr.open_dataset(nc_path, engine="netcdf4").load()
+            already_qcd = any(v.endswith("_qc") for v in ds.data_vars)
+            if already_qcd and not force:
+                print(f"  skip (already QC'd): {nc_path.name}")
+                n_skipped += 1
+                continue
+            ds_out = stage3(ds, cruise_cfg=cruise_cfg)
+            ds.close()
+            ds = None  # prevent double-close in finally; file released before write
+            _write_nc(ds_out, nc_path)
+            print(f"  ok: {nc_path.name}")
+            n += 1
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"  FAILED: {nc_path.name}  ({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
+            n_failed += 1
+        finally:
+            if ds is not None:
+                ds.close()
+    if not dry_run:
+        parts = [f"{n} written", f"{n_skipped} skipped"]
+        if n_failed:
+            parts.append(f"{n_failed} FAILED")
+        print(f"stage 3: {', '.join(parts)}.")
     return n

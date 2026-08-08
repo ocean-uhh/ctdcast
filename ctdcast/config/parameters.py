@@ -27,6 +27,13 @@ from __future__ import annotations
 # obvious rather than plausible.
 UNKNOWN_CRUISE_ID: str = "UNKCRUISE"
 
+# Zero-padding width for cast-number tags used in filename filtering.
+# Filenames are expected to embed a zero-padded 3-digit cast number (e.g.
+# "mixsed2_042.nc").  Adjust only if your naming convention uses a different
+# width; keeping it here avoids the constant being hardcoded in 4 different
+# places across the processors and CLI.
+CAST_TAG_WIDTH: int = 3
+
 # ---------------------------------------------------------------------------
 # Slot widths  [Derived — from dpi and browser scaling maths]
 # ---------------------------------------------------------------------------

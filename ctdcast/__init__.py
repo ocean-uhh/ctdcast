@@ -13,7 +13,7 @@ Public API
 report(nc_dir, profiles_path, section_yaml, out_dir, force=False)
 stage1(cnv_dir, nc_dir, ...)
 profiles(nc_dir, profiles_path, ...)
-process(stage=None, *, proc_dir, force=False, **kw)
+process(stage=None, *, cnv_dir, nc_dir, profiles_path, force=False, dry_run=False, **kw)
 """
 
 from ctdcast._version import __version__

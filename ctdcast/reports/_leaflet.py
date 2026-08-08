@@ -31,7 +31,7 @@ import numpy as np
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import load_gebco
-from ctdcast.identity import expand_cast_numbers
+from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template_raw
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
@@ -68,7 +68,7 @@ def _cast_panel_html(
 ) -> str:
     """Return HTML for the info panel when a cast marker is hovered."""
     cn = int(m["cast_num"])
-    cast_id = m.get("cast_num_str", f"{cn:03d}")
+    cast_id = m.get("cast_num_str", format_cast_id(cn))
     cast_url = f"casts/cast_{cast_id}.html"
     dt = str(m.get("time_start", ""))[:16].replace("T", " ")
     lat = float(m.get("lat", float("nan")))
@@ -464,7 +464,7 @@ def generate_leaflet_map(
     casts_data: list[dict[str, Any]] = []
     for m in all_meta:
         cn = int(m["cast_num"])
-        cast_id = m.get("cast_num_str", f"{cn:03d}")
+        cast_id = m.get("cast_num_str", format_cast_id(cn))
         lat_f = float(m.get("lat", float("nan")))
         lon_f = float(m.get("lon", float("nan")))
         if not (np.isfinite(lat_f) and np.isfinite(lon_f)):

@@ -18,6 +18,8 @@ import warnings
 from pathlib import Path
 from typing import Protocol
 
+from ctdcast.config.parameters import CAST_TAG_WIDTH
+
 
 class CtdBackend(Protocol):
     """Protocol for per-cast CNV-to-netCDF converters."""
@@ -128,7 +130,7 @@ def stage1(
     *,
     backend: str = "seasenselib",
     force: bool = False,
-    cast_filter: int | None = None,
+    cast_filter: int | list[int] | None = None,
     pattern: str = "*.cnv",
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
@@ -144,7 +146,8 @@ def stage1(
     force:
         Overwrite existing netCDF files.
     cast_filter:
-        If given, convert only files whose stem contains ``f"{cast_filter:03d}"``.
+        If given, convert only files whose stem contains the zero-padded cast number.
+        Accepts a single int or a list of ints for multi-cast filtering.
     pattern:
         Filename glob pattern applied within ``cnv_dir`` (default: ``"*.cnv"``).
 
@@ -163,8 +166,12 @@ def stage1(
 
     cnv_files = sorted(cnv_dir.glob(pattern))
     if cast_filter is not None:
-        tag = f"{cast_filter:03d}"
-        cnv_files = [p for p in cnv_files if tag in p.stem]
+        tags = (
+            {f"{cast_filter:0{CAST_TAG_WIDTH}d}"}
+            if isinstance(cast_filter, int)
+            else {f"{c:0{CAST_TAG_WIDTH}d}" for c in cast_filter}
+        )
+        cnv_files = [p for p in cnv_files if any(t in p.stem for t in tags)]
 
     n = 0
     for cnv_path in cnv_files:
@@ -188,26 +195,55 @@ def stage1(
     return n
 
 
-def run(proc_dir: Path, *, force: bool = False, **kw) -> int:
-    """Run stage1 for a processing directory.
+def run(
+    cnv_dir: Path,
+    nc_dir: Path,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    **kw: object,
+) -> int:
+    """Run stage1 (CNV → netCDF) for explicit input and output directories.
 
-    Converts CNV files from ``proc_dir/cnv/`` to netCDF in ``proc_dir/nc/``.
     Called by :func:`ctdcast.processors.process` with ``stage=1`` or
     ``stage="stage1"``.
 
     Parameters
     ----------
-    proc_dir:
-        Base processing directory.  Input CNV files are read from
-        ``proc_dir/cnv/``; NC output goes to ``proc_dir/nc/``.
+    cnv_dir:
+        Directory containing raw SBE CNV files.
+    nc_dir:
+        Output directory for per-cast netCDF files (created if absent).
     force:
         Overwrite existing NC files.
+    dry_run:
+        Print what would be converted without writing any files.
+    cast_tags:
+        If given, process only files whose stem contains one of the zero-padded
+        3-digit cast numbers (e.g. ``{"042", "043"}``).
     **kw:
-        Passed to :func:`stage1` (e.g. ``backend``, ``cast_filter``).
+        Passed to :func:`stage1` (e.g. ``backend``, ``pattern``).
 
     Returns
     -------
     int
-        Number of files written.
+        Number of files written (0 for dry_run).
     """
-    return stage1(proc_dir / "cnv", proc_dir / "nc", force=force, **kw)
+    pattern: str = kw.get("pattern", "*.cnv")  # type: ignore[assignment]
+    cnv_files = sorted(cnv_dir.glob(pattern))
+    if cast_tags is not None:
+        cnv_files = [p for p in cnv_files if any(t in p.stem for t in cast_tags)]
+
+    if dry_run:
+        print(f"[dry-run] stage 1: {cnv_dir} → {nc_dir}  ({len(cnv_files)} file(s))")
+        for p in cnv_files:
+            print(f"  [dry-run] would convert: {p.name}")
+        return 0
+
+    cast_filter: list[int] | None = (
+        [int(t) for t in sorted(cast_tags)] if cast_tags is not None else None
+    )
+    n = stage1(cnv_dir, nc_dir, force=force, cast_filter=cast_filter, **kw)
+    print(f"stage 1: {n} file(s) written.")
+    return n

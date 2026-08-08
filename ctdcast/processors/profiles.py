@@ -351,30 +351,45 @@ def build_profiles(
     return True
 
 
-def run(proc_dir: Path, *, force: bool = False, **kw) -> bool:
-    """Build ``profiles.nc`` for a processing directory.
+def run(
+    nc_dir: Path,
+    profiles_path: Path,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    **kw: object,
+) -> bool:
+    """Build ``profiles.nc`` from NC files in *nc_dir*.
 
-    Reads NC files from ``proc_dir/nc/`` and writes
-    ``proc_dir/profiles.nc``.  Called by
-    :func:`ctdcast.processors.process` with ``stage="profiles"``.
+    Called by :func:`ctdcast.processors.process` with ``stage="profiles"``.
 
     Parameters
     ----------
-    proc_dir:
-        Base processing directory.
+    nc_dir:
+        Directory of per-cast netCDF files.
+    profiles_path:
+        Output path for the compiled profiles netCDF.
     force:
         Overwrite an existing profiles.nc.
+    dry_run:
+        Print what would be built without writing any output.
     **kw:
         Passed to :func:`build_profiles` (e.g. ``gebco_path``).
 
     Returns
     -------
     bool
-        True if profiles.nc was written; False if skipped.
+        True if profiles.nc was written; False if skipped (or dry_run).
     """
-    return build_profiles(
-        proc_dir / "nc",
-        proc_dir / "profiles.nc",
-        force=force,
-        **kw,
-    )
+    if dry_run:
+        print(f"[dry-run] profiles: {nc_dir} → {profiles_path}")
+        return False
+    result = build_profiles(nc_dir, profiles_path, force=force, **kw)
+    if result:
+        print(f"profiles: wrote {profiles_path}")
+    else:
+        print(
+            f"profiles: skipped (already exists; use --force to overwrite):"
+            f" {profiles_path}"
+        )
+    return result
