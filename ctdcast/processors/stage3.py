@@ -161,6 +161,8 @@ def run(
                 n_skipped += 1
                 continue
             ds_out = stage3(ds, cruise_cfg=cruise_cfg)
+            ds.close()
+            ds = None  # prevent double-close in finally; file released before write
             _write_nc(ds_out, nc_path)
             print(f"  ok: {nc_path.name}")
             n += 1
