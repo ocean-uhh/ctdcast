@@ -99,7 +99,7 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
 def run(
     proc_dir: Path,
     *,
-    force: bool = False,
+    force: bool = False,  # noqa: ARG001
     cruise_cfg: dict | None = None,
 ) -> int:
     """Apply stage3 (QC + calibration) to all NC files in ``proc_dir/nc/``.

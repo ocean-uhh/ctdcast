@@ -69,3 +69,21 @@ def test_profiles_stage_has_no_number() -> None:
     assert profiles.number is None
     with pytest.raises(ValueError):
         resolve_stage(4)
+
+
+def test_resolve_stage_bool_raises() -> None:
+    """True == 1 in Python, so resolve_stage(True/False) must raise, not match stage1.
+
+    Without the isinstance(stage, bool) guard, resolve_stage(True) silently returned
+    the stage-1 Stage object because True == 1.
+    """
+    with pytest.raises(ValueError):
+        resolve_stage(True)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        resolve_stage(False)  # type: ignore[arg-type]
+
+
+def test_resolve_stage_float_resolves() -> None:
+    """1.0 == 1 in Python; resolve_stage(1.0) resolves to stage1 (not a defect)."""
+    s = resolve_stage(1.0)  # type: ignore[arg-type]
+    assert s.number == 1

@@ -167,7 +167,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     try:
-        from ctdcast.converters import get_ctd_backend
+        from ctdcast.processors.stage1 import get_ctd_backend
 
         get_ctd_backend("seasenselib")
     except ImportError as exc:
@@ -240,7 +240,8 @@ def _run_pipeline(
     trim_soak: bool = False,
 ) -> int:
     """Convert CNV files then generate HTML; return exit code."""
-    from ctdcast.converters import build_profiles, convert_ctd_files
+    from ctdcast.processors.profiles import build_profiles
+    from ctdcast.processors.stage1 import stage1 as convert_ctd_files
     from ctdcast.reports._index import report
 
     n = convert_ctd_files(

@@ -15,13 +15,6 @@ Main entry point
 
 ----
 
-Data preparation
-----------------
-
-.. automodule:: ctdcast.converters
-   :members:
-   :undoc-members:
-
 Cast identity
 -------------
 

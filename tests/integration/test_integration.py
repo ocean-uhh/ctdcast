@@ -15,14 +15,15 @@ import numpy as np
 import pytest
 import xarray as xr
 
-pytestmark = pytest.mark.slow
-
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
-from ctdcast.converters import build_profiles, convert_ctd_files
+from ctdcast.processors.profiles import build_profiles
+from ctdcast.processors.stage1 import stage1 as convert_ctd_files
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._index import _read_cast_meta, report
 from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
+
+pytestmark = pytest.mark.slow
 
 _HERE = Path(__file__).parent
 _FIXTURES = _HERE.parent / "fixtures"

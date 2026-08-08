@@ -9,29 +9,15 @@ from typing import Any
 import numpy as np
 import xarray as xr
 
-from ctdcast.reports._env import get_template
-
-
-def _dec_to_ddm(deg: float, axis: str) -> str:
-    """Convert decimal degrees to degrees-decimal-minutes string.
-
-    Examples: 64.7415 lat → '64 44.49 N', -31.4003 lon → '031 24.02 W'.
-    """
-    hemi = ("N" if deg >= 0 else "S") if axis == "lat" else ("E" if deg >= 0 else "W")
-    d = int(abs(deg))
-    m = (abs(deg) - d) * 60.0
-    if axis == "lon":
-        return f"{d:03d}° {m:05.2f}′ {hemi}"
-    return f"{d:02d}° {m:05.2f}′ {hemi}"
-
-
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
+from ctdcast.config.parameters import UNKNOWN_CRUISE_ID
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
 from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
@@ -46,6 +32,20 @@ from ctdcast.reports._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
+
+
+def _dec_to_ddm(deg: float, axis: str) -> str:
+    """Convert decimal degrees to degrees-decimal-minutes string.
+
+    Examples: 64.7415 lat → '64 44.49 N', -31.4003 lon → '031 24.02 W'.
+    """
+    hemi = ("N" if deg >= 0 else "S") if axis == "lat" else ("E" if deg >= 0 else "W")
+    d = int(abs(deg))
+    m = (abs(deg) - d) * 60.0
+    if axis == "lon":
+        return f"{d:03d}° {m:05.2f}′ {hemi}"
+    return f"{d:02d}° {m:05.2f}′ {hemi}"
+
 
 # ---------------------------------------------------------------------------
 # HTML template
@@ -192,7 +192,7 @@ def generate_station_page(
     dur_m = dur_rem // 60
     duration_str = f"{dur_h}h {dur_m:02d}m"
     _ci = cruise_info or {}
-    cruise = _ci.get("cruise_id") or ds.attrs.get("cruise", "odb2026")
+    cruise = _ci.get("cruise_id") or ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
     ship = (
         _ci.get("ship")
         or ds.attrs.get("ship")

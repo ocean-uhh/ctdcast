@@ -1,9 +1,9 @@
-"""Smoke tests for _converters: build_profiles."""
+"""Smoke tests for build_profiles and _select_cast_files."""
 
 import pytest
 from conftest import FIXTURES_NC
 
-from ctdcast.converters import _select_cast_files, build_profiles
+from ctdcast.processors.profiles import _select_cast_files, build_profiles
 
 
 def test_build_profiles_writes_file(tmp_path):

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ctdcast.converters import build_profiles
+from ctdcast.processors.profiles import build_profiles
 
 _ROOT = Path(__file__).parent.parent
 _NC_DIR = _ROOT / "tests" / "fixtures" / "nc"

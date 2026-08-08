@@ -298,7 +298,7 @@ def find_cast_end(
     return i_max + int(below[0])
 
 
-def run(proc_dir: Path, *, force: bool = False, **kw) -> int:
+def run(proc_dir: Path, *, force: bool = False, **kw) -> int:  # noqa: ARG001
     """Apply stage2 (soak/deck flagging) to all NC files in ``proc_dir/nc/``.
 
     Reads each ``*.nc`` file, applies :func:`apply_stage2`, and writes the

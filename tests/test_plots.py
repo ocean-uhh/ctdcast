@@ -5,8 +5,7 @@ that the image is pixel-perfect.  A returned str must start with the
 PNG base64 magic bytes ("iVBOR").
 """
 
-import xarray as xr
-from conftest import CAST_011, FIXTURES_LADCP
+from conftest import FIXTURES_LADCP
 
 from ctdcast.plotters import plots
 from ctdcast.reports._plots import (
@@ -101,10 +100,8 @@ def test_station_map_no_gebco(ds_011, monkeypatch):
     monkeypatch.setattr(plots, "GEBCO_PATH", None)
     import numpy as np
 
-    ds = xr.open_dataset(CAST_011, engine="netcdf4")
-    lat = float(np.nanmedian(ds["latitude"].values))
-    lon = float(np.nanmedian(ds["longitude"].values))
-    ds.close()
+    lat = float(np.nanmedian(ds_011["latitude"].values))
+    lon = float(np.nanmedian(ds_011["longitude"].values))
     all_meta = [{"lat": lat, "lon": lon}]
     assert _is_valid(_make_station_map_b64(lat, lon, all_meta))
 

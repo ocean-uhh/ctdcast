@@ -24,6 +24,7 @@ from ctdcast.analysis.geometry import (
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
+    UNKNOWN_CRUISE_ID,
     VARIABLES,
     vlabel,
 )
@@ -218,7 +219,7 @@ def generate_section_page(
         if dense_bathy_x is not None:
             dense_bathy_x = x_total - dense_bathy_x
 
-    cruise = ds_all.attrs.get("cruise", "odb2026")
+    cruise = ds_all.attrs.get("cruise", UNKNOWN_CRUISE_ID)
     ship = ds_all.attrs.get(
         "ship", ds_all.attrs.get("platform", ds_all.attrs.get("vessel", "UNK"))
     )
