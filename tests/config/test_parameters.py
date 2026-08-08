@@ -101,15 +101,15 @@ def test_load_display_config_merges_overrides() -> None:
     """load_display_config applies cruise overrides without mutating VARIABLES."""
     from ctdcast.config.loader import load_display_config
 
-    original_vmin = VARIABLES["temperature_1"]["vmin"]
+    original_vmin = VARIABLES["ctd_temperature_1"]["vmin"]
 
-    cfg = {"display": {"variables": {"temperature_1": {"vmin": 4, "vmax": 25}}}}
+    cfg = {"display": {"variables": {"ctd_temperature_1": {"vmin": 4, "vmax": 25}}}}
     merged = load_display_config(cfg)
 
-    assert merged["temperature_1"]["vmin"] == 4
-    assert merged["temperature_1"]["vmax"] == 25
+    assert merged["ctd_temperature_1"]["vmin"] == 4
+    assert merged["ctd_temperature_1"]["vmax"] == 25
     # Global VARIABLES must not be mutated.
-    assert VARIABLES["temperature_1"]["vmin"] == original_vmin
+    assert VARIABLES["ctd_temperature_1"]["vmin"] == original_vmin
 
 
 def test_load_display_config_empty_cruise_cfg() -> None:
@@ -117,4 +117,4 @@ def test_load_display_config_empty_cruise_cfg() -> None:
     from ctdcast.config.loader import load_display_config
 
     merged = load_display_config({})
-    assert merged["temperature_1"]["vmin"] == VARIABLES["temperature_1"]["vmin"]
+    assert merged["ctd_temperature_1"]["vmin"] == VARIABLES["ctd_temperature_1"]["vmin"]

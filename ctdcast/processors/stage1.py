@@ -11,6 +11,7 @@ The ``converters`` module re-exports these names for backward compatibility.
 from __future__ import annotations
 
 import contextlib
+import datetime
 import io
 import logging
 import sys
@@ -18,7 +19,147 @@ import warnings
 from pathlib import Path
 from typing import Protocol
 
-from ctdcast.config.parameters import CAST_TAG_WIDTH
+import xarray as xr
+
+from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
+from ctdcast.writers.netcdf import write as write_nc
+
+
+# Variables that the reader may produce but that ctdcast does not store.
+# Dropped in _normalise() rather than reaching any downstream stage.
+_DROP_VARS: frozenset[str] = frozenset(
+    {
+        "timeJ",  # Julian-day; time coordinate is sufficient
+        "timeS",  # elapsed seconds
+        "speed_of_sound",
+        "density",  # SeaBird computed; ctdcast uses sigma0 via TEOS-10
+        "depth",  # derived from pressure; not stored
+        "flag",  # SeaBird processing flag; QARTOD _qc variables replace it
+    }
+)
+
+# Variables with no CCHDO equivalent that ctdcast does not store (derived on demand).
+# Also includes seasenselib's oxygen_1/oxygen_2, which are % saturation (from
+# sbeox0PS/sbeox1PS), not µmol/kg.  The µmol/kg value (sbox0Mm/Kg) is kept and
+# aliased to ctd_oxygen_1 via CNV_ALIASES.
+_DERIVE_ON_DEMAND: frozenset[str] = frozenset(
+    {"oxsat_1", "sbeox0PS", "sbeox0ps", "oxygen_1", "oxygen_2"}
+)
+
+
+def _normalise(ds: xr.Dataset) -> xr.Dataset:
+    """Rename variables to ctdcast canonical names and drop non-standard columns.
+
+    Applied between the reader (seasenselib or future hex reader) and the
+    ctdcast netCDF writer.  Both readers must produce a Dataset that this
+    function can normalise into the same output shape.
+
+    Steps, in order:
+
+    1. Rename variables using :data:`~ctdcast.config.parameters.CNV_ALIASES`
+       (keys are lower-cased before lookup).
+    2. Drop variables in ``_DROP_VARS`` (SeaBird bookkeeping) and
+       ``_DERIVE_ON_DEMAND`` (quantities computed on demand, not stored).
+    3. Drop any remaining variables not in
+       :data:`~ctdcast.config.parameters.VARIABLES` and not a recognised
+       coordinate (``latitude``, ``longitude``, ``time``).
+    4. Apply the single-sensor naming rule: when only one sensor of a measured
+       type is present, strip the ``_1`` suffix so the variable is plain
+       (e.g. ``ctd_temperature_1`` → ``ctd_temperature`` when there is no
+       ``ctd_temperature_2``).
+    5. Append a ``history`` line recording the ctdcast version and stage.
+
+    Parameters
+    ----------
+    ds:
+        Dataset as returned by the reader (seasenselib or hex reader).
+
+    Returns
+    -------
+    xr.Dataset
+        Normalised Dataset ready for :func:`ctdcast.writers.netcdf.write`.
+    """
+    from ctdcast._version import __version__
+
+    ds = ds.copy()
+
+    # Step 1: rename via CNV_ALIASES (lowercase key lookup)
+    rename_map: dict[str, str] = {}
+    for var in list(ds.data_vars):
+        target = CNV_ALIASES.get(var.lower())
+        if target and target != var:
+            rename_map[var] = target
+    if rename_map:
+        ds = ds.rename(rename_map)
+
+    # Step 1b: handle seasenselib's oxygen_N vars, which may be % saturation,
+    # volts, µmol/L, or µmol/kg depending on the CNV column the sensor was on.
+    # % saturation and volts are derived-on-demand / discarded.
+    # µmol/kg → rename to ctd_oxygen_N (step 4 will strip _1 if single-sensor).
+    # µmol/L → convert to µmol/kg using density from the dataset, then rename.
+    # Density is available here from seasenselib and is dropped in step 2.
+    for _v in ("oxygen_1", "oxygen_2"):
+        if _v not in ds.data_vars:
+            continue
+        _suffix = _v[-1]  # "1" or "2"
+        _target = f"ctd_oxygen_{_suffix}"
+        _units = ds[_v].attrs.get("units", "").lower().strip()
+        if "umol/kg" in _units or "µmol/kg" in _units:
+            ds = ds.rename({_v: _target})
+        elif "umol/l" in _units or "µmol/l" in _units:
+            if "density" in ds:
+                # density from seasenselib is in kg/m³; divide by 1000 to get kg/L,
+                # then µmol/L / (kg/L) = µmol/kg.
+                rho = ds["density"] / 1000.0
+                converted = ds[_v] / rho
+                new_attrs = dict(ds[_v].attrs)
+                new_attrs["units"] = "umol/kg"
+                new_attrs["comment"] = (
+                    "converted from umol/l to umol/kg using seasenselib density"
+                )
+                converted.attrs = new_attrs
+                ds = ds.drop_vars([_v]).assign({_target: converted})
+            else:
+                import warnings
+
+                warnings.warn(
+                    f"Oxygen variable {_v!r} is in µmol/L but no density is available "
+                    "for conversion.  Variable dropped; reprocess with density present.",
+                    stacklevel=3,
+                )
+                ds = ds.drop_vars([_v])
+        # else: % saturation, volts, or unknown — falls through to _DERIVE_ON_DEMAND drop
+
+    # Step 2: drop bookkeeping and derive-on-demand variables
+    to_drop = [v for v in ds.data_vars if v in _DROP_VARS or v in _DERIVE_ON_DEMAND]
+    if to_drop:
+        ds = ds.drop_vars(to_drop)
+
+    # Step 3: drop anything not in VARIABLES and not a coordinate
+    _KEEP_COORDS = {"latitude", "longitude", "time"}
+    unknown = [v for v in ds.data_vars if v not in VARIABLES and v not in _KEEP_COORDS]
+    if unknown:
+        ds = ds.drop_vars(unknown)
+
+    # Step 4: single-sensor naming — strip _1 when no _2 sibling exists.
+    # Only applies to scientific end-product variables (T/S/O); conductivity
+    # is an intermediate quantity and keeps its _1 suffix regardless.
+    _SUFFIXED_PAIRS = [
+        ("ctd_temperature_1", "ctd_temperature_2", "ctd_temperature"),
+        ("ctd_salinity_1", "ctd_salinity_2", "ctd_salinity"),
+        ("ctd_oxygen_1", "ctd_oxygen_2", "ctd_oxygen"),
+    ]
+    for v1, v2, plain in _SUFFIXED_PAIRS:
+        if v1 in ds.data_vars and v2 not in ds.data_vars:
+            ds = ds.rename({v1: plain})
+
+    # Step 5: append history
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    entry = f"{stamp} ctdcast {__version__} stage1: normalise (CNV → canonical names)"
+    prev = ds.attrs.get("history", "")
+    ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
+
+    return ds
 
 
 class CtdBackend(Protocol):
@@ -94,7 +235,8 @@ class _SeasenselibBackend:
             return False
         with contextlib.redirect_stdout(io.StringIO()):
             ds = self._sl.read(str(cnv_path))
-        self._sl.write(ds, str(nc_path), sanitize_names=True)
+        ds = _normalise(ds)
+        write_nc(ds, nc_path)
         return True
 
 

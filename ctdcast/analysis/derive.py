@@ -8,7 +8,7 @@ derive_salinity   SP from conductivity/temperature/pressure
 derive_SA         Absolute Salinity from SP/pressure/lat/lon
 derive_CT         Conservative Temperature from SA/in-situ-T/pressure
 derive_sigma0     Potential density anomaly from SA/CT
-derive_AOU        Apparent Oxygen Utilization from oxsat_1 (% sat)
+derive_AOU        Apparent Oxygen Utilization from oxygen_saturation (% sat)
 derive_teos10     Convenience: SA + CT + sigma0 + optional O2 unit conversion
 
 Profiles (2-D, dims N_PROF × pressure) functions
@@ -18,6 +18,15 @@ derive_teos10_profiles   SA + CT + sigma0 for compiled profiles datasets
 Output variable names match the VARIABLES registry in
 ``ctdcast.config.parameters``: ``absolute_salinity``,
 ``conservative_temperature``, ``sigma0``.
+
+Variable resolution
+-------------------
+Functions accept both the canonical CCHDO names (``ctd_temperature``,
+``ctd_salinity``, ``ctd_oxygen``) and the suffixed dual-sensor names
+(``ctd_temperature_1``, ``ctd_salinity_1``, ``ctd_oxygen_1``).  Old
+pre-rename names (``temperature_1``, ``salinity_1``, ``oxygen_1``)
+are accepted for backward compatibility with NC files written before
+the stage1-normalise rename.
 """
 
 from __future__ import annotations
@@ -29,6 +38,26 @@ import numpy as np
 import xarray as xr
 
 # ---------------------------------------------------------------------------
+# Variable-resolution helpers
+# ---------------------------------------------------------------------------
+
+#: Preferred order for temperature: plain (single-sensor or stage3-promoted),
+#: then primary suffix, then secondary suffix, then old pre-rename name.
+_TEMP_CANDIDATES = ("ctd_temperature", "ctd_temperature_1", "temperature_1")
+_SAL_CANDIDATES = ("ctd_salinity", "ctd_salinity_1", "salinity_1")
+_OXY_CANDIDATES = ("ctd_oxygen", "ctd_oxygen_1", "oxygen_1")
+_OXSAT_CANDIDATES = ("oxygen_saturation", "oxsat_1")
+
+
+def _resolve_var(ds: xr.Dataset, *candidates: str) -> str | None:
+    """Return the first variable name in *candidates* present in *ds*, else None."""
+    for name in candidates:
+        if name in ds:
+            return name
+    return None
+
+
+# ---------------------------------------------------------------------------
 # SP from C/T/P
 # ---------------------------------------------------------------------------
 
@@ -36,38 +65,42 @@ import xarray as xr
 def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
     """Re-compute practical salinity from conductivity, temperature, pressure.
 
-    Uses ``gsw.SP_from_C`` with conductivity in mS/cm (seasenselib stores in
-    S/m; conversion: ``C_mS_cm = conductivity_1 * 10``).  Call this after any
-    conductivity calibration so that ``salinity_1`` (and ``salinity_2`` if
-    ``conductivity_2`` is present) reflects the calibrated conductivity.
+    Uses ``gsw.SP_from_C`` with conductivity in mS/cm (stored in S/m;
+    conversion: ``C_mS_cm = conductivity_1 * 10``).  Call this after any
+    conductivity calibration so that salinity reflects the calibrated conductivity.
 
-    Does nothing if ``conductivity_1`` or ``temperature_1`` are absent.
-    Records the conversion method in ``salinity_1.attrs``.
+    Does nothing if ``conductivity_1`` or any temperature variable is absent.
+
+    Writes output to ``ctd_salinity_1`` / ``ctd_salinity_2`` (CCHDO canonical
+    names).  Records the conversion method in the variable's attrs.
 
     Parameters
     ----------
     ds:
         Per-cast Dataset (dim=time) containing at minimum ``conductivity_1``,
-        ``temperature_1``, and ``pressure`` in their expected units
+        a temperature variable, and ``pressure`` in their expected units
         (conductivity in S/m, temperature in °C ITS-90, pressure in dbar).
 
     Returns
     -------
     xr.Dataset
-        New Dataset with updated ``salinity_1`` (and ``salinity_2`` when
+        New Dataset with updated ``ctd_salinity_1`` (and ``ctd_salinity_2`` when
         ``conductivity_2`` is present); input is not mutated.
     """
-    if "conductivity_1" not in ds or "temperature_1" not in ds:
+    temp_var = _resolve_var(ds, *_TEMP_CANDIDATES)
+    if "conductivity_1" not in ds or temp_var is None:
         return ds
 
     ds = ds.copy()
     p = ds["pressure"].values.astype(float)
-    t = ds["temperature_1"].values.astype(float)
+    t = ds[temp_var].values.astype(float)
 
-    for c_var, s_var in [
-        ("conductivity_1", "salinity_1"),
-        ("conductivity_2", "salinity_2"),
-    ]:
+    # Pairs: (conductivity var, salinity output var — CCHDO name)
+    pairs = [
+        ("conductivity_1", "ctd_salinity_1"),
+        ("conductivity_2", "ctd_salinity_2"),
+    ]
+    for c_var, s_out in pairs:
         if c_var not in ds:
             continue
         c_s_per_m = ds[c_var].values.astype(float)
@@ -76,15 +109,15 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
             warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
             sp = gsw.SP_from_C(c_ms_cm, t, p)
 
-        existing_attrs = dict(ds[s_var].attrs) if s_var in ds else {}
+        existing_attrs = dict(ds[s_out].attrs) if s_out in ds else {}
         existing_attrs["derived_from"] = (
-            f"{c_var}, temperature_1, pressure via gsw.SP_from_C"
+            f"{c_var}, {temp_var}, pressure via gsw.SP_from_C"
         )
         existing_attrs.setdefault("units", "1")
         existing_attrs.setdefault("standard_name", "sea_water_practical_salinity")
         existing_attrs.setdefault("reference_scale", "PSS-78")
         dim = ds["pressure"].dims[0]
-        ds[s_var] = xr.DataArray(
+        ds[s_out] = xr.DataArray(
             sp.astype(np.float32),
             dims=[dim],
             attrs=existing_attrs,
@@ -101,13 +134,14 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
 def derive_SA(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with Absolute Salinity (SA) added.
 
-    Uses ``gsw.SA_from_SP`` with ``salinity_1`` (practical salinity, PSS-78),
-    ``pressure`` (dbar), and the cast's median latitude/longitude.
+    Uses ``gsw.SA_from_SP`` with the first available salinity variable
+    (``ctd_salinity``, ``ctd_salinity_1``, or ``salinity_1``), ``pressure``
+    (dbar), and the cast's median latitude/longitude.
 
     Parameters
     ----------
     ds:
-        Per-cast Dataset (dim=time) with ``salinity_1``, ``pressure``,
+        Per-cast Dataset (dim=time) with a salinity variable, ``pressure``,
         ``latitude``, ``longitude``.
 
     Returns
@@ -115,8 +149,11 @@ def derive_SA(ds: xr.Dataset) -> xr.Dataset:
     xr.Dataset
         New Dataset with ``ds["absolute_salinity"]`` added; input is not mutated.
     """
+    sal_var = _resolve_var(ds, *_SAL_CANDIDATES)
+    if sal_var is None:
+        return ds
     ds = ds.copy()
-    sp = ds["salinity_1"].values.astype(float)
+    sp = ds[sal_var].values.astype(float)
     p = ds["pressure"].values.astype(float)
     lat = float(np.nanmedian(ds["latitude"].values))
     lon = float(np.nanmedian(ds["longitude"].values))
@@ -135,23 +172,28 @@ def derive_SA(ds: xr.Dataset) -> xr.Dataset:
 def derive_CT(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with Conservative Temperature (CT) added.
 
-    Requires ``ds["absolute_salinity"]`` to already be present (call :func:`derive_SA` first).
-    Uses ``gsw.CT_from_t`` with in-situ ``temperature_1`` and ``pressure``.
+    Requires ``ds["absolute_salinity"]`` to already be present (call
+    :func:`derive_SA` first).  Uses ``gsw.CT_from_t`` with the first available
+    temperature variable (``ctd_temperature``, ``ctd_temperature_1``, or
+    ``temperature_1``) and ``pressure``.
 
     Parameters
     ----------
     ds:
-        Per-cast Dataset (dim=time) with ``absolute_salinity``, ``temperature_1``,
-        ``pressure``.
+        Per-cast Dataset (dim=time) with ``absolute_salinity``, a temperature
+        variable, and ``pressure``.
 
     Returns
     -------
     xr.Dataset
         New Dataset with ``ds["conservative_temperature"]`` added; input is not mutated.
     """
+    temp_var = _resolve_var(ds, *_TEMP_CANDIDATES)
+    if temp_var is None:
+        return ds
     ds = ds.copy()
     sa = ds["absolute_salinity"].values.astype(float)
-    t = ds["temperature_1"].values.astype(float)
+    t = ds[temp_var].values.astype(float)
     p = ds["pressure"].values.astype(float)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
@@ -200,19 +242,15 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with SA, CT, sigma0 added (1-D per-cast Dataset, dim=time).
 
     Convenience function that calls :func:`derive_SA` → :func:`derive_CT` →
-    :func:`derive_sigma0` in order.  Also handles ``oxygen_1`` in two cases:
-
-    - If ``oxygen_1`` carries molar units (µmol/L or µmol/kg), derives
-      ``oxsat_1`` (% saturation) and adds it; ``oxygen_1`` is left unchanged.
-    - If ``oxygen_1`` already carries % saturation units (pre-Phase-3 NC files
-      where the variable was stored under the wrong name), renames it to
-      ``oxsat_1`` so the plotting pipeline finds it under the canonical name.
+    :func:`derive_sigma0` in order.  Also derives ``oxygen_saturation`` (% sat)
+    from the first available oxygen variable (``ctd_oxygen``, ``ctd_oxygen_1``,
+    or ``oxygen_1``) when that variable carries molar units.
 
     Parameters
     ----------
     ds:
-        Per-cast Dataset (dim=time) with ``salinity_1``, ``temperature_1``,
-        ``pressure``, ``latitude``, ``longitude``.
+        Per-cast Dataset (dim=time) with a salinity variable, a temperature
+        variable, ``pressure``, ``latitude``, ``longitude``.
 
     Returns
     -------
@@ -222,8 +260,9 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     ds = derive_SA(ds)
     ds = derive_CT(ds)
     ds = derive_sigma0(ds)
-    if "oxygen_1" in ds:
-        units = ds["oxygen_1"].attrs.get("units", "")
+    oxy_var = _resolve_var(ds, *_OXY_CANDIDATES)
+    if oxy_var is not None:
+        units = ds[oxy_var].attrs.get("units", "")
         u_lower = units.lower()
         if "umol" in u_lower or "µmol" in u_lower:
             sa = ds["absolute_salinity"].values.astype(float)
@@ -231,18 +270,17 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
             p = ds["pressure"].values.astype(float)
             lat = float(np.nanmedian(ds["latitude"].values))
             lon = float(np.nanmedian(ds["longitude"].values))
-            ds = _derive_oxsat_from_oxygen(ds, sa, ct, p, lat, lon)
+            ds = _derive_oxsat_from_oxygen(ds, oxy_var, sa, ct, p, lat, lon)
         elif "%" in u_lower or "sat" in u_lower or "percent" in u_lower:
-            # Pre-Phase-3 NC files stored % saturation under "oxygen_1".
-            # Rename to the canonical "oxsat_1" so panels find it.
-            ds = ds.rename({"oxygen_1": "oxsat_1"})
+            # Pre-rename NC files stored % saturation under "oxygen_1".
+            # Rename to the canonical oxygen_saturation name.
+            if oxy_var != "oxygen_saturation":
+                ds = ds.rename({oxy_var: "oxygen_saturation"})
         else:
-            import warnings
-
             warnings.warn(
-                f"oxygen_1 has unrecognised units {units!r}; oxsat_1 not derived. "
-                "Biogeo panels will be absent. Expected 'umol', 'µmol', '%', "
-                "'sat', or 'percent'.",
+                f"{oxy_var!r} has unrecognised units {units!r}; "
+                "oxygen_saturation not derived. "
+                "Expected 'umol', 'µmol', '%', 'sat', or 'percent'.",
                 UserWarning,
                 stacklevel=4,
             )
@@ -257,10 +295,10 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
 def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with SA, CT, sigma0 added (2-D profiles Dataset).
 
-    Expects ``pressure`` as a 1-D coordinate and ``temperature_1``,
-    ``salinity_1``, ``latitude``, ``longitude`` as variables with dims
-    ``(N_PROF,)`` or ``(N_PROF, pressure)``.  Returns *ds* unchanged if
-    SA, CT, and sigma0 are already present.
+    Expects ``pressure`` as a 1-D coordinate and a temperature variable,
+    a salinity variable, ``latitude``, ``longitude`` with dims ``(N_PROF,)``
+    or ``(N_PROF, pressure)``.  Returns *ds* unchanged if SA, CT, and sigma0
+    are already present.
 
     Parameters
     ----------
@@ -278,10 +316,14 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
         and "sigma0" in ds
     ):
         return ds
+    temp_var = _resolve_var(ds, *_TEMP_CANDIDATES)
+    sal_var = _resolve_var(ds, *_SAL_CANDIDATES)
+    if temp_var is None or sal_var is None:
+        return ds
     ds = ds.copy()
     p = ds["pressure"].values.astype(float)  # (N_P,)
-    t = ds["temperature_1"].values.astype(float)  # (N_PROF, N_P)
-    sp = ds["salinity_1"].values.astype(float)  # (N_PROF, N_P)
+    t = ds[temp_var].values.astype(float)  # (N_PROF, N_P)
+    sp = ds[sal_var].values.astype(float)  # (N_PROF, N_P)
     lat = ds["latitude"].values.astype(float)  # (N_PROF,)
     lon = ds["longitude"].values.astype(float)  # (N_PROF,)
     with warnings.catch_warnings():
@@ -291,7 +333,7 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
         )
         ct = gsw.CT_from_t(sa, t, p[np.newaxis, :])
         sig0 = gsw.sigma0(sa, ct)
-    dims = tuple(ds["temperature_1"].dims)
+    dims = tuple(ds[temp_var].dims)
     ds["absolute_salinity"] = xr.DataArray(
         sa.astype(np.float32),
         dims=dims,
@@ -316,31 +358,34 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
 
 
 def derive_AOU(ds: xr.Dataset) -> xr.Dataset:
-    """Return *ds* with AOU added as 100 - oxsat_1 (O₂ saturation deficit, % sat).
+    """Return *ds* with AOU added as 100 - oxygen_saturation (O₂ saturation deficit, % sat).
 
     Note: this is a saturation-deficit proxy, not the traditional AOU in
-    µmol/kg, because it uses ``oxsat_1`` (% saturation) rather than
-    dissolved O₂ in µmol/kg.  When ``oxygen_1`` (µmol/kg) is available,
-    the traditional AOU is ``gsw.O2sol(SA, CT, p, lon, lat) - oxygen_1``.
+    µmol/kg, because it uses ``oxygen_saturation`` (% saturation) rather than
+    dissolved O₂ in µmol/kg.
 
-    Returns *ds* unchanged if ``oxsat_1`` is absent or ``AOU`` already exists.
+    Returns *ds* unchanged if no oxygen saturation variable is present or
+    ``AOU`` already exists.  Accepts ``oxygen_saturation`` (canonical) or
+    ``oxsat_1`` (pre-rename name).
 
     Parameters
     ----------
     ds:
-        Dataset (any dimensionality) with ``oxsat_1`` in % saturation.
+        Dataset (any dimensionality) with ``oxygen_saturation`` or ``oxsat_1``
+        in % saturation.
 
     Returns
     -------
     xr.Dataset
         New Dataset with ``AOU`` added; input is not mutated.
     """
-    if "AOU" in ds or "oxsat_1" not in ds:
+    oxsat_var = _resolve_var(ds, *_OXSAT_CANDIDATES)
+    if "AOU" in ds or oxsat_var is None:
         return ds
     ds = ds.copy()
-    dims = ds["oxsat_1"].dims
+    dims = ds[oxsat_var].dims
     ds["AOU"] = xr.DataArray(
-        (100.0 - ds["oxsat_1"].values).astype(np.float32),
+        (100.0 - ds[oxsat_var].values).astype(np.float32),
         dims=dims,
         attrs={"long_name": "O₂ saturation deficit", "units": "% sat"},
     )
@@ -354,30 +399,33 @@ def derive_AOU(ds: xr.Dataset) -> xr.Dataset:
 
 def _derive_oxsat_from_oxygen(
     ds: xr.Dataset,
+    oxy_var: str,
     sa: np.ndarray,
     ct: np.ndarray,
     p: np.ndarray,
     lat: float,
     lon: float,
 ) -> xr.Dataset:
-    """Derive ``oxsat_1`` (% saturation) from ``oxygen_1`` (µmol/L or µmol/kg).
+    """Derive ``oxygen_saturation`` (% sat) from an oxygen variable in molar units.
 
-    Adds ``oxsat_1`` to *ds*; leaves ``oxygen_1`` unchanged.  Does nothing if
-    ``oxygen_1`` units do not indicate a molar concentration.  Records the
-    conversion method in ``oxsat_1`` attributes for provenance.
+    Adds ``oxygen_saturation`` to *ds*; leaves *oxy_var* unchanged.  Does
+    nothing if *oxy_var* units do not indicate a molar concentration.  Records
+    the conversion method in ``oxygen_saturation`` attributes for provenance.
 
     Parameters
     ----------
     ds:
-        Dataset containing ``oxygen_1`` in molar units; must already have SA/CT
+        Dataset containing *oxy_var* in molar units; must already have SA/CT
         computed (i.e. call after :func:`derive_SA` / :func:`derive_CT`).
+    oxy_var:
+        Name of the oxygen variable in molar units (e.g. ``"ctd_oxygen"``).
     sa, ct, p:
         Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar)
-        arrays matching the ``oxygen_1`` dimension.
+        arrays matching the *oxy_var* dimension.
     lat, lon:
         Representative cast latitude and longitude for ``gsw.O2sol``.
     """
-    units = ds["oxygen_1"].attrs.get("units", "")
+    units = ds[oxy_var].attrs.get("units", "")
     if not units:
         return ds
     u_lower = units.lower()
@@ -388,7 +436,7 @@ def _derive_oxsat_from_oxygen(
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
         o2_sat_umol_kg = gsw.O2sol(sa, ct, p, lat, lon)
 
-    measured = ds["oxygen_1"].values.astype(float)
+    measured = ds[oxy_var].values.astype(float)
 
     if "/l" in u_lower or "l-1" in u_lower:
         with warnings.catch_warnings():
@@ -396,10 +444,10 @@ def _derive_oxsat_from_oxygen(
             rho = gsw.rho(sa, ct, p)  # kg/m³
         o2_sat_umol_l = o2_sat_umol_kg * rho / 1000.0
         pct_sat = measured / o2_sat_umol_l * 100.0
-        method = f"derived from oxygen_1 ({units}) via gsw.O2sol + gsw.rho"
+        method = f"derived from {oxy_var} ({units}) via gsw.O2sol + gsw.rho"
     else:
         pct_sat = measured / o2_sat_umol_kg * 100.0
-        method = f"derived from oxygen_1 ({units}) via gsw.O2sol"
+        method = f"derived from {oxy_var} ({units}) via gsw.O2sol"
 
     new_attrs = {
         "units": "% saturation",
@@ -407,9 +455,9 @@ def _derive_oxsat_from_oxygen(
         "source_units": units,
         "oxygen_conversion": method,
     }
-    dim = ds["oxygen_1"].dims[0]
+    dim = ds[oxy_var].dims[0]
     ds = ds.copy()
-    ds["oxsat_1"] = xr.DataArray(
+    ds["oxygen_saturation"] = xr.DataArray(
         pct_sat.astype(np.float32),
         dims=[dim],
         attrs=new_attrs,

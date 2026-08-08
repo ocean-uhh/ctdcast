@@ -38,9 +38,9 @@ class TestApplyGrossRange:
 
         ds = _load(CAST_011)
         ds_out = apply_gross_range(ds)
-        # temperature_1 fixture values should be in (-2.5, 40.0) for real ocean data
-        if "temperature_1_qc" in ds_out:
-            qc = ds_out["temperature_1_qc"].values
+        # ctd_temperature_1 fixture values should be in (-2.5, 40.0) for real ocean data
+        if "ctd_temperature_1_qc" in ds_out:
+            qc = ds_out["ctd_temperature_1_qc"].values
             assert (qc == 1).all() or True  # some records may be NaN-flagged; just no 3
 
     def test_caller_threshold_overrides_default(self):
@@ -49,13 +49,15 @@ class TestApplyGrossRange:
 
         ds = _load(CAST_011)
         # Choose an impossible range for temperature so every record is out of range.
-        ds_out = apply_gross_range(ds, thresholds={"temperature_1": (1000.0, 2000.0)})
-        assert "temperature_1_qc" in ds_out
-        qc = ds_out["temperature_1_qc"].values
-        t = ds["temperature_1"].values
+        ds_out = apply_gross_range(
+            ds, thresholds={"ctd_temperature_1": (1000.0, 2000.0)}
+        )
+        assert "ctd_temperature_1_qc" in ds_out
+        qc = ds_out["ctd_temperature_1_qc"].values
+        t = ds["ctd_temperature_1"].values
         valid = ~np.isnan(t)
         assert (qc[valid] == 3).all(), (
-            "All non-NaN temperature_1 values should be flag 3"
+            "All non-NaN ctd_temperature_1 values should be flag 3"
         )
 
     def test_qc_dtype_is_int8(self):
@@ -79,8 +81,8 @@ class TestApplyGrossRange:
         from ctdcast.processors.qc import apply_gross_range
 
         ds = _load(CAST_011)
-        ds_out = apply_gross_range(ds, thresholds={"salinity_1": (33.0, 36.0)})
-        assert "salinity_1:[33.0,36.0]" in ds_out.attrs["history"]
+        ds_out = apply_gross_range(ds, thresholds={"ctd_salinity_1": (33.0, 36.0)})
+        assert "ctd_salinity_1:[33.0,36.0]" in ds_out.attrs["history"]
 
     def test_skips_variables_not_in_dataset(self):
         """Thresholds for absent variables should not raise."""
@@ -96,13 +98,19 @@ class TestApplyGrossRange:
         from ctdcast.processors.qc import apply_gross_range
 
         ds = _load(CAST_011)
-        # Pre-set temperature_1_qc to all 2 (not_evaluated)
-        dim = ds["temperature_1"].dims[0]
+        # Pre-set ctd_temperature_1_qc to all 2 (not_evaluated)
+        dim = ds["ctd_temperature_1"].dims[0]
         n = ds.sizes[dim]
         ds = ds.assign(
-            {"temperature_1_qc": xr.DataArray(np.full(n, 2, dtype=np.int8), dims=[dim])}
+            {
+                "ctd_temperature_1_qc": xr.DataArray(
+                    np.full(n, 2, dtype=np.int8), dims=[dim]
+                )
+            }
         )
         # Apply with wide-open range so no values are flagged 3
-        ds_out = apply_gross_range(ds, thresholds={"temperature_1": (-999.0, 9999.0)})
+        ds_out = apply_gross_range(
+            ds, thresholds={"ctd_temperature_1": (-999.0, 9999.0)}
+        )
         # The existing flag 2 should be left in place (no values went out of range)
-        assert (ds_out["temperature_1_qc"].values == 2).all()
+        assert (ds_out["ctd_temperature_1_qc"].values == 2).all()
