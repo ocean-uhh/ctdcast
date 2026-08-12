@@ -22,17 +22,20 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
-    _MAX_SECTION_H,
-    _SECTION_STRETCH,
     _VAR_CMAPS,
-    _W_FULL,
-    _W_HALF,
-    _W_THIRD,
-    _W_THREE_FIFTHS,
-    _W_TWO_FIFTHS,
-    _W_TWOTHIRDS,
     VAR_COLORS,
     vlabel,
+)
+from ctdcast.config.report_tokens import (
+    MAX_SECTION_H as _MAX_SECTION_H,
+    MIN_SECTION_H as _MIN_SECTION_H,
+    SECTION_STRETCH as _SECTION_STRETCH,
+    W_FULL as _W_FULL,
+    W_HALF as _W_HALF,
+    W_THIRD as _W_THIRD,
+    W_THREE_FIFTHS as _W_THREE_FIFTHS,
+    W_TWO_FIFTHS as _W_TWO_FIFTHS,
+    W_TWOTHIRDS as _W_TWOTHIRDS,
 )
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
@@ -46,9 +49,6 @@ from ctdcast.readers.ladcp import read_ladcp
 #   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
 # Maps render without bathymetry if None or file not found.
 GEBCO_PATH: Path | None = None
-
-# Bundled mplstyle — controls font sizes, line widths, figure defaults.
-_MPLSTYLE = Path(__file__).parent.parent / "ctdcast.mplstyle"
 
 # Extra margin (degrees) added when loading GEBCO for map rendering.
 # Ensures downsampled pcolormesh edge-cells extend past the axis limits,
@@ -75,10 +75,6 @@ _SIGMA0_CONTOUR_COLOR: str = "0.4"
 # When True, hide top and right spines on profile/scatter figures.
 # Set via config.yaml display.clean_spines; propagated by __main__.py.
 CLEAN_SPINES: bool = True
-
-# When True, plotting failures re-raise instead of returning None and logging a warning.
-# Set True in conftest.py so a bad variable reference cannot silently drop a report panel.
-RAISE_ON_PLOT_ERROR: bool = False
 
 # Figsize (width, height) in inches for the triple-axis (CT/SA/σ₀) profile.
 # Set via config.yaml display.profile_figsize; propagated by __main__.py.
@@ -823,7 +819,7 @@ def section_figsize_and_slot(
     fig_h_raw = _W_FULL * p_max_dbar / dist / _SECTION_STRETCH
     if fig_h_raw <= _MAX_SECTION_H:
         fig_w = _W_FULL
-        fig_h = float(max(fig_h_raw, 3.0))
+        fig_h = float(max(fig_h_raw, _MIN_SECTION_H))
     else:
         fig_h = _MAX_SECTION_H
         fig_w = float(

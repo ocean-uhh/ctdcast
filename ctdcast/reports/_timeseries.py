@@ -21,15 +21,17 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.config.parameters import (
-    _MAX_SECTION_H,
-    _W_FULL,
-    _W_HALF,
-    _W_THIRD,
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
     VARIABLES,
     vlabel,
+)
+from ctdcast.config.report_tokens import (
+    MAX_SECTION_H as _MAX_SECTION_H,
+    W_FULL as _W_FULL,
+    W_HALF as _W_HALF,
+    W_THIRD as _W_THIRD,
 )
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER

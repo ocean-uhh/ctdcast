@@ -11,10 +11,12 @@ import xarray as xr
 # initialise the Tk backend on a runner where Tcl/Tk is not installed.
 matplotlib.use("Agg")
 
-import ctdcast.plotters.plots as _plots
+import ctdcast.config.report_tokens as _report_tokens
 
 # Surface plotting failures as test errors rather than silently returning None.
-_plots.RAISE_ON_PLOT_ERROR = True
+# The flag lives in report_tokens (a leaf both plotters and the encoder read
+# live); setting it here governs both.
+_report_tokens.RAISE_ON_PLOT_ERROR = True
 
 _HERE = Path(__file__).parent
 FIXTURES_NC = _HERE / "fixtures" / "nc"
