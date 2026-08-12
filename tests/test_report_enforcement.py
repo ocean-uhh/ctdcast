@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import base64
+import inspect
 import io
 import re
 from pathlib import Path
@@ -73,19 +74,20 @@ def test_png_geometry_fixed_slots(ds_128: xr.Dataset, draw, slot: str) -> None:
     assert width == round(SLOTS[slot][1] * FIG_DPI)
 
 
-def test_encoder_saves_full_canvas() -> None:
-    """No ``savefig`` in the encoder passes ``bbox_inches`` — that trims the canvas (§10.2)."""
-    tree = ast.parse((_PKG / "reports" / "_encode.py").read_text(encoding="utf-8"))
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "savefig"
-        ):
-            kwargs = {kw.arg for kw in node.keywords}
-            assert "bbox_inches" not in kwargs, (
-                "encoder savefig must save the full canvas (no bbox_inches)"
-            )
+def test_encoder_defaults_to_full_canvas() -> None:
+    """`_fig_to_base64` defaults to the full canvas; only explicit callers may crop.
+
+    The slot-figure path (``render_b64`` → ``_fig_to_base64`` with no
+    ``bbox_inches``) must save the full canvas so PNG width == figsize × dpi
+    (§10.2, verified by ``test_png_geometry_fixed_slots``). A default of
+    ``"tight"`` would silently trim every slot figure. Aspect-locked figures (the
+    all-sections map's outside legend) may pass ``bbox_inches="tight"`` explicitly
+    — they are exempt from the exact-width invariant.
+    """
+    from ctdcast.reports._encode import _fig_to_base64
+
+    default = inspect.signature(_fig_to_base64).parameters["bbox_inches"].default
+    assert default is None, "encoder must default to the full canvas (bbox_inches=None)"
 
 
 # ---------------------------------------------------------------------------
@@ -105,25 +107,29 @@ def test_templates_self_contained() -> None:
 # 10.5 Guard integrity — optional=True on at most 40% of render_b64 call sites
 # ---------------------------------------------------------------------------
 def test_optional_guard_ratio() -> None:
-    """``optional=True`` is a claim of legitimate absence, not a default to silence bugs."""
-    src = (_PKG / "reports" / "_plots.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
+    """``optional=True`` is a claim of legitimate absence, not a default to silence bugs.
+
+    Scans every module under ``reports/`` (not just ``_plots.py``) so a future
+    page module adding ``optional=True`` panels cannot slip past the ceiling.
+    """
     total = 0
     optional_true = 0
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "render_b64"
-        ):
-            total += 1
-            for kw in node.keywords:
-                if (
-                    kw.arg == "optional"
-                    and isinstance(kw.value, ast.Constant)
-                    and kw.value.value is True
-                ):
-                    optional_true += 1
+    for path in sorted((_PKG / "reports").glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "render_b64"
+            ):
+                total += 1
+                for kw in node.keywords:
+                    if (
+                        kw.arg == "optional"
+                        and isinstance(kw.value, ast.Constant)
+                        and kw.value.value is True
+                    ):
+                        optional_true += 1
     assert total > 0, "no render_b64 call sites found"
     ratio = optional_true / total
     assert ratio <= 0.40, (

@@ -1,11 +1,12 @@
 """Shared report design tokens — the single source of every presentation value.
 
-This module is **vendored byte-identical** across the packages that share the
-report design system (currently ``ctdcast`` and ``oceanarray``); a test asserts
-the copies match a reference hash.  Keep it package-neutral: it names no package
-and holds only data (plus the mplstyle path, resolved relative to this file so
-no package name appears in the text).  A value that belongs to one package (a
-scientific variable registry) does **not** live here.
+This module is written to be **vendored** across the packages that share the
+report design system (currently ``ctdcast`` and ``oceanarray``).  It is
+package-neutral — it names no package and holds only data (plus the mplstyle
+path, resolved relative to this file so no package name appears in the text) — so
+the copies can be frozen and checked later; for now this document and convention
+are the shared reference (no cross-repo hash test yet).  A value that belongs to
+one package (a scientific variable registry) does **not** live here.
 
 Layering: this is a leaf, and it lives in ``config/`` for that reason — its only
 import is :mod:`pathlib`.  Both the plotters (which size figures from

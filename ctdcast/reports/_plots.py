@@ -531,7 +531,10 @@ def _make_all_sections_map_b64(
             fig_result.tight_layout()
             if legend_outside:
                 fig_result.subplots_adjust(right=0.72)
-            return _fig_to_base64(fig_result)
+            # Aspect-locked map, exempt from the exact-width invariant: crop to
+            # content so the legend anchored east of the axes is not clipped by
+            # the fixed canvas.
+            return _fig_to_base64(fig_result, bbox_inches="tight")
     except Exception:
         if report_tokens.RAISE_ON_PLOT_ERROR:
             raise

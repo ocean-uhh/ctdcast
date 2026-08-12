@@ -1,10 +1,10 @@
 """The encoder — the single place a matplotlib Figure becomes base64 PNG bytes.
 
-This module is **vendored byte-identical** across the packages that share the
-report design system; a test asserts the copies match a reference hash.  Keep it
-package-neutral: it references shared values only through
-``..config.report_tokens`` (textually identical in each package) and names no
-package.
+This module is written to be **vendored** across the packages that share the
+report design system.  It is package-neutral — it references shared values only
+through ``..config.report_tokens`` (textually identical in each package) and
+names no package — so the copies can be frozen and checked later; for now this
+document and convention are the shared reference (no cross-repo hash test yet).
 
 One choke point (:func:`render_b64`) is where the report mplstyle is applied,
 the layout guard runs, dpi and palette quantization are chosen, memory is
@@ -34,12 +34,14 @@ def _manages_own_layout(fig: Any) -> bool:
     - a ``constrained_layout`` figure (matplotlib warns and mis-renders),
     - a figure containing a polar axis (bounding box is mis-computed).
 
-    With ``layout="constrained"`` set on every figure (see the sizing invariant),
-    the first case covers nearly everything and ``tight_layout`` is effectively
-    never called; the guard remains as a safety net.  The former outside-legend
-    branch is withdrawn: growing the image to fit a legend is exactly what breaks
-    the displayed-type invariant, so the fix is a fixed canvas with
-    ``constrained_layout`` shrinking the axes instead.
+    When a figure uses constrained layout — as the shared design intends — this
+    returns True and ``tight_layout`` is skipped.  ctdcast's figures currently
+    rely on ``tight_layout``, so for them this returns False (True only for a
+    polar axis).  The former outside-legend branch is withdrawn: growing the
+    image to fit a legend is exactly what breaks the displayed-type invariant, so
+    the fix is a fixed canvas with ``constrained_layout`` shrinking the axes
+    instead — or, for an aspect-locked figure that is exempt from the exact-width
+    invariant, an explicit ``bbox_inches="tight"`` in :func:`_fig_to_base64`.
     """
     engine = getattr(fig.get_layout_engine(), "__class__", None)
     if engine is not None and "Constrained" in engine.__name__:
@@ -47,20 +49,24 @@ def _manages_own_layout(fig: Any) -> bool:
     return any(ax.name == "polar" for ax in fig.axes)
 
 
-def _fig_to_base64(fig: Any) -> str:
+def _fig_to_base64(fig: Any, *, bbox_inches: str | None = None) -> str:
     """Render *fig* to a quantized PNG and return its base64 string.
 
-    Saves the **full canvas** at :data:`FIG_DPI` — no ``bbox_inches="tight"``, so
-    ``png_px == round(fig_in × dpi)`` exactly for every figure and the
-    displayed-type invariant holds by construction (figures use
-    ``layout="constrained"`` to fit decorations inside the fixed figsize).
+    By default (``bbox_inches=None``) saves the **full canvas** at
+    :data:`FIG_DPI`, so ``png_px == round(fig_in × dpi)`` exactly — the
+    displayed-type invariant that keeps figure text the same on-screen size
+    across slot figures.  Pass ``bbox_inches="tight"`` only for an aspect-locked
+    figure that is exempt from that invariant (a map, a section) and that draws a
+    decoration outside its fixed canvas — e.g. the all-sections overview map's
+    legend anchored east of the axes, which the full canvas would otherwise clip.
+
     Composites onto white to drop the alpha channel (report backgrounds are
     white), quantizes to :data:`PNG_PALETTE_COLORS` (these figures are few-colour
     by construction — line art plus discrete colorbars — so an 8-bit palette is
     visually lossless and ~3.6× smaller), and encodes the result.
     """
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=FIG_DPI)
+    fig.savefig(buf, format="png", dpi=FIG_DPI, bbox_inches=bbox_inches)
     buf.seek(0)
     im = Image.open(buf).convert("RGBA")
     bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
@@ -84,12 +90,12 @@ def render_b64(
 
     Parameters
     ----------
-    draw:
+    draw : callable
         A ``draw_*`` function returning a :class:`matplotlib.figure.Figure`, or
         ``None`` when the dataset lacks the required variables.
-    *args, **kwargs:
+    *args, **kwargs
         Forwarded to *draw*.
-    optional:
+    optional : bool
         ``True`` when this panel is legitimately absent for some inputs (no
         secondary sensor fitted, a biogeochemical variable not measured).  When
         ``False`` (default) and :data:`report_tokens.RAISE_ON_PLOT_ERROR` is set,
