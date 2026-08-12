@@ -34,23 +34,9 @@ UNKNOWN_CRUISE_ID: str = "UNKCRUISE"
 # places across the processors and CLI.
 CAST_TAG_WIDTH: int = 3
 
-# ---------------------------------------------------------------------------
-# Slot widths  [Derived — from dpi and browser scaling maths]
-# ---------------------------------------------------------------------------
-# Slot widths in inches at savefig.dpi=150 (body usable width = 1086px).
-# PNGs are intentionally wider than the slot (1350px vs 1086px at full width) so that
-# at 10pt labels, displayed font size (~17px) matches the pre-refactor appearance.
-# The browser downscales by ~0.80, giving crisp subpixel rendering.
-_W_FULL: float = 9.0  # 1350px PNG → 1086px display
-_W_TWOTHIRDS: float = 6.0  # 900px PNG  → 719px display
-_W_THREE_FIFTHS: float = 5.4  # 810px PNG  → 652px display (60% slot)
-_W_HALF: float = 4.5  # 675px PNG  → 543px display
-_W_TWO_FIFTHS: float = 3.6  # 540px PNG  → 434px display (40% slot)
-_W_THIRD: float = 3.0  # 450px PNG  → 361px display
-# Section aspect-ratio scaling.
-# Calibrated so KTout (416 dbar, 94 km) renders at 2.5 in tall at _W_FULL = 9.0 in.
-_SECTION_STRETCH: float = 16.0
-_MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get narrower fig_w
+# Slot widths, section aspect constants, and other presentation tokens now live
+# in the vendored, package-neutral ``config/report_tokens.py`` (spec §11/§14).
+# This file holds only scientific/variable metadata.
 
 # ---------------------------------------------------------------------------
 # Variable metadata  [Science — vmin/vmax/cmap are per-cruise science choices]

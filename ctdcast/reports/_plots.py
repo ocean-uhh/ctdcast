@@ -10,11 +10,8 @@ returns a list of :class:`Panel` rather than a single figure.
 
 from __future__ import annotations
 
-import base64
 import dataclasses
-import io
 import warnings
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +26,6 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.plotters import plots as _pp
 from ctdcast.plotters.plots import (
-    _MPLSTYLE,
     _cast_markers,
     _hide_outer_spines,
     _nice_colorbar_bounds,
@@ -58,70 +54,8 @@ from ctdcast.plotters.plots import (
 )
 from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp
 
-
-def _fig_to_base64(fig: Any) -> str:
-    """Render *fig* to a PNG and return its base64-encoded bytes as a string."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode("ascii")
-
-
-def render_b64(
-    draw: Callable[..., plt.Figure | None],
-    /,
-    *args: Any,
-    optional: bool = False,
-    **kwargs: Any,
-) -> str | None:
-    """Run *draw* under the package mplstyle and return its figure as a base64 PNG.
-
-    Parameters
-    ----------
-    draw:
-        A ``draw_*`` function returning a :class:`matplotlib.figure.Figure`, or
-        ``None`` if the dataset lacks the required variables.
-    *args, **kwargs:
-        Forwarded to *draw*.
-    optional:
-        ``True`` when this panel is legitimately absent for some casts — e.g. a
-        secondary sensor is not fitted, LADCP bottom-track fields are missing, or
-        a biogeochemical variable was not measured.  When ``False`` (default) and
-        :data:`ctdcast.plotters.plots.RAISE_ON_PLOT_ERROR` is set, a ``None``
-        return from *draw* raises :exc:`RuntimeError` so tests catch silently
-        dropped required panels.
-
-    Returns
-    -------
-    str or None
-        Base64-encoded PNG bytes, or ``None`` if *draw* returned ``None`` or
-        raised (unless :data:`RAISE_ON_PLOT_ERROR`).
-    """
-    fig = None
-    try:
-        with plt.style.context(str(_MPLSTYLE)):
-            fig = draw(*args, **kwargs)
-            if fig is None:
-                if _pp.RAISE_ON_PLOT_ERROR and not optional:
-                    raise RuntimeError(
-                        f"{draw.__name__} returned None for a required panel; "
-                        "check that all required variables are present in the dataset."
-                    )
-                return None
-            fig.tight_layout()
-            return _fig_to_base64(fig)
-    except Exception:
-        if _pp.RAISE_ON_PLOT_ERROR:
-            raise
-        warnings.warn(
-            f"{draw.__name__} failed; panel omitted",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return None
-    finally:
-        if fig is not None:
-            plt.close(fig)
+from ctdcast.config import report_tokens
+from ctdcast.reports._encode import _fig_to_base64, render_b64
 
 
 @dataclasses.dataclass(frozen=True)
@@ -289,7 +223,7 @@ def _make_ladcp_section_b64(
     with the zero-padded cast number.  Falls back to ``NNN.mat``.
     """
     try:
-        with plt.style.context(str(_MPLSTYLE)):
+        with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
             lat_map = dict(zip(cast_nums, lats)) if lats else {}
             lon_map = dict(zip(cast_nums, lons)) if lons else {}
 
@@ -450,7 +384,7 @@ def _make_ladcp_section_b64(
 
             return panels
     except Exception:
-        if _pp.RAISE_ON_PLOT_ERROR:
+        if report_tokens.RAISE_ON_PLOT_ERROR:
             raise
         warnings.warn(
             "_make_ladcp_section_b64 failed; panels omitted",
@@ -588,7 +522,7 @@ def _make_all_sections_map_b64(
     """
     fig_result = None
     try:
-        with plt.style.context(str(_MPLSTYLE)):
+        with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
             fig_result = draw_all_sections_map_fig(
                 sections_data, all_lats, all_lons, legend_outside, target_h=target_h
             )
@@ -599,7 +533,7 @@ def _make_all_sections_map_b64(
                 fig_result.subplots_adjust(right=0.72)
             return _fig_to_base64(fig_result)
     except Exception:
-        if _pp.RAISE_ON_PLOT_ERROR:
+        if report_tokens.RAISE_ON_PLOT_ERROR:
             raise
         warnings.warn(
             "_make_all_sections_map_b64 failed; panel omitted",
