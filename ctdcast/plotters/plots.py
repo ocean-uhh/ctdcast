@@ -27,6 +27,9 @@ from ctdcast.config.parameters import (
     vlabel,
 )
 from ctdcast.config.report_tokens import (
+    ANNOT_FS,
+    CAST_LABEL_FS,
+    CLABEL_FS,
     MAX_SECTION_H as _MAX_SECTION_H,
     MIN_SECTION_H as _MIN_SECTION_H,
     SECTION_STRETCH as _SECTION_STRETCH,
@@ -91,10 +94,6 @@ MAP_LAT_MIN: float | None = None
 MAP_LAT_MAX: float | None = None
 MAP_LON_MIN: float | None = None
 MAP_LON_MAX: float | None = None
-
-
-# fontsize for ax.clabel() calls (not controlled by mplstyle).
-_CLABEL_FS: int = 8
 
 
 def _map_lim(
@@ -276,7 +275,7 @@ def _cast_markers(ax: Any, x_vals: np.ndarray, cast_labels: list) -> None:
             transform=trans,
             ha="center",
             va="bottom",
-            fontsize=6,
+            fontsize=CAST_LABEL_FS,
             rotation=0,
         )
 
@@ -326,7 +325,7 @@ def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> No
     cs = ax.contour(
         SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
     )
-    ax.clabel(cs, fmt="%.1f", fontsize=7)
+    ax.clabel(cs, fmt="%.1f", fontsize=CLABEL_FS)
 
 
 # ---------------------------------------------------------------------------
@@ -419,7 +418,7 @@ def draw_ts_density_fig(
     ax_ctd.set_xlabel(vlabel("conservative_temperature"), color=_TS_COLORS[0])
     ax1.set_xlabel(vlabel("absolute_salinity"), color=_TS_COLORS[1])
     ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
-    ax_ctd.legend(handles=[l0, l1, l2], loc="center left", fontsize=7, framealpha=0.7)
+    ax_ctd.legend(handles=[l0, l1, l2], loc="center left", framealpha=0.7)
     ax_ctd.grid(True)
     if CLEAN_SPINES:
         ax_ctd.spines["right"].set_visible(False)
@@ -430,7 +429,7 @@ def draw_ts_density_fig(
         ax_ladcp.plot(v, z, color=_LADCP_V_COLOR, lw=1.0, label="V (N+)")
         ax_ladcp.axvline(0, color="0.5", lw=0.6, ls="--")
         ax_ladcp.set_xlabel("Velocity (m s⁻¹)")
-        ax_ladcp.legend(loc="upper left", fontsize=7)
+        ax_ladcp.legend(loc="upper left")
         ax_ladcp.grid(True)
     else:
         ax_ladcp.text(
@@ -441,7 +440,7 @@ def draw_ts_density_fig(
             va="center",
             transform=ax_ladcp.transAxes,
             color="0.6",
-            fontsize=8,
+            fontsize=ANNOT_FS,
         )
         ax_ladcp.set_xlabel("LADCP")
     _hide_outer_spines(ax_ladcp)
@@ -540,7 +539,7 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_tu.plot(tu, p_tu, color="#333333")
     ax_tu.set_xlim(-90, 90)
     ax_tu.set_xlabel(vlabel("Turner"))
-    ax_tu.legend(loc="lower right", fontsize=7)
+    ax_tu.legend(loc="lower right")
     ax_tu.grid(True)
     _hide_outer_spines(ax_n2, ax_tu)
 
@@ -590,7 +589,7 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
 
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
-    axes[0].legend(loc="center left", fontsize="small")
+    axes[0].legend(loc="center left")
     _hide_outer_spines(*axes)
     return fig
 
@@ -642,7 +641,7 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
 
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
-    axes[0].legend(loc="center left", fontsize="small")
+    axes[0].legend(loc="center left")
     _hide_outer_spines(*axes)
     return fig
 
@@ -681,7 +680,7 @@ def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
     cs = ax.contour(
         SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
     )
-    ax.clabel(cs, fmt="%.1f", fontsize=7)
+    ax.clabel(cs, fmt="%.1f", fontsize=CLABEL_FS)
     ax.scatter(
         sa_d[mask_d],
         ct_d[mask_d],
@@ -703,7 +702,7 @@ def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax.set_ylim(ct_lo - ct_pad, ct_hi + ct_pad)
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
-    ax.legend(loc="best", markerscale=2, fontsize=8)
+    ax.legend(loc="best", markerscale=2)
     ax.grid(False)
     _hide_outer_spines(ax)
     return fig
@@ -779,7 +778,7 @@ def draw_cruise_map_fig(
         ax.annotate(
             str(nums[i]),
             (lons[i], lats[i]),
-            fontsize=6,
+            fontsize=CAST_LABEL_FS,
             xytext=(3, 3),
             textcoords="offset points",
         )
@@ -919,7 +918,7 @@ def draw_section_fig(
                 linewidths=0.4,
                 linestyles="solid",
             )
-            ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
         except Exception:  # noqa: BLE001, S110
             pass
 
@@ -1296,7 +1295,7 @@ def draw_section_map_fig(
         ax.annotate(
             str(n),
             (x, y),
-            fontsize=6,
+            fontsize=CAST_LABEL_FS,
             color="black",
             xytext=(3, 3),
             textcoords="offset points",
@@ -1388,7 +1387,7 @@ def draw_overview_panel_fig(
                 linewidths=0.4,
                 linestyles="solid",
             )
-            ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
         except Exception:  # noqa: BLE001, S110
             pass
 
@@ -1496,11 +1495,10 @@ def draw_all_sections_map_fig(
             loc="upper left",
             bbox_to_anchor=(1.01, 1.0),
             borderaxespad=0,
-            fontsize=7,
             framealpha=0.9,
         )
     else:
-        ax.legend(loc="best", fontsize=7, framealpha=0.7)
+        ax.legend(loc="best", framealpha=0.7)
     return fig
 
 
@@ -1615,7 +1613,7 @@ def draw_timeseries_fig(
                 linewidths=0.4,
                 linestyles="solid",
             )
-            ax.clabel(_iso, fmt="%.1f", fontsize=_CLABEL_FS)
+            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
         except Exception:  # noqa: BLE001, S110
             pass
 
@@ -1647,7 +1645,7 @@ def draw_timeseries_fig(
                     transform=trans,
                     ha="center",
                     va="bottom",
-                    fontsize=6,
+                    fontsize=CAST_LABEL_FS,
                     rotation=0,
                 )
             down_count += 1

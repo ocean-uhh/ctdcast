@@ -367,7 +367,7 @@ def _make_ladcp_section_b64(
                     transform=ax.transAxes,
                     va="top",
                     ha="left",
-                    fontsize=8,
+                    fontsize=report_tokens.ANNOT_FS,
                     bbox={
                         "facecolor": "white",
                         "alpha": 0.6,

@@ -104,6 +104,38 @@ def test_templates_self_contained() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 10.3 No stray typography — plotters set no font size except named constants
+# ---------------------------------------------------------------------------
+#: The only per-call figure font sizes a plotter may name (spec §13.3). Every
+#: other size (axes/tick/legend/title) comes from the mplstyle.
+_ALLOWED_FONTSIZE = {"CLABEL_FS", "ANNOT_FS", "CAST_LABEL_FS"}
+_PLOTTER_MODULES = ("plotters/plots.py", "reports/_plots.py")
+
+
+def test_no_stray_fontsize() -> None:
+    """Plotters set ``fontsize=`` only to an allow-listed named constant.
+
+    Numeric or string-literal sizes (``fontsize=7``, ``fontsize="small"``) are
+    forbidden — legend/tick/title sizing belongs in the mplstyle. Only the three
+    annotation constants matplotlib cannot route through a style key are allowed.
+    (Template ``font-size:`` and plotter ``linewidth=`` are out of this test's
+    current scope.)
+    """
+    literal = re.compile(r"""fontsize=\s*['"]?(?:-?\d|small|medium|large|x-)""")
+    named = re.compile(r"fontsize=\s*([A-Za-z_][\w.]*)")
+    for rel in _PLOTTER_MODULES:
+        src = (_PKG / rel).read_text(encoding="utf-8")
+        assert not literal.search(src), (
+            f"{rel}: literal fontsize= (use a named constant)"
+        )
+        for m in named.finditer(src):
+            name = m.group(1).split(".")[-1]
+            assert name in _ALLOWED_FONTSIZE, (
+                f"{rel}: fontsize={m.group(1)} is not an allow-listed constant"
+            )
+
+
+# ---------------------------------------------------------------------------
 # 10.5 Guard integrity — optional=True on at most 40% of render_b64 call sites
 # ---------------------------------------------------------------------------
 def test_optional_guard_ratio() -> None:
