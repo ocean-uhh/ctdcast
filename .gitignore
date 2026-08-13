@@ -13,6 +13,11 @@ venv/
 env/
 .env/
 
+# AI assistants
+CLAUDE.md
+.claude/*
+
+
 # Package installs
 *.so
 
