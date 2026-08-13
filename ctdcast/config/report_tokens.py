@@ -1,7 +1,7 @@
 """Shared report design tokens — the single source of every presentation value.
 
 This module is written to be **vendored** across the packages that share the
-report design system (currently ``ctdcast`` and ``oceanarray``).  It is
+report design system.  It is
 package-neutral — it names no package and holds only data (plus the mplstyle
 path, resolved relative to this file so no package name appears in the text) — so
 the copies can be frozen and checked later; for now this document and convention
@@ -12,7 +12,7 @@ Layering: this is a leaf, and it lives in ``config/`` for that reason — its on
 import is :mod:`pathlib`.  Both the plotters (which size figures from
 :data:`SLOTS`) and the report/CSS layer read it; it reads nothing of theirs.
 Placing it under ``reports/`` would form an import cycle
-(``plotters.plots -> ctdcast.reports -> reports._index -> plotters.plots``).
+(``plotters.plots -> reports -> reports._index -> plotters.plots``).
 
 Part II of ``2026-08-12-report-spec.md`` is the prose behind these numbers.
 Templates and plotters read them; they never restate them.
@@ -47,7 +47,7 @@ FIG_DPI: int = 150  # savefig dpi; with W_FULL this fixes every PNG width
 # and USABLE_PX over-determine it, so declaring all three independently would
 # guarantee a contradiction.  The true value is ≈1.243, not a round 1.25 — the
 # difference is invisible, and keeping W_FULL and FIG_DPI clean (they are the two
-# that appear in code, as figsize and savefig dpi) reproduces ctdcast's existing
+# that appear in code, as figsize and savefig dpi) reproduces the package's existing
 # PNG widths exactly.  Nothing reads this; it is documentation.
 OVERSAMPLE: float = W_FULL * FIG_DPI / USABLE_PX  # ≈ 1.2431
 PNG_PALETTE_COLORS: int = 256  # 8-bit palette quantization in the encoder
@@ -84,6 +84,18 @@ MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get a narrower fi
 MIN_SECTION_H: float = 3.0  # height floor
 
 # ---------------------------------------------------------------------------
+# Figure annotation font sizes (points, spec §13.3)
+# ---------------------------------------------------------------------------
+# The only per-call font sizes a plotter may set: matplotlib does not route
+# annotation text through a style key, so these cannot come from the mplstyle.
+# Everything else (axes/tick/legend/title sizes) is the mplstyle's job and must
+# not be set per call.  The "no stray typography" test allow-lists exactly these
+# three names.
+CLABEL_FS: int = 8  # ax.clabel() contour labels
+ANNOT_FS: int = 8  # in-axes annotation / panel-label text boxes
+CAST_LABEL_FS: int = 6  # dense in-axes cast-number labels on maps and sections
+
+# ---------------------------------------------------------------------------
 # Spacing and radii (spec §15)  [data; applied by emit_css() in rep/vis-system]
 # ---------------------------------------------------------------------------
 SPACE: dict[str, str] = {
@@ -101,28 +113,31 @@ RADII: dict[str, str] = {"card": "8px", "btn": "4px", "pill": "999px"}
 # Typography (spec §13.2)  [data; applied by emit_css() in rep/vis-system]
 # ---------------------------------------------------------------------------
 # THE single source of page font sizes.  Nothing else in the repository sets a
-# page font size.  px against a 16px root; deliberately compact.  Provisional —
-# tune here and only here.  Figure font sizes are a *separate* knob (the
-# mplstyle, in matplotlib points); the two are not coupled.
+# page font size.  Values in rem (the browser's 16px root, exactly as the current
+# CSS uses them) plus one absolute px for the body base.  This is the established,
+# reviewed page scale (spec §13.2) — the values to match, not a redesign.  Keyed
+# by role, matching the CSS custom
+# properties emit_css() generates.  Figure font sizes are a *separate* knob (the
+# mplstyle, in points).
 TYPE: dict[str, dict[str, str]] = {
-    "h1": {"size": "22px", "line": "1.2", "weight": "600"},  # masthead title
-    "h2": {
-        "size": "16px",
-        "line": "1.25",
-        "weight": "600",
-    },  # numbered section headings
-    "h3": {"size": "14px", "line": "1.3", "weight": "600"},  # sub-sections
-    "base": {"size": "14px", "line": "1.5"},  # body
-    "sm": {"size": "12.5px", "line": "1.45"},  # caption, explainer, table body
-    "xs": {"size": "11px", "line": "1.4"},  # meta dt, footer, page-type label
-    "mono": {"size": "12.5px", "line": "1.45"},  # serials, filenames, nc names
+    "root": {"size": "14px", "line": "1.5"},  # body base
+    "h1": {"size": "1.75rem", "weight": "700"},  # masthead title
+    "type": {"size": "1.35rem", "weight": "700"},  # .masthead-type page label
+    "h2": {"size": "1rem"},  # section headings — colour/weight/underline, not size
+    "meta": {"size": "0.84rem"},  # meta-grid <dd>
+    "note": {"size": "0.82rem"},  # .note, .caption, .explainer
+    "nav": {"size": "0.8rem"},  # jump-nav, .btn-nav
+    "cap": {"size": "0.76rem"},  # figcaption
+    "xs": {"size": "0.75rem"},  # breadcrumb, footer
+    "top": {"size": "0.72rem"},  # ↑ top link
+    "dt": {"size": "0.7rem"},  # meta-grid <dt>, jump-nav ▸
 }
 
-# Shared web-safe font stacks (spec §13.1) — the CSS and the mplstyle name the
-# same families in the same order so page text and figure text agree.
-FONT_SANS: str = (
-    '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", "DejaVu Sans", sans-serif'
-)
+# Page font stacks (spec §13.1).  The CSS uses the native `system-ui` stack —
+# zero-install, matches the host OS.  The *figure* font is separate (the mplstyle
+# names a Helvetica stack); figure text is baked into a raster, so the two need
+# not match.
+FONT_SANS: str = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 FONT_MONO: str = (
     'ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace'
 )
@@ -143,21 +158,49 @@ COLORS: dict[str, str] = {
     "error": "#c0392b",  # failed QC, sentinel values
 }
 
-# Role accent (spec §12.2): masthead background, nav pill, page-type label.
+# Role accent (spec §12.2): masthead background + nav pill.  `landing` is the
+# summary/index accent; entity/collection/component share the structural dark
+# --ocean; the aggregate and map roles have their own colours.  The `landing`
+# value is a per-package choice (see the spec's role table).
 ROLE_ACCENT: dict[str, str] = {
-    "landing": "#2980b9",
+    "landing": "#2980b9",  # summary / index accent
     "entity": "#1a3a5c",
-    "collection": "#5d6d7e",
-    "aggregate-a": "#8e44ad",
-    "aggregate-b": "#27ae60",
-    "component": "#b35c00",
+    "collection": "#1a3a5c",
+    "component": "#1a3a5c",
+    "aggregate-a": "#8e44ad",  # sections
+    "aggregate-b": "#27ae60",  # timeseries
     "map": "#ee3377",
 }
 
-# Package accent (spec §12.2): h2 underline, link colour, footer rule, wordmark.
+# Package accent (spec §12.2): confined to two additive places so it restyles no
+# existing pixel — a small masthead wordmark and the footer's border-top.  h2
+# underlines stay --seafoam and links stay --ocean.
 PACKAGE_ACCENT: dict[str, str] = {
     "oceanarray": "#1a3a5c",
     "ctdcast": "#0e6e6e",
     "caldip": "#7a4b8a",  # reserved
     "amocatlas": "#8a5a2b",  # reserved
 }
+
+# Neutral gray scale — consolidates the ad-hoc grays that the per-page template
+# <style> blocks used (text shades, hairlines, sunken fills).  Emitted as
+# --gray-1 (lightest) … --gray-7 (near-black).  A few template literals shift to
+# the nearest step here; the changes are small and were signed off on OdB.
+GRAYS: dict[str, str] = {
+    "gray-1": "#f5f7fa",  # lightest sunken fill (cast-note / card backgrounds)
+    "gray-2": "#e0e0e0",  # hairlines, borders
+    "gray-3": "#aaaaaa",  # faint text ("not generated" placeholders)
+    "gray-4": "#888888",  # soft secondary text, <details> summaries
+    "gray-5": "#555555",  # secondary body text, descriptions
+    "gray-6": "#333333",  # strong text (cast/trim notes, filenames)
+    "gray-7": "#111111",  # darkest text (interactive-map labels)
+}
+
+# Semantic status colours used by badges and banners.  --error/--warn already
+# exist in COLORS; --ok is new (the LADCP-present badge green).
+SEMANTIC: dict[str, str] = {
+    "ok": "#2c6e49",  # LADCP-present badge; "good/available" green
+}
+# Note: leaflet.html is a standalone page that does not load this shared CSS, so
+# its dark-UI palette (#1a1a2e / #aed6f1 / #4a6fa5) stays as literals there —
+# tokenizing it would need the :root injected into that page.

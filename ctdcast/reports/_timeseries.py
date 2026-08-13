@@ -28,6 +28,7 @@ from ctdcast.config.parameters import (
     vlabel,
 )
 from ctdcast.config.report_tokens import (
+    ROLE_ACCENT,
     MAX_SECTION_H as _MAX_SECTION_H,
     W_FULL as _W_FULL,
     W_HALF as _W_HALF,
@@ -35,7 +36,7 @@ from ctdcast.config.report_tokens import (
 )
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
@@ -365,7 +366,7 @@ def generate_timeseries_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav_current="timeseries",
-        masthead_bg="#27ae60",
+        masthead_bg=ROLE_ACCENT["aggregate-b"],
     )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()

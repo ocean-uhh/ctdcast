@@ -35,9 +35,8 @@ def _manages_own_layout(fig: Any) -> bool:
     - a figure containing a polar axis (bounding box is mis-computed).
 
     When a figure uses constrained layout — as the shared design intends — this
-    returns True and ``tight_layout`` is skipped.  ctdcast's figures currently
-    rely on ``tight_layout``, so for them this returns False (True only for a
-    polar axis).  The former outside-legend branch is withdrawn: growing the
+    returns True and ``tight_layout`` is skipped.  Figures that still rely on
+    ``tight_layout`` return False here (True only for a polar axis).  The former outside-legend branch is withdrawn: growing the
     image to fit a legend is exactly what breaks the displayed-type invariant, so
     the fix is a fixed canvas with ``constrained_layout`` shrinking the axes
     instead — or, for an aspect-locked figure that is exempt from the exact-width

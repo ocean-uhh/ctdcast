@@ -28,11 +28,12 @@ from ctdcast.config.parameters import (
     VARIABLES,
     vlabel,
 )
+from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
@@ -419,7 +420,7 @@ def generate_section_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav_current="sections",
-        masthead_bg="#8e44ad",
+        masthead_bg=ROLE_ACCENT["aggregate-a"],
     )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()

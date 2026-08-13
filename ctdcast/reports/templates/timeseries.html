@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% set masthead_bg = "#27ae60" %}
+{% set masthead_bg = "var(--role-aggregate-b)" %}
 
 {% block title %}Timeseries — {{ cruise }}{% endblock %}
 {% block masthead_type %}Timeseries index{% endblock %}
@@ -12,20 +12,20 @@
   gap: 1rem; margin-bottom: 1.5rem;
 }
 .ts-card {
-  background: #fff; border-radius: 8px; border-left: 4px solid #1a3a5c;
+  background: #fff; border-radius: 8px; border-left: 4px solid var(--ocean);
   padding: 1.1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-.ts-card h3 { font-size: 1rem; color: var(--ocean); margin: 0 0 0.25rem; }
-.ts-card .desc { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
-.ts-card .info { font-size: 0.82rem; color: #777; }
+.ts-card h3 { font-size: var(--fs-h2); color: var(--ocean); margin: 0 0 0.25rem; }
+.ts-card .desc { font-size: var(--fs-meta); color: var(--gray-5); margin-bottom: 0.5rem; }
+.ts-card .info { font-size: var(--fs-note); color: var(--gray-4); }
 .btn-card {
-  display: inline-block; background: #27ae60; color: #fff;
+  display: inline-block; background: var(--role-aggregate-b); color: #fff;
   padding: 0.25rem 0.8rem; border-radius: 999px; text-decoration: none;
-  font-size: 0.8rem; margin-top: 0.6rem;
+  font-size: var(--fs-nav); margin-top: 0.6rem;
 }
 .btn-card:hover { opacity: 0.85; }
-.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#2c6e49; color:#fff; }
-.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#c0392b; color:#fff; }
+.ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--ok); color:#fff; }
+.ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--error); color:#fff; }
 </style>
 {% endblock %}
 
@@ -67,12 +67,12 @@
   {% if ts.report_exists %}
   <a class="btn-card" href="timeseries/timeseries_{{ ts.name }}.html">view timeseries →</a>
   {% else %}
-  <span style="font-size:0.8rem;color:#aaa;margin-top:0.4rem;display:inline-block;">report not yet generated</span>
+  <span style="font-size:var(--fs-nav);color:var(--gray-3);margin-top:0.4rem;display:inline-block;">report not yet generated</span>
   {% endif %}
 </div>
 {% endfor %}
 {% if not timeseries %}
-<p style="color:#888">No timeseries groups configured.</p>
+<p style="color:var(--gray-4)">No timeseries groups configured.</p>
 {% endif %}
 </div>
 

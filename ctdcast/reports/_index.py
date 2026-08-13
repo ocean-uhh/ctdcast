@@ -31,7 +31,7 @@ from ctdcast.identity import (
 from ctdcast.plotters import plots as _plots_mod
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports._cast import generate_station_page
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._plots import (
     _make_all_sections_map_b64,

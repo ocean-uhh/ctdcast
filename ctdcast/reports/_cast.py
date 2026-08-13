@@ -12,11 +12,12 @@ import xarray as xr
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import UNKNOWN_CRUISE_ID
+from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
-from ctdcast.reports._css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._plots import (
@@ -265,7 +266,7 @@ def generate_station_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav_current="casts",
-        masthead_bg="#1a3a5c",
+        masthead_bg=ROLE_ACCENT["entity"],
     )
     out_file.write_text(html, encoding="utf-8")
     ds.close()

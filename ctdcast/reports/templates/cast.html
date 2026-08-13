@@ -9,26 +9,26 @@
 /* Station page */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.25rem; font-size: 0.85rem;
+  margin-bottom: 1.25rem; font-size: var(--fs-meta);
 }
 .breadcrumb a { color: var(--ocean); text-decoration: none; }
 .breadcrumb a:hover { text-decoration: underline; }
 .breadcrumb .sep { color: var(--muted); margin: 0 0.25rem; }
 .cast-note {
-  background: #f0f0f0; border-left: 4px solid #888; border-radius: 4px;
+  background: var(--gray-1); border-left: 4px solid var(--gray-4); border-radius: 4px;
   padding: 0.5rem 1rem; margin-bottom: 0.5rem;
-  font-size: 0.87rem; color: #333;
+  font-size: var(--fs-meta); color: var(--gray-6);
 }
 .trim-note {
-  background: #f0f0f0; border-left: 4px solid #888; border-radius: 4px;
+  background: var(--gray-1); border-left: 4px solid var(--gray-4); border-radius: 4px;
   padding: 0.5rem 1rem; margin-bottom: 0.5rem;
-  font-size: 0.87rem; color: #333;
+  font-size: var(--fs-meta); color: var(--gray-6);
 }
 details.sensor-details {
-  margin-bottom: 0.75rem; font-size: 0.82rem; color: var(--muted);
+  margin-bottom: 0.75rem; font-size: var(--fs-note); color: var(--muted);
 }
 details.sensor-details summary { cursor: pointer; user-select: none; padding: 0.2rem 0; }
-.sensor-table { border-collapse: collapse; font-size: 0.8rem; margin-top: 0.4rem; }
+.sensor-table { border-collapse: collapse; font-size: var(--fs-nav); margin-top: 0.4rem; }
 .sensor-table th, .sensor-table td {
   padding: 0.2rem 0.75rem 0.2rem 0; text-align: left; vertical-align: top;
 }
@@ -65,7 +65,7 @@ details.sensor-details summary { cursor: pointer; user-select: none; padding: 0.
     <div><dt>Duration</dt><dd>{{ duration_str }}</dd></div>
     <div><dt>Max depth</dt><dd>{{ max_depth_str }}</dd></div>
     {% if ladcp_configured and not ladcp_available %}
-    <div><dt>LADCP</dt><dd style="color:#f5a623;">⚠ not processed</dd></div>
+    <div><dt>LADCP</dt><dd style="color:var(--warn);">⚠ not processed</dd></div>
     {% endif %}
   </dl>
 {% endblock %}

@@ -113,7 +113,7 @@
 {{ ts_panel_group(biogeo_panels, ts_slot, "s-biogeo", "Biogeochemistry") }}
 
 {% if not physics_panels and not biogeo_panels %}
-<p style="color:#888">No data available for these casts.</p>
+<p style="color:var(--gray-4)">No data available for these casts.</p>
 {% endif %}
 
 {% for card in extra_cards %}
