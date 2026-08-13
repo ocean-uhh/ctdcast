@@ -41,12 +41,13 @@ timeseries:
 def _report_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for report.run() with safe defaults."""
     defaults = {
-        "stations": False,
+        "casts": False,
         "sections": False,
         "timeseries": False,
         "index": False,
         "map": False,
-        "cast": None,
+        "all_pages": False,
+        "only": None,
         "force": False,
         "skip_existing": False,
         "dry_run": False,
@@ -85,7 +86,7 @@ def _run_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for run.run() with safe defaults."""
     defaults = {
         "ctd": False,
-        "cast": None,
+        "only": None,
         "force": False,
         "skip_existing": False,
         "dry_run": False,
@@ -494,7 +495,7 @@ class TestReport:
 
     def test_dry_run_with_cast_returns_zero(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
-        rc = _report.run(_report_ns(config=cfg, dry_run=True, cast=11))
+        rc = _report.run(_report_ns(config=cfg, dry_run=True, only=11))
         assert rc == 0
 
     def test_missing_nc_dir_exits_zero_no_files(self, tmp_path):
@@ -519,7 +520,7 @@ class TestReport:
         rc = _report.run(
             _report_ns(
                 config=cfg,
-                stations=True,
+                casts=True,
                 force=True,
             )
         )
@@ -529,7 +530,7 @@ class TestReport:
 
     def test_cast_flag_generates_single_station(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
-        rc = _report.run(_report_ns(config=cfg, cast=11, force=True))
+        rc = _report.run(_report_ns(config=cfg, only=11, force=True))
         assert rc == 0
         assert (tmp_path / "out" / "casts" / "cast_011.html").exists()
         assert not (tmp_path / "out" / "casts" / "cast_012.html").exists()
@@ -577,7 +578,7 @@ class TestRun:
     def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
         """--cast N skips convert entirely; generates only the one station page."""
         cfg = self._write_cfg(tmp_path)
-        rc = _run.run(_run_ns(config=cfg, cast=11, force=True))
+        rc = _run.run(_run_ns(config=cfg, only=11, force=True))
         assert rc == 0
         assert (tmp_path / "out" / "casts" / "cast_011.html").exists()
         assert not (tmp_path / "out" / "casts" / "cast_012.html").exists()
@@ -586,7 +587,7 @@ class TestRun:
         parser = _run.build_parser()
         args = parser.parse_args(["config.yaml", "--force", "--cast", "42"])
         assert args.force is True
-        assert args.cast == [42]
+        assert args.only == [42]
         assert args.config == Path("config.yaml")
         assert args.ctd is False
 
@@ -626,8 +627,35 @@ class TestEntryPoint:
         parser = _report.build_parser()
         args = parser.parse_args(["config.yaml", "--force", "--cast", "42"])
         assert args.force is True
-        assert args.cast == [42]
+        assert args.only == [42]
         assert args.config == Path("config.yaml")
+
+    def test_report_parser_new_flags(self):
+        """--casts / --only / --all parse to their canonical destinations."""
+        parser = _report.build_parser()
+        args = parser.parse_args(
+            ["config.yaml", "--casts", "--only", "11", "12", "--all"]
+        )
+        assert args.casts is True
+        assert args.only == [11, 12]
+        assert args.all_pages is True
+        assert not getattr(args, "deprecated_flags", [])
+
+    def test_report_parser_deprecated_aliases_warn(self):
+        """--stations/--cast set the new dests and are recorded as deprecated."""
+        import warnings
+
+        from ctdcast.cli._deprecate import warn_deprecated
+
+        parser = _report.build_parser()
+        args = parser.parse_args(["config.yaml", "--stations", "--cast", "7"])
+        assert args.casts is True
+        assert args.only == [7]
+        assert args.deprecated_flags == ["--stations", "--cast"]
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            warn_deprecated(args)
+        assert sum(issubclass(w.category, DeprecationWarning) for w in caught) == 2
 
     def test_validate_parser_standalone(self):
         parser = _validate.build_parser()

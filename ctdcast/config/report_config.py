@@ -58,7 +58,9 @@ class ReportConfig:
     )
 
     @property
-    def map_bounds(self) -> tuple[float | None, float | None, float | None, float | None]:
+    def map_bounds(
+        self,
+    ) -> tuple[float | None, float | None, float | None, float | None]:
         """Return ``(lat_min, lat_max, lon_min, lon_max)`` for the map drawers."""
         return (self.map_lat_min, self.map_lat_max, self.map_lon_min, self.map_lon_max)
 

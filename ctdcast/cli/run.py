@@ -6,6 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -26,7 +28,7 @@ Examples:
   ctdcast run config.yaml --ctd
 
   # Regenerate one cast page without rebuilding profiles:
-  ctdcast run config.yaml --cast 42
+  ctdcast run config.yaml --only 42
 """
     kwargs: dict = {
         "description": "Convert profiles and generate HTML reports in one step.",
@@ -52,13 +54,23 @@ Examples:
         help="Also run CNV → netCDF conversion before building profiles (requires data.cnv_dir).",
     )
     parser.add_argument(
-        "--cast",
+        "--only",
+        dest="only",
         type=int,
         nargs="+",
         metavar="N",
         default=None,
-        help="Process only these cast(s): rebuild their station pages (skips the profiles step). "
-        "Example: --cast 42  or  --cast 42 43 44",
+        help="Process only these cast(s): rebuild their pages (skips the profiles step). "
+        "Example: --only 42  or  --only 42 43 44",
+    )
+    parser.add_argument(
+        "--cast",
+        dest="only",
+        type=int,
+        nargs="+",
+        metavar="N",
+        action=DeprecatedAlias,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--force",
@@ -94,12 +106,13 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast run``."""
+    warn_deprecated(args)
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    cast_filter: list[int] | None = args.cast
+    cast_filter: list[int] | None = args.only
 
     # ------------------------------------------------------------------ convert
     from . import convert as _convert
@@ -112,7 +125,7 @@ def run(args: argparse.Namespace) -> int:
             profiles=False,
             ladcp=False,
             backend="seasenselib",
-            cast=cast_filter,
+            only=cast_filter,
             pattern="*.cnv",
             force=args.force,
             dry_run=args.dry_run,
@@ -130,7 +143,7 @@ def run(args: argparse.Namespace) -> int:
             profiles=args.ctd,
             ladcp=False,
             backend="seasenselib",
-            cast=None,
+            only=None,
             pattern="*.cnv",
             force=args.force,
             dry_run=args.dry_run,
@@ -146,12 +159,13 @@ def run(args: argparse.Namespace) -> int:
 
     report_ns = argparse.Namespace(
         config=cfg_path,
-        stations=False,
+        casts=False,
         sections=False,
         timeseries=False,
         index=False,
         map=False,
-        cast=cast_filter,
+        all_pages=False,
+        only=cast_filter,
         force=args.force,
         skip_existing=args.skip_existing,
         dry_run=args.dry_run,

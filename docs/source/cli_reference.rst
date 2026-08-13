@@ -165,23 +165,28 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
      config           Path to config.yaml
 
    page selection (default: all page types enabled in config):
-     --stations       Generate per-cast station pages
+     --casts          Generate per-cast pages
      --sections       Generate section pages (requires profiles.nc and section_yaml)
      --timeseries     Generate timeseries pages (requires profiles.nc and section_yaml)
      --index          Generate index.html and casts.html
      --map            Generate leaflet.html interactive map
+     --all            Generate every page type
 
    options:
-     --cast N         Regenerate only the station page for cast N
+     --only N [N ...] Regenerate only the pages for cast N (one or more)
      --force          Regenerate all pages regardless of modification times
      --skip-existing  Skip pages whose HTML already exists (fill missing pages only)
      --dry-run        Print what would be done without writing any files
 
+   The process exits non-zero if any requested page fails to build.
+   The former ``--stations`` and ``--cast`` spellings still work as hidden,
+   deprecated aliases for ``--casts`` and ``--only``; they emit a warning.
+
 **Examples**::
 
    ctdcast report config.yaml                   # generate all enabled page types
-   ctdcast report config.yaml --stations        # station pages only
-   ctdcast report config.yaml --cast 42 --force # rebuild one cast page
+   ctdcast report config.yaml --casts           # cast pages only
+   ctdcast report config.yaml --only 42 --force # rebuild one cast page
    ctdcast report config.yaml --skip-existing   # fill any missing pages
    ctdcast report config.yaml --dry-run
 
@@ -202,17 +207,21 @@ Run convert then report in one step (most common workflow).
    options:
      --ctd            Also run CNV → netCDF conversion before building profiles
                       (requires data.cnv_dir in config)
-     --cast N         Rebuild only the station page for cast N (skips profiles step)
+     --only N [N ...] Rebuild only the pages for cast N (skips profiles step)
      --force          Force regeneration of all outputs regardless of modification times
      --skip-existing  Skip pages whose HTML already exists
      --dry-run        Print what would be done without writing any files
 
 Equivalent to running ``ctdcast convert`` then ``ctdcast report`` in sequence.
+``run`` is the recommended everyday command — it builds ``profiles.nc`` first, so it
+works from a fresh checkout; use ``report`` when the profiles are already current and
+you only want to regenerate specific pages.  (The former ``--cast`` spelling still
+works as a deprecated alias for ``--only``.)
 
 **Examples**::
 
    ctdcast run config.yaml                      # smart update (skips up-to-date pages)
    ctdcast run config.yaml --force              # rebuild everything
-   ctdcast run config.yaml --cast 42            # rebuild one cast page
+   ctdcast run config.yaml --only 42            # rebuild one cast page
    ctdcast run config.yaml --ctd --force        # full pipeline including CNV conversion
    ctdcast run config.yaml --dry-run
