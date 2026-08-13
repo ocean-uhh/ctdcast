@@ -44,7 +44,7 @@
 
 {% block content %}
 {% if timeseries_map_b64 %}
-<h2 id="s-map">Timeseries locations</h2>
+<h2 id="s-map">1 — Timeseries locations</h2>
 <div class="fig-row">
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
@@ -52,7 +52,7 @@
 </div>
 {% endif %}
 
-<h2 id="s-list">Timeseries groups</h2>
+<h2 id="s-list">2 — Timeseries groups</h2>
 <div class="ts-grid">
 {% for ts in timeseries %}
 <div class="ts-card" style="border-left-color:{{ ts.color }}">

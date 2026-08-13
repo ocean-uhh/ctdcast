@@ -30,6 +30,7 @@ from ctdcast.config.report_tokens import (
     ANNOT_FS,
     CAST_LABEL_FS,
     CLABEL_FS,
+    pen,
     MAX_SECTION_H as _MAX_SECTION_H,
     MIN_SECTION_H as _MIN_SECTION_H,
     SECTION_STRETCH as _SECTION_STRETCH,
@@ -400,8 +401,8 @@ def draw_ts_density_fig(
     ax1 = ax_ctd.twiny()
     ax2 = ax_ctd.twiny()
 
-    (l0,) = ax_ctd.plot(ct, p, color=_TS_COLORS[0], lw=1.8, label="CT")
-    (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], lw=1.8, label="SA")
+    (l0,) = ax_ctd.plot(ct, p, color=_TS_COLORS[0], lw=pen("thickest"), label="CT")
+    (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], lw=pen("thickest"), label="SA")
     (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
 
     ax2.spines["top"].set_position(("axes", 1.12))
@@ -425,9 +426,9 @@ def draw_ts_density_fig(
 
     # Right panel: LADCP data or placeholder text
     if ladcp_available and u is not None and z is not None and v is not None:
-        ax_ladcp.plot(u, z, color=_LADCP_U_COLOR, lw=1.0, label="U (E+)")
-        ax_ladcp.plot(v, z, color=_LADCP_V_COLOR, lw=1.0, label="V (N+)")
-        ax_ladcp.axvline(0, color="0.5", lw=0.6, ls="--")
+        ax_ladcp.plot(u, z, color=_LADCP_U_COLOR, label="U (E+)")
+        ax_ladcp.plot(v, z, color=_LADCP_V_COLOR, label="V (N+)")
+        ax_ladcp.axvline(0, color="0.5", lw=pen("thinner"), ls="--")
         ax_ladcp.set_xlabel("Velocity (m s⁻¹)")
         ax_ladcp.legend(loc="upper left")
         ax_ladcp.grid(True)
@@ -525,7 +526,7 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_n2, ax_tu = axes
 
     ax_n2.plot(n2, p_n2, color="k")
-    ax_n2.axvline(0, color="0.6", lw=0.8, ls="--")
+    ax_n2.axvline(0, color="0.6", lw=pen("thinner"), ls="--")
     ax_n2.set_ylim(float(np.nanmax(p_n2)), 0)
     ax_n2.set_xlabel(vlabel("N2"))
     ax_n2.set_ylabel(vlabel("pressure"))
@@ -534,8 +535,8 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_tu.axvspan(-90, -45, color="#f4a582", alpha=0.35, label="salt fingering")
     ax_tu.axvspan(45, 90, color="#92c5de", alpha=0.35, label="diffusive conv.")
     ax_tu.axvspan(-45, 45, color="0.88", alpha=0.5, label="doubly stable")
-    ax_tu.axvline(-45, color="k", lw=0.8, ls="--")
-    ax_tu.axvline(45, color="k", lw=0.8, ls="--")
+    ax_tu.axvline(-45, color="k", lw=pen("thinner"), ls="--")
+    ax_tu.axvline(45, color="k", lw=pen("thinner"), ls="--")
     ax_tu.plot(tu, p_tu, color="#333333")
     ax_tu.set_xlim(-90, 90)
     ax_tu.set_xlabel(vlabel("Turner"))
@@ -972,7 +973,7 @@ def draw_section_ts_profiles_fig(
             ct_all[i, mask],
             color=cmap(norm(float(x_vals[i]))),
             alpha=0.6,
-            lw=0.8,
+            lw=pen("thin"),
         )
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -1039,7 +1040,7 @@ def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
             ct_all[i, mask],
             color=cmap(norm(float(t_hours[i]))),
             alpha=0.6,
-            lw=0.8,
+            lw=pen("thin"),
         )
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -1281,7 +1282,7 @@ def draw_section_map_fig(
             cb.set_label("Depth (m)")
             cb.ax.invert_yaxis()
 
-    ax.plot(lons_arr, lats_arr, "-", color="white", lw=1.2, zorder=3)
+    ax.plot(lons_arr, lats_arr, "-", color="white", lw=pen("thick"), zorder=3)
     ax.scatter(
         lons_arr,
         lats_arr,
@@ -1360,7 +1361,9 @@ def draw_overview_panel_fig(
     _cast_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
     for cn_i, cn in enumerate(cast_nums):
         if int(cn) % _grid_step == 0:
-            ax.axvline(x_pos[cn_i], color="white", lw=0.5, alpha=0.25, zorder=0)
+            ax.axvline(
+                x_pos[cn_i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0
+            )
 
     if style == "contourf":
         X, Y = np.meshgrid(x_pos, p_trim)
@@ -1479,7 +1482,7 @@ def draw_all_sections_map_fig(
             slats,
             "-o",
             color=color,
-            lw=1.5,
+            lw=pen("thicker"),
             ms=4,
             zorder=4,
             label=sec["name"],
@@ -1684,7 +1687,7 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
             markersize=1.5,
             linewidth=0,
         )
-        axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
+        axes[idx].axvline(0, color="0.6", linewidth=pen("thinner"), linestyle="--")
         axes[idx].set_xlabel("T₁ − T₂ (°C)")
         axes[idx].set_xlim(-0.01, 0.01)
         axes[idx].grid(True)
@@ -1699,7 +1702,7 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
             markersize=1.5,
             linewidth=0,
         )
-        axes[idx].axvline(0, color="0.6", linewidth=0.6, linestyle="--")
+        axes[idx].axvline(0, color="0.6", linewidth=pen("thinner"), linestyle="--")
         axes[idx].set_xlabel("S₁ − S₂ (PSU)")
         axes[idx].set_xlim(-0.01, 0.01)
         axes[idx].grid(True)
@@ -1721,7 +1724,7 @@ def draw_pressure_time_fig(ds: xr.Dataset) -> plt.Figure | None:
         elapsed_min = (t_raw.astype(float) - float(t_raw[0])) / 60.0
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.7))
-    ax.plot(elapsed_min, p, color="k", linewidth=0.7)
+    ax.plot(elapsed_min, p, color="k", linewidth=pen("thin"))
     max_p = float(np.nanmax(p))
     ax.set_ylim(max_p, 0)
     ax.set_xlabel("Elapsed time (min)")
@@ -1777,8 +1780,8 @@ def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
     if len(diffs) == 1:
         axes = [axes]
     for ax, diff, label, color in zip(axes, diffs, labels, colors):
-        ax.plot(diff, p_grid, color=color, linewidth=0.8)
-        ax.axvline(0, color="0.6", linewidth=0.6, linestyle="--")
+        ax.plot(diff, p_grid, color=color, linewidth=pen("thin"))
+        ax.axvline(0, color="0.6", linewidth=pen("thinner"), linestyle="--")
         ax.set_xlabel(label)
         ax.grid(True)
     axes[0].set_ylabel(vlabel("pressure"))
@@ -1812,8 +1815,8 @@ def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
     ):
         ax.fill_betweenx(z, 0, np.where(vel > 0, vel, 0.0), color=color, alpha=0.5)
         ax.fill_betweenx(z, np.where(vel < 0, vel, 0.0), 0, color=color, alpha=0.5)
-        ax.plot(vel, z, color=color, lw=0.7)
-        ax.axvline(0, color="0.5", lw=0.6, ls="--")
+        ax.plot(vel, z, color=color, lw=pen("thin"))
+        ax.axvline(0, color="0.5", lw=pen("thinner"), ls="--")
         ax.set_xlabel(xlabel)
         ax.grid(True)
 

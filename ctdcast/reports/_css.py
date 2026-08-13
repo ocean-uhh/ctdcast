@@ -76,7 +76,9 @@ def emit_css(package: str) -> str:
     are the current values, not a redesign).  The only additions over
     the previous hand-written stylesheet are the package accent's two homes — a
     masthead ``.wordmark`` and the footer's ``border-top`` — plus the ``78ch``
-    reading measure and the structural ``break-inside`` print rules.
+    reading measure and the ``@media print`` rules for browser printing.  (The
+    PDF renderer additionally injects :func:`print_css`, which layers ``@page``
+    geometry on top for the WeasyPrint path.)
 
     Parameters
     ----------
@@ -130,10 +132,23 @@ h2 {{
   text-decoration: none; margin-left: auto;
 }}
 .top-link:hover {{ color: var(--ocean); text-decoration: underline; }}
-.note {{
+.caption {{
   color: var(--gray-5); font-size: var(--fs-note);
-  margin-top: -0.5rem; margin-bottom: 0.75rem;
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
 }}
+h2 + .caption {{ margin-top: -0.5rem; }}
+.explainer {{
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}}
+.warn {{
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}}
+.warn::before {{ content: "⚠ "; }}
+.warn.error {{ border-left-color: var(--error); }}
 .jump-nav {{
   background: var(--seafoam); padding: 0.55rem 1rem;
   border-radius: 6px; margin-bottom: 1.5rem;
@@ -188,6 +203,31 @@ footer a {{ color: var(--muted); }}
   .jump-nav {{ display: none; }}
 }}
 """
+
+
+def print_css(*, terse: bool = False) -> str:
+    """Return the print stylesheet, injected at PDF render time (spec §8.1).
+
+    These WeasyPrint-specific rules are kept out of the screen stylesheet so
+    screen output is byte-identical; a PDF renderer appends them at render time.
+    The shared stylesheet keeps only the structural ``@media print`` rules (page
+    breaks).  With *terse* ``True`` the ``.explainer`` prose is hidden (the
+    ``--pdf-terse`` variant); by default nothing is hidden — captions, explainers
+    and warnings all print.
+    """
+    css = """\
+@page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+body { max-width: 100%; padding: 0; }
+p, li, .explainer { max-width: 78ch; }
+img { max-width: 100%; height: auto; }
+.masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+.masthead-header h1, .masthead h1 { font-size: var(--fs-h1); }
+.meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+.jump-nav, .nav-btns, .btn-nav, .top-link { display: none; }
+"""
+    if terse:
+        css += ".explainer { display: none; }\n"
+    return css
 
 
 _JS_TOP_LINKS: str = """\
