@@ -112,26 +112,31 @@ _ALLOWED_FONTSIZE = {"CLABEL_FS", "ANNOT_FS", "CAST_LABEL_FS"}
 _PLOTTER_MODULES = ("plotters/plots.py", "reports/_plots.py")
 
 
-def test_no_stray_fontsize() -> None:
-    """Plotters set ``fontsize=`` only to an allow-listed named constant.
+def test_no_stray_typography() -> None:
+    """Plotters set no literal ``fontsize=`` or ``linewidth=`` — only named weights.
 
-    Numeric or string-literal sizes (``fontsize=7``, ``fontsize="small"``) are
-    forbidden — legend/tick/title sizing belongs in the mplstyle. Only the three
-    annotation constants matplotlib cannot route through a style key are allowed.
-    (Template ``font-size:`` and plotter ``linewidth=`` are out of this test's
-    current scope.)
+    Font sizes: only the allow-listed annotation constants (matplotlib cannot
+    route annotation text through a style key); legend/tick/title sizing belongs
+    in the mplstyle. Line widths: only ``pen("<gmt-name>")`` (the GMT pen ladder)
+    or the literal ``0`` (fill-edge suppression); every other weight comes from
+    the style or a named GMT width.
     """
-    literal = re.compile(r"""fontsize=\s*['"]?(?:-?\d|small|medium|large|x-)""")
-    named = re.compile(r"fontsize=\s*([A-Za-z_][\w.]*)")
+    fs_literal = re.compile(r"""fontsize=\s*['"]?(?:-?\d|small|medium|large|x-)""")
+    fs_named = re.compile(r"fontsize=\s*([A-Za-z_][\w.]*)")
+    lw_literal = re.compile(r"\b(?:lw|linewidth)\s*=\s*(\.?[0-9][0-9.]*)")
     for rel in _PLOTTER_MODULES:
         src = (_PKG / rel).read_text(encoding="utf-8")
-        assert not literal.search(src), (
+        assert not fs_literal.search(src), (
             f"{rel}: literal fontsize= (use a named constant)"
         )
-        for m in named.finditer(src):
+        for m in fs_named.finditer(src):
             name = m.group(1).split(".")[-1]
             assert name in _ALLOWED_FONTSIZE, (
                 f"{rel}: fontsize={m.group(1)} is not an allow-listed constant"
+            )
+        for m in lw_literal.finditer(src):
+            assert m.group(1) == "0", (
+                f'{rel}: literal linewidth={m.group(1)} — use pen("<gmt-name>") or 0'
             )
 
 
@@ -167,3 +172,27 @@ def test_optional_guard_ratio() -> None:
     assert ratio <= 0.40, (
         f"{optional_true}/{total} render_b64 calls use optional=True ({ratio:.0%} > 40%)"
     )
+
+
+# ---------------------------------------------------------------------------
+# Design-token helpers
+# ---------------------------------------------------------------------------
+def test_pen_ladder() -> None:
+    """pen() maps GMT pen-width names to matplotlib points; an unknown name raises."""
+    from ctdcast.config.report_tokens import pen
+
+    assert pen("thin") == 0.75
+    assert pen("thicker") == 1.5
+    assert pen("faint") == 0.0
+    with pytest.raises(KeyError):
+        pen("not-a-pen")
+
+
+def test_print_css_terse() -> None:
+    """print_css() emits the injected print rules; --pdf-terse hides .explainer, default keeps all."""
+    from ctdcast.reports._css import print_css
+
+    default = print_css()
+    assert "@page" in default and ".jump-nav" in default
+    assert ".explainer { display: none" not in default
+    assert ".explainer { display: none" in print_css(terse=True)

@@ -68,8 +68,9 @@
   {% endfor %}
 </div>
 
+{% set h = namespace(n=0) %}
 {% if fig_map_b64 %}
-<h2 id="s-map">Map</h2>
+{% set h.n = h.n + 1 %}<h2 id="s-map">{{ h.n }} — Map</h2>
 <div class="fig-row">
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Section map">
@@ -77,9 +78,9 @@
 </div>
 {% endif %}
 
-{% macro section_panel_group(panels, slot, anchor, heading) %}
+{% macro section_panel_group(panels, slot, anchor, heading, h) %}
 {% if panels | selectattr("b64") | list %}
-{% if heading %}<h2 id="{{ anchor }}">{{ heading }}</h2>{% endif %}
+{% if heading %}{% set h.n = h.n + 1 %}<h2 id="{{ anchor }}">{{ h.n }} — {{ heading }}</h2>{% endif %}
 {% if slot == "slot-third" %}
 <div class="fig-row">
   {% for panel in panels %}{% if panel.b64 %}
@@ -112,13 +113,13 @@
 {% endif %}
 {% endmacro %}
 
-{{ section_panel_group(physics_panels, section_slot, "s-physics", "Hydrography") }}
-{{ section_panel_group(biogeo_panels, section_slot, "s-biogeo", "Biogeochemistry") }}
+{{ section_panel_group(physics_panels, section_slot, "s-physics", "Hydrography", h) }}
+{{ section_panel_group(biogeo_panels, section_slot, "s-biogeo", "Biogeochemistry", h) }}
 
 {% for card in extra_cards %}
-<h2 id="s-{{ card.id }}">{{ card.title }}</h2>
+{% set h.n = h.n + 1 %}<h2 id="s-{{ card.id }}">{{ h.n }} — {{ card.title }}</h2>
 {% if card.id == "ladcp" %}
-{{ section_panel_group(card.panels, section_slot, "", "") }}
+{{ section_panel_group(card.panels, section_slot, "", "", h) }}
 {% elif card.panels | length == 1 %}
 {% if card.panels[0].b64 %}
 <div class="fig-row">

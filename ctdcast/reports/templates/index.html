@@ -27,7 +27,7 @@
 </div>
 
 {% if fig_map_b64 %}
-<h2 id="s-map">Map</h2>
+<h2 id="s-map">1 — Map</h2>
 <div class="fig-row" style="justify-content:center;">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
@@ -36,9 +36,9 @@
 {% endif %}
 
 {% if physics_panels | selectattr("b64") | list %}
-<h2 id="s-hydro">Hydrography</h2>
+<h2 id="s-hydro">2 — Hydrography</h2>
 {% for panel in physics_panels %}{% if panel.b64 %}
-<p class="note">{{ panel.title }}</p>
+<p class="caption">{{ panel.title }}</p>
 <div class="fig-row">
   <figure class="slot-full">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
@@ -48,9 +48,9 @@
 {% endif %}
 
 {% if biogeo_panels | selectattr("b64") | list %}
-<h2 id="s-biogeo">Biogeochemistry</h2>
+<h2 id="s-biogeo">3 — Biogeochemistry</h2>
 {% for panel in biogeo_panels %}{% if panel.b64 %}
-<p class="note">{{ panel.title }}</p>
+<p class="caption">{{ panel.title }}</p>
 <div class="fig-row">
   <figure class="slot-full">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
@@ -60,8 +60,8 @@
 {% endif %}
 
 {% if ts_b64 %}
-<h2 id="s-ts">T-S diagram</h2>
-<p class="note">All downcast profiles</p>
+<h2 id="s-ts">4 — T-S diagram</h2>
+<p class="caption">All downcast profiles</p>
 <div class="fig-row">
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">

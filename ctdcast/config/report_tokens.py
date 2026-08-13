@@ -96,6 +96,39 @@ ANNOT_FS: int = 8  # in-axes annotation / panel-label text boxes
 CAST_LABEL_FS: int = 6  # dense in-axes cast-number labels on maps and sections
 
 # ---------------------------------------------------------------------------
+# Figure line widths — GMT named pen-width ladder (points)
+# ---------------------------------------------------------------------------
+# matplotlib linewidths are in points, the same unit as GMT's pen widths, so
+# plotters name line weights from GMT's ladder (``pen("thin")``) instead of
+# hardcoding numbers.  Values verified against the GMT line tutorial:
+#   https://www.generic-mapping-tools.org/gmt-examples/tutorials/basics/line.html
+# The "no stray typography" test allow-lists the pen() helper.
+GMT_PEN: dict[str, float] = {
+    "faint": 0.0,
+    "thinnest": 0.25,
+    "default": 0.25,
+    "thinner": 0.5,
+    "thin": 0.75,
+    "thick": 1.0,
+    "thicker": 1.5,
+    "thickest": 2.0,
+    "fat": 3.0,
+    "fatter": 6.0,
+    "fattest": 10.0,
+    "wide": 18.0,
+}
+
+
+def pen(name: str) -> float:
+    """Return a matplotlib linewidth in points for a GMT pen-width *name*.
+
+    Borrows GMT's named pen ladder (``faint`` … ``wide``) so plotters name line
+    weights (``lw=pen("thin")``) rather than hardcoding numbers.
+    """
+    return GMT_PEN[name]
+
+
+# ---------------------------------------------------------------------------
 # Spacing and radii (spec §15)  [data; applied by emit_css() in rep/vis-system]
 # ---------------------------------------------------------------------------
 SPACE: dict[str, str] = {
