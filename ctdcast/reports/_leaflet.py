@@ -4,7 +4,7 @@ Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/leaflet/`` as package
 data so the generated ``leaflet.html`` requires no internet access at either
 generation or view time.
 
-If ``ctdcast.plotters.plots.GEBCO_PATH`` is set, GEBCO bathymetry for the cruise
+If a GEBCO path is configured, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
 (standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,
 6000 m).
@@ -31,6 +31,7 @@ import numpy as np
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import load_gebco
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template_raw
 
@@ -233,6 +234,7 @@ def _make_gebco_layers(
     lat_max: float,
     lon_min: float,
     lon_max: float,
+    gebco_path: Path | None,
 ) -> tuple[str | None, str | None, list | None]:
     """Load GEBCO once and return (raster_b64, contour_geojson, bounds).
 
@@ -253,9 +255,7 @@ def _make_gebco_layers(
 
     Any returned value is None when GEBCO is unavailable or rendering fails.
     """
-    from ctdcast.plotters import plots
-
-    if plots.GEBCO_PATH is None or not Path(str(plots.GEBCO_PATH)).exists():
+    if gebco_path is None or not Path(str(gebco_path)).exists():
         return None, None, None
 
     try:
@@ -267,7 +267,7 @@ def _make_gebco_layers(
             lon_min,
             lon_max,
             margin=_GEBCO_PAD,
-            path=plots.GEBCO_PATH,
+            path=gebco_path,
         )
         if _gebco is None:
             return None, None, None
@@ -401,6 +401,7 @@ def generate_leaflet_map(
     force: bool = False,  # noqa: ARG001
     ship_track_nc: Path | None = None,
     cruise: str = "UNK",
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
 
@@ -484,7 +485,7 @@ def generate_leaflet_map(
 
     print("  leaflet: rendering GEBCO...", end=" ", flush=True)
     gebco_b64, contour_geojson, actual_bounds = _make_gebco_layers(
-        lat_min, lat_max, lon_min, lon_max
+        lat_min, lat_max, lon_min, lon_max, gebco_path=cfg.gebco_path
     )
     if gebco_b64:
         n_features = contour_geojson.count('"Feature"') if contour_geojson else 0

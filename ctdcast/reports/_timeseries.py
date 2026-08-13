@@ -27,6 +27,7 @@ from ctdcast.config.parameters import (
     VARIABLES,
     vlabel,
 )
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import (
     ROLE_ACCENT,
     MAX_SECTION_H as _MAX_SECTION_H,
@@ -74,6 +75,7 @@ def generate_timeseries_page(
     dbar_step: int = 1,
     prev_name: str | None = None,
     next_name: str | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
 
@@ -222,6 +224,7 @@ def generate_timeseries_page(
             yoyo_cast_nums,
             min_margin=_margin_lat,
             min_margin_lon=_margin_lon,
+            cfg=cfg,
         )
 
     vmin = vmin_override or {}
@@ -260,6 +263,7 @@ def generate_timeseries_page(
             vmax=_vmax,
             figw=ts_figw,
             optional=optional,
+            cfg=cfg,
         )
         return Panel(b64=b64, title=label, short=short)
 
@@ -291,7 +295,7 @@ def generate_timeseries_page(
         for v in SECTION_BIOGEO_VARS
     ]
 
-    _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts)
+    _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts, cfg=cfg)
 
     # LADCP: use downcast profiles only, x-axis = hours since first cast
     _ladcp_ts_panels: list[Panel] = []
@@ -313,6 +317,7 @@ def generate_timeseries_page(
                 figsize=(ts_figw, _MAX_SECTION_H),
                 ladcp_pattern=ladcp_pattern,
                 style=section_style,
+                cfg=cfg,
             )
             if p.b64
         ]

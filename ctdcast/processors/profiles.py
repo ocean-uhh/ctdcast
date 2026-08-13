@@ -121,7 +121,7 @@ def build_profiles(
         Overwrite an existing profiles_path.
     gebco_path:
         Path to a GEBCO_2025.nc file.  Used to look up water depth at each
-        cast's max-pressure position.  Pass ``plots.GEBCO_PATH`` when calling
+        cast's max-pressure position.  Pass ``cfg.gebco_path`` when calling
         from report generation code.  Silently omitted when None.
 
     Returns

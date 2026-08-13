@@ -12,6 +12,7 @@ import xarray as xr
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import UNKNOWN_CRUISE_ID
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
@@ -71,6 +72,7 @@ def generate_station_page(
     trim_soak: bool = False,
     cast_notes: list[str] | None = None,
     cruise_info: dict | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/casts/*.
 
@@ -238,24 +240,26 @@ def generate_station_page(
         "version": _VERSION,
         # Overview row — CT/SA/σ₀ triple-axis + LADCP U/V panel
         "fig_ts_density_b64": _make_ts_density_b64(
-            ds, ladcp_path if ladcp_dir is not None else None
+            ds, ladcp_path if ladcp_dir is not None else None, cfg=cfg
         ),
-        "fig_station_map_b64": _make_station_map_b64(lat, lon, all_meta, target_h=2.75),
-        "fig_ts_updown_b64": _make_ts_updown_b64(ds),
+        "fig_station_map_b64": _make_station_map_b64(
+            lat, lon, all_meta, target_h=2.75, cfg=cfg
+        ),
+        "fig_ts_updown_b64": _make_ts_updown_b64(ds, cfg=cfg),
         # Row 2
-        "fig_ct_sa_sigma0_b64": _make_ct_sa_sigma0_b64(ds),
+        "fig_ct_sa_sigma0_b64": _make_ct_sa_sigma0_b64(ds, cfg=cfg),
         # Row 3
-        "fig_aux_b64": _make_aux_profiles_b64(ds),
+        "fig_aux_b64": _make_aux_profiles_b64(ds, cfg=cfg),
         # Row 4
-        "fig_ts_diagram_b64": _make_ts_diagram_b64(ds),
+        "fig_ts_diagram_b64": _make_ts_diagram_b64(ds, cfg=cfg),
         # Row 5
-        "fig_stability_b64": _make_stability_b64(ds),
+        "fig_stability_b64": _make_stability_b64(ds, cfg=cfg),
         # Row 6: diagnostics
-        "fig_pressure_time_b64": _make_pressure_time_b64(ds),
-        "fig_sensor_diff_b64": _make_sensor_diff_b64(ds),
-        "fig_updown_diff_b64": _make_updown_diff_b64(ds),
+        "fig_pressure_time_b64": _make_pressure_time_b64(ds, cfg=cfg),
+        "fig_sensor_diff_b64": _make_sensor_diff_b64(ds, cfg=cfg),
+        "fig_updown_diff_b64": _make_updown_diff_b64(ds, cfg=cfg),
         # Row 7: LADCP bottom track
-        "fig_ladcp_bottomtrack_b64": _make_ladcp_bottomtrack_b64(ladcp_path)
+        "fig_ladcp_bottomtrack_b64": _make_ladcp_bottomtrack_b64(ladcp_path, cfg=cfg)
         if ladcp_exists
         else None,
     }

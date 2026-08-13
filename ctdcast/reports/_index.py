@@ -16,6 +16,7 @@ from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
@@ -28,7 +29,6 @@ from ctdcast.identity import (
     expand_cast_numbers,
     format_cast_id,
 )
-from ctdcast.plotters import plots as _plots_mod
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
@@ -65,6 +65,7 @@ def report(
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
     cruise_info: dict[str, Any] | None = None,
+    config: ReportConfig | None = None,
     cast_filter: int | list[int] | None = None,
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
@@ -110,6 +111,9 @@ def report(
         Per-variable colormap limit overrides (e.g. ``{"SA": 34.5}``).
     cruise_info:
         Cruise metadata dict (from the ``cruise_info:`` block in ``config.yaml``).
+    config:
+        Frozen display configuration (GEBCO path, figsizes, map bounds, colormaps).
+        Defaults to DEFAULT_REPORT_CONFIG.
     cast_filter:
         If set, rebuild only the station page for this cast number
         (implies ``generate={"stations": True, rest False}``).
@@ -127,6 +131,7 @@ def report(
         always stores 1-dbar data; this controls plot-time resolution only.
 
     """
+    cfg = config if config is not None else DEFAULT_REPORT_CONFIG
     gen: dict[str, bool] = {
         "stations": True,
         "sections": True,
@@ -184,7 +189,7 @@ def report(
     # subsets from numpy arrays rather than reopening the file from disk.
     from ctdcast.analysis.bathymetry import preload_gebco
 
-    _gebco_path = _plots_mod.GEBCO_PATH
+    _gebco_path = cfg.gebco_path
     if _gebco_path is not None and all_meta:
         _cast_lats = [
             m["lat"] for m in all_meta if np.isfinite(m.get("lat", float("nan")))
@@ -278,6 +283,7 @@ def report(
                 trim_soak=trim_soak,
                 cast_notes=all_cast_notes.get(meta["cast_num"]),
                 cruise_info=cruise_info,
+                cfg=cfg,
             )
             if _skip_reason:
                 _status = _skip_reason + _ladcp_note
@@ -343,6 +349,7 @@ def report(
                 dbar_step=dbar_step,
                 prev_name=_sec_prev,
                 next_name=_sec_next,
+                cfg=cfg,
             )
             if _sec_skip:
                 _sec_status = _sec_skip + _sec_note
@@ -401,6 +408,7 @@ def report(
                 dbar_step=dbar_step,
                 prev_name=_ts_prev,
                 next_name=_ts_next,
+                cfg=cfg,
             )
             if _ts_skip:
                 _ts_status = _ts_skip + _ts_note
@@ -432,6 +440,7 @@ def report(
             vmax_override=vmax_override,
             cruise_info=cruise_info,
             timeseries_cfg=timeseries_cfg,
+            cfg=cfg,
         )
         print(f"  [index.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
@@ -444,6 +453,7 @@ def report(
             ladcp_dir=ladcp_dir,
             ladcp_pattern=ladcp_pattern,
             cruise_info=cruise_info,
+            cfg=cfg,
         )
         print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
@@ -454,6 +464,7 @@ def report(
             all_meta=all_meta,
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
+            cfg=cfg,
         )
         print(f"  [sections.html: {perf_counter() - _t0:.1f}s]")
         _t0 = perf_counter()
@@ -464,6 +475,7 @@ def report(
             all_meta=all_meta,
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
+            cfg=cfg,
         )
         print(f"  [timeseries.html: {perf_counter() - _t0:.1f}s]")
 
@@ -478,6 +490,7 @@ def report(
                 force=force,
                 ship_track_nc=ship_track_nc,
                 cruise=cruise,
+                cfg=cfg,
             )
             print(f"  leaflet map: {'regenerated' if lf_out else 'skipped (no casts)'}")
         except Exception:  # noqa: BLE001
@@ -506,6 +519,7 @@ def _write_index(
     vmax_override: dict[str, float] | None = None,
     cruise_info: dict[str, Any] | None = None,
     timeseries_cfg: dict[str, Any] | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write index.html with header card, stats, overview map, and stacked property panels."""
     times = [m["time_start"] for m in all_meta if m.get("time_start")]
@@ -579,10 +593,11 @@ def _write_index(
             _valid_lons,
             legend_outside=True,
             target_h=3.0,
+            cfg=cfg,
         )
     elif _valid_lats:
         # No sections configured (e.g. draft mode) — fall back to cruise-track map.
-        fig_map_b64 = _make_cruise_map_b64(all_meta, target_h=3.0)
+        fig_map_b64 = _make_cruise_map_b64(all_meta, target_h=3.0, cfg=cfg)
     else:
         fig_map_b64 = None
 
@@ -605,7 +620,7 @@ def _write_index(
 
             lats = ds_sorted["latitude"].values.tolist()
             lons = ds_sorted["longitude"].values.tolist()
-            bathy = interpolate_bathy_at_casts(lats, lons, path=_plots_mod.GEBCO_PATH)
+            bathy = interpolate_bathy_at_casts(lats, lons, path=cfg.gebco_path)
 
             vmin = vmin_override or {}
             vmax = vmax_override or {}
@@ -620,6 +635,7 @@ def _write_index(
                     vmin=vmin.get(var),
                     vmax=vmax.get(var),
                     cast_groups=cast_groups,
+                    cfg=cfg,
                 )
                 return {"title": label, "b64": b64}
 
@@ -628,7 +644,7 @@ def _write_index(
             ]
             biogeo_panels_idx = [_idx_panel(v, vlabel(v)) for v in SECTION_BIOGEO_VARS]
 
-            ts_b64 = _make_section_ts_histogram_b64(ds_sorted)
+            ts_b64 = _make_section_ts_histogram_b64(ds_sorted, cfg=cfg)
             ds_all.close()
         except Exception:  # noqa: BLE001, S110
             pass  # Overview panels are optional; never crash index generation
@@ -711,6 +727,7 @@ def _write_stations_list(
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
     cruise_info: dict[str, Any] | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write casts.html with cruise map, depth pills, and section/timeseries links."""
     # LADCP: collect cast numbers that have a processed .mat file.
@@ -803,7 +820,7 @@ def _write_stations_list(
         "duration_days": _duration_days,
         "max_depth_str": f"{_max_depth:.0f} dbar" if _max_depth else "",
         "stations": stations,
-        "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0),
+        "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0, cfg=cfg),
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
@@ -825,6 +842,7 @@ def _write_sections_list(
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write sections.html with overview map and cards for each section."""
     ladcp_cast_nums: set[int] = set()
@@ -850,8 +868,8 @@ def _write_sections_list(
     sections = []
     sections_data: list[dict[str, Any]] = []
     _sec_n_casts_list: list[int] = []
-    for name, cfg in sections_cfg.items():
-        cast_nums = expand_cast_numbers(cfg.get("cast_numbers", []))
+    for name, grp_cfg in sections_cfg.items():
+        cast_nums = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         report_path = out_dir / "sections" / f"section_{name}.html"
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
         n_casts_sec = len(cast_nums)
@@ -859,8 +877,8 @@ def _write_sections_list(
         sections.append(
             {
                 "name": name,
-                "description": cfg.get("description", ""),
-                "color": cfg.get("color", "#1a3a5c"),
+                "description": grp_cfg.get("description", ""),
+                "color": grp_cfg.get("color", "#1a3a5c"),
                 "n_casts": n_casts_sec,
                 "cast_range": compact_cast_list(cast_nums) if cast_nums else "—",
                 "report_exists": report_path.exists(),
@@ -873,7 +891,7 @@ def _write_sections_list(
             # Match the section page's key_cast ordering so the sections-map
             # polyline does not fold when the section is anchored to a distance
             # origin. (The cruise-track map on index.html keeps occupation order.)
-            key_cfg = cfg.get("key_cast")
+            key_cfg = grp_cfg.get("key_cast")
             if key_cfg is not None and len(sec_lats) >= 2:
                 _key_nums = expand_cast_numbers([key_cfg])
                 _kn = _key_nums[0] if len(_key_nums) == 1 else None
@@ -888,7 +906,7 @@ def _write_sections_list(
                 sections_data.append(
                     {
                         "name": name,
-                        "color": cfg.get("color", "#555555"),
+                        "color": grp_cfg.get("color", "#555555"),
                         "lats": sec_lats,
                         "lons": sec_lons,
                     }
@@ -898,7 +916,7 @@ def _write_sections_list(
     all_cast_lons = [v[1] for v in cast_pos.values()]
     sections_map_b64 = (
         _make_all_sections_map_b64(
-            sections_data, all_cast_lats, all_cast_lons, target_h=3.0
+            sections_data, all_cast_lats, all_cast_lons, target_h=3.0, cfg=cfg
         )
         if sections_data
         else None
@@ -957,6 +975,7 @@ def _write_timeseries_list(
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
     ladcp_cast_nums: set[int] = set()
@@ -985,10 +1004,10 @@ def _write_timeseries_list(
     timeseries_data: list[dict[str, Any]] = []
     _ts_n_casts_list: list[int] = []
     _ts_dur_h_list: list[float] = []
-    for name, cfg in timeseries_cfg.items():
-        cast_nums = expand_cast_numbers(cfg.get("cast_numbers", []))
+    for name, grp_cfg in timeseries_cfg.items():
+        cast_nums = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         report_path = out_dir / "timeseries" / f"timeseries_{name}.html"
-        color = cfg.get("color", "#7b2d8b")
+        color = grp_cfg.get("color", "#7b2d8b")
         ladcp_has = any(c in ladcp_cast_nums for c in cast_nums)
         n_casts_ts = len(cast_nums)
         _ts_n_casts_list.append(n_casts_ts)
@@ -1006,7 +1025,7 @@ def _write_timeseries_list(
         items.append(
             {
                 "name": name,
-                "description": cfg.get("description", ""),
+                "description": grp_cfg.get("description", ""),
                 "color": color,
                 "n_casts": n_casts_ts,
                 "cast_range": compact_cast_list(cast_nums) if cast_nums else "—",
@@ -1026,7 +1045,7 @@ def _write_timeseries_list(
     all_cast_lons = [v[1] for v in cast_pos.values()]
     timeseries_map_b64 = (
         _make_all_sections_map_b64(
-            timeseries_data, all_cast_lats, all_cast_lons, target_h=3.0
+            timeseries_data, all_cast_lats, all_cast_lons, target_h=3.0, cfg=cfg
         )
         if timeseries_data
         else None

@@ -84,7 +84,7 @@ def load_gebco(
     Parameters
     ----------
     path:
-        Path to GEBCO_2025.nc. Pass ``plots.GEBCO_PATH`` from the caller.
+        Path to GEBCO_2025.nc. Pass ``cfg.gebco_path`` from the caller.
         Returns None if not provided or file not found.
     """
     if path is None or not Path(path).exists():

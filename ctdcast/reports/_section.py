@@ -28,9 +28,9 @@ from ctdcast.config.parameters import (
     VARIABLES,
     vlabel,
 )
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
-from ctdcast.plotters import plots as _plots
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports._chrome import EXTRA_CARD_ORDER
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
@@ -73,6 +73,7 @@ def generate_section_page(
     dbar_step: int = 1,
     prev_name: str | None = None,
     next_name: str | None = None,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a section HTML report page.
 
@@ -205,9 +206,9 @@ def generate_section_page(
         # Cumulative along-track distance from the first cast in config order.
         x_vals, x_label = along_track_km(lats, lons)
 
-    bathy = interpolate_bathy_at_casts(lats, lons, path=_plots.GEBCO_PATH)
+    bathy = interpolate_bathy_at_casts(lats, lons, path=cfg.gebco_path)
     dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
-        lats, lons, x_vals, path=_plots.GEBCO_PATH
+        lats, lons, x_vals, path=cfg.gebco_path
     )
 
     # Flip to geographic convention (west-left / north-left) only in mode 1;
@@ -298,6 +299,7 @@ def generate_section_page(
             vmax=_vmax,
             figsize=section_figsize,
             optional=optional,
+            cfg=cfg,
         )
         return Panel(b64=b64, title=label, short=short)
 
@@ -336,17 +338,17 @@ def generate_section_page(
         Panel(
             title="Profiles coloured by distance",
             short="Profiles",
-            b64=_make_section_ts_profiles_b64(ds_sec, x_vals),
+            b64=_make_section_ts_profiles_b64(ds_sec, x_vals, cfg=cfg),
         ),
         Panel(
             title="2-D histogram (log count)",
             short="Histogram",
-            b64=_make_section_ts_histogram_b64(ds_sec),
+            b64=_make_section_ts_histogram_b64(ds_sec, cfg=cfg),
         ),
         Panel(
             title="Median O₂ saturation",
             short="O₂",
-            b64=_make_section_ts_o2_b64(ds_sec),
+            b64=_make_section_ts_o2_b64(ds_sec, cfg=cfg),
         ),
     ]
     _ladcp_panels = (
@@ -361,6 +363,7 @@ def generate_section_page(
                 lons=lons,
                 ladcp_pattern=ladcp_pattern,
                 style=section_style,
+                cfg=cfg,
             )
             if p.b64
         ]
@@ -402,7 +405,7 @@ def generate_section_page(
         "end_time": end_time,
         "cast_nums": cast_id_strs,
         "fig_map_b64": _make_section_map_b64(
-            lats, lons, cast_nums_int, title=section_name
+            lats, lons, cast_nums_int, title=section_name, cfg=cfg
         ),
         "section_slot": section_slot,
         "physics_panels": physics_panels,
