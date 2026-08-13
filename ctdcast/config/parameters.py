@@ -1,7 +1,8 @@
 """Package-wide constants: plotting parameters, CNV aliases, variable metadata, CCHDO conventions.
 
-Compile-time constants only — the runtime-mutable display globals (GEBCO_PATH,
-CLEAN_SPINES, figsizes, map bounds) stay in :mod:`ctdcast.plotters.plots`.
+Compile-time constants only — the per-run display settings (GEBCO path,
+clean_spines, figsizes, map bounds, colormap overrides) live in the frozen
+:class:`ctdcast.config.report_config.ReportConfig`, built once and threaded down.
 
 Section headers mark what kind of constant each block holds, because that determines
 who may change it and what breaks when they do:

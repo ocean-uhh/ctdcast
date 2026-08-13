@@ -238,27 +238,30 @@ def run(args: argparse.Namespace) -> int:
             print(f"[dry-run] --cast {args.cast}: rebuild station page only")
         return 0
 
-    # Set module-level plot options before any figure code is imported.
-    from ctdcast.plotters import plots
+    # Build the frozen display config once and pass it down (no module globals).
+    from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 
-    if gebco_path:
-        plots.GEBCO_PATH = gebco_path
-    plots.CLEAN_SPINES = bool(display.get("clean_spines", True))
     pf = display.get("profile_figsize", [7, 10])
-    plots.PROFILE_FIGSIZE = (float(pf[0]), float(pf[1]))
     ov = display.get("overview_figsize", [12, 4])
-    plots.OVERVIEW_FIGSIZE = (float(ov[0]), float(ov[1]))
+    var_cmaps = dict(DEFAULT_REPORT_CONFIG.var_cmaps)
     if display.get("var_cmaps"):
-        plots._VAR_CMAPS = {**plots._VAR_CMAPS, **display["var_cmaps"]}
-    for attr, key in [
-        ("MAP_LAT_MIN", "map_lat_min"),
-        ("MAP_LAT_MAX", "map_lat_max"),
-        ("MAP_LON_MIN", "map_lon_min"),
-        ("MAP_LON_MAX", "map_lon_max"),
-    ]:
+        var_cmaps.update(display["var_cmaps"])
+
+    def _bound(key: str) -> float | None:
         val = _cruise_info_cfg.get(key)
-        if val is not None:
-            setattr(plots, attr, float(val))
+        return float(val) if val is not None else None
+
+    report_config = ReportConfig(
+        gebco_path=gebco_path if gebco_path else None,
+        clean_spines=bool(display.get("clean_spines", True)),
+        profile_figsize=(float(pf[0]), float(pf[1])),
+        overview_figsize=(float(ov[0]), float(ov[1])),
+        map_lat_min=_bound("map_lat_min"),
+        map_lat_max=_bound("map_lat_max"),
+        map_lon_min=_bound("map_lon_min"),
+        map_lon_max=_bound("map_lon_max"),
+        var_cmaps=var_cmaps,
+    )
 
     vmin_override: dict = {
         k: v for k, v in (display.get("vmin") or {}).items() if v is not None
@@ -285,6 +288,7 @@ def run(args: argparse.Namespace) -> int:
         vmin_override=vmin_override,
         vmax_override=vmax_override,
         cruise_info=cruise_info,
+        config=report_config,
         cast_filter=args.cast,
         sal_range=(args.sal[0], args.sal[1]) if args.sal else None,
         trim_soak=args.trim_soak,

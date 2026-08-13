@@ -7,7 +7,6 @@ PNG base64 magic bytes ("iVBOR").
 
 from conftest import FIXTURES_LADCP
 
-from ctdcast.plotters import plots
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -96,8 +95,9 @@ def test_ladcp_bottomtrack_none():
 # --- station map (no GEBCO) --------------------------------------------------
 
 
-def test_station_map_no_gebco(ds_011, monkeypatch):
-    monkeypatch.setattr(plots, "GEBCO_PATH", None)
+def test_station_map_no_gebco(ds_011):
+    # The default ReportConfig has gebco_path=None, so the station map renders
+    # without bathymetry.
     import numpy as np
 
     lat = float(np.nanmedian(ds_011["latitude"].values))

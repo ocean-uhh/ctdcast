@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -22,10 +23,10 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
-    _VAR_CMAPS,
     VAR_COLORS,
     vlabel,
 )
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import (
     ANNOT_FS,
     CAST_LABEL_FS,
@@ -47,12 +48,6 @@ from ctdcast.readers.ladcp import read_ladcp
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-
-# Path to GEBCO_2025.nc — set this before generating maps, e.g.:
-#   import ctdcast.plots as plots
-#   plots.GEBCO_PATH = Path("/data/GEBCO_2025.nc")
-# Maps render without bathymetry if None or file not found.
-GEBCO_PATH: Path | None = None
 
 # Extra margin (degrees) added when loading GEBCO for map rendering.
 # Ensures downsampled pcolormesh edge-cells extend past the axis limits,
@@ -76,26 +71,6 @@ _UPCAST_COLOR: str = "#666666"
 # Grey level for σ₀ density contours on T–S diagrams.
 _SIGMA0_CONTOUR_COLOR: str = "0.4"
 
-# When True, hide top and right spines on profile/scatter figures.
-# Set via config.yaml display.clean_spines; propagated by __main__.py.
-CLEAN_SPINES: bool = True
-
-# Figsize (width, height) in inches for the triple-axis (CT/SA/σ₀) profile.
-# Set via config.yaml display.profile_figsize; propagated by __main__.py.
-PROFILE_FIGSIZE: tuple[float, float] = (7.0, 10.0)
-
-# Figsize (width, height) in inches for the cruise overview stacked panels.
-# Set via config.yaml display.overview_figsize; propagated by __main__.py.
-OVERVIEW_FIGSIZE: tuple[float, float] = (9.0, 4.5)
-
-# Optional lat/lon bounding box applied to all map functions.
-# When set, data-driven extents are overridden by these limits.
-# Set via config.yaml cruise_info.map_lat/lon_min/max; propagated by __main__.py.
-MAP_LAT_MIN: float | None = None
-MAP_LAT_MAX: float | None = None
-MAP_LON_MIN: float | None = None
-MAP_LON_MAX: float | None = None
-
 
 def _map_lim(
     lat_lo: float,
@@ -103,19 +78,21 @@ def _map_lim(
     lon_lo: float,
     lon_hi: float,
     margin: float,
+    bounds: tuple[float | None, float | None, float | None, float | None],
 ) -> tuple[float, float, float, float]:
-    """Return (lat_lo, lat_hi, lon_lo, lon_hi) with module-level bound overrides applied."""
+    """Return (lat_lo, lat_hi, lon_lo, lon_hi) with *bounds* overrides applied."""
+    lat_min, lat_max, lon_min, lon_max = bounds
     return (
-        MAP_LAT_MIN if MAP_LAT_MIN is not None else lat_lo - margin,
-        MAP_LAT_MAX if MAP_LAT_MAX is not None else lat_hi + margin,
-        MAP_LON_MIN if MAP_LON_MIN is not None else lon_lo - margin,
-        MAP_LON_MAX if MAP_LON_MAX is not None else lon_hi + margin,
+        lat_min if lat_min is not None else lat_lo - margin,
+        lat_max if lat_max is not None else lat_hi + margin,
+        lon_min if lon_min is not None else lon_lo - margin,
+        lon_max if lon_max is not None else lon_hi + margin,
     )
 
 
-def _hide_outer_spines(*axes: Any) -> None:
-    """Hide top and right spines on *axes* when CLEAN_SPINES is True."""
-    if not CLEAN_SPINES:
+def _hide_outer_spines(*axes: Any, clean: bool) -> None:
+    """Hide top and right spines on *axes* when *clean* is True."""
+    if not clean:
         return
     for ax in axes:
         ax.spines["top"].set_visible(False)
@@ -222,12 +199,13 @@ def _gebco_background(
     xl1: float,
     *,
     n: int = 12,
+    gebco_path: Path | None,
 ) -> None:
     """Draw a GEBCO bathymetry pcolormesh background on *ax*.
 
-    Does nothing if GEBCO_PATH is None or the file cannot be read.
+    Does nothing if *gebco_path* is None or the file cannot be read.
     """
-    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
+    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=gebco_path)
     if gebco is not None:
         lons_b, lats_b, depth_b = gebco
         lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
@@ -287,6 +265,8 @@ def _discrete_norm(
     vmin: float | None,
     vmax: float | None,
     n: int = 20,
+    *,
+    var_cmaps: Mapping[str, str],
 ) -> tuple[Any, Any, np.ndarray, str]:
     """Return ``(cmap, norm, bounds, cmap_name)`` for a discrete colorbar.
 
@@ -296,7 +276,7 @@ def _discrete_norm(
     colormap name string, needed when calling ``ax.contourf`` which accepts a
     name rather than a ``Colormap`` object.
     """
-    cmap_name = _VAR_CMAPS.get(var, "viridis")
+    cmap_name = var_cmaps.get(var, "viridis")
     v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:
@@ -335,7 +315,10 @@ def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> No
 
 
 def draw_ts_density_fig(
-    ds: xr.Dataset, ladcp_path: Path | None = None
+    ds: xr.Dataset,
+    ladcp_path: Path | None = None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a CT/SA/σ₀ profiles Figure, optionally alongside LADCP U/V."""
     ds_teos = add_teos10(ds)
@@ -347,13 +330,13 @@ def draw_ts_density_fig(
 
     if ladcp_path is None:
         # Single-column: CT/SA/σ₀ triple-axis profile only
-        fig, ax0 = plt.subplots(figsize=PROFILE_FIGSIZE)
+        fig, ax0 = plt.subplots(figsize=cfg.profile_figsize)
         ax1 = ax0.twiny()
         ax2 = ax0.twiny()
         (l0,) = ax0.plot(ct, p, color=_TS_COLORS[0], label="CT")
         (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], label="SA")
         (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
-        # ax1/ax2 use the top spine — restore visibility even if CLEAN_SPINES.
+        # ax1/ax2 use the top spine — restore visibility even if cfg.clean_spines.
         ax2.spines["top"].set_position(("axes", 1.12))
         ax1.spines["top"].set_visible(True)
         ax2.spines["top"].set_visible(True)
@@ -373,7 +356,7 @@ def draw_ts_density_fig(
         ax1.set_xlabel(vlabel("absolute_salinity"), color=_TS_COLORS[1])
         ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
         ax0.grid(True)
-        if CLEAN_SPINES:
+        if cfg.clean_spines:
             ax0.spines["right"].set_visible(False)
         return fig
 
@@ -421,7 +404,7 @@ def draw_ts_density_fig(
     ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
     ax_ctd.legend(handles=[l0, l1, l2], loc="center left", framealpha=0.7)
     ax_ctd.grid(True)
-    if CLEAN_SPINES:
+    if cfg.clean_spines:
         ax_ctd.spines["right"].set_visible(False)
 
     # Right panel: LADCP data or placeholder text
@@ -444,13 +427,15 @@ def draw_ts_density_fig(
             fontsize=ANNOT_FS,
         )
         ax_ladcp.set_xlabel("LADCP")
-    _hide_outer_spines(ax_ladcp)
+    _hide_outer_spines(ax_ladcp, clean=cfg.clean_spines)
 
     ax_ctd.set_ylim(float(np.nanmax(p)), 0)
     return fig
 
 
-def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_ts_diagram_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a T-S diagram Figure colored by O₂ saturation."""
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
@@ -498,11 +483,13 @@ def draw_ts_diagram_fig(ds: xr.Dataset) -> plt.Figure | None:
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
-def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_stability_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a N² and Turner angle (2-panel) Figure."""
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
@@ -542,12 +529,14 @@ def draw_stability_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax_tu.set_xlabel(vlabel("Turner"))
     ax_tu.legend(loc="lower right")
     ax_tu.grid(True)
-    _hide_outer_spines(ax_n2, ax_tu)
+    _hide_outer_spines(ax_n2, ax_tu, clean=cfg.clean_spines)
 
     return fig
 
 
-def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_aux_profiles_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
     vars_labels = [
         (
@@ -591,11 +580,13 @@ def draw_aux_profiles_fig(ds: xr.Dataset) -> plt.Figure | None:
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left")
-    _hide_outer_spines(*axes)
+    _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
-def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_ct_sa_sigma0_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a CT, SA, σ₀ profiles side-by-side Figure (downcast + grey upcast)."""
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
@@ -643,11 +634,13 @@ def draw_ct_sa_sigma0_fig(ds: xr.Dataset) -> plt.Figure | None:
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left")
-    _hide_outer_spines(*axes)
+    _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
-def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_ts_updown_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a CT–SA scatter Figure: downcast in blue, upcast in red, σ₀ contours."""
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
@@ -705,7 +698,7 @@ def draw_ts_updown_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.legend(loc="best", markerscale=2)
     ax.grid(False)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -714,6 +707,8 @@ def draw_station_map_fig(
     lon: float,
     all_meta: list[dict],
     target_h: float = 4.5,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a GEBCO map Figure with all casts and this cast highlighted."""
     all_lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
@@ -726,13 +721,15 @@ def draw_station_map_fig(
     lon_lo, lon_hi = min(all_lons), max(all_lons)
     margin = max(0.05, (lat_hi - lat_lo) * 0.1)
     mean_lat = 0.5 * (lat_lo + lat_hi)
-    yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+    yl0, yl1, xl0, xl1 = _map_lim(
+        lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
+    )
 
     fig, ax = plt.subplots(
         figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
     )
 
-    _gebco_background(ax, yl0, yl1, xl0, xl1, n=14)
+    _gebco_background(ax, yl0, yl1, xl0, xl1, n=14, gebco_path=cfg.gebco_path)
 
     ax.scatter(all_lons, all_lats, s=12, color="0.5", zorder=3, label="all casts")
     ax.scatter(
@@ -747,7 +744,10 @@ def draw_station_map_fig(
 
 
 def draw_cruise_map_fig(
-    all_meta: list[dict], *, target_h: float = 4.0
+    all_meta: list[dict],
+    *,
+    target_h: float = 4.0,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure of all cast positions (no single-cast highlight)."""
     lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
@@ -764,13 +764,15 @@ def draw_cruise_map_fig(
     lon_lo, lon_hi = min(lons), max(lons)
     margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
     mean_lat = 0.5 * (lat_lo + lat_hi)
-    yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+    yl0, yl1, xl0, xl1 = _map_lim(
+        lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
+    )
 
     fig, ax = plt.subplots(
         figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h)
     )
 
-    _gebco_background(ax, yl0, yl1, xl0, xl1)
+    _gebco_background(ax, yl0, yl1, xl0, xl1, gebco_path=cfg.gebco_path)
 
     ax.scatter(lons, lats, s=14, color="0.4", zorder=3)
     n = len(nums)
@@ -851,6 +853,8 @@ def draw_section_fig(
     vmin: float | None = None,
     vmax: float | None = None,
     figsize: tuple[float, float] | None = None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure of *var* vs pressure × *x_vals*."""
     if var not in ds_prof:
@@ -868,7 +872,9 @@ def draw_section_fig(
     if not len(d_fin):
         return None
 
-    cmap, norm, bounds, cmap_name = _discrete_norm(d_fin, var, vmin, vmax)
+    cmap, norm, bounds, cmap_name = _discrete_norm(
+        d_fin, var, vmin, vmax, var_cmaps=cfg.var_cmaps
+    )
 
     dist = abs(float(x_vals[-1] - x_vals[0])) if len(x_vals) > 1 else 10.0
     p_max_data = float(p_trim[-1])
@@ -938,6 +944,8 @@ def draw_section_fig(
 def draw_section_ts_profiles_fig(
     ds_prof: xr.Dataset,
     x_vals: np.ndarray,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure of per-cast CT–SA profiles coloured by along-track distance."""
     if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
@@ -995,11 +1003,13 @@ def draw_section_ts_profiles_fig(
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
-def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
+def draw_ts_diagram_timeseries_fig(
+    ds_ts: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a CT–SA diagram Figure for all timeseries profiles, coloured by time."""
     if "absolute_salinity" not in ds_ts or "conservative_temperature" not in ds_ts:
         return None
@@ -1062,11 +1072,13 @@ def draw_ts_diagram_timeseries_fig(ds_ts: xr.Dataset) -> plt.Figure | None:
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
-def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
+def draw_section_ts_histogram_fig(
+    ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a CT–SA 2-D count histogram Figure (log₁₀ colour) for section profiles."""
     if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
         return None
@@ -1119,11 +1131,13 @@ def draw_section_ts_histogram_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
-def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
+def draw_section_ts_o2_fig(
+    ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a CT–SA histogram Figure coloured by median O₂ saturation per bin."""
     _o2_var = next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds_prof), None)
     if (
@@ -1199,7 +1213,7 @@ def draw_section_ts_o2_fig(ds_prof: xr.Dataset) -> plt.Figure | None:
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -1210,6 +1224,8 @@ def draw_section_map_fig(
     title: str = "",
     min_margin: float = 0.03,
     min_margin_lon: float | None = None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a GEBCO map Figure with the section track."""
     lats_arr = np.array(lats)
@@ -1230,13 +1246,16 @@ def draw_section_map_fig(
         data_extent = max(lat_hi - lat_lo, lon_hi - lon_lo)
         margin_lat = max(min_margin, data_extent * 0.15)
         margin_lon = max(min_margin_lon, data_extent * 0.15)
-        yl0 = MAP_LAT_MIN if MAP_LAT_MIN is not None else lat_lo - margin_lat
-        yl1 = MAP_LAT_MAX if MAP_LAT_MAX is not None else lat_hi + margin_lat
-        xl0 = MAP_LON_MIN if MAP_LON_MIN is not None else lon_lo - margin_lon
-        xl1 = MAP_LON_MAX if MAP_LON_MAX is not None else lon_hi + margin_lon
+        map_lat_min, map_lat_max, map_lon_min, map_lon_max = cfg.map_bounds
+        yl0 = map_lat_min if map_lat_min is not None else lat_lo - margin_lat
+        yl1 = map_lat_max if map_lat_max is not None else lat_hi + margin_lat
+        xl0 = map_lon_min if map_lon_min is not None else lon_lo - margin_lon
+        xl1 = map_lon_max if map_lon_max is not None else lon_hi + margin_lon
     else:
         margin = max(min_margin, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.15)
-        yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+        yl0, yl1, xl0, xl1 = _map_lim(
+            lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
+        )
         lon_span = xl1 - xl0
         lat_span = yl1 - yl0
         # Mercator-equivalent widths: x_width = lon_span * cos(lat), y_height = lat_span.
@@ -1253,7 +1272,7 @@ def draw_section_map_fig(
         )
     )
 
-    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=GEBCO_PATH)
+    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=cfg.gebco_path)
     bathy_pc = None
     if gebco is not None:
         lons_b, lats_b, depth_b = gebco
@@ -1321,6 +1340,8 @@ def draw_overview_panel_fig(
     vmin: float | None = None,
     vmax: float | None = None,
     cast_groups: dict[str, list[int]] | None = None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure of *var* vs pressure × cast number (cruise overview panel)."""
     if var not in ds_prof:
@@ -1339,7 +1360,9 @@ def draw_overview_panel_fig(
     if not len(d_fin):
         return None
 
-    cmap, norm, bounds, cmap_name = _discrete_norm(d_fin, var, vmin, vmax)
+    cmap, norm, bounds, cmap_name = _discrete_norm(
+        d_fin, var, vmin, vmax, var_cmaps=cfg.var_cmaps
+    )
 
     x_pos = np.arange(len(cast_nums), dtype=float)
 
@@ -1352,7 +1375,7 @@ def draw_overview_panel_fig(
     )
     y_bottom = max(p_max_data, p_max_bathy) * 1.05
 
-    fig, ax = plt.subplots(figsize=OVERVIEW_FIGSIZE)
+    fig, ax = plt.subplots(figsize=cfg.overview_figsize)
 
     # Subtle cast-position gridlines drawn before the fill so the fill sits on top.
     # Use multiples of 5 or 10 cast numbers as grid positions.
@@ -1439,6 +1462,7 @@ def draw_all_sections_map_fig(
     legend_outside: bool = False,
     *,
     target_h: float = 4.5,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure showing all section tracks coloured by section."""
     if not sections_data:
@@ -1454,13 +1478,15 @@ def draw_all_sections_map_fig(
     lon_lo, lon_hi = min(finite_lons), max(finite_lons)
     margin = max(0.05, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.12)
     mean_lat = 0.5 * (lat_lo + lat_hi)
-    yl0, yl1, xl0, xl1 = _map_lim(lat_lo, lat_hi, lon_lo, lon_hi, margin)
+    yl0, yl1, xl0, xl1 = _map_lim(
+        lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
+    )
 
     fig, ax = plt.subplots(
         figsize=_geo_figsize(xl0, xl1, yl0, yl1, mean_lat, target_h=target_h, w_max=9.0)
     )
 
-    _gebco_background(ax, yl0, yl1, xl0, xl1)
+    _gebco_background(ax, yl0, yl1, xl0, xl1, gebco_path=cfg.gebco_path)
 
     if all_lats:
         fin = [np.isfinite(y) and np.isfinite(x) for y, x in zip(all_lats, all_lons)]
@@ -1513,6 +1539,8 @@ def draw_timeseries_fig(
     vmin: float | None = None,
     vmax: float | None = None,
     figw: float | None = None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
     """Return a Figure of *var* vs cast time × pressure, both down and upcast."""
     import matplotlib.dates as mdates
@@ -1558,7 +1586,9 @@ def draw_timeseries_fig(
     if not len(d_fin):
         return None
 
-    cmap, norm, bounds, _ = _discrete_norm(d_fin, var, vmin, vmax)
+    cmap, norm, bounds, _ = _discrete_norm(
+        d_fin, var, vmin, vmax, var_cmaps=cfg.var_cmaps
+    )
 
     t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
     n_prof = len(t_mpl)
@@ -1658,7 +1688,9 @@ def draw_timeseries_fig(
     return fig
 
 
-def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_sensor_diff_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a primary minus secondary sensor difference profiles Figure."""
     p = ds["pressure"].values
     _t1 = next((v for v in ("ctd_temperature_1", "temperature_1") if v in ds), None)
@@ -1709,11 +1741,13 @@ def draw_sensor_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
 
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
-    _hide_outer_spines(*axes)
+    _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
-def draw_pressure_time_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_pressure_time_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a pressure vs elapsed time Figure (cast trajectory + bottle stops)."""
     p = ds["pressure"].values
     t_raw = ds["time"].values
@@ -1730,11 +1764,13 @@ def draw_pressure_time_fig(ds: xr.Dataset) -> plt.Figure | None:
     ax.set_xlabel("Elapsed time (min)")
     ax.set_ylabel(vlabel("pressure"))
     ax.grid(True)
-    _hide_outer_spines(ax)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
-def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
+def draw_updown_diff_fig(
+    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a downcast minus upcast profiles Figure: ΔCT, ΔSA, Δσ₀."""
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
@@ -1786,11 +1822,13 @@ def draw_updown_diff_fig(ds: xr.Dataset) -> plt.Figure | None:
         ax.grid(True)
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
-    _hide_outer_spines(*axes)
+    _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
-def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
+def draw_ladcp_bottomtrack_fig(
+    ladcp_path: Path | None, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
     """Return a LADCP bottom-track U and V vs depth Figure."""
     if ladcp_path is None:
         return None
@@ -1825,5 +1863,5 @@ def draw_ladcp_bottomtrack_fig(ladcp_path: Path | None) -> plt.Figure | None:
     xlim = float(np.nanmax(np.abs(np.concatenate([u, v])))) * 1.05
     for ax in axes:
         ax.set_xlim(-xlim, xlim)
-    _hide_outer_spines(*axes)
+    _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
