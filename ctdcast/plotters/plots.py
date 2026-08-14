@@ -1272,7 +1272,9 @@ def draw_section_map_fig(
         )
     )
 
-    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=cfg.gebco_path)
+    gebco = load_gebco(
+        yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=cfg.gebco_path
+    )
     bathy_pc = None
     if gebco is not None:
         lons_b, lats_b, depth_b = gebco

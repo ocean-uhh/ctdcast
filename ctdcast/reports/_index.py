@@ -70,7 +70,7 @@ def report(
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
     dbar_step: int = 1,
-) -> None:
+) -> int:
     """Generate the full ctdcast HTML report suite.
 
     Parameters
@@ -130,8 +130,15 @@ def report(
         plots (default 1, full 1-dbar resolution).  ``build_profiles()``
         always stores 1-dbar data; this controls plot-time resolution only.
 
+    Returns
+    -------
+    int
+        The number of pages that failed to build (0 on full success), so the CLI
+        can exit non-zero when a requested page could not be generated.
+
     """
     cfg = config if config is not None else DEFAULT_REPORT_CONFIG
+    _failed = 0
     gen: dict[str, bool] = {
         "stations": True,
         "sections": True,
@@ -289,6 +296,7 @@ def report(
                 _status = _skip_reason + _ladcp_note
             elif out_page is None:
                 _status = "FAILED"
+                _failed += 1
             elif force:
                 _status = "regenerated (forced)"
             elif _was_new:
@@ -355,6 +363,7 @@ def report(
                 _sec_status = _sec_skip + _sec_note
             elif out_page is None:
                 _sec_status = "FAILED"
+                _failed += 1
             elif force:
                 _sec_status = "regenerated (forced)"
             elif _sec_was_new:
@@ -414,6 +423,7 @@ def report(
                 _ts_status = _ts_skip + _ts_note
             elif out_page is None:
                 _ts_status = "FAILED"
+                _failed += 1
             elif force:
                 _ts_status = "regenerated (forced)"
             elif _ts_was_new:
@@ -497,9 +507,11 @@ def report(
             import traceback
 
             print("  leaflet map: FAILED")
+            _failed += 1
             traceback.print_exc()
 
     print(f"\nReport written to {out_dir}/index.html")
+    return _failed
 
 
 # ---------------------------------------------------------------------------

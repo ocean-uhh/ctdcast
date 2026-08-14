@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+
 from ctdcast.config.parameters import CAST_TAG_WIDTH
 from ctdcast.processors import STAGES, resolve_stage
 
@@ -36,7 +38,7 @@ Examples:
   ctdcast process config.yaml --stage 1 2 3 profiles
   ctdcast process config.yaml --stage profiles
   ctdcast process config.yaml --stage 2 --near-surface-dbar 5
-  ctdcast process config.yaml --stage 1 --cast 42 --force
+  ctdcast process config.yaml --stage 1 --only 42 --force
   ctdcast process config.yaml --stage profiles --gebco /data/GEBCO_2025.nc
 """
     kwargs: dict = {
@@ -73,13 +75,23 @@ Examples:
         help="Overwrite existing output files.",
     )
     parser.add_argument(
-        "--cast",
+        "--only",
+        dest="only",
         type=int,
         nargs="+",
         metavar="N",
         default=None,
         help="Process only these cast number(s). Applies to stages 1–3."
-        " Example: --cast 42  or  --cast 42 43 44",
+        " Example: --only 42  or  --only 42 43 44",
+    )
+    parser.add_argument(
+        "--cast",
+        dest="only",
+        type=int,
+        nargs="+",
+        metavar="N",
+        action=DeprecatedAlias,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--dry-run",
@@ -157,6 +169,7 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast process``."""
+    warn_deprecated(args)
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config not found: {cfg_path}", file=sys.stderr)
@@ -181,7 +194,7 @@ def run(args: argparse.Namespace) -> int:
 
     # Cast filter: set of zero-padded tags, or None for all
     cast_tags: set[str] | None = (
-        {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.cast} if args.cast else None
+        {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.only} if args.only else None
     )
 
     # Pre-flight checks

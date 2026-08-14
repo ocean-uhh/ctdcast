@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -30,7 +32,7 @@ Examples:
   ctdcast convert config.yaml --profiles
 
   # Force reprocess a single cast:
-  ctdcast convert config.yaml --ctd --cast 42 --force
+  ctdcast convert config.yaml --ctd --only 42 --force
 
   # Convert only 1 Hz files (skip 24 Hz variants):
   ctdcast convert config.yaml --ctd --pattern "msm*1sec.cnv"
@@ -84,11 +86,20 @@ Examples:
 
     # Per-cast targeting
     parser.add_argument(
-        "--cast",
+        "--only",
+        dest="only",
         type=int,
         metavar="N",
         default=None,
         help="Convert only the CNV file for cast N (implies --ctd).",
+    )
+    parser.add_argument(
+        "--cast",
+        dest="only",
+        type=int,
+        metavar="N",
+        action=DeprecatedAlias,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--pattern",
@@ -116,6 +127,7 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast convert``."""
+    warn_deprecated(args)
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
@@ -150,7 +162,7 @@ def run(args: argparse.Namespace) -> int:
     profiles_path = Path(profiles_nc_raw) if profiles_nc_raw else None
 
     # Resolve which steps to run
-    if args.cast is not None:
+    if args.only is not None:
         run_ctd, run_profiles, run_ladcp = True, False, False
     elif any([args.ctd, args.profiles, args.ladcp]):
         run_ctd, run_profiles, run_ladcp = args.ctd, args.profiles, args.ladcp
@@ -191,8 +203,8 @@ def run(args: argparse.Namespace) -> int:
             )
         if run_profiles:
             print(f"[dry-run] --profiles: {nc_dir} → {profiles_path}")
-        if args.cast is not None:
-            print(f"[dry-run] --cast {args.cast}: single-cast only")
+        if args.only is not None:
+            print(f"[dry-run] --only {args.only}: single-cast only")
         print(f"[dry-run] force={args.force}")
         return 0
 
@@ -207,7 +219,7 @@ def run(args: argparse.Namespace) -> int:
                 nc_dir,
                 backend=args.backend,
                 force=args.force,
-                cast_filter=args.cast,
+                cast_filter=args.only,
                 pattern=args.pattern,
             )
         except (NotImplementedError, ImportError) as exc:

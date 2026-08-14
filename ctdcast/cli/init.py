@@ -37,7 +37,7 @@ output:
   dir: outputs/ctd_report
 
 # Which page types to generate on a plain 'ctdcast report' run.
-# CLI flags (--stations, --sections, etc.) override these at runtime.
+# CLI flags (--casts, --sections, etc.) override these at runtime.
 generate:
   stations: true
   sections: true

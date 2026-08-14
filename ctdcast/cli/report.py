@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -25,7 +27,7 @@ Examples:
   ctdcast report config.yaml --force
 
   # Quick check of a single new cast:
-  ctdcast report config.yaml --cast 42
+  ctdcast report config.yaml --only 42
 
   # Rebuild section and time series pages after adding 10 new casts:
   ctdcast report config.yaml --sections --timeseries --force
@@ -50,10 +52,18 @@ Examples:
     # Page-type selection
     page = parser.add_argument_group("page selection")
     page.add_argument(
-        "--stations",
+        "--casts",
+        dest="casts",
         action="store_true",
         default=False,
-        help="Generate per-cast station pages.",
+        help="Generate per-cast pages.",
+    )
+    page.add_argument(
+        "--stations",
+        dest="casts",
+        nargs=0,
+        action=DeprecatedAlias,
+        help=argparse.SUPPRESS,
     )
     page.add_argument(
         "--sections",
@@ -79,16 +89,33 @@ Examples:
         default=False,
         help="Generate interactive Leaflet map page.",
     )
+    page.add_argument(
+        "--all",
+        dest="all_pages",
+        action="store_true",
+        default=False,
+        help="Generate every page type.",
+    )
 
     # Per-cast targeting
     parser.add_argument(
-        "--cast",
+        "--only",
+        dest="only",
         type=int,
         nargs="+",
         metavar="N",
         default=None,
-        help="Rebuild station pages for one or more cast numbers (implies --stations). "
-        "Example: --cast 42  or  --cast 42 43 44",
+        help="Rebuild pages for one or more cast numbers (implies --casts). "
+        "Example: --only 42  or  --only 42 43 44",
+    )
+    parser.add_argument(
+        "--cast",
+        dest="only",
+        type=int,
+        nargs="+",
+        metavar="N",
+        action=DeprecatedAlias,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -152,6 +179,7 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast report``."""
+    warn_deprecated(args)
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
@@ -194,9 +222,10 @@ def run(args: argparse.Namespace) -> int:
     gebco_path: Path | None = Path(data["gebco_nc"]) if data.get("gebco_nc") else None
 
     # Resolve which page types to generate.
-    # CLI flags override config; --cast implies stations-only.
+    # CLI flags override config; --only implies casts-only. The internal generate
+    # keys stay "stations" etc. (report()'s API); only the CLI flag names changed.
     cli_page_flags = {
-        "stations": args.stations,
+        "stations": args.casts,
         "sections": args.sections,
         "timeseries": args.timeseries,
         "index": args.index,
@@ -205,7 +234,7 @@ def run(args: argparse.Namespace) -> int:
     any_cli_flag = any(cli_page_flags.values())
     gen_cfg = cfg.get("generate", {})
 
-    if args.cast is not None:
+    if args.only is not None:
         gen: dict[str, bool] = {
             "stations": True,
             "sections": False,
@@ -213,6 +242,8 @@ def run(args: argparse.Namespace) -> int:
             "index": False,
             "map": False,
         }
+    elif args.all_pages:
+        gen = dict.fromkeys(cli_page_flags, True)
     elif any_cli_flag:
         gen = cli_page_flags
     else:
@@ -234,8 +265,8 @@ def run(args: argparse.Namespace) -> int:
         print(f"[dry-run] out_dir: {out_dir}")
         print(f"[dry-run] pages: {[k for k, v in gen.items() if v]}")
         print(f"[dry-run] force={force} skip_existing={skip_existing}")
-        if args.cast is not None:
-            print(f"[dry-run] --cast {args.cast}: rebuild station page only")
+        if args.only is not None:
+            print(f"[dry-run] --only {args.only}: rebuild cast page only")
         return 0
 
     # Build the frozen display config once and pass it down (no module globals).
@@ -272,7 +303,7 @@ def run(args: argparse.Namespace) -> int:
 
     from ctdcast.reports._index import report
 
-    report(
+    failed = report(
         nc_dir,
         out_dir,
         profiles_path=profiles_path,
@@ -289,9 +320,12 @@ def run(args: argparse.Namespace) -> int:
         vmax_override=vmax_override,
         cruise_info=cruise_info,
         config=report_config,
-        cast_filter=args.cast,
+        cast_filter=args.only,
         sal_range=(args.sal[0], args.sal[1]) if args.sal else None,
         trim_soak=args.trim_soak,
         dbar_step=args.dbar_step,
     )
+    if failed:
+        print(f"\n{failed} page(s) failed to build.", file=sys.stderr)
+        return 1
     return 0

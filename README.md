@@ -78,7 +78,7 @@ ctdcast validate config.yaml        # check paths before the first run
 ```bash
 ctdcast run config.yaml             # smart update — skips up-to-date pages
 ctdcast run config.yaml --force     # rebuild everything
-ctdcast run config.yaml --cast 42   # rebuild one cast page
+ctdcast run config.yaml --only 42   # rebuild one cast page
 ```
 
 Open `<output.dir>/index.html` in any browser.
