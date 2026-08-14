@@ -42,6 +42,8 @@ def _manages_own_layout(fig: Any) -> bool:
     instead — or, for an aspect-locked figure that is exempt from the exact-width
     invariant, an explicit ``bbox_inches="tight"`` in :func:`_fig_to_base64`.
     """
+    if getattr(fig, "_manual_layout", False):
+        return True
     engine = getattr(fig.get_layout_engine(), "__class__", None)
     if engine is not None and "Constrained" in engine.__name__:
         return True

@@ -138,8 +138,9 @@ def _make_station_map_b64(
 ) -> str | None:
     """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
 
-    *target_h* controls the figure height in inches; width is computed from the
-    geographic aspect ratio via :func:`_geo_figsize`.
+    The figure is laid out deterministically at a fixed slot width (see
+    :func:`~ctdcast.plotters.plots._map_layout`); *target_h* is retained for
+    call-site compatibility but no longer sets the size.
     """
     return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h, cfg=cfg)
 
@@ -484,7 +485,13 @@ def _make_section_map_b64(
     axis and suppresses the N-S-section guard (use for co-located timeseries
     maps where lat and lon margins should be set independently for a
     Mercator-square view).
+
+    The co-located/timeseries case (*min_margin_lon* set) renders at one-third
+    width; the section case (no *min_margin_lon*) renders at half width.
     """
+    fig_w = (
+        report_tokens.W_THIRD if min_margin_lon is not None else report_tokens.W_HALF
+    )
     return render_b64(
         draw_section_map_fig,
         lats,
@@ -493,6 +500,7 @@ def _make_section_map_b64(
         title=title,
         min_margin=min_margin,
         min_margin_lon=min_margin_lon,
+        fig_w=fig_w,
         cfg=cfg,
     )
 
@@ -577,7 +585,7 @@ def _make_all_sections_map_b64(
                 return None
             fig_result.tight_layout()
             if legend_outside:
-                fig_result.subplots_adjust(right=0.72)
+                fig_result.subplots_adjust(bottom=0.22)
             # Aspect-locked map, exempt from the exact-width invariant: crop to
             # content so the legend anchored east of the axes is not clipped by
             # the fixed canvas.
