@@ -42,6 +42,7 @@ from ctdcast.config.report_tokens import (
     W_TWO_FIFTHS as _W_TWO_FIFTHS,
     W_TWOTHIRDS as _W_TWOTHIRDS,
 )
+from ctdcast.plotters.primitives import mesh_field, sigma0_isopycnals
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
 
@@ -893,16 +894,18 @@ def draw_section_fig(
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    if style == "contourf":
-        X, Y = np.meshgrid(x_vals, p_trim)
-        Z = np.ma.masked_invalid(data_trim.T)
-        cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-        cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
-    else:
-        pc = ax.pcolormesh(
-            x_vals, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
-        )
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
+    cb = mesh_field(
+        ax,
+        fig,
+        x_vals,
+        p_trim,
+        data_trim,
+        cmap=cmap,
+        norm=norm,
+        cmap_name=cmap_name,
+        bounds=bounds,
+        style=style,
+    )
 
     if bathy_depths is not None:
         bx = (
@@ -915,19 +918,7 @@ def draw_section_fig(
             ax.fill_between(bx, bathy_depths, y_bottom, color="black", step=step, lw=0)
 
     if var == "sigma0":
-        try:
-            _iso = ax.contour(
-                x_vals,
-                p_trim,
-                data_trim.T,
-                levels=[27.7, 27.8],
-                colors="k",
-                linewidths=0.4,
-                linestyles="solid",
-            )
-            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
-        except Exception:  # noqa: BLE001, S110
-            pass
+        sigma0_isopycnals(ax, x_vals, p_trim, data_trim)
 
     cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
@@ -1390,34 +1381,24 @@ def draw_overview_panel_fig(
                 x_pos[cn_i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0
             )
 
-    if style == "contourf":
-        X, Y = np.meshgrid(x_pos, p_trim)
-        Z = np.ma.masked_invalid(data_trim.T)
-        cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-        cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
-    else:
-        pc = ax.pcolormesh(
-            x_pos, p_trim, data_trim.T, cmap=cmap, norm=norm, shading="nearest"
-        )
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
+    cb = mesh_field(
+        ax,
+        fig,
+        x_pos,
+        p_trim,
+        data_trim,
+        cmap=cmap,
+        norm=norm,
+        cmap_name=cmap_name,
+        bounds=bounds,
+        style=style,
+    )
 
     if bathy_depths is not None:
         ax.fill_between(x_pos, bathy_depths, y_bottom, color="black", step="mid", lw=0)
 
     if var == "sigma0":
-        try:
-            _iso = ax.contour(
-                x_pos,
-                p_trim,
-                data_trim.T,
-                levels=[27.7, 27.8],
-                colors="k",
-                linewidths=0.4,
-                linestyles="solid",
-            )
-            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
-        except Exception:  # noqa: BLE001, S110
-            pass
+        sigma0_isopycnals(ax, x_pos, p_trim, data_trim)
 
     # Open triangle markers above top axis for casts belonging to each group
     if cast_groups:
@@ -1638,19 +1619,7 @@ def draw_timeseries_fig(
     cb.set_label(label)
 
     if var == "sigma0":
-        try:
-            _iso = ax.contour(
-                x_for_contour,
-                p_trim,
-                data_trim.T,
-                levels=[27.7, 27.8],
-                colors="k",
-                linewidths=0.4,
-                linestyles="solid",
-            )
-            ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
-        except Exception:  # noqa: BLE001, S110
-            pass
+        sigma0_isopycnals(ax, x_for_contour, p_trim, data_trim)
 
     # ▼ for downcast, △ for upcast floating above axes; cast number above each downcast
     trans = ax.get_xaxis_transform()
