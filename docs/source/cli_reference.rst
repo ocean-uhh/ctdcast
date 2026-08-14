@@ -138,16 +138,18 @@ Convert raw data to netCDF inputs without generating HTML.
 
    options:
      --backend NAME   CTD conversion backend (currently only 'seasenselib')
-     --cast N         Convert only cast N (implies --ctd)
+     --only N         Convert only cast N (implies --ctd)
      --force          Overwrite existing output files
      --dry-run        Print what would be done without writing any files
+
+   (The former ``--cast`` spelling still works as a deprecated alias for ``--only``.)
 
 **Examples**::
 
    ctdcast convert config.yaml                  # build profiles.nc (default)
    ctdcast convert config.yaml --ctd            # CNV → nc, then profiles.nc
    ctdcast convert config.yaml --profiles       # rebuild profiles.nc only
-   ctdcast convert config.yaml --ctd --cast 42  # convert one cast
+   ctdcast convert config.yaml --ctd --only 42  # convert one cast
    ctdcast convert config.yaml --dry-run
 
 ----

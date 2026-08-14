@@ -73,7 +73,8 @@ See :doc:`config_reference` for a description of what each file must contain.
 Edit config.yaml
 ----------------
 
-Copy the example ``config.yaml`` from the repository and adjust the paths:
+Generate a template with ``ctdcast init`` (it writes a commented ``config.yaml`` in
+the current directory), then adjust the paths:
 
 .. code-block:: yaml
 

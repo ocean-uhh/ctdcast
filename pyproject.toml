@@ -53,6 +53,7 @@ docs = [
     "myst-parser>=2.0",
 ]
 test = ["pytest>=8", "pytest-cov>=5"]
+dev = ["ctdcast[test,docs]", "ruff>=0.3"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "B", "BLE", "ARG"]

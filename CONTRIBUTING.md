@@ -69,8 +69,7 @@ travels with the code rather than living only in a file nobody reads. See
 git clone https://github.com/ocean-uhh/ctdcast.git
 cd ctdcast
 python -m venv venv && source venv/bin/activate      # or conda
-pip install -r requirements-dev.txt
-pip install -e .
+pip install -e ".[dev]"                              # runtime + test + docs + ruff
 ```
 
 Python 3.10–3.13 are supported; CI tests 3.10 and 3.13 on Linux, macOS and

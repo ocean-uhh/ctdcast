@@ -29,7 +29,7 @@ cd ctdcast
 python -m venv venv
 source venv/bin/activate        # macOS / Linux
 # venv\Scripts\activate         # Windows
-pip install -e .
+pip install -e ".[dev]"         # runtime + tests + docs + ruff
 ```
 
 Dependencies: `gsw`, `matplotlib`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `scipy`

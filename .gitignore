@@ -39,3 +39,6 @@ demo_report/
 *.nc
 # Exceptions: committed test fixtures
 !tests/fixtures/**/*.nc
+
+# Local runtime config (generate with `ctdcast init`)
+config.yaml
