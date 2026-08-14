@@ -583,13 +583,11 @@ def _make_all_sections_map_b64(
             )
             if fig_result is None:
                 return None
-            fig_result.tight_layout()
-            if legend_outside:
-                fig_result.subplots_adjust(bottom=0.22)
-            # Aspect-locked map, exempt from the exact-width invariant: crop to
-            # content so the legend anchored east of the axes is not clipped by
-            # the fixed canvas.
-            return _fig_to_base64(fig_result, bbox_inches="tight")
+            # draw_all_sections_map_fig lays the figure out deterministically
+            # (fixed slot width, colorbar + south legend in reserved space), so save
+            # the full canvas — no tight_layout (which would warn and re-flow the
+            # hand-placed axes) and no bbox crop (which would break the slot width).
+            return _fig_to_base64(fig_result)
     except Exception:
         if report_tokens.RAISE_ON_PLOT_ERROR:
             raise

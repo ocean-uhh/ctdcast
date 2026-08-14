@@ -87,19 +87,22 @@ def _png_manifest(html_root: Path) -> dict[str, str]:
 @pytest.mark.slow
 def test_panel_pngs_match_baseline(tmp_path: Path) -> None:
     """Every embedded panel PNG is byte-identical to the committed-locally baseline."""
-    _render_full_report(tmp_path)
-    current = _png_manifest(tmp_path)
-    assert current, "no PNGs found in the generated report"
-
-    if os.environ.get("GOLDEN_WRITE"):
-        _BASELINE.write_text(json.dumps(current, indent=2, sort_keys=True))
-        pytest.skip(f"wrote baseline: {len(current)} panel PNGs")
-
-    if not _BASELINE.exists():
+    write = bool(os.environ.get("GOLDEN_WRITE"))
+    # Skip *before* the expensive full-report render when there is nothing to compare
+    # against and we are not writing a baseline (the usual case in CI / fresh checkouts).
+    if not write and not _BASELINE.exists():
         pytest.skip(
             "no tests/golden/baseline.json — snapshot it first with "
             "GOLDEN_WRITE=1 pytest tests/golden/ (on the pre-refactor tree)"
         )
+
+    _render_full_report(tmp_path)
+    current = _png_manifest(tmp_path)
+    assert current, "no PNGs found in the generated report"
+
+    if write:
+        _BASELINE.write_text(json.dumps(current, indent=2, sort_keys=True))
+        pytest.skip(f"wrote baseline: {len(current)} panel PNGs")
 
     baseline = json.loads(_BASELINE.read_text())
     added = sorted(set(current) - set(baseline))
