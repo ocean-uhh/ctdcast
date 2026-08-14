@@ -75,6 +75,7 @@ def generate_timeseries_page(
     dbar_step: int = 1,
     prev_name: str | None = None,
     next_name: str | None = None,
+    cruise_info: dict[str, Any] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
@@ -171,10 +172,16 @@ def generate_timeseries_page(
         if _key not in cast_id_strs:
             cast_id_strs.append(_key)
 
-    cruise: str = ds_all.attrs.get("cruise", UNKNOWN_CRUISE_ID)
-    ship: str = ds_all.attrs.get(
-        "ship",
-        ds_all.attrs.get("platform", ds_all.attrs.get("vessel", "UNK")),
+    _ci = cruise_info or {}
+    cruise: str = (
+        _ci.get("cruise_id") or ds_all.attrs.get("cruise") or UNKNOWN_CRUISE_ID
+    )
+    ship: str = (
+        _ci.get("ship")
+        or ds_all.attrs.get("ship")
+        or ds_all.attrs.get("platform")
+        or ds_all.attrs.get("vessel")
+        or "UNK"
     )
     n_profiles = int(mask.sum())
     n_casts = len(cast_nums)

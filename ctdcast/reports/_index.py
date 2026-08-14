@@ -357,6 +357,7 @@ def report(
                 dbar_step=dbar_step,
                 prev_name=_sec_prev,
                 next_name=_sec_next,
+                cruise_info=cruise_info,
                 cfg=cfg,
             )
             if _sec_skip:
@@ -417,6 +418,7 @@ def report(
                 dbar_step=dbar_step,
                 prev_name=_ts_prev,
                 next_name=_ts_next,
+                cruise_info=cruise_info,
                 cfg=cfg,
             )
             if _ts_skip:

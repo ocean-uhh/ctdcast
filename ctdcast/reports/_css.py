@@ -103,7 +103,7 @@ p, li {{ max-width: 78ch; }}
   padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
 }}
 .masthead h1 {{ margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }}
-.masthead .sub {{ font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; }}
+.masthead .sub {{ font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }}
 .wordmark {{
   position: absolute; right: 2rem; bottom: 1.2rem;
   font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;

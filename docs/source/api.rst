@@ -34,6 +34,16 @@ dataset lacks the required variables).
    :members:
    :undoc-members:
 
+Layer-1 primitives
+------------------
+
+``ax``-taking primitives that draw into a caller-supplied axes and create no Figure, so
+a panel shared by more than one page type has a single implementation.
+
+.. automodule:: ctdcast.plotters.primitives
+   :members:
+   :undoc-members:
+
 Base64 encoders
 ---------------
 
