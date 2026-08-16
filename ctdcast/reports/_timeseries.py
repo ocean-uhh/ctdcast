@@ -42,7 +42,7 @@ from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
-    Panel,
+    RenderedPanel,
     _make_ladcp_section_b64,
     _make_section_map_b64,
     _make_timeseries_b64,
@@ -258,7 +258,7 @@ def generate_timeseries_page(
         *,
         optional: bool = False,
         canonical: str | None = None,
-    ) -> Panel:
+    ) -> RenderedPanel:
         # Look up color limits by resolved name first, then by the canonical
         # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
         _key = canonical or var
@@ -275,7 +275,7 @@ def generate_timeseries_page(
             optional=optional,
             cfg=cfg,
         )
-        return Panel(b64=b64, title=label, short=short)
+        return RenderedPanel(b64=b64, title=label, short=short)
 
     physics_panels = [
         _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_PHYSICS_VARS
@@ -294,7 +294,7 @@ def generate_timeseries_page(
     _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts, cfg=cfg)
 
     # LADCP: use downcast profiles only, x-axis = hours since first cast
-    _ladcp_ts_panels: list[Panel] = []
+    _ladcp_ts_panels: list[RenderedPanel] = []
     if ladcp_dir is not None:
         ladcp_cast_nums = [int(c) for c in ds_down["cast_number"].values]
         ladcp_lats = ds_down["latitude"].values.tolist()
@@ -331,7 +331,7 @@ def generate_timeseries_page(
             "id": "ts",
             "title": "T–S diagram (profiles coloured by time)",
             "short": "T–S diagram",
-            "panels": [Panel(b64=_ts_diagram_b64, title="T–S diagram")],
+            "panels": [RenderedPanel(b64=_ts_diagram_b64, title="T–S diagram")],
         }
         if _ts_diagram_b64
         else None,

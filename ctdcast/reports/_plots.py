@@ -5,7 +5,7 @@ Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in
 custom wrapper instead of :func:`render_b64`: ``_make_all_sections_map_b64`` still
 delegates drawing to its ``draw_*_fig`` but needs a post-``tight_layout``
 adjustment, and ``_make_ladcp_section_b64`` does its own plotting because it
-returns a list of :class:`Panel` rather than a single figure.
+returns a list of :class:`RenderedPanel` rather than a single figure.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ from ctdcast.reports._figdebug import render_b64
 
 
 @dataclasses.dataclass(frozen=True)
-class Panel:
+class RenderedPanel:
     """A rendered figure plus the layout metadata the HTML template needs."""
 
     b64: str | None
@@ -243,8 +243,8 @@ def _make_ladcp_section_b64(
     style: str = "pcolormesh",
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> list[Panel]:
-    """Return a list of ``Panel`` objects for LADCP U and V sections.
+) -> list[RenderedPanel]:
+    """Return a list of ``RenderedPanel`` objects for LADCP U and V sections.
 
     Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
     Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
@@ -343,7 +343,7 @@ def _make_ladcp_section_b64(
             )
             y_bottom = max(z_max, bathy_max) * 1.05
 
-            panels: list[Panel] = []
+            panels: list[RenderedPanel] = []
             for grid_data, panel_title, panel_short, panel_label in (
                 (u_grid, "U velocity (east +)", "U", "U  East +"),
                 (v_grid, "V velocity (north +)", "V", "V  North +"),
@@ -414,7 +414,7 @@ def _make_ladcp_section_b64(
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_section_b64", fig)
                 panels.append(
-                    Panel(b64=_panel_b64, title=panel_title, short=panel_short)
+                    RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
                 )
                 plt.close(fig)
 

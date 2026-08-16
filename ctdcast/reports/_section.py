@@ -38,7 +38,7 @@ from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
-    Panel,
+    RenderedPanel,
     _make_ladcp_section_b64,
     _make_section_b64,
     _make_section_map_b64,
@@ -287,7 +287,7 @@ def generate_section_page(
         *,
         optional: bool = False,
         canonical: str | None = None,
-    ) -> Panel:
+    ) -> RenderedPanel:
         # Look up color limits by resolved name first, then by the canonical
         # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
         _key = canonical or var
@@ -309,7 +309,7 @@ def generate_section_page(
             optional=optional,
             cfg=cfg,
         )
-        return Panel(b64=b64, title=label, short=short)
+        return RenderedPanel(b64=b64, title=label, short=short)
 
     physics_panels = [
         _section_panel(v, vlabel(v), VARIABLES[v]["label"])
@@ -327,17 +327,17 @@ def generate_section_page(
     ]
 
     _ts_panels_raw = [
-        Panel(
+        RenderedPanel(
             title="Profiles coloured by distance",
             short="Profiles",
             b64=_make_section_ts_profiles_b64(ds_sec, x_vals, cfg=cfg),
         ),
-        Panel(
+        RenderedPanel(
             title="2-D histogram (log count)",
             short="Histogram",
             b64=_make_section_ts_histogram_b64(ds_sec, cfg=cfg),
         ),
-        Panel(
+        RenderedPanel(
             title="Median O₂ saturation",
             short="O₂",
             b64=_make_section_ts_o2_b64(ds_sec, cfg=cfg),
