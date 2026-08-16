@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% set masthead_bg = "var(--role-collection)" %}
 
 {% block title %}Station index — {{ cruise }}{% endblock %}
@@ -6,18 +7,15 @@
 
 {% block head_extra %}
 <style>
-/* Stations index */
-table { width: 100%; border-collapse: collapse; font-size: var(--fs-meta); white-space: nowrap; overflow-x: auto; display: block; }
-th {
-  background: var(--ocean); color: #fff; padding: 0.5rem 0.75rem;
-  text-align: left; position: sticky; top: 0; z-index: 1;
-}
-td { padding: 0.42rem 0.75rem; border-bottom: 1px solid var(--gray-2); vertical-align: middle; }
+/* Stations index — interactive, scrollable cast list. Base table/th/td colours come
+   from the canonical stylesheet; only the scroll + sticky + hover specials live here. */
+table { white-space: nowrap; overflow-x: auto; display: block; }
+th { position: sticky; top: 0; z-index: 1; }
+td { vertical-align: middle; }
 tbody tr { cursor: pointer; }
 tbody tr:hover td { background: var(--seafoam); }
   .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
   .cast-link:hover { text-decoration: underline; }
-  .filename { font-family: var(--font-mono); font-size: var(--fs-note); color: var(--gray-6); }
   .depth-pill {
     display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
     font-size: var(--fs-nav); font-weight: 600; white-space: nowrap;
@@ -52,6 +50,7 @@ tbody tr:hover td { background: var(--seafoam); }
 <div class="fig-row">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
+    {{- m.dbg(cruise_map_b64, "slot-half") }}
   </figure>
 </div>
 {% endif %}
@@ -63,8 +62,8 @@ tbody tr:hover td { background: var(--seafoam); }
         <th>Cast</th>
         <th>File</th>
         <th>Start (UTC)</th>
-        <th>Latitude</th>
-        <th>Longitude</th>
+        <th class="num">Latitude</th>
+        <th class="num">Longitude</th>
         <th>Depth</th>
         {% if ladcp_configured %}<th>LADCP</th>{% endif %}
         <th>Links</th>
@@ -74,10 +73,10 @@ tbody tr:hover td { background: var(--seafoam); }
     {% for s in stations %}
       <tr onclick="window.location='casts/cast_{{ s.cast_num }}.html'">
         <td><a class="cast-link" href="casts/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a></td>
-        <td class="filename">{{ s.filename }}</td>
+        <td class="mono">{{ s.filename }}</td>
         <td>{{ s.time_start_str }}</td>
-        <td>{{ s.lat_str }}</td>
-        <td>{{ s.lon_str }}</td>
+        <td class="num">{{ s.lat_str }}</td>
+        <td class="num">{{ s.lon_str }}</td>
         <td><span class="depth-pill" style="background:{{ s.depth_bg }};color:{{ s.depth_fg }};">{{ s.max_depth_str }} dbar</span></td>
         {% if ladcp_configured %}
         <td>{% if s.ladcp_has %}<span class="ladcp-yes">✓</span>{% else %}<span class="ladcp-no">–</span>{% endif %}</td>

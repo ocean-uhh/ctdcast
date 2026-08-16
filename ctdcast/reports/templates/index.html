@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% set masthead_bg = "var(--role-landing)" %}
 
 {% block title %}CTD Report — {{ cruise }}{% endblock %}
@@ -31,6 +32,7 @@
 <div class="fig-row" style="justify-content:center;">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
+    {{- m.dbg(fig_map_b64, "slot-half") }}
   </figure>
 </div>
 {% endif %}
@@ -42,6 +44,7 @@
 <div class="fig-row">
   <figure class="slot-full">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, "slot-full") }}
   </figure>
 </div>
 {% endif %}{% endfor %}
@@ -54,6 +57,7 @@
 <div class="fig-row">
   <figure class="slot-full">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, "slot-full") }}
   </figure>
 </div>
 {% endif %}{% endfor %}
@@ -65,6 +69,7 @@
 <div class="fig-row">
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">
+    {{- m.dbg(ts_b64, "slot-third") }}
   </figure>
 </div>
 {% endif %}

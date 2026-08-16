@@ -1,0 +1,5 @@
+{# Shared template macros. #}
+{# Per-figure debug line: renders only when CTDCAST_REPORT_DEBUG is set (figdbg() then
+   returns a non-empty string). Guarding on figdbg() rather than a debug flag means the
+   macro needs no `with context` and is a true no-op when off. #}
+{% macro dbg(b64, slot) %}{% set d = figdbg(b64) %}{% if d %}<div class="debug">slot: {{ slot }}  |  {{ d }}</div>{% endif %}{% endmacro %}

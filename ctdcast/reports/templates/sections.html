@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% set masthead_bg = "var(--role-aggregate-a)" %}
 
 {% block title %}Sections — {{ cruise }}{% endblock %}
@@ -47,6 +48,7 @@
 <div class="fig-row">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ sections_map_b64 }}" alt="Sections overview map">
+    {{- m.dbg(sections_map_b64, "slot-half") }}
   </figure>
 </div>
 {% endif %}

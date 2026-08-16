@@ -55,7 +55,13 @@ from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp
 
 from ctdcast.config import report_tokens
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
-from ctdcast.reports._encode import _fig_to_base64, render_b64
+from ctdcast.reports._encode import _fig_to_base64
+
+# render_b64 is imported from _figdebug (a package-local wrapper around the vendored
+# encoder) so figures are geometry-recorded when CTDCAST_REPORT_DEBUG is set; it delegates
+# straight to the encoder when off.
+from ctdcast.reports._figdebug import record as _figdebug_record
+from ctdcast.reports._figdebug import render_b64
 
 
 @dataclasses.dataclass(frozen=True)
@@ -405,8 +411,10 @@ def _make_ladcp_section_b64(
                 )
                 _hide_outer_spines(ax, clean=cfg.clean_spines)
                 fig.tight_layout()
+                _panel_b64 = _fig_to_base64(fig)
+                _figdebug_record(_panel_b64, "_make_ladcp_section_b64", fig)
                 panels.append(
-                    Panel(b64=_fig_to_base64(fig), title=panel_title, short=panel_short)
+                    Panel(b64=_panel_b64, title=panel_title, short=panel_short)
                 )
                 plt.close(fig)
 
@@ -587,7 +595,9 @@ def _make_all_sections_map_b64(
             # (fixed slot width, colorbar + south legend in reserved space), so save
             # the full canvas — no tight_layout (which would warn and re-flow the
             # hand-placed axes) and no bbox crop (which would break the slot width).
-            return _fig_to_base64(fig_result)
+            b64 = _fig_to_base64(fig_result)
+            _figdebug_record(b64, "_make_all_sections_map_b64", fig_result)
+            return b64
     except Exception:
         if report_tokens.RAISE_ON_PLOT_ERROR:
             raise

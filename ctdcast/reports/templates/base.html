@@ -6,6 +6,13 @@
 <title>{% block title %}CTD Report{% endblock %}</title>
 <style>
 {{ css | safe }}
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
 </style>
 {% block head_extra %}{% endblock %}
 </head>
