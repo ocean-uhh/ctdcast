@@ -134,6 +134,18 @@ def test_run_stage3_dry_run(tmp_path: Path) -> None:
     assert (nc_dir / "mixsed2_011.nc").stat().st_mtime == mtime_before
 
 
+def test_run_stage2_nc_dir_not_found(tmp_path: Path) -> None:
+    """stage2.run raises FileNotFoundError when nc_dir does not exist."""
+    with pytest.raises(FileNotFoundError):
+        stage2_run(tmp_path / "missing", dry_run=True)
+
+
+def test_run_stage3_nc_dir_not_found(tmp_path: Path) -> None:
+    """stage3.run raises FileNotFoundError when nc_dir does not exist."""
+    with pytest.raises(FileNotFoundError):
+        stage3_run(tmp_path / "missing", dry_run=True)
+
+
 def test_run_profiles_dry_run(tmp_path: Path) -> None:
     """profiles.run dry_run returns False and writes nothing."""
     nc_dir = tmp_path / "nc"

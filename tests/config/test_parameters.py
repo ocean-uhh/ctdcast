@@ -6,6 +6,10 @@ These tests protect against silent drift between tables that must agree.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import xarray as xr
+
 from ctdcast.config.parameters import (
     _VAR_CMAPS,
     CCHDO_COMPOSITE,
@@ -16,7 +20,10 @@ from ctdcast.config.parameters import (
     SECTION_PHYSICS_VARS,
     VAR_COLORS,
     VARIABLES,
+    resolve_sensor_var,
 )
+
+_FIXTURE_NC = Path(__file__).resolve().parents[1] / "fixtures" / "nc" / "mixsed2_011.nc"
 
 
 def test_var_cmaps_derived_from_variables() -> None:
@@ -118,3 +125,20 @@ def test_load_display_config_empty_cruise_cfg() -> None:
 
     merged = load_display_config({})
     assert merged["ctd_temperature_1"]["vmin"] == VARIABLES["ctd_temperature_1"]["vmin"]
+
+
+def test_resolve_sensor_var_all_branches() -> None:
+    """resolve_sensor_var resolves single/dual-sensor names against a real cast.
+
+    Uses the actual variable names in a fixture cast (``ctd_oxygen`` stored plain,
+    ``ctd_temperature_1`` stored suffixed) to exercise every branch.
+    """
+    with xr.open_dataset(_FIXTURE_NC, engine="netcdf4") as ds:
+        # present as-is
+        assert resolve_sensor_var(ds, "pressure") == "pressure"
+        # suffixed requested but only the plain form is present -> plain
+        assert resolve_sensor_var(ds, "ctd_oxygen_1") == "ctd_oxygen"
+        # plain requested but only the _1 form is present -> _1
+        assert resolve_sensor_var(ds, "ctd_temperature") == "ctd_temperature_1"
+        # neither form present -> returned unchanged
+        assert resolve_sensor_var(ds, "not_a_real_variable") == "not_a_real_variable"

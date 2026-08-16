@@ -26,6 +26,7 @@ from ctdcast.config.parameters import (
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
     VARIABLES,
+    resolve_sensor_var,
     vlabel,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
@@ -144,7 +145,7 @@ def generate_section_page(
     is_down = ds_all["cast_type"].values == "down"
     down_idx_by_id: dict[tuple[int, str], int] = {}
     pos_by_id: dict[tuple[int, str], tuple[float, float]] = {}
-    for i, (n, s, d) in enumerate(zip(all_cast_nums, all_suffix, is_down)):
+    for i, (n, s, d) in enumerate(zip(all_cast_nums, all_suffix, is_down, strict=True)):
         cid = (int(n), str(s))
         pos_by_id.setdefault(cid, (float(all_lats[i]), float(all_lons[i])))
         if d:
@@ -236,7 +237,8 @@ def generate_section_page(
     # Suffixed ids ("010", "010b") for links/pills so a sibling event points at
     # its own cast page.
     cast_id_strs = [
-        format_cast_id(int(n), s) for n, s in zip(sec_cast_nums, sec_cast_suffix)
+        format_cast_id(int(n), s)
+        for n, s in zip(sec_cast_nums, sec_cast_suffix, strict=True)
     ]
     vmin = vmin_override or {}
     vmax = vmax_override or {}
@@ -309,29 +311,13 @@ def generate_section_page(
         )
         return Panel(b64=b64, title=label, short=short)
 
-    def _resolve_section_var(var: str) -> str:
-        """Return the name to use for *var* in ds_sec.
-
-        Handles the single/dual-sensor naming rule: ctd_oxygen_1 → ctd_oxygen
-        when only one sensor is present (and vice versa).
-        """
-        if var in ds_sec:
-            return var
-        # Suffixed var not found; try the plain (single-sensor) form
-        if var.endswith("_1") and var[:-2] in ds_sec:
-            return var[:-2]
-        # Plain var not found; try the suffixed form
-        if not var.endswith(("_1", "_2")) and f"{var}_1" in ds_sec:
-            return f"{var}_1"
-        return var  # not found; draw_section_fig will return None
-
     physics_panels = [
         _section_panel(v, vlabel(v), VARIABLES[v]["label"])
         for v in SECTION_PHYSICS_VARS
     ]
     biogeo_panels = [
         _section_panel(
-            _resolve_section_var(v),
+            resolve_sensor_var(ds_sec, v),
             vlabel(v),
             VARIABLES[v]["label"],
             optional=True,

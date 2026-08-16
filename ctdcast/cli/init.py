@@ -540,7 +540,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
                 "end_date": str(_ci.get("end_date", "") or ""),
             }
             print(f"(Pre-filling from existing {initial.name})\n")
-        except Exception:  # noqa: BLE001,S110
+        except Exception:  # noqa: BLE001
             pass
 
     config_path = _resolve_output_path(initial, args.force)

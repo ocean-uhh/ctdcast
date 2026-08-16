@@ -69,7 +69,9 @@ def _bin_cast(ds_cast: xr.Dataset, p_grid: np.ndarray) -> dict[str, np.ndarray]:
     result: dict[str, np.ndarray] = {}
     for var in data_cols:
         arr = np.full(len(p_grid), np.nan, dtype=np.float32)
-        for p_val, row_val in zip(grouped.index.values, grouped[var].values):
+        for p_val, row_val in zip(
+            grouped.index.values, grouped[var].values, strict=True
+        ):
             idx = p_val - p0
             if 0 <= idx < len(p_grid):
                 arr[idx] = np.float32(row_val)

@@ -239,7 +239,7 @@ def _map_layout(
     fig = plt.figure(figsize=(fig_w, fig_h))
     # Explicit add_axes layout — tell the encoder to skip tight_layout (which would
     # both warn and fight these hand-placed axes).
-    fig._manual_layout = True  # noqa: SLF001
+    fig._manual_layout = True
     ax = fig.add_axes(
         [_MAP_LEFT_IN / fig_w, bottom_in / fig_h, map_w_in / fig_w, map_h_in / fig_h]
     )
@@ -480,7 +480,7 @@ def draw_ts_density_fig(
         ax2.spines["top"].set_position(("axes", 1.12))
         ax1.spines["top"].set_visible(True)
         ax2.spines["top"].set_visible(True)
-        for ax, line in zip((ax0, ax1, ax2), (l0, l1, l2)):
+        for ax, line in zip((ax0, ax1, ax2), (l0, l1, l2), strict=True):
             ax.xaxis.label.set_color(line.get_color())
             ax.tick_params(axis="x", colors=line.get_color())
             ax.spines["top"].set_edgecolor(line.get_color())
@@ -532,7 +532,7 @@ def draw_ts_density_fig(
     ax1.spines["top"].set_visible(True)
     ax2.spines["top"].set_visible(True)
 
-    for ax, line in zip((ax_ctd, ax1, ax2), (l0, l1, l2)):
+    for ax, line in zip((ax_ctd, ax1, ax2), (l0, l1, l2), strict=True):
         ax.xaxis.label.set_color(line.get_color())
         ax.tick_params(axis="x", colors=line.get_color())
         ax.spines["top"].set_edgecolor(line.get_color())
@@ -703,7 +703,7 @@ def draw_aux_profiles_fig(
 
     p_down = ds_down["pressure"].values
     max_p = float(np.nanmax(p_down))
-    for ax, (var, label) in zip(axes, available):
+    for ax, (var, label) in zip(axes, available, strict=True):
         color = VAR_COLORS.get(var, "#000000")
         ax.plot(ds_down[var].values, p_down, color=color, label="downcast")
         if var in ds_up and len(ds_up["pressure"]) > 2:
@@ -747,7 +747,7 @@ def draw_ct_sa_sigma0_fig(
     p_down = ds_down["pressure"].values
     max_p = float(np.nanmax(p_down))
 
-    for ax, (var, label) in zip(axes, available):
+    for ax, (var, label) in zip(axes, available, strict=True):
         color = VAR_COLORS.get(var, "#000000")
         d_vals = ds_down[var].values
         d_fin = d_vals[np.isfinite(d_vals)]
@@ -1433,7 +1433,7 @@ def draw_section_map_fig(
     )
     # A single-location timeseries stacks every cast on one point — label only the
     # first and last so the numbers don't overwrite each other.
-    _pts = list(zip(lons_arr, lats_arr, cast_nums))
+    _pts = list(zip(lons_arr, lats_arr, cast_nums, strict=True))
     _show = {0, len(_pts) - 1} if min_margin_lon is not None else set(range(len(_pts)))
     for i, (x, y, n) in enumerate(_pts):
         if i not in _show:
@@ -1603,10 +1603,13 @@ def draw_all_sections_map_fig(
     map_panel(ax, cax, xl0, xl1, yl0, yl1, cfg=cfg)
 
     if all_lats:
-        fin = [np.isfinite(y) and np.isfinite(x) for y, x in zip(all_lats, all_lons)]
+        fin = [
+            np.isfinite(y) and np.isfinite(x)
+            for y, x in zip(all_lats, all_lons, strict=True)
+        ]
         ax.scatter(
-            [x for x, f in zip(all_lons, fin) if f],
-            [y for y, f in zip(all_lats, fin) if f],
+            [x for x, f in zip(all_lons, fin, strict=True) if f],
+            [y for y, f in zip(all_lats, fin, strict=True) if f],
             s=_MAP_MARKER_S,
             facecolors="white",
             edgecolors="black",
@@ -1758,7 +1761,7 @@ def draw_timeseries_fig(
     n_down = sum(1 for ct in cast_types if ct == "down")
     label_step = max(1, n_down // 20)
     down_count = 0
-    for i, (t_val, ctype) in enumerate(zip(t_mpl, cast_types)):
+    for i, (t_val, ctype) in enumerate(zip(t_mpl, cast_types, strict=True)):
         marker, color = ("v", "#1f77b4") if ctype == "down" else ("^", _UPCAST_COLOR)
         ax.plot(
             t_val,
@@ -1903,6 +1906,7 @@ def draw_updown_diff_fig(
             for v in ("conservative_temperature", "absolute_salinity", "sigma0")
         ),
         _TS_COLORS,
+        strict=True,
     ):
         if var not in ds_down or var not in ds_up:
             continue
@@ -1918,7 +1922,7 @@ def draw_updown_diff_fig(
     fig, axes = plt.subplots(1, len(diffs), figsize=(_W_FULL, 5.5), sharey=True)
     if len(diffs) == 1:
         axes = [axes]
-    for ax, diff, label, color in zip(axes, diffs, labels, colors):
+    for ax, diff, label, color in zip(axes, diffs, labels, colors, strict=True):
         ax.plot(diff, p_grid, color=color, linewidth=pen("thin"))
         ax.axvline(0, color="0.6", linewidth=pen("thinner"), linestyle="--")
         ax.set_xlabel(label)
@@ -1953,6 +1957,7 @@ def draw_ladcp_bottomtrack_fig(
         [u, v],
         ["U (m s⁻¹)\nEast +", "V (m s⁻¹)\nNorth +"],
         [VAR_COLORS["U"], VAR_COLORS["V"]],
+        strict=True,
     ):
         ax.fill_betweenx(z, 0, np.where(vel > 0, vel, 0.0), color=color, alpha=0.5)
         ax.fill_betweenx(z, np.where(vel < 0, vel, 0.0), 0, color=color, alpha=0.5)

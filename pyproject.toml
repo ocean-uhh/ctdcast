@@ -56,16 +56,20 @@ test = ["pytest>=8", "pytest-cov>=5"]
 dev = ["ctdcast[test,docs]", "ruff>=0.3"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "B", "BLE", "ARG"]
+select = ["E", "F", "W", "B", "BLE", "ARG", "RUF100"]
 ignore = [
     "E501",   # line too long — formatter handles this
     "C901",   # complexity — ignored per CLAUDE.md
-    "B905",   # zip() strict= audit deferred to a dedicated PR
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG"]       # pytest fixtures appear unused to ruff
 "scripts/*" = ["E402"]    # scripts use late imports for optional deps
+# Vendored files (byte-identical with oceanarray) — their noqa directives are managed
+# upstream, so RUF100 must not demand edits here that would break byte-identity.
+"ctdcast/config/report_tokens.py" = ["RUF100"]
+"ctdcast/reports/_css.py" = ["RUF100"]
+"ctdcast/reports/_encode.py" = ["RUF100"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

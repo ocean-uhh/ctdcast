@@ -148,7 +148,8 @@ def _load_ship_track(
         lats = lats[::step]
         lons = lons[::step]
         return [
-            [round(float(la), 5), round(float(lo), 5)] for la, lo in zip(lats, lons)
+            [round(float(la), 5), round(float(lo), 5)]
+            for la, lo in zip(lats, lons, strict=True)
         ]
     except Exception:  # noqa: BLE001
         return None
@@ -207,14 +208,14 @@ def _load_leaflet() -> tuple[str, str]:
     if js_path.exists() and css_path.exists():
         return js_path.read_text(encoding="utf-8"), css_path.read_text(encoding="utf-8")
 
-    for url_js, url_css in zip(_LEAFLET_JS_URLS, _LEAFLET_CSS_URLS):
+    for url_js, url_css in zip(_LEAFLET_JS_URLS, _LEAFLET_CSS_URLS, strict=True):
         try:
             with urllib.request.urlopen(url_js, timeout=10) as r:
                 js = r.read().decode("utf-8")
             with urllib.request.urlopen(url_css, timeout=10) as r:
                 css = r.read().decode("utf-8")
             return js, css
-        except Exception:  # noqa: BLE001, S112
+        except Exception:  # noqa: BLE001
             continue
     return "", ""
 
@@ -349,7 +350,7 @@ def _make_gebco_layers(
             plt.close(fig)
 
             features = []
-            for level_val, segs in zip(cs.levels, cs.allsegs):
+            for level_val, segs in zip(cs.levels, cs.allsegs, strict=True):
                 depth_m = round(-level_val)
                 is_major = depth_m % 500 == 0
                 for seg in segs:

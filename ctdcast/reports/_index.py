@@ -662,7 +662,7 @@ def _write_index(
 
             ts_b64 = _make_section_ts_histogram_b64(ds_sorted, cfg=cfg)
             ds_all.close()
-        except Exception:  # noqa: BLE001, S110
+        except Exception:  # noqa: BLE001
             pass  # Overview panels are optional; never crash index generation
 
     date_start = times_str[0] if times_str else ""
@@ -1036,7 +1036,7 @@ def _write_timeseries_list(
                 _t1 = np.max(np.array(grp_ends, dtype="datetime64[ns]"))
                 _dur_h = float((_t1 - _t0) / np.timedelta64(1, "h"))
                 _ts_dur_h_list.append(_dur_h)
-            except Exception:  # noqa: BLE001,S110
+            except Exception:  # noqa: BLE001
                 pass
         items.append(
             {

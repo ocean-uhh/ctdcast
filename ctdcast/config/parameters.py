@@ -19,6 +19,11 @@ who may change it and what breaks when they do:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import xarray as xr
+
 # ---------------------------------------------------------------------------
 # Sentinel values  [Contract — changing breaks output provenance]
 # ---------------------------------------------------------------------------
@@ -390,6 +395,38 @@ def vlabel(var: str, prefix: str = "") -> str:
     lbl = f"{prefix}{entry.get('label', var)}"
     lu = entry.get("label_units", "")
     return f"{lbl} ({lu})" if lu else lbl
+
+
+def resolve_sensor_var(ds: xr.Dataset, var: str) -> str:
+    """Return the name to use for *var* in *ds*, applying the single/dual-sensor rule.
+
+    A variable may be stored plain (single sensor, e.g. ``ctd_oxygen``) or suffixed
+    (dual sensor, e.g. ``ctd_oxygen_1``).  This resolves whichever form *ds* actually
+    holds: a suffixed *var* falls back to its plain form, and a plain *var* falls back
+    to the ``_1`` form.  Returns *var* unchanged when neither is present, so the
+    caller's draw function then returns ``None`` for the missing variable.
+
+    Parameters
+    ----------
+    ds:
+        The dataset whose variables to resolve against.
+    var:
+        The requested variable name (plain or ``_1``/``_2`` suffixed).
+
+    Returns
+    -------
+    str
+        The name present in *ds*, or *var* unchanged if neither form is found.
+    """
+    if var in ds:
+        return var
+    # Suffixed var not found; try the plain (single-sensor) form.
+    if var.endswith("_1") and var[:-2] in ds:
+        return var[:-2]
+    # Plain var not found; try the suffixed form.
+    if not var.endswith(("_1", "_2")) and f"{var}_1" in ds:
+        return f"{var}_1"
+    return var
 
 
 # ---------------------------------------------------------------------------
