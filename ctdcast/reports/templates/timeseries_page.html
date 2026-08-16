@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 
 {% block title %}{{ ts_name }}{% if ts_description %} — {{ ts_description }}{% endif %} — {{ cruise }}{% endblock %}
 {% block masthead_title %}{{ ts_name }}{% if ts_description %} — {{ ts_description }}{% endif %}{% endblock %}
@@ -72,6 +73,7 @@
   {% for panel in panels %}{% if panel.b64 %}
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
   {% endif %}{% endfor %}
@@ -82,6 +84,7 @@
   {% for panel in row %}{% if panel and panel.b64 %}
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
   {% endif %}{% endfor %}
@@ -92,6 +95,7 @@
 <div class="fig-row">
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
 </div>
@@ -106,6 +110,7 @@
 <div class="fig-row">
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map">
+    {{- m.dbg(fig_location_b64, "slot-third") }}
   </figure>
 </div>
 {% endif %}
@@ -124,6 +129,7 @@
   {% for panel in card.panels %}{% if panel.b64 %}
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, "slot-third") }}
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
   {% endif %}{% endfor %}

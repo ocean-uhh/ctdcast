@@ -30,6 +30,7 @@ from ctdcast.identity import (
     format_cast_id,
 )
 from ctdcast.readers.ladcp import find_ladcp_file
+from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
@@ -138,6 +139,7 @@ def report(
 
     """
     cfg = config if config is not None else DEFAULT_REPORT_CONFIG
+    _figdebug.clear()  # reset the per-figure debug registry for this build
     _failed = 0
     gen: dict[str, bool] = {
         "stations": True,

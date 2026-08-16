@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 
 {% block title %}{{ section_name }}{% if section_description %} — {{ section_description }}{% endif %} — {{ cruise }}{% endblock %}
 {% block masthead_title %}{{ section_name }}{% if section_description %} — {{ section_description }}{% endif %}{% endblock %}
@@ -74,6 +75,7 @@
 <div class="fig-row">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Section map">
+    {{- m.dbg(fig_map_b64, "slot-half") }}
   </figure>
 </div>
 {% endif %}
@@ -86,6 +88,7 @@
   {% for panel in panels %}{% if panel.b64 %}
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
     <figcaption>{{ panel.short }}</figcaption>
   </figure>
   {% endif %}{% endfor %}
@@ -96,6 +99,7 @@
   {% for panel in row %}{% if panel and panel.b64 %}
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
     <figcaption>{{ panel.short }}</figcaption>
   </figure>
   {% endif %}{% endfor %}
@@ -106,6 +110,7 @@
 <div class="fig-row">
   <figure class="{{ slot }}">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, slot) }}
   </figure>
 </div>
 {% endif %}{% endfor %}
@@ -125,6 +130,7 @@
 <div class="fig-row">
   <figure class="{{ section_slot }}">
     <img src="data:image/png;base64,{{ card.panels[0].b64 }}" alt="{{ card.panels[0].title }}">
+    {{- m.dbg(card.panels[0].b64, section_slot) }}
   </figure>
 </div>
 {% endif %}
@@ -135,6 +141,7 @@
   {% if panel.b64 %}
   <figure class="slot-third">
     <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
+    {{- m.dbg(panel.b64, "slot-third") }}
     <figcaption>{{ panel.title }}</figcaption>
   </figure>
   {% endif %}
