@@ -41,6 +41,21 @@ def test_slot_contract() -> None:
         )
 
 
+def test_width_aliases_match_slots() -> None:
+    """Ergonomic ``W_*`` aliases equal their ``SLOTS`` inch width (incl. the quarter slot)."""
+    from ctdcast.config.report_tokens import (
+        W_HALF,
+        W_QUARTER,
+        W_THIRD,
+        W_TWO_FIFTHS,
+    )
+
+    assert W_QUARTER == SLOTS["quarter"][1] == 2.25
+    assert W_THIRD == SLOTS["third"][1]
+    assert W_HALF == SLOTS["half"][1]
+    assert W_TWO_FIFTHS == SLOTS["two-fifths"][1]
+
+
 # ---------------------------------------------------------------------------
 # 10.2 PNG geometry — fixed-slot figures render at exactly round(inches × dpi)
 # ---------------------------------------------------------------------------
