@@ -20,7 +20,7 @@ def _normalise_calibration_date(raw: str) -> str:
     """
     for fmt in ("%d-%b-%y", "%d-%b-%Y"):
         try:
-            return datetime.datetime.strptime(raw, fmt).date().strftime("%Y-%b-%d")  # noqa: DTZ007
+            return datetime.datetime.strptime(raw, fmt).date().strftime("%Y-%b-%d")
         except ValueError:
             continue
     return raw

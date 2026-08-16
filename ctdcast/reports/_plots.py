@@ -258,14 +258,14 @@ def _make_ladcp_section_b64(
     """
     try:
         with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
-            lat_map = dict(zip(cast_nums, lats)) if lats else {}
-            lon_map = dict(zip(cast_nums, lons)) if lons else {}
+            lat_map = dict(zip(cast_nums, lats, strict=True)) if lats else {}
+            lon_map = dict(zip(cast_nums, lons, strict=True)) if lons else {}
 
             # Load available casts; record x, cast_num, lat, lon, z, u, v
             loaded: list[
                 tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
             ] = []
-            for cn, xv in zip(cast_nums, x_vals):
+            for cn, xv in zip(cast_nums, x_vals, strict=True):
                 mat_path = find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
                 if mat_path is None:
                     continue
@@ -283,7 +283,7 @@ def _make_ladcp_section_b64(
                             np.asarray(dr.v, dtype=float),
                         )
                     )
-                except Exception:  # noqa: BLE001, S112
+                except Exception:  # noqa: BLE001
                     continue
 
             if len(loaded) < 2:

@@ -257,7 +257,10 @@ def build_profiles(
             "cast_id": (
                 ["N_PROF"],
                 np.array(
-                    [format_cast_id(n, s) for n, s in zip(cast_nums, cast_suffixes)]
+                    [
+                        format_cast_id(n, s)
+                        for n, s in zip(cast_nums, cast_suffixes, strict=True)
+                    ]
                 ),
                 {
                     "long_name": "Cast identifier",

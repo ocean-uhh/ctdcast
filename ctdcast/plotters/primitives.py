@@ -24,7 +24,7 @@ def sigma0_isopycnals(
             linestyles="solid",
         )
         ax.clabel(_iso, fmt="%.1f", fontsize=CLABEL_FS)
-    except Exception:  # noqa: BLE001, S110
+    except Exception:  # noqa: BLE001
         pass
 
 

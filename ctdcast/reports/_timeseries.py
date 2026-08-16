@@ -25,6 +25,7 @@ from ctdcast.config.parameters import (
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
     VARIABLES,
+    resolve_sensor_var,
     vlabel,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
@@ -147,7 +148,9 @@ def generate_timeseries_page(
     all_cast_nums = ds_all["cast_number"].values
     all_suffix = profile_cast_suffixes(ds_all)
     wanted = set(cast_ids)
-    mask = np.array([(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix)])
+    mask = np.array(
+        [(int(n), s) in wanted for n, s in zip(all_cast_nums, all_suffix, strict=True)]
+    )
     if not mask.any():
         ds_all.close()
         return None
@@ -167,7 +170,7 @@ def generate_timeseries_page(
     # that link each event to its own cast page.
     _ts_suffix = profile_cast_suffixes(ds_ts)
     cast_id_strs: list[str] = []
-    for _n, _s in zip(ds_ts["cast_number"].values, _ts_suffix):
+    for _n, _s in zip(ds_ts["cast_number"].values, _ts_suffix, strict=True):
         _key = format_cast_id(int(_n), _s)
         if _key not in cast_id_strs:
             cast_id_strs.append(_key)
@@ -274,26 +277,12 @@ def generate_timeseries_page(
         )
         return Panel(b64=b64, title=label, short=short)
 
-    def _resolve_ts_var(var: str) -> str:
-        """Return the name to use for *var* in ds_ts.
-
-        Handles the single/dual-sensor naming rule: ctd_oxygen_1 → ctd_oxygen
-        when only one sensor is present (and vice versa).
-        """
-        if var in ds_ts:
-            return var
-        if var.endswith("_1") and var[:-2] in ds_ts:
-            return var[:-2]
-        if not var.endswith(("_1", "_2")) and f"{var}_1" in ds_ts:
-            return f"{var}_1"
-        return var
-
     physics_panels = [
         _ts_panel(v, vlabel(v), VARIABLES[v]["label"]) for v in SECTION_PHYSICS_VARS
     ]
     biogeo_panels = [
         _ts_panel(
-            _resolve_ts_var(v),
+            resolve_sensor_var(ds_ts, v),
             vlabel(v),
             VARIABLES[v]["label"],
             optional=True,

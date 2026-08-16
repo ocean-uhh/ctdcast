@@ -33,7 +33,7 @@ def distance_from_km(
     being silently substituted with a fabricated distance.
     """
     out = np.empty(len(lats), dtype=float)
-    for i, (la, lo) in enumerate(zip(lats, lons)):
+    for i, (la, lo) in enumerate(zip(lats, lons, strict=True)):
         out[i] = float(gsw.distance([key_lon, lo], [key_lat, la])[0]) / 1000.0
     return out
 
