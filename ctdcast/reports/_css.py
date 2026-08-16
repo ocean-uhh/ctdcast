@@ -1,15 +1,16 @@
 """Shared CSS for the report HTML pages, generated from the design tokens.
 
-``emit_css(package)`` builds the whole stylesheet string from
+``emit_css(package_accent)`` builds the whole stylesheet string from
 ``..config.report_tokens`` — colours, typography, spacing, radii and the slot
 table — so no value is restated here.  Its output is concatenated into each page
 template's ``<style>`` block (``{{ css | safe }}``).
 
 This module is written to be **vendored** across the packages that share the
-report design system: it names no package and reads shared values only through
-``..config.report_tokens``.  Which package's accent to render is an argument to
-``emit_css``, supplied by the (package-specific) caller — so the file itself
-carries no package-specific edit (Phase A; no cross-repo hash test yet, spec §9).
+report design system: it names no package and holds no per-package colour table,
+reading shared values only through ``..config.report_tokens``.  The accent
+colour to render is an argument to ``emit_css``, supplied by the
+(package-specific) caller — so the file itself carries no package-specific edit
+(Phase A; no cross-repo hash test yet, spec §9).
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from ..config.report_tokens import (
     FONT_MONO,
     FONT_SANS,
     GRAYS,
-    PACKAGE_ACCENT,
     RADII,
     ROLE_ACCENT,
     SEMANTIC,
@@ -69,7 +69,7 @@ def _emit_slots() -> str:
     return "\n".join(out)
 
 
-def emit_css(package: str) -> str:
+def emit_css(package_accent: str) -> str:
     """Return the full shared stylesheet as a string, generated from the tokens.
 
     Reproduces the established page look from the design tokens (spec §12–15 v2.0
@@ -82,11 +82,13 @@ def emit_css(package: str) -> str:
 
     Parameters
     ----------
-    package : str
-        Which package's accent to render (a key into ``PACKAGE_ACCENT``).  Passed
-        by the package-specific caller; the function itself names no package.
+    package_accent : str
+        The accent colour to render as ``--package-accent`` — any CSS colour
+        value, e.g. a hex literal or ``var(--ocean)``.  Chosen by the
+        package-specific caller; the function itself names no package and holds
+        no per-package colour table.
     """
-    root = _emit_root(PACKAGE_ACCENT[package])
+    root = _emit_root(package_accent)
     slots = _emit_slots()
     return f"""\
 {root}
@@ -171,6 +173,22 @@ figure img {{
   display: block; width: 100%; height: auto;
 }}
 figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }}
+table {{
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}}
+th {{
+  background: var(--package-accent); color: #fff; text-align: left;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}}
+th.num {{ text-align: right; }}
+td {{
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}}
+tr:nth-child(even) td {{ background: var(--bg-sunken); }}
+td.num, .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
 {slots}
 .masthead-header {{
   display: flex; justify-content: space-between; align-items: flex-start;

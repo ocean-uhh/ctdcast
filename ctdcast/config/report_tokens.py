@@ -59,7 +59,7 @@ PNG_PALETTE_COLORS: int = 256  # 8-bit palette quantization in the encoder
 # Invariant asserted by the slot-contract test: inches == W_FULL * fraction, so
 # display_px / fig_in is identical for every figure and one font size renders at
 # one on-screen size everywhere.  Test 2 asserts each saved PNG is exactly
-# round(inches * FIG_DPI) px wide (1350 / 900 / 810 / 675 / 540 / 450).
+# round(inches * FIG_DPI) px wide (1350 / 900 / 810 / 675 / 540 / 450 / 338).
 SLOTS: dict[str, tuple[float, float]] = {
     "full": (1.0, 9.0),
     "twothirds": (2 / 3, 6.0),
@@ -67,6 +67,7 @@ SLOTS: dict[str, tuple[float, float]] = {
     "half": (0.5, 4.5),
     "two-fifths": (0.4, 3.6),
     "third": (1 / 3, 3.0),
+    "quarter": (0.25, 2.25),
 }
 
 # Ergonomic width aliases (inches) for plotter call sites; derived from SLOTS.
@@ -75,6 +76,7 @@ W_THREE_FIFTHS: float = SLOTS["three-fifths"][1]
 W_HALF: float = SLOTS["half"][1]
 W_TWO_FIFTHS: float = SLOTS["two-fifths"][1]
 W_THIRD: float = SLOTS["third"][1]
+W_QUARTER: float = SLOTS["quarter"][1]
 
 # Aspect-locked figure constants (spec §14).
 SECTION_STRETCH: float = (
@@ -205,15 +207,10 @@ ROLE_ACCENT: dict[str, str] = {
     "map": "#ee3377",
 }
 
-# Package accent (spec §12.2): confined to two additive places so it restyles no
-# existing pixel — a small masthead wordmark and the footer's border-top.  h2
-# underlines stay --seafoam and links stay --ocean.
-PACKAGE_ACCENT: dict[str, str] = {
-    "oceanarray": "#1a3a5c",
-    "ctdcast": "#0e6e6e",
-    "caldip": "#7a4b8a",  # reserved
-    "amocatlas": "#8a5a2b",  # reserved
-}
+# The package accent (spec §12.2) — a small masthead wordmark, the table header
+# and the footer's border-top — is NOT a value in this vendored file.  Each
+# package chooses it locally and passes it to ``emit_css(package_accent)`` (see
+# each repo's ``reports/_report_css.py``), so no per-package colour is encoded here.
 
 # Neutral gray scale — consolidates the ad-hoc grays that the per-page template
 # <style> blocks used (text shades, hairlines, sunken fills).  Emitted as
