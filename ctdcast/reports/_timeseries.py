@@ -385,10 +385,14 @@ def _ts_field_render(
         resolved = resolve_sensor_var(c.ds_ts, var) if optional else var
         key = canonical or var
         _vmin = (
-            c.vmin.get(resolved) if c.vmin.get(resolved) is not None else c.vmin.get(key)
+            c.vmin.get(resolved)
+            if c.vmin.get(resolved) is not None
+            else c.vmin.get(key)
         )
         _vmax = (
-            c.vmax.get(resolved) if c.vmax.get(resolved) is not None else c.vmax.get(key)
+            c.vmax.get(resolved)
+            if c.vmax.get(resolved) is not None
+            else c.vmax.get(key)
         )
         return _make_timeseries_b64(
             c.ds_ts,
@@ -436,9 +440,7 @@ def _ts_diagram_panel(rp: RenderedPanel) -> Panel:
 
 def _ts_biogeo_present(c: TimeseriesPageCtx) -> list[str]:
     """Return the biogeo vars present on this timeseries, in canonical order."""
-    return [
-        v for v in SECTION_BIOGEO_VARS if resolve_sensor_var(c.ds_ts, v) in c.ds_ts
-    ]
+    return [v for v in SECTION_BIOGEO_VARS if resolve_sensor_var(c.ds_ts, v) in c.ds_ts]
 
 
 #: Only the location map is fixed; fields, LADCP and T–S are data-driven groups.

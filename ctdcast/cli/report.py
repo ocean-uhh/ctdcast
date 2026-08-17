@@ -179,7 +179,7 @@ Examples:
         default=False,
         help=(
             "Drop cast-page sections whose figures all failed to render, instead "
-            "of showing them as an \"<section> — unavailable\" placeholder.  Off by "
+            'of showing them as an "<section> — unavailable" placeholder.  Off by '
             "default: such sections stay visible as warnings, so a failed figure is "
             "noticed rather than silently hidden."
         ),

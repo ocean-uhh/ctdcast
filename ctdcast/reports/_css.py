@@ -170,6 +170,7 @@ h2 + .caption {{ margin-top: -0.5rem; max-width: none; }}
   align-items: flex-start;
 }}
 .fig-col {{ display: flex; flex-direction: column; gap: 0.75rem; }}
+.fig-row.center {{ justify-content: center; }}
 figure {{ margin: 0; }}
 figure img {{
   border: 1px solid var(--rule); border-radius: var(--radius-btn);

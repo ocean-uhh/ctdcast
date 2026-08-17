@@ -54,7 +54,9 @@ def mesh_field(
         Z = np.ma.masked_invalid(data2d.T)
         mappable = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
     else:
-        mappable = ax.pcolormesh(x, y, data2d.T, cmap=cmap, norm=norm, shading="nearest")
+        mappable = ax.pcolormesh(
+            x, y, data2d.T, cmap=cmap, norm=norm, shading="nearest"
+        )
     cax = make_axes_locatable(ax).append_axes(
         "right", size=Fixed(CBAR_WIDTH_IN), pad=Fixed(CBAR_PAD_IN)
     )

@@ -316,21 +316,25 @@ def generate_section_page(
     # LADCP U/V panels are a batch render (one .mat read yields both), so they are
     # produced here and fed to the Velocity section as a PanelGroup, rather than
     # rendered lazily per panel like the rest.
-    ladcp_panels = tuple(
-        p
-        for p in _make_ladcp_section_b64(
-            cast_nums_int,
-            x_vals,
-            x_label,
-            ladcp_dir,
-            lats=lats,
-            lons=lons,
-            ladcp_pattern=ladcp_pattern,
-            style=section_style,
-            cfg=cfg,
+    ladcp_panels = (
+        tuple(
+            p
+            for p in _make_ladcp_section_b64(
+                cast_nums_int,
+                x_vals,
+                x_label,
+                ladcp_dir,
+                lats=lats,
+                lons=lons,
+                ladcp_pattern=ladcp_pattern,
+                style=section_style,
+                cfg=cfg,
+            )
+            if p.b64
         )
-        if p.b64
-    ) if ladcp_dir is not None else ()
+        if ladcp_dir is not None
+        else ()
+    )
 
     page_ctx = SectionPageCtx(
         ds_sec=ds_sec,
@@ -444,10 +448,14 @@ def _field_render(
         resolved = resolve_sensor_var(c.ds_sec, var) if optional else var
         key = canonical or var
         _vmin = (
-            c.vmin.get(resolved) if c.vmin.get(resolved) is not None else c.vmin.get(key)
+            c.vmin.get(resolved)
+            if c.vmin.get(resolved) is not None
+            else c.vmin.get(key)
         )
         _vmax = (
-            c.vmax.get(resolved) if c.vmax.get(resolved) is not None else c.vmax.get(key)
+            c.vmax.get(resolved)
+            if c.vmax.get(resolved) is not None
+            else c.vmax.get(key)
         )
         return _make_section_b64(
             c.ds_sec,

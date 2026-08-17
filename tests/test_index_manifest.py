@@ -19,7 +19,9 @@ from ctdcast.reports._index import (
 )
 
 
-def _ctx(*, map_b64="MAP", physics=("CT", "SA"), biogeo=("O2",), ts=True) -> IndexPageCtx:
+def _ctx(
+    *, map_b64="MAP", physics=("CT", "SA"), biogeo=("O2",), ts=True
+) -> IndexPageCtx:
     """Build an IndexPageCtx with placeholder payloads for the requested panels."""
     return IndexPageCtx(
         map_b64=map_b64,

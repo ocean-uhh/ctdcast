@@ -104,10 +104,5 @@ def test_no_stubs_on_a_complete_fixture() -> None:
     said "applicable" while the figure came back None — the drift this guards.
     """
     report = resolve_cast(_ctx(_CAST_011, ladcp_dir=_LADCP))
-    stubs = [
-        (s.id, p.id)
-        for s in report.sections
-        for p in s.panels
-        if p.is_stub
-    ]
+    stubs = [(s.id, p.id) for s in report.sections for p in s.panels if p.is_stub]
     assert stubs == [], f"applies_to/render drift — unexpected stubs: {stubs}"

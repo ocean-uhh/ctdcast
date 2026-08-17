@@ -62,7 +62,7 @@
   {% endfor %}
 </div>
 
-{{ m.report_body(report) }}
+{{ m.report_body(report, center_sections=["map"]) }}
 
 {{ js_top_links | safe }}
 {% endblock %}
