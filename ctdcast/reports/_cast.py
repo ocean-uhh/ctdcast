@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import xarray as xr
+from markupsafe import escape
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
-from ctdcast.config.parameters import UNKNOWN_CRUISE_ID
+from ctdcast.config.parameters import (
+    SECTION_BIOGEO_VARS,
+    UNKNOWN_CRUISE_ID,
+    resolve_sensor_var,
+)
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
+from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
@@ -72,6 +79,7 @@ def generate_station_page(
     trim_soak: bool = False,
     cast_notes: list[str] | None = None,
     cruise_info: dict | None = None,
+    drop_stub: bool = False,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/casts/*.
@@ -219,6 +227,22 @@ def generate_station_page(
         )
     ladcp_exists = ladcp_path is not None and ladcp_path.exists()
 
+    # The page body is now driven by the section manifest: build the per-cast
+    # context once, resolve the profile (numbers, inclusion, stubs all fall out),
+    # and hand the resolved report to the template's generic section loop.
+    page_ctx = PageCtx(
+        ds=ds,
+        cfg=cfg,
+        lat=lat,
+        lon=lon,
+        all_meta=all_meta,
+        ladcp_path=ladcp_path,
+        ladcp_configured=ladcp_dir is not None,
+        ladcp_exists=ladcp_exists,
+        sensor_info=sensor_info,
+    )
+    report = resolve_cast(page_ctx, drop_stub=drop_stub)
+
     ctx: dict[str, Any] = {
         "cast_num": cast_num_str,
         "cruise": cruise,
@@ -235,33 +259,9 @@ def generate_station_page(
         "ladcp_available": ladcp_exists,
         "trim_note": trim_note,
         "cast_notes": cast_notes or [],
-        "sensor_info": sensor_info,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
-        # Overview row — CT/SA/σ₀ triple-axis + LADCP U/V panel
-        "fig_ts_density_b64": _make_ts_density_b64(
-            ds, ladcp_path if ladcp_dir is not None else None, cfg=cfg
-        ),
-        "fig_station_map_b64": _make_station_map_b64(
-            lat, lon, all_meta, target_h=2.75, cfg=cfg
-        ),
-        "fig_ts_updown_b64": _make_ts_updown_b64(ds, cfg=cfg),
-        # Row 2
-        "fig_ct_sa_sigma0_b64": _make_ct_sa_sigma0_b64(ds, cfg=cfg),
-        # Row 3
-        "fig_aux_b64": _make_aux_profiles_b64(ds, cfg=cfg),
-        # Row 4
-        "fig_ts_diagram_b64": _make_ts_diagram_b64(ds, cfg=cfg),
-        # Row 5
-        "fig_stability_b64": _make_stability_b64(ds, cfg=cfg),
-        # Row 6: diagnostics
-        "fig_pressure_time_b64": _make_pressure_time_b64(ds, cfg=cfg),
-        "fig_sensor_diff_b64": _make_sensor_diff_b64(ds, cfg=cfg),
-        "fig_updown_diff_b64": _make_updown_diff_b64(ds, cfg=cfg),
-        # Row 7: LADCP bottom track
-        "fig_ladcp_bottomtrack_b64": _make_ladcp_bottomtrack_b64(ladcp_path, cfg=cfg)
-        if ladcp_exists
-        else None,
+        "report": report,
     }
 
     html = get_template("cast.html").render(
@@ -284,3 +284,236 @@ def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
     to ``(0, "")`` when the stem contains no 3+-digit cast number.
     """
     return cast_id_from_name(nc_path.stem) or (0, "")
+
+
+# ---------------------------------------------------------------------------
+# Section manifest — the cast page as data (see .claude/rep-section-manifest-plan.md)
+#
+# NOTE (2026-08-16, autonomous): this is the model layer only.  It is NOT yet
+# wired into generate_station_page() / cast.html — that template port is a
+# separate commit that needs a visual review.  These declarations + the
+# integrity tests (tests/test_cast_manifest.py) let the numbering/inclusion be
+# checked before the page is switched over.
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class PageCtx:
+    """Per-cast render context: the frozen inputs every cast panel/predicate reads.
+
+    Wraps the frozen :class:`ReportConfig` (``cfg``) with the values derived once
+    per cast, so a panel's ``render``/``applies_to`` depends only on this object.
+    Keeping it frozen and section-independent is what makes "derived context must
+    not depend on section inclusion" enforceable rather than aspirational.
+    """
+
+    ds: Any
+    cfg: ReportConfig
+    lat: float
+    lon: float
+    all_meta: list[dict[str, Any]]
+    ladcp_path: Path | None
+    ladcp_configured: bool
+    ladcp_exists: bool
+    sensor_info: list[dict[str, Any]]
+
+
+def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
+    """Return the sensor-metadata table markup, or None when there is no info.
+
+    Values are escaped here because the manifest table macro emits this payload
+    with ``|safe`` — the escaping that Jinja does today for ``{{ s.sensor_type }}``
+    moves into this builder so the autoescape guarantee is preserved.
+    """
+    if not sensor_info:
+        return None
+    rows = "".join(
+        f"<tr><td>{escape(s.get('sensor_type', ''))}</td>"
+        f"<td>{escape(s.get('serial_number', ''))}</td>"
+        f"<td>{escape(s.get('calibration_date', ''))}</td></tr>"
+        for s in sensor_info
+    )
+    return (
+        '<table class="sensor-table">'
+        "<tr><th>Sensor</th><th>S/N</th><th>Cal date</th></tr>"
+        f"{rows}</table>"
+    )
+
+
+# applies_to answers "could this section/panel exist for this cast?" — NOT "did it
+# render?".  A None render from an applicable panel is a defect, and shows as a
+# stub with a reason; a section that genuinely cannot exist (no such variable) is
+# omitted and named in the not-applicable footer.  Do not leave figure panels on
+# the default _always where a structural predicate applies.
+
+
+def _has_biogeo(c: PageCtx) -> bool:
+    """True when any biogeochemistry variable is present (single- or dual-sensor)."""
+    return any(resolve_sensor_var(c.ds, v) in c.ds for v in SECTION_BIOGEO_VARS)
+
+
+def _has_ts(c: PageCtx) -> bool:
+    """True when temperature and salinity are present (CT/SA/σ₀ derivable).
+
+    Gates Hydrography, T–S diagram and Stability: a cast with T and S *could* have
+    them, so if the figure then returns None it is a defect (a stub), not a silent
+    omission.  A file genuinely without T/S omits these sections into the footer.
+    """
+    return "conservative_temperature" in c.ds and "absolute_salinity" in c.ds
+
+
+def _has_dual_temperature(c: PageCtx) -> bool:
+    """True when a second temperature sensor is present (the sensor-diff panel needs it)."""
+    return "ctd_temperature_1" in c.ds and "ctd_temperature_2" in c.ds
+
+
+#: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
+#: reading only from :class:`PageCtx`.  Slots mirror the current cast.html layout.
+CAST_PANELS: dict[str, Panel] = {
+    "ts_density": Panel(
+        id="ts_density",
+        slot="three-fifths",
+        render=lambda c: _make_ts_density_b64(
+            c.ds, c.ladcp_path if c.ladcp_configured else None, cfg=c.cfg
+        ),
+    ),
+    "station_map": Panel(
+        id="station_map",
+        slot="two-fifths",
+        render=lambda c: _make_station_map_b64(
+            c.lat, c.lon, c.all_meta, target_h=2.75, cfg=c.cfg
+        ),
+    ),
+    "ts_updown": Panel(
+        id="ts_updown",
+        slot="two-fifths",
+        render=lambda c: _make_ts_updown_b64(c.ds, cfg=c.cfg),
+    ),
+    "ct_sa_sigma0": Panel(
+        id="ct_sa_sigma0",
+        slot="full",
+        render=lambda c: _make_ct_sa_sigma0_b64(c.ds, cfg=c.cfg),
+    ),
+    "aux": Panel(
+        id="aux", slot="full", render=lambda c: _make_aux_profiles_b64(c.ds, cfg=c.cfg)
+    ),
+    "ts_diagram": Panel(
+        id="ts_diagram",
+        slot="third",
+        caption="Contours: σ₀ (kg m⁻³) — potential density referenced to surface",
+        render=lambda c: _make_ts_diagram_b64(c.ds, cfg=c.cfg),
+    ),
+    "stability": Panel(
+        id="stability",
+        slot="twothirds",
+        render=lambda c: _make_stability_b64(c.ds, cfg=c.cfg),
+    ),
+    "ladcp_bottomtrack": Panel(
+        id="ladcp_bottomtrack",
+        slot="third",
+        render=lambda c: _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg)
+        if c.ladcp_exists
+        else None,
+    ),
+    "pressure_time": Panel(
+        id="pressure_time",
+        slot="third",
+        caption="Cast trajectory: pressure vs elapsed time",
+        render=lambda c: _make_pressure_time_b64(c.ds, cfg=c.cfg),
+    ),
+    "sensor_diff": Panel(
+        id="sensor_diff",
+        slot="twothirds",
+        applies_to=_has_dual_temperature,
+        caption=(
+            "T₁−T₂, S₁−S₂: primary minus secondary sensor. "
+            "Ideal: scatter around zero with ±0.01 spread."
+        ),
+        render=lambda c: _make_sensor_diff_b64(c.ds, cfg=c.cfg),
+    ),
+    "updown_diff": Panel(
+        id="updown_diff",
+        slot="full",
+        caption=(
+            "ΔCT, ΔSA, Δσ₀ downcast minus upcast on 1-dbar grid — "
+            "measures hysteresis from pump lag or sensor response time"
+        ),
+        render=lambda c: _make_updown_diff_b64(c.ds, cfg=c.cfg),
+    ),
+    "sensors_table": Panel(
+        id="sensors_table",
+        kind="table",
+        render=lambda c: _render_sensor_table(c.sensor_info),
+    ),
+}
+
+
+#: The cast page profile.  Conservative port of the current page: same figures,
+#: same grouping — the manifest only renumbers (closing the D1 gaps), generates
+#: the jump-nav, and turns section ids into anchors (the D3 fix).
+CAST_DEFAULT: Profile = Profile(
+    numbering="flat",
+    entries=(
+        Section(
+            "overview",
+            "Overview",
+            ("ts_density", "station_map", "ts_updown"),
+            intro="CT · SA · σ₀ profiles, station location, and T–S down-vs-up.",
+        ),
+        Section(
+            "hydrography",
+            "Hydrography",
+            ("ct_sa_sigma0",),
+            intro="CT · SA · σ₀ vs pressure — downcast in colour, upcast in grey.",
+            applies_to=_has_ts,
+        ),
+        Section(
+            "biogeochemistry",
+            "Biogeochemistry",
+            ("aux",),
+            intro="O₂ saturation · fluorescence · turbidity.",
+            applies_to=_has_biogeo,
+        ),
+        Section(
+            "ts_diagram",
+            "T–S diagram",
+            ("ts_diagram",),
+            intro="Coloured by O₂ saturation — downcast only.",
+            applies_to=_has_ts,
+        ),
+        Section(
+            "stability",
+            "Stability",
+            ("stability",),
+            intro="N² and Turner angle — downcast only.",
+            applies_to=_has_ts,
+        ),
+        Section(
+            "velocity",
+            "Velocity (bottom track)",
+            ("ladcp_bottomtrack",),
+            applies_to=lambda c: c.ladcp_exists,
+        ),
+        Section(
+            "diagnostics",
+            "Diagnostics",
+            ("pressure_time", "sensor_diff", "updown_diff"),
+        ),
+        Section(
+            "sensors",
+            "Sensors",
+            ("sensors_table",),
+            role="appendix",
+            applies_to=lambda c: bool(c.sensor_info),
+        ),
+    ),
+)
+
+
+def resolve_cast(ctx: PageCtx, *, drop_stub: bool = False) -> ResolvedReport:
+    """Resolve the cast profile against *ctx* into numbered, rendered sections.
+
+    *drop_stub* (from the ``--drop-stub`` CLI flag) drops an applicable section
+    whose panels all failed to render, instead of keeping its heading with a stub.
+    """
+    return resolve(CAST_DEFAULT, ctx, CAST_PANELS, drop_stub=drop_stub)

@@ -3,3 +3,20 @@
    returns a non-empty string). Guarding on figdbg() rather than a debug flag means the
    macro needs no `with context` and is a true no-op when off. #}
 {% macro dbg(b64, slot) %}{% set d = figdbg(b64) %}{% if d %}<div class="debug">slot: {{ slot }}  |  {{ d }}</div>{% endif %}{% endmacro %}
+
+{# Render one resolved manifest panel. `|safe` appears once, gated by kind, so figure
+   payloads (base64) are always escaped into an image src and only html/table markup is
+   emitted raw — the autoescape boundary is this one branch. #}
+{% macro panel(p) %}
+{%- if p.is_stub %}
+  <figure class="slot-{{ p.slot }}"><p class="warn">{{ p.caption or p.id }} — {{ p.stub_reason }}</p></figure>
+{%- elif p.kind == "figure" %}
+  <figure class="slot-{{ p.slot }}">
+    <img src="data:image/png;base64,{{ p.payload }}" alt="{{ p.caption or p.id }}">
+    {{- dbg(p.payload, p.slot) }}
+    {%- if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}
+  </figure>
+{%- else %}{# html | table #}
+  {{ p.payload | safe }}
+{%- endif %}
+{% endmacro %}
