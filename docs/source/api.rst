@@ -64,6 +64,27 @@ Plotting parameters
 
 ----
 
+Section manifest
+----------------
+
+Each report page is described by a :class:`~ctdcast.reports._manifest.Profile` of
+:class:`~ctdcast.reports._manifest.Section` and
+:class:`~ctdcast.reports._manifest.Panel` entries, resolved by
+:func:`~ctdcast.reports._manifest.resolve` into a numbered, rendered report.  The
+model is package-neutral; each page's concrete registry lives in its own generator
+module.  ``_anchors`` maps the old hand-authored ``#s-*`` anchors onto the new
+section ids for one release.
+
+.. automodule:: ctdcast.reports._manifest
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.reports._anchors
+   :members:
+   :undoc-members:
+
+----
+
 Page generators
 ---------------
 

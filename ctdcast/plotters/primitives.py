@@ -48,6 +48,15 @@ def mesh_field(
     The colorbar is placed in a divider axes of *fixed inch width* (not a fraction
     of the host axes), so its thickness and the resulting right margin are identical
     on every field figure regardless of slot width.
+
+    ``make_axes_locatable`` is used **only because this axes is free-aspect**.  It
+    attaches the colorbar to the divider of the axes' box *at layout time*; if
+    something resizes that box afterwards — ``set_aspect("equal", adjustable="box")``,
+    or a hand-placed map layout — the cax tracks the pre-resize box and ends up the
+    wrong size.  The rule (see ``.claude/notes/2026-08-14-consistent-cruise-maps.md``):
+    ``make_axes_locatable`` for free-aspect axes; hand-reserved inches whenever the
+    aspect is locked or the axes are hand-placed.  Do not add ``set_aspect("equal")``
+    to a figure that colorbars through here without switching to the reserved-inches path.
     """
     if style == "contourf":
         X, Y = np.meshgrid(x, y)
