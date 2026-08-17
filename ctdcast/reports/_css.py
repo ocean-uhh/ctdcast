@@ -138,7 +138,10 @@ h2 {{
   color: var(--gray-5); font-size: var(--fs-note);
   margin-top: 0.75rem; margin-bottom: 0.75rem;
 }}
-h2 + .caption {{ margin-top: -0.5rem; }}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption {{ margin-top: -0.5rem; max-width: none; }}
 .explainer {{
   font-size: var(--fs-note); color: var(--text);
   background: var(--bg-sunken); border-left: 3px solid var(--muted);

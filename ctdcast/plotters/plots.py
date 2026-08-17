@@ -959,10 +959,16 @@ def section_figsize_and_slot(
 ) -> tuple[tuple[float, float], str]:
     """Return figure size and CSS slot class for a section pcolormesh plot.
 
-    Aspect ratio is calibrated so KTout (416 dbar, 94 km) is 2.5 in tall at full
-    width (_W_FULL = 9.0 in).  When the uncapped height would exceed _MAX_SECTION_H,
-    height is capped and width is reduced to preserve the ratio; the narrower CSS
-    slot is chosen accordingly.
+    The figure width is always a **canonical slot width** (one of ``SLOTS``), so
+    the rendered PNG fills its slot at the same oversample as every other figure and
+    the browser never rescales it — otherwise a section rendered at a between-slots
+    width is squeezed into the nearest slot box, shrinking its baked-in fonts.
+
+    Aspect is calibrated (``_SECTION_STRETCH``) so KTout (416 dbar, 94 km) is short
+    at full width.  The widest slot whose resulting height stays within
+    ``_MAX_SECTION_H`` is chosen; height then follows the data aspect (floored at
+    ``_MIN_SECTION_H``).  A section too deep for even the narrowest slot keeps that
+    slot's width and accepts the height cap.
 
     Parameters
     ----------
@@ -973,28 +979,26 @@ def section_figsize_and_slot(
 
     Returns
     -------
-    tuple of ``((fig_w, fig_h), css_slot)`` where ``css_slot`` is one of
-    ``"slot-full"``, ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.
+    tuple of ``((fig_w, fig_h), css_slot)`` where ``fig_w`` equals the slot's
+    canonical inch width and ``css_slot`` is one of ``"slot-full"``,
+    ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.
     """
     dist = max(abs(dist_km), 1.0)  # abs: x_vals may be flipped for east→west sections
-    fig_h_raw = _W_FULL * p_max_dbar / dist / _SECTION_STRETCH
-    if fig_h_raw <= _MAX_SECTION_H:
-        fig_w = _W_FULL
-        fig_h = float(max(fig_h_raw, _MIN_SECTION_H))
-    else:
-        fig_h = _MAX_SECTION_H
-        fig_w = float(
-            max(_MAX_SECTION_H * dist * _SECTION_STRETCH / p_max_dbar, _W_THIRD)
-        )
-    # Pick slot by proximity to standard widths
-    if fig_w >= (_W_FULL + _W_TWOTHIRDS) / 2:
-        slot = "slot-full"
-    elif fig_w >= (_W_TWOTHIRDS + _W_HALF) / 2:
-        slot = "slot-twothirds"
-    elif fig_w >= (_W_HALF + _W_THIRD) / 2:
-        slot = "slot-half"
-    else:
-        slot = "slot-third"
+    ratio = p_max_dbar / (dist * _SECTION_STRETCH)  # fig_h per inch of fig_w
+    # Widest canonical slot whose height stays within the cap; the aspect ratio
+    # means a narrower width yields a shorter figure, so descending widths fit.
+    candidates = (
+        ("slot-full", _W_FULL),
+        ("slot-twothirds", _W_TWOTHIRDS),
+        ("slot-half", _W_HALF),
+        ("slot-third", _W_THIRD),
+    )
+    slot, fig_w = candidates[-1]  # deepest sections fall back to the narrowest slot
+    for name, width in candidates:
+        if width * ratio <= _MAX_SECTION_H:
+            slot, fig_w = name, width
+            break
+    fig_h = float(min(max(fig_w * ratio, _MIN_SECTION_H), _MAX_SECTION_H))
     return (fig_w, fig_h), slot
 
 
