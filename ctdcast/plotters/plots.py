@@ -43,7 +43,12 @@ from ctdcast.config.report_tokens import (
     W_TWO_FIFTHS as _W_TWO_FIFTHS,
     W_TWOTHIRDS as _W_TWOTHIRDS,
 )
-from ctdcast.plotters.primitives import mesh_field, sigma0_isopycnals
+from ctdcast.plotters.primitives import (
+    mesh_field,
+    nice_colorbar_ticks,
+    sigma0_isopycnals,
+    unit_colorbar,
+)
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
 
@@ -1056,7 +1061,7 @@ def draw_section_fig(
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    cb = mesh_field(
+    mesh_field(
         ax,
         fig,
         x_vals,
@@ -1067,6 +1072,7 @@ def draw_section_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
+        cbar_label=label,
     )
 
     if bathy_depths is not None:
@@ -1082,7 +1088,6 @@ def draw_section_fig(
     if var == "sigma0":
         sigma0_isopycnals(ax, x_vals, p_trim, data_trim)
 
-    cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
     ax.set_xlim(float(x_vals[0]), float(x_vals[-1]))
     ax.set_ylabel(vlabel("pressure"))
@@ -1512,7 +1517,7 @@ def draw_overview_panel_fig(
                 x_pos[cn_i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0
             )
 
-    cb = mesh_field(
+    mesh_field(
         ax,
         fig,
         x_pos,
@@ -1523,6 +1528,7 @@ def draw_overview_panel_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
+        cbar_label=label,
     )
 
     if bathy_depths is not None:
@@ -1548,7 +1554,6 @@ def draw_overview_panel_fig(
                     transform=ax.get_xaxis_transform(),
                 )
 
-    cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
     ax.set_ylabel(vlabel("pressure"))
     ax.set_xlabel("Cast number")
@@ -1754,8 +1759,15 @@ def draw_timeseries_fig(
         ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha="right")
 
-    cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
-    cb.set_label(label)
+    unit_colorbar(
+        ax,
+        pc,
+        unit=label,
+        ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
+        extend="both",
+        reserve=True,
+        title_loc="left",
+    )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_for_contour, p_trim, data_trim)
