@@ -21,3 +21,32 @@
   {{ p.payload | safe }}
 {%- endif %}
 {% endmacro %}
+
+{# Render a resolved report body: the jump-nav plus every numbered section and its
+   panels. Shared by every manifest-driven page (cast, section, and later timeseries
+   / index) so section numbering, anchors and layout live in one place. Section
+   numbers show as "(1) Title"; a section in `section_columns` stacks its trailing
+   panels (from that index) into a right-hand fig-col. `legacy_anchor_spans` is a
+   Jinja global emitting the D3 transition anchors. #}
+{% macro report_body(report, section_columns={}) %}
+<div class="jump-nav">
+  {% for s in report.sections %}<a href="#{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</a>
+  {% endfor %}
+</div>
+
+{% for s in report.sections %}
+<h2 id="{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</h2>{{ legacy_anchor_spans([s.id]) | safe }}
+{% if s.intro %}<p class="caption">{{ s.intro }}</p>{% endif %}
+{% set split = section_columns.get(s.id) %}
+<div class="fig-row">
+  {% if split is not none %}
+  {% for p in s.panels %}{% if loop.index0 < split %}{{ panel(p) }}{% endif %}{% endfor %}
+  <div class="fig-col slot-{{ s.panels[split].slot }}">
+    {% for p in s.panels %}{% if loop.index0 >= split %}{{ panel(p, "full") }}{% endif %}{% endfor %}
+  </div>
+  {% else %}
+  {% for p in s.panels %}{{ panel(p) }}{% endfor %}
+  {% endif %}
+</div>
+{% endfor %}
+{% endmacro %}
