@@ -71,6 +71,7 @@ def report(
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
     dbar_step: int = 1,
+    drop_stub: bool = False,
 ) -> int:
     """Generate the full ctdcast HTML report suite.
 
@@ -130,6 +131,11 @@ def report(
         Subsample the pressure axis by this step for section and timeseries
         plots (default 1, full 1-dbar resolution).  ``build_profiles()``
         always stores 1-dbar data; this controls plot-time resolution only.
+    drop_stub:
+        If True, a cast-page section that applies but whose figures all failed
+        to render is dropped and the survivors renumber over it, instead of
+        keeping the heading with an "unavailable" placeholder.  Passed through
+        to :func:`~ctdcast.reports._cast.generate_station_page`.
 
     Returns
     -------
@@ -292,6 +298,7 @@ def report(
                 trim_soak=trim_soak,
                 cast_notes=all_cast_notes.get(meta["cast_num"]),
                 cruise_info=cruise_info,
+                drop_stub=drop_stub,
                 cfg=cfg,
             )
             if _skip_reason:

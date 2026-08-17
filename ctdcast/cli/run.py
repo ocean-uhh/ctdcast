@@ -172,6 +172,9 @@ def run(args: argparse.Namespace) -> int:
         sal=None,
         trim_soak=args.trim_soak,
         dbar_step=1,
+        # run is the everyday verb: keep failed figures loud (visible stubs).
+        # Opt into dropping them with the granular `report --drop-stub`.
+        drop_stub=False,
     )
 
     print("=== report ===")

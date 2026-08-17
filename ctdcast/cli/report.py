@@ -173,6 +173,17 @@ Examples:
         default=False,
         help="Print what would be generated without writing any files.",
     )
+    parser.add_argument(
+        "--drop-stub",
+        action="store_true",
+        default=False,
+        help=(
+            "Drop cast-page sections whose figures all failed to render, instead "
+            "of showing them as an \"<section> — unavailable\" placeholder.  Off by "
+            "default: such sections stay visible as warnings, so a failed figure is "
+            "noticed rather than silently hidden."
+        ),
+    )
 
     return parser
 
@@ -324,6 +335,7 @@ def run(args: argparse.Namespace) -> int:
         sal_range=(args.sal[0], args.sal[1]) if args.sal else None,
         trim_soak=args.trim_soak,
         dbar_step=args.dbar_step,
+        drop_stub=args.drop_stub,
     )
     if failed:
         print(f"\n{failed} page(s) failed to build.", file=sys.stderr)

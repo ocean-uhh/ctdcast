@@ -54,6 +54,7 @@ def _report_ns(**kwargs) -> argparse.Namespace:
         "sal": None,
         "trim_soak": False,
         "dbar_step": 1,
+        "drop_stub": False,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -482,6 +483,12 @@ class TestReport:
         ns = _report_ns(config=tmp_path / "nonexistent.yaml")
         rc = _report.run(ns)
         assert rc == 1
+
+    def test_drop_stub_flag_parses(self):
+        """--drop-stub is an off-by-default store_true on the report parser."""
+        parser = _report.build_parser()
+        assert parser.parse_args(["cfg.yaml", "--drop-stub"]).drop_stub is True
+        assert parser.parse_args(["cfg.yaml"]).drop_stub is False
 
     def test_dry_run_returns_zero(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
