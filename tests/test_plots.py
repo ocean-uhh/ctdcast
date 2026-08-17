@@ -115,3 +115,50 @@ def test_ts_density_deep_cast(ds_128):
 
 def test_ts_density_ladcp_deep(ds_128):
     assert _is_valid(_make_ts_density_b64(ds_128, _LADCP_128))
+
+
+# --- section_figsize_and_slot: the width-matches-slot invariant ---------------
+
+
+def test_section_figsize_width_equals_slot_canonical_width():
+    """Every section figure is rendered at its slot's canonical inch width.
+
+    A between-slots width is squeezed into the nearest slot box by the browser,
+    shrinking the baked-in figure fonts; this guards the fix that snaps fig_w to a
+    canonical SLOTS width across a spread of section geometries (shallow/wide to
+    deep/short).
+    """
+    from ctdcast.config.report_tokens import (
+        MAX_SECTION_H,
+        MIN_SECTION_H,
+        SLOTS,
+    )
+    from ctdcast.plotters.plots import section_figsize_and_slot
+
+    canonical = {f"slot-{name}": inch for name, (_frac, inch) in SLOTS.items()}
+    cases = [
+        (416, 94),  # KTout — shallow/wide
+        (2336, 103.6),  # FARDWO — deep/short
+        (400, 300),  # very shallow/wide
+        (1500, 200),  # mid
+        (5000, 10),  # pathologically deep/short → narrowest slot
+    ]
+    for p_max, dist in cases:
+        (fig_w, fig_h), slot = section_figsize_and_slot(p_max, dist)
+        assert slot in canonical, f"{slot} is not a known slot"
+        assert fig_w == canonical[slot], (
+            f"p_max={p_max} dist={dist}: fig_w {fig_w} != slot {slot} width "
+            f"{canonical[slot]}"
+        )
+        assert MIN_SECTION_H <= fig_h <= MAX_SECTION_H
+
+
+def test_section_figsize_deep_short_is_narrower_than_shallow_wide():
+    """A deep, short section lands on a narrower slot than a shallow, wide one."""
+    from ctdcast.config.report_tokens import SLOTS
+    from ctdcast.plotters.plots import section_figsize_and_slot
+
+    (wide_w, _), _ = section_figsize_and_slot(400, 300)
+    (deep_w, _), _ = section_figsize_and_slot(2336, 103.6)
+    assert wide_w == SLOTS["full"][1]
+    assert deep_w < wide_w
