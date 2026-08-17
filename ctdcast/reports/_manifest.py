@@ -33,6 +33,11 @@ def _always(_ctx: Any) -> bool:
     return True
 
 
+def _unavailable_never(_ctx: Any) -> str | None:
+    """Return None for any context (the default ``unavailable_if`` predicate)."""
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Authored model — what a profile is built from
 # ---------------------------------------------------------------------------
@@ -68,6 +73,14 @@ class Panel:
     applies_to : Callable, optional
         Predicate deciding whether the panel is attempted at all.  ``False``
         omits the panel silently (it is excluded, not merely unavailable).
+    unavailable_if : Callable, optional
+        Precondition checked *before* ``render``: given the context, return a
+        reason string when the panel applies but cannot be produced (e.g. a
+        required metadata field is missing), or ``None`` to proceed.  A returned
+        reason becomes a ``.warn`` stub *with that reason* and ``render`` is not
+        called.  This is the channel for defects knowable from context; a
+        ``render`` that still returns ``None`` gets the generic stub reason,
+        because that is the "should have worked and didn't" case.
 
     """
 
@@ -77,6 +90,7 @@ class Panel:
     slot: str | Callable[[Any], str] = "full"
     caption: str | None = None
     applies_to: Callable[[Any], bool] = _always
+    unavailable_if: Callable[[Any], str | None] = _unavailable_never
 
 
 @dataclass(frozen=True)
@@ -296,7 +310,13 @@ def _resolve_panels(
     for panel in concrete:
         if not panel.applies_to(ctx):
             continue
-        payload = panel.render(ctx)
+        reason = panel.unavailable_if(ctx)
+        if reason is not None:
+            # Precondition failed: stub with the specific reason, do not render.
+            payload, stub_reason = None, reason
+        else:
+            payload = panel.render(ctx)
+            stub_reason = None if payload is not None else _STUB_REASON
         resolved.append(
             ResolvedPanel(
                 id=panel.id,
@@ -304,7 +324,7 @@ def _resolve_panels(
                 slot=_resolve_slot(panel, ctx),
                 payload=payload,
                 caption=panel.caption,
-                stub_reason=None if payload is not None else _STUB_REASON,
+                stub_reason=stub_reason,
             )
         )
     if not resolved:
@@ -323,7 +343,13 @@ def _resolve_panels(
     return tuple(resolved)
 
 
-def resolve(profile: Profile, ctx: Any, panels: dict[str, Panel]) -> ResolvedReport:
+def resolve(
+    profile: Profile,
+    ctx: Any,
+    panels: dict[str, Panel],
+    *,
+    drop_stub: bool = False,
+) -> ResolvedReport:
     """Resolve *profile* against *ctx* into a numbered :class:`ResolvedReport`.
 
     One pass: expand :class:`Expand` entries, drop sections whose ``applies_to``
@@ -340,6 +366,15 @@ def resolve(profile: Profile, ctx: Any, panels: dict[str, Panel]) -> ResolvedRep
         (dataset, config, paths — whatever the page's panels need).
     panels : dict of str to Panel
         The panel registry; section ``panels`` entries are ids into this map.
+    drop_stub : bool, optional
+        When True, a section that *applies* but whose panels are *all* stubs
+        (applicable-but-entirely-unavailable) is dropped and the survivors
+        renumber over it, so the page closes cleanly.  Default False keeps the
+        heading with its stub, which surfaces the failure rather than hiding it.
+        A section dropped this way is **not** added to ``not_applicable`` — that
+        list stays reserved for genuinely-not-applicable-to-this-deployment
+        sections, so a plot failure never reads as "not applicable".  A section
+        with any non-stub panel is never dropped.
 
     Returns
     -------
@@ -367,7 +402,12 @@ def resolve(profile: Profile, ctx: Any, panels: dict[str, Panel]) -> ResolvedRep
         if not _section_applies(sec, ctx, panels):
             not_applicable.append(sec.title)
             continue
-        kept.append((sec, _resolve_panels(sec, ctx, panels)))
+        rpanels = _resolve_panels(sec, ctx, panels)
+        if drop_stub and all(p.is_stub for p in rpanels):
+            # Applicable but entirely unavailable: drop silently, renumber over
+            # it.  Not added to not_applicable — that is case-1 only.
+            continue
+        kept.append((sec, rpanels))
 
     resolved: list[ResolvedSection] = []
     content_n = 0

@@ -158,6 +158,53 @@ def test_kept_section_with_all_panels_none_keeps_heading_and_number():
     assert len(sec.panels) == 1 and sec.panels[0].is_stub
 
 
+def test_unavailable_if_stubs_with_its_reason_and_skips_render():
+    """A precondition reason stubs the panel with that reason; render is not called."""
+    calls = []
+    panel = Panel(
+        id="n2",
+        render=lambda _c: calls.append(1) or "<fig/>",
+        unavailable_if=lambda _c: "latitude could not be resolved",
+    )
+    profile = Profile(entries=(Section("s", "S", ("n2",)),))
+    report = resolve(profile, ctx=None, panels={"n2": panel})
+    rp = report.sections[0].panels[0]
+    assert rp.is_stub and rp.stub_reason == "latitude could not be resolved"
+    assert calls == []  # render skipped
+
+
+def test_unavailable_if_none_lets_render_proceed():
+    """When the precondition passes (None), the panel renders normally."""
+    panel = Panel(id="n2", render=lambda _c: "<fig/>", unavailable_if=lambda _c: None)
+    profile = Profile(entries=(Section("s", "S", ("n2",)),))
+    report = resolve(profile, ctx=None, panels={"n2": panel})
+    assert report.sections[0].panels[0].payload == "<fig/>"
+
+
+def test_applies_to_false_takes_precedence_over_unavailable_if():
+    """applies_to=False omits the panel entirely, before unavailable_if is consulted."""
+    panel = Panel(
+        id="p",
+        render=lambda _c: "<fig/>",
+        applies_to=lambda _c: False,
+        unavailable_if=lambda _c: "reason",
+    )
+    profile = Profile(entries=(Section("s", "S", ("p",), applies_to=lambda _c: True),))
+    report = resolve(profile, ctx=None, panels={"p": panel})
+    # Section kept (explicit applies_to), but the panel dropped out -> generic stub,
+    # never the unavailable_if reason.
+    assert report.sections[0].panels[0].stub_reason != "reason"
+
+
+def test_render_none_still_gets_generic_reason():
+    """A render that returns None (not a precondition) keeps the generic stub reason."""
+    panel = Panel(id="p", render=lambda _c: None, unavailable_if=lambda _c: None)
+    profile = Profile(entries=(Section("s", "S", ("p",)),))
+    report = resolve(profile, ctx=None, panels={"p": panel})
+    rp = report.sections[0].panels[0]
+    assert rp.is_stub and rp.stub_reason == "applicable but unavailable"
+
+
 def test_panel_kind_is_carried_to_resolved_panel():
     """A panel's kind survives resolution so the macro can branch on escaping."""
     panels = _registry(
@@ -272,6 +319,42 @@ def test_empty_panelgroup_with_explicit_applies_keeps_heading_with_stub():
     )
     report = resolve(profile, ctx=None, panels={})
     assert report.sections[0].number == "1"
+    assert report.sections[0].panels[0].is_stub
+
+
+def test_drop_stub_drops_a_fully_unavailable_section_and_renumbers():
+    """drop_stub=True drops an all-stub section; survivors renumber over it."""
+    panels = _registry(_panel("a"), _panel("gone", None), _panel("c"))
+    profile = Profile(
+        entries=(
+            Section("s1", "One", ("a",)),
+            Section("dead", "Dead", ("gone",), applies_to=lambda _c: True),
+            Section("s3", "Three", ("c",)),
+        ),
+    )
+    report = resolve(profile, ctx=None, panels=panels, drop_stub=True)
+    assert [(s.id, s.number) for s in report.sections] == [("s1", "1"), ("s3", "2")]
+    # Silent drop — NOT named in the not-applicable footer (that is case 1 only).
+    assert report.not_applicable == ()
+
+
+def test_drop_stub_keeps_a_partially_available_section():
+    """A section with any non-stub panel is never dropped by drop_stub."""
+    panels = _registry(_panel("ok", "<fig/>"), _panel("bad", None))
+    profile = Profile(entries=(Section("s", "S", ("ok", "bad")),))
+    report = resolve(profile, ctx=None, panels=panels, drop_stub=True)
+    assert [s.id for s in report.sections] == ["s"]
+    assert report.sections[0].panels[1].is_stub  # the failed panel still stubs
+
+
+def test_drop_stub_default_false_keeps_the_stub_heading():
+    """Default drop_stub=False keeps an all-stub section with its stub (today's behaviour)."""
+    panels = _registry(_panel("gone", None))
+    profile = Profile(
+        entries=(Section("dead", "Dead", ("gone",), applies_to=lambda _c: True),),
+    )
+    report = resolve(profile, ctx=None, panels=panels)
+    assert [s.id for s in report.sections] == ["dead"]
     assert report.sections[0].panels[0].is_stub
 
 
