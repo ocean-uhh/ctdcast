@@ -531,7 +531,12 @@ SECTION_PANELS: dict[str, Panel] = {
 SECTION_DEFAULT: Profile = Profile(
     numbering="flat",
     entries=(
-        Section("map", "Map", ("section_map",)),
+        Section(
+            "map",
+            "Map",
+            ("section_map",),
+            intro="The section track and the CTD stations it comprises.",
+        ),
         Section(
             "hydrography",
             "Hydrography",
@@ -539,6 +544,13 @@ SECTION_DEFAULT: Profile = Profile(
                 PanelGroup(
                     over=lambda _c: list(SECTION_PHYSICS_VARS), panel=_field_panel
                 ),
+            ),
+            intro=(
+                "Sections of conservative temperature (CT), absolute salinity (SA) "
+                "and potential density (σ₀) against distance along the section. The "
+                "σ₀ panel carries the 27.7 and 27.8 kg m⁻³ isopycnals (black, "
+                "labelled). Open triangles along the top of each panel mark the "
+                "profiles; station numbers are labelled at intervals."
             ),
         ),
         Section(
@@ -550,16 +562,26 @@ SECTION_DEFAULT: Profile = Profile(
                     panel=lambda v: _field_panel(v, canonical=v, optional=True),
                 ),
             ),
+            intro=(
+                "Sections of the biogeochemical sensors present on this section — "
+                "oxygen, fluorescence and turbidity where available — against "
+                "distance along the section."
+            ),
         ),
         Section(
             "velocity",
             "Velocity (U east, V north)",
             (PanelGroup(over=lambda c: c.ladcp_panels, panel=_ladcp_panel),),
+            intro=(
+                "Eastward (U) and northward (V) velocity from the LADCP, against "
+                "distance along the section."
+            ),
         ),
         Section(
             "ts_diagram",
             "T–S diagrams",
             (PanelGroup(over=lambda c: c.ts_panels, panel=_ts_panel),),
+            intro="Water-mass structure of the section in temperature–salinity space.",
         ),
     ),
 )
