@@ -262,6 +262,7 @@ def generate_station_page(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
         "report": report,
+        "section_columns": CAST_SECTION_COLUMNS,
     }
 
     html = get_template("cast.html").render(
@@ -508,6 +509,14 @@ CAST_DEFAULT: Profile = Profile(
         ),
     ),
 )
+
+
+#: Presentational intra-section layout, kept out of the layout-neutral manifest
+#: model.  Maps a section id to the panel index from which the trailing panels
+#: stack in a right-hand ``fig-col`` (rather than wrapping onto their own row).
+#: ``overview: 1`` puts the CT·SA·σ₀ profiles on the left and stacks the station
+#: map above the T–S down-vs-up plot in the right column.
+CAST_SECTION_COLUMNS: dict[str, int] = {"overview": 1}
 
 
 def resolve_cast(ctx: PageCtx, *, drop_stub: bool = False) -> ResolvedReport:

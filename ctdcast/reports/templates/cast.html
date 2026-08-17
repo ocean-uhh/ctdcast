@@ -62,15 +62,25 @@ details.sensor-details summary { cursor: pointer; user-select: none; padding: 0.
 {% for note in cast_notes %}<p class="warn">{{ note }}</p>{% endfor %}
 
 <div class="jump-nav">
-  {% for s in report.sections %}<a href="#{{ s.id }}">{{ s.number }} {{ s.title }}</a>
+  {% for s in report.sections %}<a href="#{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</a>
   {% endfor %}
 </div>
 
 {% for s in report.sections %}
-<h2 id="{{ s.id }}">{{ s.number }} — {{ s.title }}</h2>{{ legacy_anchor_spans([s.id]) | safe }}
+<h2 id="{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</h2>{{ legacy_anchor_spans([s.id]) | safe }}
 {% if s.intro %}<p class="caption">{{ s.intro }}</p>{% endif %}
+{# `section_columns[s.id]` = index from which the trailing panels stack in a right-hand
+   fig-col (presentational; the manifest model is layout-neutral). Absent → flat row. #}
+{% set split = section_columns.get(s.id) %}
 <div class="fig-row">
+  {% if split is not none %}
+  {% for p in s.panels %}{% if loop.index0 < split %}{{ m.panel(p) }}{% endif %}{% endfor %}
+  <div class="fig-col slot-{{ s.panels[split].slot }}">
+    {% for p in s.panels %}{% if loop.index0 >= split %}{{ m.panel(p, "full") }}{% endif %}{% endfor %}
+  </div>
+  {% else %}
   {% for p in s.panels %}{{ m.panel(p) }}{% endfor %}
+  {% endif %}
 </div>
 {% endfor %}
 

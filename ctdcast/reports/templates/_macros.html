@@ -7,13 +7,14 @@
 {# Render one resolved manifest panel. `|safe` appears once, gated by kind, so figure
    payloads (base64) are always escaped into an image src and only html/table markup is
    emitted raw — the autoescape boundary is this one branch. #}
-{% macro panel(p) %}
+{% macro panel(p, slot=None) %}
+{%- set sl = slot or p.slot %}
 {%- if p.is_stub %}
-  <figure class="slot-{{ p.slot }}"><p class="warn">{{ p.caption or p.id }} — {{ p.stub_reason }}</p></figure>
+  <figure class="slot-{{ sl }}"><p class="warn">{{ p.caption or p.id }} — {{ p.stub_reason }}</p></figure>
 {%- elif p.kind == "figure" %}
-  <figure class="slot-{{ p.slot }}">
+  <figure class="slot-{{ sl }}">
     <img src="data:image/png;base64,{{ p.payload }}" alt="{{ p.caption or p.id }}">
-    {{- dbg(p.payload, p.slot) }}
+    {{- dbg(p.payload, sl) }}
     {%- if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}
   </figure>
 {%- else %}{# html | table #}

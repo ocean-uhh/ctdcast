@@ -173,6 +173,9 @@ figure img {{
   display: block; width: 100%; height: auto;
 }}
 figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }}
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn {{ max-width: none; }}
 table {{
   width: 100%; border-collapse: collapse;
   font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
@@ -237,6 +240,7 @@ def print_css(*, terse: bool = False) -> str:
 @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
 body { max-width: 100%; padding: 0; }
 p, li, .explainer { max-width: 78ch; }
+figure .warn { max-width: none; }
 img { max-width: 100%; height: auto; }
 .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
 .masthead-header h1, .masthead h1 { font-size: var(--fs-h1); }
