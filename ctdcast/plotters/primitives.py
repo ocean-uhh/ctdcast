@@ -60,10 +60,14 @@ def nice_colorbar_ticks(
         Tick positions, clipped to ``[vmin, vmax]``.
 
     """
+    lo, hi = (vmin, vmax) if vmin <= vmax else (vmax, vmin)
     ticks = mticker.MaxNLocator(
         nbins=max_ticks, steps=[1, 2, 2.5, 5, 10]
-    ).tick_values(vmin, vmax)
-    return ticks[(ticks >= vmin) & (ticks <= vmax)]
+    ).tick_values(lo, hi)
+    ticks = ticks[(ticks >= lo) & (ticks <= hi)]
+    # A near-degenerate range can leave every rounded tick outside [lo, hi]; fall
+    # back to the endpoints so the colorbar never renders with zero labels.
+    return ticks if len(ticks) else np.array([lo, hi])
 
 
 def unit_colorbar(

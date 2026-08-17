@@ -23,6 +23,7 @@ from ctdcast.config.parameters import (
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
     vlabel,
+    vlabel_html,
 )
 from ctdcast.identity import (
     cast_id_from_name,
@@ -672,7 +673,9 @@ def _write_index(
                     cast_groups=cast_groups,
                     cfg=cfg,
                 )
-                return RenderedPanel(b64=b64, title=label, short=var)
+                # title is the panel's HTML caption on index.html, so use the
+                # HTML-ready label (mathtext subscripts rendered as Unicode).
+                return RenderedPanel(b64=b64, title=vlabel_html(var), short=var)
 
             physics_panels_idx = tuple(
                 p

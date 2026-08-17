@@ -26,6 +26,7 @@ from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
     VAR_COLORS,
     vlabel,
+    vunit,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import (
@@ -624,7 +625,7 @@ def draw_ts_diagram_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label(vlabel("oxygen_saturation"))
+    cb.set_label(vlabel("oxygen_saturation"), loc="left")
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
@@ -1010,7 +1011,7 @@ def section_figsize_and_slot(
 def draw_section_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     x_vals: np.ndarray,
     x_label: str,
     title: str = "",  # noqa: ARG001
@@ -1072,7 +1073,7 @@ def draw_section_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
-        cbar_label=label,
+        cbar_label=vunit(var),
     )
 
     if bathy_depths is not None:
@@ -1154,7 +1155,7 @@ def draw_section_ts_profiles_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Along-track distance (km)")
+    cb.set_label("Along-track distance (km)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1223,7 +1224,7 @@ def draw_ts_diagram_timeseries_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Hours since start")
+    cb.set_label("Hours since start", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1282,7 +1283,7 @@ def draw_section_ts_histogram_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("log₁₀(count)")
+    cb.set_label(r"$\log_{10}$(count)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1364,7 +1365,7 @@ def draw_section_ts_o2_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Median O₂ saturation (%)")
+    cb.set_label(r"Median $O_2$ saturation (%)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1463,7 +1464,7 @@ def draw_section_map_fig(
 def draw_overview_panel_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     bathy_depths: np.ndarray | None = None,
     style: str = "pcolormesh",
     vmin: float | None = None,
@@ -1528,7 +1529,7 @@ def draw_overview_panel_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
-        cbar_label=label,
+        cbar_label=vunit(var),
     )
 
     if bathy_depths is not None:
@@ -1661,7 +1662,7 @@ def draw_all_sections_map_fig(
 def draw_timeseries_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     style: str = "pcolormesh",
     vmin: float | None = None,
     vmax: float | None = None,
@@ -1762,7 +1763,7 @@ def draw_timeseries_fig(
     unit_colorbar(
         ax,
         pc,
-        unit=label,
+        unit=vunit(var),
         ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
         extend="both",
         reserve=True,

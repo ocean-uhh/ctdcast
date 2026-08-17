@@ -336,6 +336,13 @@ def generate_section_page(
         else ()
     )
 
+    # Pre-render the section map so its panel gates on the result (None → omitted
+    # and renumbered, like the index and timeseries location maps), rather than
+    # rendering live inside resolve() where a None would surface as a stub.
+    map_b64 = _make_section_map_b64(
+        lats, lons, cast_nums_int, title=section_name, cfg=cfg
+    )
+
     page_ctx = SectionPageCtx(
         ds_sec=ds_sec,
         x_vals=x_vals,
@@ -351,6 +358,7 @@ def generate_section_page(
         section_name=section_name,
         lats=lats,
         lons=lons,
+        map_b64=map_b64,
         ts_panels=ts_panels,
         ladcp_panels=ladcp_panels,
         cfg=cfg,
@@ -419,6 +427,7 @@ class SectionPageCtx:
     section_name: str
     lats: list[float]
     lons: list[float]
+    map_b64: str | None
     ts_panels: tuple[RenderedPanel, ...]
     ladcp_panels: tuple[RenderedPanel, ...]
     cfg: ReportConfig
@@ -508,11 +517,13 @@ def _ts_panel(rp: RenderedPanel) -> Panel:
 
 
 def _biogeo_present(c: SectionPageCtx) -> list[str]:
-    """Return the biogeo vars present on this section, in canonical order.
+    """Return the biogeo vars structurally present on this section, in canonical order.
 
-    Absent vars are dropped here so the Biogeochemistry PanelGroup never yields a
-    panel for a variable this section lacks — matching the previous page, which
-    silently omitted them rather than showing an "unavailable" stub.
+    Drops vars whose variable is *absent* from the dataset, so the Biogeochemistry
+    PanelGroup never yields a panel for a channel this section lacks.  A var that is
+    present but whose plot returns ``None`` (e.g. all-NaN) is *not* dropped here — it
+    surfaces as an "unavailable" stub, since a present-but-unplottable channel is a
+    defect worth showing rather than hiding.
     """
     return [
         v for v in SECTION_BIOGEO_VARS if resolve_sensor_var(c.ds_sec, v) in c.ds_sec
@@ -525,9 +536,8 @@ SECTION_PANELS: dict[str, Panel] = {
     "section_map": Panel(
         id="section_map",
         slot="half",
-        render=lambda c: _make_section_map_b64(
-            c.lats, c.lons, c.cast_labels, title=c.section_name, cfg=c.cfg
-        ),
+        applies_to=lambda c: c.map_b64 is not None,
+        render=lambda c: c.map_b64,
     ),
 }
 

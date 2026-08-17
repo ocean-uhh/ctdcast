@@ -22,6 +22,12 @@
 {%- endif %}
 {% endmacro %}
 
+{# The one place a section number + title is formatted: "(1) Overview", or just
+   "Overview" when there is no number. Every page — the manifest-driven bodies AND
+   the hand-authored casts/sections/timeseries listing pages — renders headings and
+   jump-nav links through this, so the numbering style is chosen once. #}
+{% macro heading_text(number, title) %}{% if number %}({{ number }}) {% endif %}{{ title }}{% endmacro %}
+
 {# Render a resolved report body: the jump-nav plus every numbered section and its
    panels. Shared by every manifest-driven page (cast, section, and later timeseries
    / index) so section numbering, anchors and layout live in one place. Section
@@ -30,16 +36,18 @@
    Jinja global emitting the D3 transition anchors. #}
 {% macro report_body(report, section_columns={}, center_sections=[]) %}
 <div class="jump-nav">
-  {% for s in report.sections %}<a href="#{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</a>
+  {% for s in report.sections %}<a href="#{{ s.id }}">{{ heading_text(s.number, s.title) }}</a>
   {% endfor %}
 </div>
 
 {% for s in report.sections %}
-<h2 id="{{ s.id }}">{% if s.number %}({{ s.number }}) {% endif %}{{ s.title }}</h2>{{ legacy_anchor_spans([s.id]) | safe }}
+<h2 id="{{ s.id }}">{{ heading_text(s.number, s.title) }}</h2>{{ legacy_anchor_spans([s.id]) | safe }}
 {% if s.intro %}<p class="caption">{{ s.intro }}</p>{% endif %}
 {% set split = section_columns.get(s.id) %}
 <div class="fig-row{% if s.id in center_sections %} center{% endif %}">
-  {% if split is not none %}
+  {# split only takes the fig-col path when the section actually has a panel at
+     that index; a section whose panels dropped below it falls back to a flat row. #}
+  {% if split is not none and s.panels|length > split %}
   {% for p in s.panels %}{% if loop.index0 < split %}{{ panel(p) }}{% endif %}{% endfor %}
   <div class="fig-col slot-{{ s.panels[split].slot }}">
     {% for p in s.panels %}{% if loop.index0 >= split %}{{ panel(p, "full") }}{% endif %}{% endfor %}
@@ -49,4 +57,6 @@
   {% endif %}
 </div>
 {% endfor %}
+{% if not report.sections %}<p class="caption">No plottable data for this selection.</p>{% endif %}
+{% if report.not_applicable %}<p class="caption">Not applicable to this {% if report.sections %}selection{% else %}deployment{% endif %}: {{ report.not_applicable | join(", ") }}.</p>{% endif %}
 {% endmacro %}

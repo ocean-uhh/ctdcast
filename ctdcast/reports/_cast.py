@@ -363,9 +363,23 @@ def _has_ts(c: PageCtx) -> bool:
     return "conservative_temperature" in c.ds and "absolute_salinity" in c.ds
 
 
-def _has_dual_temperature(c: PageCtx) -> bool:
-    """True when a second temperature sensor is present (the sensor-diff panel needs it)."""
-    return "ctd_temperature_1" in c.ds and "ctd_temperature_2" in c.ds
+def _has_dual_sensors(c: PageCtx) -> bool:
+    """True when a second temperature *or* salinity sensor is present.
+
+    Mirrors :func:`~ctdcast.plotters.plots.draw_sensor_diff_fig`, which draws the
+    T₁−T₂ and/or S₁−S₂ difference when either pair exists — so the panel must apply
+    whenever either is dual, not temperature alone.  (In practice a cast is dual on
+    both channels or neither, but gating on both keeps the predicate honest to the
+    figure.)  Checks canonical and legacy names, matching the figure's own resolver
+    so it stays correct on both pre- and post-rename datasets.
+    """
+    dual_t = ("ctd_temperature_1" in c.ds or "temperature_1" in c.ds) and (
+        "ctd_temperature_2" in c.ds or "temperature_2" in c.ds
+    )
+    dual_s = ("ctd_salinity_1" in c.ds or "salinity_1" in c.ds) and (
+        "ctd_salinity_2" in c.ds or "salinity_2" in c.ds
+    )
+    return dual_t or dual_s
 
 
 #: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
@@ -425,7 +439,7 @@ CAST_PANELS: dict[str, Panel] = {
     "sensor_diff": Panel(
         id="sensor_diff",
         slot="twothirds",
-        applies_to=_has_dual_temperature,
+        applies_to=_has_dual_sensors,
         caption=(
             "T₁−T₂, S₁−S₂: primary minus secondary sensor. "
             "Ideal: scatter around zero with ±0.01 spread."

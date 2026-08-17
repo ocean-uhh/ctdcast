@@ -439,7 +439,11 @@ def _ts_diagram_panel(rp: RenderedPanel) -> Panel:
 
 
 def _ts_biogeo_present(c: TimeseriesPageCtx) -> list[str]:
-    """Return the biogeo vars present on this timeseries, in canonical order."""
+    """Return the biogeo vars structurally present on this timeseries, in canonical order.
+
+    Drops only *absent* channels; a present var whose plot returns ``None`` surfaces
+    as an "unavailable" stub rather than being hidden.
+    """
     return [v for v in SECTION_BIOGEO_VARS if resolve_sensor_var(c.ds_ts, v) in c.ds_ts]
 
 

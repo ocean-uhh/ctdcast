@@ -21,6 +21,7 @@ from ctdcast.config.parameters import (
     VAR_COLORS,
     VARIABLES,
     resolve_sensor_var,
+    vlabel_html,
 )
 
 _FIXTURE_NC = Path(__file__).resolve().parents[1] / "fixtures" / "nc" / "mixsed2_011.nc"
@@ -142,3 +143,25 @@ def test_resolve_sensor_var_all_branches() -> None:
         assert resolve_sensor_var(ds, "ctd_temperature") == "ctd_temperature_1"
         # neither form present -> returned unchanged
         assert resolve_sensor_var(ds, "not_a_real_variable") == "not_a_real_variable"
+
+
+def test_vlabel_html_round_trips() -> None:
+    """Every VARIABLES label converts to HTML with no leftover mathtext.
+
+    vlabel() may carry mathtext ($\\sigma_0$) so matplotlib renders subscripts;
+    vlabel_html() must leave no literal ``$`` or ``\\command`` that would show raw in
+    an HTML caption.  Guards against a future label using an unmapped TeX token.
+    """
+    leaked = {
+        var: html
+        for var in VARIABLES
+        if ("$" in (html := vlabel_html(var)) or "\\" in html)
+    }
+    assert not leaked, f"vlabel_html left mathtext for: {leaked}"
+
+
+def test_vlabel_html_known_subscripts() -> None:
+    """Spot-check the subscript conversions used on HTML pages."""
+    assert vlabel_html("sigma0") == "σ₀ (kg m⁻³)"
+    assert vlabel_html("oxygen_saturation") == "O₂ sat (%)"
+    assert vlabel_html("ctd_salinity_1") == "SP₁ (PSU)"

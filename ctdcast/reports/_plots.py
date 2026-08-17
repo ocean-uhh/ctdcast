@@ -24,6 +24,7 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
+from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
 from ctdcast.plotters.plots import (
     _cast_markers,
     _hide_outer_spines,
@@ -353,14 +354,11 @@ def _make_ladcp_section_b64(
                 if style == "contourf":
                     X, Y = np.meshgrid(x_ladcp, z_grid)
                     Z = np.ma.masked_invalid(grid_data.T)
-                    cf = ax.contourf(
+                    mappable = ax.contourf(
                         X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both"
                     )
-                    fig.colorbar(
-                        cf, ax=ax, ticks=bounds[::2], label="Velocity (m s⁻¹)", pad=0.02
-                    )
                 else:
-                    pc = ax.pcolormesh(
+                    mappable = ax.pcolormesh(
                         x_ladcp,
                         z_grid,
                         grid_data.T,
@@ -368,14 +366,16 @@ def _make_ladcp_section_b64(
                         norm=norm,
                         shading="nearest",
                     )
-                    fig.colorbar(
-                        pc,
-                        ax=ax,
-                        ticks=bounds[::2],
-                        label="Velocity (m s⁻¹)",
-                        pad=0.02,
-                        extend="both",
-                    )
+                # Same fixed-width, unit-on-top colorbar as the other field figures.
+                unit_colorbar(
+                    ax,
+                    mappable,
+                    unit="m s⁻¹",
+                    ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
+                    extend="both",
+                    reserve=True,
+                    title_loc="left",
+                )
 
                 # Bathymetry — dense interpolation preferred
                 if dense_bathy_x is not None and dense_bathy_d is not None:
