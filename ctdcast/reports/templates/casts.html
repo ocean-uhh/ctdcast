@@ -46,8 +46,8 @@ tbody tr:hover td { background: var(--seafoam); }
 
 {% block content %}
 {% if cruise_map_b64 %}
-<h2 id="s-map">1 — Map</h2>
-<div class="fig-row">
+<h2 id="s-map">{{ m.heading_text(1, "Map") }}</h2>
+<div class="fig-row center">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
     {{- m.dbg(cruise_map_b64, "slot-half") }}
@@ -55,7 +55,7 @@ tbody tr:hover td { background: var(--seafoam); }
 </div>
 {% endif %}
 
-<h2 id="s-table">2 — Casts</h2>
+<h2 id="s-table">{{ m.heading_text(2, "Casts") }}</h2>
 <table>
     <thead>
       <tr>

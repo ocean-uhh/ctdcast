@@ -19,6 +19,7 @@ who may change it and what breaks when they do:
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -75,7 +76,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "ctd_temperature_1": {
-        "label": "T₁",
+        "label": "$T_1$",
         "label_units": "°C",
         "long_name": "In-situ temperature (primary)",
         "units": "degree_Celsius",
@@ -86,7 +87,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     "ctd_temperature_2": {
-        "label": "T₂",
+        "label": "$T_2$",
         "label_units": "°C",
         "long_name": "In-situ temperature (secondary)",
         "units": "degree_Celsius",
@@ -111,7 +112,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     "conductivity_1": {
-        "label": "C₁",
+        "label": "$C_1$",
         "label_units": "S m⁻¹",
         "long_name": "Conductivity (primary)",
         "units": "S m-1",
@@ -121,7 +122,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "conductivity_2": {
-        "label": "C₂",
+        "label": "$C_2$",
         "label_units": "S m⁻¹",
         "long_name": "Conductivity (secondary)",
         "units": "S m-1",
@@ -131,7 +132,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": None,
     },
     "ctd_salinity_1": {
-        "label": "SP₁",
+        "label": "$S_{P1}$",
         "label_units": "PSU",
         "long_name": "Practical salinity (primary)",
         "units": "1",  # PSS-78 is dimensionless per CF
@@ -142,7 +143,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 35.5,
     },
     "ctd_salinity_2": {
-        "label": "SP₂",
+        "label": "$S_{P2}$",
         "label_units": "PSU",
         "long_name": "Practical salinity (secondary)",
         "units": "1",
@@ -165,7 +166,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 35.5,
     },
     "ctd_oxygen_1": {
-        "label": "O₂",
+        "label": "$O_2$",
         "label_units": "µmol kg⁻¹",
         "long_name": "Dissolved oxygen (primary)",
         "units": "umol kg-1",
@@ -175,7 +176,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 350,
     },
     "ctd_oxygen_2": {
-        "label": "O₂ (2)",
+        "label": "$O_2$ (2)",
         "label_units": "µmol kg⁻¹",
         "long_name": "Dissolved oxygen (secondary)",
         "units": "umol kg-1",
@@ -186,7 +187,7 @@ VARIABLES: dict[str, dict] = {
     },
     # ctd_oxygen: preferred sensor composite — see ctd_temperature note above.
     "ctd_oxygen": {
-        "label": "O₂",
+        "label": "$O_2$",
         "label_units": "µmol kg⁻¹",
         "long_name": "Dissolved oxygen (preferred sensor)",
         "units": "umol kg-1",
@@ -198,7 +199,7 @@ VARIABLES: dict[str, dict] = {
     # oxygen_saturation: derived on demand from ctd_oxygen + T/S/P; not stored.
     # Entry kept for vlabel() and plot metadata; no netCDF write.
     "oxygen_saturation": {
-        "label": "O₂ sat",
+        "label": "$O_2$ sat",
         "label_units": "%",
         "long_name": "Dissolved oxygen saturation",
         "units": "percent",
@@ -261,7 +262,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 35.5,
     },
     "sigma0": {
-        "label": "σ₀",
+        "label": "$\\sigma_0$",
         "label_units": "kg m⁻³",
         "long_name": "Potential density anomaly (ref 0 dbar)",
         "units": "kg m-3",
@@ -395,6 +396,62 @@ def vlabel(var: str, prefix: str = "") -> str:
     lbl = f"{prefix}{entry.get('label', var)}"
     lu = entry.get("label_units", "")
     return f"{lbl} ({lu})" if lu else lbl
+
+
+def vunit(var: str) -> str:
+    """Return the Unicode display unit for *var*, or ``""`` when dimensionless.
+
+    The unit half of :func:`vlabel`, for field colorbars that place the unit as a
+    title on top of the bar rather than a ``"Label (units)"`` side label.  Uses the
+    ``label_units`` display form (never the ASCII ``units`` netCDF string).  Works
+    for both canonical and single-/dual-sensor-resolved names (both carry the same
+    ``label_units`` in :data:`VARIABLES`).
+    """
+    return VARIABLES.get(var, {}).get("label_units", "")
+
+
+#: Greek/command replacements for the mathtext→Unicode label converter.
+_MATHTEXT_TOKENS: dict[str, str] = {r"\sigma": "σ", r"\log": "log"}
+_SUBSCRIPT_MAP = str.maketrans("0123456789+-=()", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
+_SUPERSCRIPT_MAP = str.maketrans("0123456789+-=()n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ")
+
+
+def _mathtext_to_unicode(text: str) -> str:
+    """Convert the mathtext spans in *text* to their Unicode equivalents.
+
+    ``VARIABLES`` labels carry subscripts as mathtext (``$\\sigma_0$``) so matplotlib
+    renders them reliably; this rewrites those spans to Unicode (``σ₀``) for HTML
+    contexts, where mathtext would show as literal ``$…$``.  Handles the ``\\sigma``/
+    ``\\log`` tokens our labels use plus ``_`` subscripts and ``^`` superscripts; a
+    label using an unmapped TeX command is caught by ``test_vlabel_html_round_trips``
+    rather than leaking silently.
+    """
+
+    def _convert(match: re.Match[str]) -> str:
+        body = match.group(1)
+        for tex, char in _MATHTEXT_TOKENS.items():
+            body = body.replace(tex, char)
+        body = re.sub(
+            r"_\{([^}]*)\}", lambda m: m.group(1).translate(_SUBSCRIPT_MAP), body
+        )
+        body = re.sub(r"_(.)", lambda m: m.group(1).translate(_SUBSCRIPT_MAP), body)
+        body = re.sub(
+            r"\^\{([^}]*)\}", lambda m: m.group(1).translate(_SUPERSCRIPT_MAP), body
+        )
+        body = re.sub(r"\^(.)", lambda m: m.group(1).translate(_SUPERSCRIPT_MAP), body)
+        return body
+
+    return re.sub(r"\$([^$]*)\$", _convert, text)
+
+
+def vlabel_html(var: str, prefix: str = "") -> str:
+    """Return :func:`vlabel` as HTML-ready text — mathtext subscripts as Unicode.
+
+    Use this wherever a variable label is written into HTML (a figure caption, a
+    table cell): matplotlib needs the mathtext form, but HTML must show ``σ₀``, not
+    the literal ``$\\sigma_0$``.  One helper so the label-form choice lives in one place.
+    """
+    return _mathtext_to_unicode(vlabel(var, prefix))
 
 
 def resolve_sensor_var(ds: xr.Dataset, var: str) -> str:

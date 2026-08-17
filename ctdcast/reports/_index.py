@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -22,6 +23,7 @@ from ctdcast.config.parameters import (
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
     vlabel,
+    vlabel_html,
 )
 from ctdcast.identity import (
     cast_id_from_name,
@@ -34,7 +36,16 @@ from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
+from ctdcast.reports._manifest import (
+    Panel,
+    PanelGroup,
+    Profile,
+    ResolvedReport,
+    Section,
+    resolve,
+)
 from ctdcast.reports._plots import (
+    RenderedPanel,
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
     _make_overview_panel_b64,
@@ -71,6 +82,7 @@ def report(
     sal_range: tuple[float, float] | None = None,
     trim_soak: bool = False,
     dbar_step: int = 1,
+    drop_stub: bool = False,
 ) -> int:
     """Generate the full ctdcast HTML report suite.
 
@@ -130,6 +142,11 @@ def report(
         Subsample the pressure axis by this step for section and timeseries
         plots (default 1, full 1-dbar resolution).  ``build_profiles()``
         always stores 1-dbar data; this controls plot-time resolution only.
+    drop_stub:
+        If True, a cast-page section that applies but whose figures all failed
+        to render is dropped and the survivors renumber over it, instead of
+        keeping the heading with an "unavailable" placeholder.  Passed through
+        to :func:`~ctdcast.reports._cast.generate_station_page`.
 
     Returns
     -------
@@ -292,6 +309,7 @@ def report(
                 trim_soak=trim_soak,
                 cast_notes=all_cast_notes.get(meta["cast_num"]),
                 cruise_info=cruise_info,
+                drop_stub=drop_stub,
                 cfg=cfg,
             )
             if _skip_reason:
@@ -617,10 +635,12 @@ def _write_index(
     else:
         fig_map_b64 = None
 
-    # Stacked overview panels and cruise T-S diagram from profiles.nc
-    physics_panels_idx: list[dict[str, Any]] = []
-    biogeo_panels_idx: list[dict[str, Any]] = []
-    ts_b64: str | None = None
+    # Stacked overview panels and cruise T-S diagram from profiles.nc.  All are
+    # optional (a None b64 is dropped, never stubbed), so they are rendered here and
+    # the non-None ones fed to the manifest as pre-rendered PanelGroups.
+    physics_panels_idx: tuple[RenderedPanel, ...] = ()
+    biogeo_panels_idx: tuple[RenderedPanel, ...] = ()
+    ts_panels_idx: tuple[RenderedPanel, ...] = ()
     if profiles_path is not None and profiles_path.exists():
         try:
             ds_all = xr.open_dataset(
@@ -641,7 +661,7 @@ def _write_index(
             vmin = vmin_override or {}
             vmax = vmax_override or {}
 
-            def _idx_panel(var: str, label: str) -> dict[str, Any]:
+            def _idx_panel(var: str, label: str) -> RenderedPanel:
                 b64 = _make_overview_panel_b64(
                     ds_sorted,
                     var,
@@ -653,20 +673,41 @@ def _write_index(
                     cast_groups=cast_groups,
                     cfg=cfg,
                 )
-                return {"title": label, "b64": b64}
+                # title is the panel's HTML caption on index.html, so use the
+                # HTML-ready label (mathtext subscripts rendered as Unicode).
+                return RenderedPanel(b64=b64, title=vlabel_html(var), short=var)
 
-            physics_panels_idx = [
-                _idx_panel(v, vlabel(v)) for v in SECTION_PHYSICS_VARS
-            ]
-            biogeo_panels_idx = [_idx_panel(v, vlabel(v)) for v in SECTION_BIOGEO_VARS]
+            physics_panels_idx = tuple(
+                p
+                for p in (_idx_panel(v, vlabel(v)) for v in SECTION_PHYSICS_VARS)
+                if p.b64
+            )
+            biogeo_panels_idx = tuple(
+                p
+                for p in (_idx_panel(v, vlabel(v)) for v in SECTION_BIOGEO_VARS)
+                if p.b64
+            )
 
-            ts_b64 = _make_section_ts_histogram_b64(ds_sorted, cfg=cfg)
+            _ts_b64 = _make_section_ts_histogram_b64(ds_sorted, cfg=cfg)
+            ts_panels_idx = (
+                (RenderedPanel(b64=_ts_b64, title="All downcast profiles"),)
+                if _ts_b64
+                else ()
+            )
             ds_all.close()
         except Exception:  # noqa: BLE001
             pass  # Overview panels are optional; never crash index generation
 
     date_start = times_str[0] if times_str else ""
     date_end = times_str[-1] if len(times_str) >= 2 else ""
+
+    page_ctx = IndexPageCtx(
+        map_b64=fig_map_b64,
+        physics_panels=physics_panels_idx,
+        biogeo_panels=biogeo_panels_idx,
+        ts_panels=ts_panels_idx,
+    )
+    report = resolve_index(page_ctx)
 
     ctx: dict[str, Any] = {
         "cruise": cruise,
@@ -678,12 +719,7 @@ def _write_index(
         "n_sections": len(sections_cfg),
         "max_depth_str": f"{max_depth:.0f} dbar",
         "n_days": n_days,
-        "fig_map_b64": fig_map_b64,
-        "physics_panels": physics_panels_idx,
-        "biogeo_panels": biogeo_panels_idx,
-        "ts_b64": ts_b64
-        if profiles_path is not None and profiles_path.exists()
-        else None,
+        "report": report,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
@@ -695,6 +731,101 @@ def _write_index(
         nav_current="summary",
     )
     (out_dir / "index.html").write_text(html, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Index manifest — the cruise summary page as data (mirrors _section.py)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class IndexPageCtx:
+    """Per-cruise render context for index.html: the pre-rendered overview panels.
+
+    Every panel is optional and rendered up front, so the context carries finished
+    base64 payloads (not a dataset); the manifest only numbers, anchors and lays
+    them out.
+    """
+
+    map_b64: str | None
+    physics_panels: tuple[RenderedPanel, ...]
+    biogeo_panels: tuple[RenderedPanel, ...]
+    ts_panels: tuple[RenderedPanel, ...]
+
+
+def _index_overview_panel(rp: RenderedPanel) -> Panel:
+    """Wrap a pre-rendered full-width cruise overview panel, captioned by variable."""
+    return Panel(
+        id=f"index_{rp.short or rp.title}",
+        slot="full",
+        caption=rp.title,
+        render=lambda _c, _b64=rp.b64: _b64,
+    )
+
+
+def _index_ts_panel(rp: RenderedPanel) -> Panel:
+    """Wrap the pre-rendered cruise T–S histogram as a third-width panel."""
+    return Panel(
+        id="index_ts",
+        slot="third",
+        caption=rp.title,
+        render=lambda _c, _b64=rp.b64: _b64,
+    )
+
+
+#: Only the map is fixed; the overview fields and T–S are data-driven groups.
+INDEX_PANELS: dict[str, Panel] = {
+    "index_map": Panel(
+        id="index_map",
+        slot="half",
+        applies_to=lambda c: c.map_b64 is not None,
+        render=lambda c: c.map_b64,
+    ),
+}
+
+
+#: The cruise summary profile.  Same section ids as the section/timeseries pages,
+#: so the shared anchors and legacy #s-* aliases resolve consistently.
+INDEX_DEFAULT: Profile = Profile(
+    numbering="flat",
+    entries=(
+        Section(
+            "map",
+            "Map",
+            ("index_map",),
+            intro="Cruise track and station positions.",
+        ),
+        Section(
+            "hydrography",
+            "Hydrography",
+            (PanelGroup(over=lambda c: c.physics_panels, panel=_index_overview_panel),),
+            intro=(
+                "Cruise-wide overview of conservative temperature, absolute salinity "
+                "and potential density across all downcast stations."
+            ),
+        ),
+        Section(
+            "biogeochemistry",
+            "Biogeochemistry",
+            (PanelGroup(over=lambda c: c.biogeo_panels, panel=_index_overview_panel),),
+            intro=(
+                "Cruise-wide overview of oxygen, fluorescence and turbidity across all "
+                "downcast stations."
+            ),
+        ),
+        Section(
+            "ts_diagram",
+            "T–S diagram",
+            (PanelGroup(over=lambda c: c.ts_panels, panel=_index_ts_panel),),
+            intro="CT–SA histogram of all downcast profiles.",
+        ),
+    ),
+)
+
+
+def resolve_index(ctx: IndexPageCtx) -> ResolvedReport:
+    """Resolve the index profile against *ctx* into numbered, rendered sections."""
+    return resolve(INDEX_DEFAULT, ctx, INDEX_PANELS)
 
 
 def _dec_min(deg: float, pos_hem: str, neg_hem: str) -> str:

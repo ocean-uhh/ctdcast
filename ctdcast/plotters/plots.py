@@ -26,6 +26,7 @@ from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
     VAR_COLORS,
     vlabel,
+    vunit,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import (
@@ -43,7 +44,12 @@ from ctdcast.config.report_tokens import (
     W_TWO_FIFTHS as _W_TWO_FIFTHS,
     W_TWOTHIRDS as _W_TWOTHIRDS,
 )
-from ctdcast.plotters.primitives import mesh_field, sigma0_isopycnals
+from ctdcast.plotters.primitives import (
+    mesh_field,
+    nice_colorbar_ticks,
+    sigma0_isopycnals,
+    unit_colorbar,
+)
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
 
@@ -619,7 +625,7 @@ def draw_ts_diagram_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label(vlabel("oxygen_saturation"))
+    cb.set_label(vlabel("oxygen_saturation"), loc="left")
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
@@ -959,10 +965,16 @@ def section_figsize_and_slot(
 ) -> tuple[tuple[float, float], str]:
     """Return figure size and CSS slot class for a section pcolormesh plot.
 
-    Aspect ratio is calibrated so KTout (416 dbar, 94 km) is 2.5 in tall at full
-    width (_W_FULL = 9.0 in).  When the uncapped height would exceed _MAX_SECTION_H,
-    height is capped and width is reduced to preserve the ratio; the narrower CSS
-    slot is chosen accordingly.
+    The figure width is always a **canonical slot width** (one of ``SLOTS``), so
+    the rendered PNG fills its slot at the same oversample as every other figure and
+    the browser never rescales it — otherwise a section rendered at a between-slots
+    width is squeezed into the nearest slot box, shrinking its baked-in fonts.
+
+    Aspect is calibrated (``_SECTION_STRETCH``) so KTout (416 dbar, 94 km) is short
+    at full width.  The widest slot whose resulting height stays within
+    ``_MAX_SECTION_H`` is chosen; height then follows the data aspect (floored at
+    ``_MIN_SECTION_H``).  A section too deep for even the narrowest slot keeps that
+    slot's width and accepts the height cap.
 
     Parameters
     ----------
@@ -973,35 +985,33 @@ def section_figsize_and_slot(
 
     Returns
     -------
-    tuple of ``((fig_w, fig_h), css_slot)`` where ``css_slot`` is one of
-    ``"slot-full"``, ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.
+    tuple of ``((fig_w, fig_h), css_slot)`` where ``fig_w`` equals the slot's
+    canonical inch width and ``css_slot`` is one of ``"slot-full"``,
+    ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.
     """
     dist = max(abs(dist_km), 1.0)  # abs: x_vals may be flipped for east→west sections
-    fig_h_raw = _W_FULL * p_max_dbar / dist / _SECTION_STRETCH
-    if fig_h_raw <= _MAX_SECTION_H:
-        fig_w = _W_FULL
-        fig_h = float(max(fig_h_raw, _MIN_SECTION_H))
-    else:
-        fig_h = _MAX_SECTION_H
-        fig_w = float(
-            max(_MAX_SECTION_H * dist * _SECTION_STRETCH / p_max_dbar, _W_THIRD)
-        )
-    # Pick slot by proximity to standard widths
-    if fig_w >= (_W_FULL + _W_TWOTHIRDS) / 2:
-        slot = "slot-full"
-    elif fig_w >= (_W_TWOTHIRDS + _W_HALF) / 2:
-        slot = "slot-twothirds"
-    elif fig_w >= (_W_HALF + _W_THIRD) / 2:
-        slot = "slot-half"
-    else:
-        slot = "slot-third"
+    ratio = p_max_dbar / (dist * _SECTION_STRETCH)  # fig_h per inch of fig_w
+    # Widest canonical slot whose height stays within the cap; the aspect ratio
+    # means a narrower width yields a shorter figure, so descending widths fit.
+    candidates = (
+        ("slot-full", _W_FULL),
+        ("slot-twothirds", _W_TWOTHIRDS),
+        ("slot-half", _W_HALF),
+        ("slot-third", _W_THIRD),
+    )
+    slot, fig_w = candidates[-1]  # deepest sections fall back to the narrowest slot
+    for name, width in candidates:
+        if width * ratio <= _MAX_SECTION_H:
+            slot, fig_w = name, width
+            break
+    fig_h = float(min(max(fig_w * ratio, _MIN_SECTION_H), _MAX_SECTION_H))
     return (fig_w, fig_h), slot
 
 
 def draw_section_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     x_vals: np.ndarray,
     x_label: str,
     title: str = "",  # noqa: ARG001
@@ -1052,7 +1062,7 @@ def draw_section_fig(
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    cb = mesh_field(
+    mesh_field(
         ax,
         fig,
         x_vals,
@@ -1063,6 +1073,7 @@ def draw_section_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
+        cbar_label=vunit(var),
     )
 
     if bathy_depths is not None:
@@ -1078,7 +1089,6 @@ def draw_section_fig(
     if var == "sigma0":
         sigma0_isopycnals(ax, x_vals, p_trim, data_trim)
 
-    cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
     ax.set_xlim(float(x_vals[0]), float(x_vals[-1]))
     ax.set_ylabel(vlabel("pressure"))
@@ -1145,7 +1155,7 @@ def draw_section_ts_profiles_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Along-track distance (km)")
+    cb.set_label("Along-track distance (km)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1214,7 +1224,7 @@ def draw_ts_diagram_timeseries_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Hours since start")
+    cb.set_label("Hours since start", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1273,7 +1283,7 @@ def draw_section_ts_histogram_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("log₁₀(count)")
+    cb.set_label(r"$\log_{10}$(count)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1355,7 +1365,7 @@ def draw_section_ts_o2_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label("Median O₂ saturation (%)")
+    cb.set_label(r"Median $O_2$ saturation (%)", loc="left")
 
     ax.set_xlim(sa_lo, sa_hi)
     ax.set_ylim(ct_lo, ct_hi)
@@ -1454,7 +1464,7 @@ def draw_section_map_fig(
 def draw_overview_panel_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     bathy_depths: np.ndarray | None = None,
     style: str = "pcolormesh",
     vmin: float | None = None,
@@ -1508,7 +1518,7 @@ def draw_overview_panel_fig(
                 x_pos[cn_i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0
             )
 
-    cb = mesh_field(
+    mesh_field(
         ax,
         fig,
         x_pos,
@@ -1519,6 +1529,7 @@ def draw_overview_panel_fig(
         cmap_name=cmap_name,
         bounds=bounds,
         style=style,
+        cbar_label=vunit(var),
     )
 
     if bathy_depths is not None:
@@ -1544,7 +1555,6 @@ def draw_overview_panel_fig(
                     transform=ax.get_xaxis_transform(),
                 )
 
-    cb.set_label(label)
     ax.set_ylim(y_bottom, 0)
     ax.set_ylabel(vlabel("pressure"))
     ax.set_xlabel("Cast number")
@@ -1652,7 +1662,7 @@ def draw_all_sections_map_fig(
 def draw_timeseries_fig(
     ds_prof: xr.Dataset,
     var: str,
-    label: str,
+    label: str,  # noqa: ARG001 — full label retained for callers; figure shows units only
     style: str = "pcolormesh",
     vmin: float | None = None,
     vmax: float | None = None,
@@ -1750,8 +1760,15 @@ def draw_timeseries_fig(
         ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha="right")
 
-    cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
-    cb.set_label(label)
+    unit_colorbar(
+        ax,
+        pc,
+        unit=vunit(var),
+        ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
+        extend="both",
+        reserve=True,
+        title_loc="left",
+    )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_for_contour, p_trim, data_trim)

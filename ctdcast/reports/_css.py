@@ -138,7 +138,10 @@ h2 {{
   color: var(--gray-5); font-size: var(--fs-note);
   margin-top: 0.75rem; margin-bottom: 0.75rem;
 }}
-h2 + .caption {{ margin-top: -0.5rem; }}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption {{ margin-top: -0.5rem; max-width: none; }}
 .explainer {{
   font-size: var(--fs-note); color: var(--text);
   background: var(--bg-sunken); border-left: 3px solid var(--muted);
@@ -167,12 +170,16 @@ h2 + .caption {{ margin-top: -0.5rem; }}
   align-items: flex-start;
 }}
 .fig-col {{ display: flex; flex-direction: column; gap: 0.75rem; }}
+.fig-row.center {{ justify-content: center; }}
 figure {{ margin: 0; }}
 figure img {{
   border: 1px solid var(--rule); border-radius: var(--radius-btn);
   display: block; width: 100%; height: auto;
 }}
 figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }}
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn {{ max-width: none; }}
 table {{
   width: 100%; border-collapse: collapse;
   font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
@@ -237,6 +244,7 @@ def print_css(*, terse: bool = False) -> str:
 @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
 body { max-width: 100%; padding: 0; }
 p, li, .explainer { max-width: 78ch; }
+figure .warn { max-width: none; }
 img { max-width: 100%; height: auto; }
 .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
 .masthead-header h1, .masthead h1 { font-size: var(--fs-h1); }

@@ -5,7 +5,7 @@ Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in
 custom wrapper instead of :func:`render_b64`: ``_make_all_sections_map_b64`` still
 delegates drawing to its ``draw_*_fig`` but needs a post-``tight_layout``
 adjustment, and ``_make_ladcp_section_b64`` does its own plotting because it
-returns a list of :class:`Panel` rather than a single figure.
+returns a list of :class:`RenderedPanel` rather than a single figure.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
+from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
 from ctdcast.plotters.plots import (
     _cast_markers,
     _hide_outer_spines,
@@ -65,7 +66,7 @@ from ctdcast.reports._figdebug import render_b64
 
 
 @dataclasses.dataclass(frozen=True)
-class Panel:
+class RenderedPanel:
     """A rendered figure plus the layout metadata the HTML template needs."""
 
     b64: str | None
@@ -243,8 +244,8 @@ def _make_ladcp_section_b64(
     style: str = "pcolormesh",
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> list[Panel]:
-    """Return a list of ``Panel`` objects for LADCP U and V sections.
+) -> list[RenderedPanel]:
+    """Return a list of ``RenderedPanel`` objects for LADCP U and V sections.
 
     Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
     Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
@@ -343,7 +344,7 @@ def _make_ladcp_section_b64(
             )
             y_bottom = max(z_max, bathy_max) * 1.05
 
-            panels: list[Panel] = []
+            panels: list[RenderedPanel] = []
             for grid_data, panel_title, panel_short, panel_label in (
                 (u_grid, "U velocity (east +)", "U", "U  East +"),
                 (v_grid, "V velocity (north +)", "V", "V  North +"),
@@ -353,14 +354,11 @@ def _make_ladcp_section_b64(
                 if style == "contourf":
                     X, Y = np.meshgrid(x_ladcp, z_grid)
                     Z = np.ma.masked_invalid(grid_data.T)
-                    cf = ax.contourf(
+                    mappable = ax.contourf(
                         X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both"
                     )
-                    fig.colorbar(
-                        cf, ax=ax, ticks=bounds[::2], label="Velocity (m s⁻¹)", pad=0.02
-                    )
                 else:
-                    pc = ax.pcolormesh(
+                    mappable = ax.pcolormesh(
                         x_ladcp,
                         z_grid,
                         grid_data.T,
@@ -368,14 +366,16 @@ def _make_ladcp_section_b64(
                         norm=norm,
                         shading="nearest",
                     )
-                    fig.colorbar(
-                        pc,
-                        ax=ax,
-                        ticks=bounds[::2],
-                        label="Velocity (m s⁻¹)",
-                        pad=0.02,
-                        extend="both",
-                    )
+                # Same fixed-width, unit-on-top colorbar as the other field figures.
+                unit_colorbar(
+                    ax,
+                    mappable,
+                    unit="m s⁻¹",
+                    ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
+                    extend="both",
+                    reserve=True,
+                    title_loc="left",
+                )
 
                 # Bathymetry — dense interpolation preferred
                 if dense_bathy_x is not None and dense_bathy_d is not None:
@@ -414,7 +414,7 @@ def _make_ladcp_section_b64(
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_section_b64", fig)
                 panels.append(
-                    Panel(b64=_panel_b64, title=panel_title, short=panel_short)
+                    RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
                 )
                 plt.close(fig)
 

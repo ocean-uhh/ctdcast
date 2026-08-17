@@ -45,8 +45,8 @@
 
 {% block content %}
 {% if timeseries_map_b64 %}
-<h2 id="s-map">1 — Timeseries locations</h2>
-<div class="fig-row">
+<h2 id="s-map">{{ m.heading_text(1, "Timeseries locations") }}</h2>
+<div class="fig-row center">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
     {{- m.dbg(timeseries_map_b64, "slot-half") }}
@@ -54,7 +54,7 @@
 </div>
 {% endif %}
 
-<h2 id="s-list">2 — Timeseries groups</h2>
+<h2 id="s-list">{{ m.heading_text(2, "Timeseries groups") }}</h2>
 <div class="ts-grid">
 {% for ts in timeseries %}
 <div class="ts-card" style="border-left-color:{{ ts.color }}">

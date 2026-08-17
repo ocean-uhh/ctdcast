@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import xarray as xr
@@ -25,7 +26,6 @@ from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
-    VARIABLES,
     resolve_sensor_var,
     vlabel,
 )
@@ -33,12 +33,19 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters.plots import section_figsize_and_slot
-from ctdcast.reports._chrome import EXTRA_CARD_ORDER
+from ctdcast.reports._manifest import (
+    Panel,
+    PanelGroup,
+    Profile,
+    ResolvedReport,
+    Section,
+    resolve,
+)
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
-    Panel,
+    RenderedPanel,
     _make_ladcp_section_b64,
     _make_section_b64,
     _make_section_map_b64,
@@ -280,71 +287,37 @@ def generate_section_page(
     )
     end_time = _fmt_utc(_te_vals[-1]) if _te_vals is not None and len(_te_vals) else "—"
 
-    def _section_panel(
-        var: str,
-        label: str,
-        short: str,
-        *,
-        optional: bool = False,
-        canonical: str | None = None,
-    ) -> Panel:
-        # Look up color limits by resolved name first, then by the canonical
-        # SECTION_BIOGEO_VARS name (which may differ on single-sensor casts).
-        _key = canonical or var
-        _vmin = vmin.get(var) if vmin.get(var) is not None else vmin.get(_key)
-        _vmax = vmax.get(var) if vmax.get(var) is not None else vmax.get(_key)
-        b64 = _make_section_b64(
-            ds_sec,
-            var,
-            label,
-            x_vals,
-            x_label,
-            style=section_style,
-            bathy_depths=dense_bathy_d if dense_bathy_d is not None else bathy,
-            bathy_x=dense_bathy_x,
-            cast_labels=cast_nums_int,
-            vmin=_vmin,
-            vmax=_vmax,
-            figsize=section_figsize,
-            optional=optional,
-            cfg=cfg,
+    # T–S diagram panels are auxiliary (optional=True renderers): a None means the
+    # plot is genuinely empty for this section's data, not a defect, so they are
+    # rendered here and only the non-None ones fed to the T–S section — preserving
+    # the previous page's silent omission rather than showing an "unavailable" stub.
+    ts_panels = tuple(
+        p
+        for p in (
+            RenderedPanel(
+                title="Profiles coloured by distance",
+                short="Profiles",
+                b64=_make_section_ts_profiles_b64(ds_sec, x_vals, cfg=cfg),
+            ),
+            RenderedPanel(
+                title="2-D histogram (log count)",
+                short="Histogram",
+                b64=_make_section_ts_histogram_b64(ds_sec, cfg=cfg),
+            ),
+            RenderedPanel(
+                title="Median O₂ saturation",
+                short="O₂",
+                b64=_make_section_ts_o2_b64(ds_sec, cfg=cfg),
+            ),
         )
-        return Panel(b64=b64, title=label, short=short)
+        if p.b64
+    )
 
-    physics_panels = [
-        _section_panel(v, vlabel(v), VARIABLES[v]["label"])
-        for v in SECTION_PHYSICS_VARS
-    ]
-    biogeo_panels = [
-        _section_panel(
-            resolve_sensor_var(ds_sec, v),
-            vlabel(v),
-            VARIABLES[v]["label"],
-            optional=True,
-            canonical=v,
-        )
-        for v in SECTION_BIOGEO_VARS
-    ]
-
-    _ts_panels_raw = [
-        Panel(
-            title="Profiles coloured by distance",
-            short="Profiles",
-            b64=_make_section_ts_profiles_b64(ds_sec, x_vals, cfg=cfg),
-        ),
-        Panel(
-            title="2-D histogram (log count)",
-            short="Histogram",
-            b64=_make_section_ts_histogram_b64(ds_sec, cfg=cfg),
-        ),
-        Panel(
-            title="Median O₂ saturation",
-            short="O₂",
-            b64=_make_section_ts_o2_b64(ds_sec, cfg=cfg),
-        ),
-    ]
-    _ladcp_panels = (
-        [
+    # LADCP U/V panels are a batch render (one .mat read yields both), so they are
+    # produced here and fed to the Velocity section as a PanelGroup, rather than
+    # rendered lazily per panel like the rest.
+    ladcp_panels = (
+        tuple(
             p
             for p in _make_ladcp_section_b64(
                 cast_nums_int,
@@ -358,29 +331,39 @@ def generate_section_page(
                 cfg=cfg,
             )
             if p.b64
-        ]
+        )
         if ladcp_dir is not None
-        else []
+        else ()
     )
-    _extra_raw: dict[str, dict | None] = {
-        "ladcp": {
-            "id": "ladcp",
-            "title": "Velocity (U east, V north)",
-            "short": "Velocity",
-            "panels": _ladcp_panels,
-        }
-        if _ladcp_panels
-        else None,
-        "ts": {
-            "id": "ts",
-            "title": "T–S diagrams",
-            "short": "T–S diagram",
-            "panels": [p for p in _ts_panels_raw if p.b64],
-        }
-        if any(p.b64 for p in _ts_panels_raw)
-        else None,
-    }
-    extra_cards = [_extra_raw[k] for k in EXTRA_CARD_ORDER if _extra_raw.get(k)]
+
+    # Pre-render the section map so its panel gates on the result (None → omitted
+    # and renumbered, like the index and timeseries location maps), rather than
+    # rendering live inside resolve() where a None would surface as a stub.
+    map_b64 = _make_section_map_b64(
+        lats, lons, cast_nums_int, title=section_name, cfg=cfg
+    )
+
+    page_ctx = SectionPageCtx(
+        ds_sec=ds_sec,
+        x_vals=x_vals,
+        x_label=x_label,
+        section_style=section_style,
+        bathy_depths=dense_bathy_d if dense_bathy_d is not None else bathy,
+        bathy_x=dense_bathy_x,
+        cast_labels=cast_nums_int,
+        vmin=vmin,
+        vmax=vmax,
+        section_figsize=section_figsize,
+        section_slot_key=section_slot.removeprefix("slot-"),
+        section_name=section_name,
+        lats=lats,
+        lons=lons,
+        map_b64=map_b64,
+        ts_panels=ts_panels,
+        ladcp_panels=ladcp_panels,
+        cfg=cfg,
+    )
+    report = resolve_section(page_ctx)
 
     ctx: dict[str, Any] = {
         "section_name": section_name,
@@ -396,13 +379,7 @@ def generate_section_page(
         "start_time": start_time,
         "end_time": end_time,
         "cast_nums": cast_id_strs,
-        "fig_map_b64": _make_section_map_b64(
-            lats, lons, cast_nums_int, title=section_name, cfg=cfg
-        ),
-        "section_slot": section_slot,
-        "physics_panels": physics_panels,
-        "biogeo_panels": biogeo_panels,
-        "extra_cards": extra_cards,
+        "report": report,
         "prev_name": prev_name or "",
         "next_name": next_name or "",
         "version": _VERSION,
@@ -420,6 +397,217 @@ def generate_section_page(
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()
     return out_file
+
+
+# ---------------------------------------------------------------------------
+# Section manifest — the section page as data (see rep-section-manifest-plan.md)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class SectionPageCtx:
+    """Per-section render context: the frozen inputs every section panel reads.
+
+    Holds the values derived once per section (selected profiles, x-axis, bathy,
+    colour limits, the computed figure geometry) so a panel's ``render`` depends
+    only on this object.
+    """
+
+    ds_sec: Any
+    x_vals: Any
+    x_label: str
+    section_style: str
+    bathy_depths: Any
+    bathy_x: Any
+    cast_labels: list[int]
+    vmin: dict[str, float]
+    vmax: dict[str, float]
+    section_figsize: tuple[float, float]
+    section_slot_key: str
+    section_name: str
+    lats: list[float]
+    lons: list[float]
+    map_b64: str | None
+    ts_panels: tuple[RenderedPanel, ...]
+    ladcp_panels: tuple[RenderedPanel, ...]
+    cfg: ReportConfig
+
+
+def _section_slot(c: SectionPageCtx) -> str:
+    """Return the computed CSS slot key shared by every full-width field panel.
+
+    Exercises ``Panel.slot``'s callable path: a section field's width is a property
+    of the section geometry (``section_figsize_and_slot``), identical across the
+    fields, so it is read from the context rather than fixed on each panel.
+    """
+    return c.section_slot_key
+
+
+def _field_render(
+    var: str, *, canonical: str | None, optional: bool
+) -> Callable[[SectionPageCtx], str | None]:
+    """Build the render closure for one section pcolormesh field.
+
+    *var* is resolved at render time for biogeo fields (single-sensor casts promote
+    the suffixed name), so the closure — not the profile — owns the ds lookup and
+    the colour-limit fallback from resolved name to canonical name.
+    """
+
+    def _render(c: SectionPageCtx) -> str | None:
+        resolved = resolve_sensor_var(c.ds_sec, var) if optional else var
+        key = canonical or var
+        _vmin = (
+            c.vmin.get(resolved)
+            if c.vmin.get(resolved) is not None
+            else c.vmin.get(key)
+        )
+        _vmax = (
+            c.vmax.get(resolved)
+            if c.vmax.get(resolved) is not None
+            else c.vmax.get(key)
+        )
+        return _make_section_b64(
+            c.ds_sec,
+            resolved,
+            vlabel(var),
+            c.x_vals,
+            c.x_label,
+            style=c.section_style,
+            bathy_depths=c.bathy_depths,
+            bathy_x=c.bathy_x,
+            cast_labels=c.cast_labels,
+            vmin=_vmin,
+            vmax=_vmax,
+            figsize=c.section_figsize,
+            optional=optional,
+            cfg=c.cfg,
+        )
+
+    return _render
+
+
+def _field_panel(
+    var: str, *, canonical: str | None = None, optional: bool = False
+) -> Panel:
+    """Build a section field :class:`Panel` for *var* at the computed section slot."""
+    return Panel(
+        id=f"section_{canonical or var}",
+        slot=_section_slot,
+        render=_field_render(var, canonical=canonical, optional=optional),
+    )
+
+
+def _ladcp_panel(rp: RenderedPanel) -> Panel:
+    """Wrap a pre-rendered LADCP U/V panel as a manifest :class:`Panel`."""
+    return Panel(
+        id=f"velocity_{rp.short}",
+        slot=_section_slot,
+        render=lambda _c, _b64=rp.b64: _b64,
+    )
+
+
+def _ts_panel(rp: RenderedPanel) -> Panel:
+    """Wrap a pre-rendered T–S diagram panel as a third-width manifest :class:`Panel`."""
+    return Panel(
+        id=f"ts_{rp.short}",
+        slot="third",
+        caption=rp.title,
+        render=lambda _c, _b64=rp.b64: _b64,
+    )
+
+
+def _biogeo_present(c: SectionPageCtx) -> list[str]:
+    """Return the biogeo vars structurally present on this section, in canonical order.
+
+    Drops vars whose variable is *absent* from the dataset, so the Biogeochemistry
+    PanelGroup never yields a panel for a channel this section lacks.  A var that is
+    present but whose plot returns ``None`` (e.g. all-NaN) is *not* dropped here — it
+    surfaces as an "unavailable" stub, since a present-but-unplottable channel is a
+    defect worth showing rather than hiding.
+    """
+    return [
+        v for v in SECTION_BIOGEO_VARS if resolve_sensor_var(c.ds_sec, v) in c.ds_sec
+    ]
+
+
+#: String-addressable section panels.  Only the Map is fixed; field panels
+#: (physics/biogeo), LADCP and T–S panels are all data-driven PanelGroups.
+SECTION_PANELS: dict[str, Panel] = {
+    "section_map": Panel(
+        id="section_map",
+        slot="half",
+        applies_to=lambda c: c.map_b64 is not None,
+        render=lambda c: c.map_b64,
+    ),
+}
+
+
+#: The section page profile.  Same order as the previous hand-authored page — Map,
+#: Hydrography, Biogeochemistry, then the former "extra cards" Velocity and T–S —
+#: now numbered and anchored by the resolver.  Physics/biogeo are PanelGroups over
+#: their variables; Velocity is a PanelGroup over the pre-rendered LADCP panels.
+SECTION_DEFAULT: Profile = Profile(
+    numbering="flat",
+    entries=(
+        Section(
+            "map",
+            "Map",
+            ("section_map",),
+            intro="The section track and the CTD stations it comprises.",
+        ),
+        Section(
+            "hydrography",
+            "Hydrography",
+            (
+                PanelGroup(
+                    over=lambda _c: list(SECTION_PHYSICS_VARS), panel=_field_panel
+                ),
+            ),
+            intro=(
+                "Sections of conservative temperature (CT), absolute salinity (SA) "
+                "and potential density (σ₀) against distance along the section. The "
+                "σ₀ panel carries the 27.7 and 27.8 kg m⁻³ isopycnals (black, "
+                "labelled). Open triangles along the top of each panel mark the "
+                "profiles; station numbers are labelled at intervals."
+            ),
+        ),
+        Section(
+            "biogeochemistry",
+            "Biogeochemistry",
+            (
+                PanelGroup(
+                    over=_biogeo_present,
+                    panel=lambda v: _field_panel(v, canonical=v, optional=True),
+                ),
+            ),
+            intro=(
+                "Sections of the biogeochemical sensors present on this section — "
+                "oxygen, fluorescence and turbidity where available — against "
+                "distance along the section."
+            ),
+        ),
+        Section(
+            "velocity",
+            "Velocity (U east, V north)",
+            (PanelGroup(over=lambda c: c.ladcp_panels, panel=_ladcp_panel),),
+            intro=(
+                "Eastward (U) and northward (V) velocity from the LADCP, against "
+                "distance along the section."
+            ),
+        ),
+        Section(
+            "ts_diagram",
+            "T–S diagrams",
+            (PanelGroup(over=lambda c: c.ts_panels, panel=_ts_panel),),
+            intro="Water-mass structure of the section in temperature–salinity space.",
+        ),
+    ),
+)
+
+
+def resolve_section(ctx: SectionPageCtx) -> ResolvedReport:
+    """Resolve the section profile against *ctx* into numbered, rendered sections."""
+    return resolve(SECTION_DEFAULT, ctx, SECTION_PANELS)
 
 
 # ---------------------------------------------------------------------------

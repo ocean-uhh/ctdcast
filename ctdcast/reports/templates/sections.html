@@ -44,8 +44,8 @@
 
 {% block content %}
 {% if sections_map_b64 %}
-<h2 id="s-map">1 — Section tracks</h2>
-<div class="fig-row">
+<h2 id="s-map">{{ m.heading_text(1, "Section tracks") }}</h2>
+<div class="fig-row center">
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ sections_map_b64 }}" alt="Sections overview map">
     {{- m.dbg(sections_map_b64, "slot-half") }}
@@ -53,7 +53,7 @@
 </div>
 {% endif %}
 
-<h2 id="s-list">2 — Sections</h2>
+<h2 id="s-list">{{ m.heading_text(2, "Sections") }}</h2>
 <div class="sec-grid">
 {% for sec in sections %}
 <div class="sec-card" style="border-left-color:{{ sec.color }}">

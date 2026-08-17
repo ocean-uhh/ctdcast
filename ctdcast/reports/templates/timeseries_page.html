@@ -52,92 +52,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="jump-nav">
-  {% if fig_location_b64 %}<a href="#s-map">Map</a>{% endif %}
-  {% if physics_panels | selectattr("b64") | list %}<a href="#s-physics">Hydrography</a>{% endif %}
-  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
-  {% for card in extra_cards %}<a href="#s-{{ card.id }}">{{ card.short }}</a>{% endfor %}
-</div>
-
 <div style="margin-bottom:1rem;">
   {% for cn in cast_nums %}
   <a class="cast-pill" href="{{ nav_prefix }}casts/cast_{{ cn }}.html">{{ cn }}</a>
   {% endfor %}
 </div>
 
-{% macro ts_panel_group(panels, slot, anchor, heading, h) %}
-{% if panels | selectattr("b64") | list %}
-{% if heading %}{% set h.n = h.n + 1 %}<h2 id="{{ anchor }}">{{ h.n }} — {{ heading }}</h2>{% endif %}
-{% if slot == "slot-third" %}
-<div class="fig-row">
-  {% for panel in panels %}{% if panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, slot) }}
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% elif slot == "slot-half" %}
-{% for row in panels | batch(2, None) %}
-<div class="fig-row">
-  {% for panel in row %}{% if panel and panel.b64 %}
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, slot) }}
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% endfor %}
-{% else %}
-{% for panel in panels %}{% if panel.b64 %}
-<div class="fig-row">
-  <figure class="{{ slot }}">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, slot) }}
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-{% endif %}
-{% endmacro %}
-
-{% set h = namespace(n=0) %}
-{% if fig_location_b64 %}
-{% set h.n = h.n + 1 %}<h2 id="s-map">{{ h.n }} — Map</h2>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ fig_location_b64 }}" alt="Yoyo location map">
-    {{- m.dbg(fig_location_b64, "slot-third") }}
-  </figure>
-</div>
-{% endif %}
-
-{{ ts_panel_group(physics_panels, ts_slot, "s-physics", "Hydrography", h) }}
-{{ ts_panel_group(biogeo_panels, ts_slot, "s-biogeo", "Biogeochemistry", h) }}
-
-{% if not physics_panels and not biogeo_panels %}
-<p style="color:var(--gray-4)">No data available for these casts.</p>
-{% endif %}
-
-{% for card in extra_cards %}
-{% set h.n = h.n + 1 %}<h2 id="s-{{ card.id }}">{{ h.n }} — {{ card.title }}</h2>
-{% if card.id == "ts" %}
-<div class="fig-row">
-  {% for panel in card.panels %}{% if panel.b64 %}
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, "slot-third") }}
-    <figcaption>{{ panel.title }}</figcaption>
-  </figure>
-  {% endif %}{% endfor %}
-</div>
-{% else %}
-{{ ts_panel_group(card.panels, ts_slot, "", "", h) }}
-{% endif %}
-{% endfor %}
+{{ m.report_body(report, center_sections=["map"]) }}
 
 {{ js_top_links | safe }}
 {% endblock %}

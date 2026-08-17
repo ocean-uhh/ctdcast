@@ -23,6 +23,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, Template
 
 from ctdcast.reports import _figdebug
+from ctdcast.reports._anchors import legacy_anchor_spans
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -33,6 +34,9 @@ _env: Environment = Environment(
 # Per-figure debug overlay (opt-in via CTDCAST_REPORT_DEBUG); figdbg() returns "" when off,
 # so the template macro guarding on it emits nothing in normal builds.
 _env.globals["figdbg"] = _figdebug.figdbg
+# Legacy anchor shim: emit empty <span id="s-old"> aliases for a rendered section's
+# retired anchors so committed deep-links keep resolving.  Returns markup, used with |safe.
+_env.globals["legacy_anchor_spans"] = legacy_anchor_spans
 
 _env_raw: Environment = Environment(
     loader=FileSystemLoader(str(_TEMPLATES_DIR)),
