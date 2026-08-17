@@ -85,6 +85,12 @@ SECTION_STRETCH: float = (
 MAX_SECTION_H: float = 5.2  # height cap; tall/narrow sections get a narrower fig_w
 MIN_SECTION_H: float = 3.0  # height floor
 
+# Colorbar geometry in inches — a *fixed* width (not a fraction of the axes) so the
+# bar and its right margin are identical across every field figure regardless of
+# slot width, matching the fixed-width ethos of SLOTS.
+CBAR_WIDTH_IN: float = 0.12  # colorbar bar thickness
+CBAR_PAD_IN: float = 0.10  # gap between the axes and the colorbar
+
 # ---------------------------------------------------------------------------
 # Figure annotation font sizes (points, spec §13.3)
 # ---------------------------------------------------------------------------

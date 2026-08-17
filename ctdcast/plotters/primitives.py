@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.axes_size import Fixed
 
-from ctdcast.config.report_tokens import CLABEL_FS
+from ctdcast.config.report_tokens import CBAR_PAD_IN, CBAR_WIDTH_IN, CLABEL_FS
 
 
 def sigma0_isopycnals(
@@ -41,13 +43,19 @@ def mesh_field(
     bounds: np.ndarray,
     style: str,
 ) -> Any:
-    """Draw a pcolormesh/contourf field with a matched discrete colorbar into *ax*; return the colorbar."""
+    """Draw a pcolormesh/contourf field with a matched discrete colorbar into *ax*; return the colorbar.
+
+    The colorbar is placed in a divider axes of *fixed inch width* (not a fraction
+    of the host axes), so its thickness and the resulting right margin are identical
+    on every field figure regardless of slot width.
+    """
     if style == "contourf":
         X, Y = np.meshgrid(x, y)
         Z = np.ma.masked_invalid(data2d.T)
-        cf = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
-        cb = fig.colorbar(cf, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
+        mappable = ax.contourf(X, Y, Z, levels=bounds, cmap=cmap_name, extend="both")
     else:
-        pc = ax.pcolormesh(x, y, data2d.T, cmap=cmap, norm=norm, shading="nearest")
-        cb = fig.colorbar(pc, ax=ax, ticks=bounds[::2], pad=0.02, extend="both")
-    return cb
+        mappable = ax.pcolormesh(x, y, data2d.T, cmap=cmap, norm=norm, shading="nearest")
+    cax = make_axes_locatable(ax).append_axes(
+        "right", size=Fixed(CBAR_WIDTH_IN), pad=Fixed(CBAR_PAD_IN)
+    )
+    return fig.colorbar(mappable, cax=cax, ticks=bounds[::2], extend="both")
