@@ -20,59 +20,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="jump-nav">
-  {% if fig_map_b64 %}<a href="#s-map">Map</a>{% endif %}
-  {% if physics_panels | selectattr("b64") | list %}<a href="#s-hydro">Hydrography</a>{% endif %}
-  {% if biogeo_panels | selectattr("b64") | list %}<a href="#s-biogeo">Biogeochemistry</a>{% endif %}
-  {% if ts_b64 %}<a href="#s-ts">T–S diagram</a>{% endif %}
-</div>
-
-{% if fig_map_b64 %}
-<h2 id="s-map">1 — Map</h2>
-<div class="fig-row" style="justify-content:center;">
-  <figure class="slot-half">
-    <img src="data:image/png;base64,{{ fig_map_b64 }}" alt="Station map">
-    {{- m.dbg(fig_map_b64, "slot-half") }}
-  </figure>
-</div>
-{% endif %}
-
-{% if physics_panels | selectattr("b64") | list %}
-<h2 id="s-hydro">2 — Hydrography</h2>
-{% for panel in physics_panels %}{% if panel.b64 %}
-<p class="caption">{{ panel.title }}</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, "slot-full") }}
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-
-{% if biogeo_panels | selectattr("b64") | list %}
-<h2 id="s-biogeo">3 — Biogeochemistry</h2>
-{% for panel in biogeo_panels %}{% if panel.b64 %}
-<p class="caption">{{ panel.title }}</p>
-<div class="fig-row">
-  <figure class="slot-full">
-    <img src="data:image/png;base64,{{ panel.b64 }}" alt="{{ panel.title }}">
-    {{- m.dbg(panel.b64, "slot-full") }}
-  </figure>
-</div>
-{% endif %}{% endfor %}
-{% endif %}
-
-{% if ts_b64 %}
-<h2 id="s-ts">4 — T-S diagram</h2>
-<p class="caption">All downcast profiles</p>
-<div class="fig-row">
-  <figure class="slot-third">
-    <img src="data:image/png;base64,{{ ts_b64 }}" alt="Cruise T-S diagram">
-    {{- m.dbg(ts_b64, "slot-third") }}
-  </figure>
-</div>
-{% endif %}
+{{ m.report_body(report) }}
 
 {{ js_top_links | safe }}
 {% endblock %}
