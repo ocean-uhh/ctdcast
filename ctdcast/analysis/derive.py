@@ -65,9 +65,10 @@ def _resolve_var(ds: xr.Dataset, *candidates: str) -> str | None:
 def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
     """Re-compute practical salinity from conductivity, temperature, pressure.
 
-    Uses ``gsw.SP_from_C`` with conductivity in mS/cm (stored in S/m;
-    conversion: ``C_mS_cm = conductivity_1 * 10``).  Call this after any
-    conductivity calibration so that salinity reflects the calibrated conductivity.
+    Uses ``gsw.SP_from_C``, which expects conductivity in mS/cm.  Stored
+    conductivity is mS/cm since stage1; a file still carrying S/m (``units``
+    not mS/cm) is converted by ×10.  Call this after any conductivity
+    calibration so that salinity reflects the calibrated conductivity.
 
     Does nothing if ``conductivity_1`` or any temperature variable is absent.
 
@@ -79,7 +80,7 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
     ds:
         Per-cast Dataset (dim=time) containing at minimum ``conductivity_1``,
         a temperature variable, and ``pressure`` in their expected units
-        (conductivity in S/m, temperature in °C ITS-90, pressure in dbar).
+        (conductivity in mS/cm, temperature in °C ITS-90, pressure in dbar).
 
     Returns
     -------
@@ -105,8 +106,11 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
     for c_var, s_out in pairs:
         if c_var not in ds:
             continue
-        c_s_per_m = ds[c_var].values.astype(float)
-        c_ms_cm = c_s_per_m * 10.0  # S/m → mS/cm for gsw.SP_from_C
+        c = ds[c_var].values.astype(float)
+        # gsw.SP_from_C wants conductivity in mS/cm.  Stored conductivity is
+        # mS/cm since stage1; convert only when a file still carries S/m.
+        _cu = ds[c_var].attrs.get("units", "").lower().replace(" ", "")
+        c_ms_cm = c if _cu in ("mscm-1", "ms/cm") else c * 10.0
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
             sp = gsw.SP_from_C(c_ms_cm, t, p)

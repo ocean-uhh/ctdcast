@@ -46,6 +46,7 @@ def _ctx(nc: Path, ladcp_dir: Path | None = None) -> PageCtx:
         ladcp_configured=ladcp_dir is not None,
         ladcp_exists=ladcp_exists,
         sensor_info=sensor_info,
+        nc_path=nc,
     )
 
 

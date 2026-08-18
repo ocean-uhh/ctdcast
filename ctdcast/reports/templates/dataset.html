@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ page_title }} — netCDF inventory{% endblock %}
+{% block masthead_title %}{{ meta.filename }}{% endblock %}
+{% block masthead_type %}netCDF inventory{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Dataset inventory page */
+.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
+.dims-line code { color: var(--text); }
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+details.attrs > summary {
+  cursor: pointer; color: var(--ocean); font-size: var(--fs-xs); user-select: none;
+}
+details.attrs table { margin: 0.3rem 0 0.2rem; }
+details.attrs td { font-size: var(--fs-xs); }
+.rename { color: var(--muted); }
+.rename .arrow { color: var(--ocean); }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>File</dt><dd>{{ meta.filename }}</dd></div>
+    {% if meta.filesize %}<div><dt>Size</dt><dd>{{ "%.1f"|format(meta.filesize / 1024) }} KB</dd></div>{% endif %}
+    {% if meta.dims %}<div><dt>Dimensions</dt><dd>{% for d, n in meta.dims.items() %}{{ d }}={{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+    {% if meta.coords %}<div><dt>Coordinates</dt><dd>{{ meta.coords|length }}</dd></div>{% endif %}
+    {% if meta.data_vars %}<div><dt>Data variables</dt><dd>{{ meta.data_vars|length }}</dd></div>{% endif %}
+  </dl>
+{% endblock %}
+
+{% block content %}
+{% if meta.error %}
+<p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
+{% else %}
+
+{% macro var_table(rows, with_length=false) %}
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th>{% if with_length %}<th class="num">Length</th>{% endif %}<th>Type</th><th>Units</th><th>Standard / long name</th>
+      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in rows %}
+    <tr>
+      <td class="mono">{{ v.name }}</td>
+      <td class="mono">{{ v.dims }}</td>
+      {% if with_length %}<td class="num">{{ v.n }}</td>{% endif %}
+      <td class="mono">{{ v.dtype }}</td>
+      <td>{{ v.units }}</td>
+      <td>{% if v.standard_name %}<strong>{{ v.standard_name }}</strong>{% endif %}{% if v.standard_name and v.long_name %}: {% endif %}{% if v.long_name %}{{ v.long_name }}{% endif %}</td>
+      <td class="num">{{ v.v_min }}</td>
+      <td class="num">{{ v.v_max }}</td>
+      <td class="num" {% if v.n_valid < v.n %}style="color:var(--warn);font-weight:600"{% endif %}>{{ v.n_valid }}{% if v.n_valid < v.n %} / {{ v.n }}{% endif %}</td>
+      <td>
+        {% if v.attrs %}
+        <details class="attrs"><summary>{{ v.attrs|length }} attr{{ "s" if v.attrs|length != 1 }}</summary>
+          <table>{% for k, val in v.attrs.items() %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}</table>
+        </details>
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{# Build the numbered section list once, so the jump-nav and each heading share
+   one "(N) Title" numbering (present sections only). #}
+{% set secs = [] %}
+{% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
+{% set _ = secs.append(("s-coords", "Coordinates")) %}
+{% set _ = secs.append(("s-vars", "Data variables")) %}
+{% if meta.global_attrs %}{% set _ = secs.append(("s-global", "Global attributes")) %}{% endif %}
+{% set nums = {} %}
+{% for sid, title in secs %}{% set _ = nums.update({sid: loop.index}) %}{% endfor %}
+<div class="jump-nav">
+  {% for sid, title in secs %}<a href="#{{ sid }}">{{ m.heading_text(loop.index, title) }}</a>
+  {% endfor %}
+</div>
+
+{% if meta.rename_map %}
+<h2 id="s-rename">{{ m.heading_text(nums["s-rename"], "Variable renaming") }}</h2>
+<p class="dims-line">Source → canonical name, from each variable's <code>cnv_original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone.</p>
+<table class="nc">
+  <thead><tr><th>Source name</th><th></th><th>Canonical name</th></tr></thead>
+  <tbody>
+    {% for src, canon in meta.rename_map.items() %}
+    <tr><td class="mono rename">{{ src }}</td><td class="rename arrow">→</td><td class="mono">{{ canon }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2 id="s-coords">{{ m.heading_text(nums["s-coords"], "Coordinates") }}</h2>
+{{ var_table(meta.coords, with_length=true) }}
+
+<h2 id="s-vars">{{ m.heading_text(nums["s-vars"], "Data variables") }}</h2>
+<p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
+{{ var_table(meta.data_vars) }}
+
+{% if meta.global_attrs %}
+<h2 id="s-global">{{ m.heading_text(nums["s-global"], "Global attributes") }}</h2>
+<table class="nc">
+  <tbody>
+    {% for k, val in meta.global_attrs.items() %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endif %}
+{{ js_top_links | safe }}
+{% endblock %}

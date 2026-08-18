@@ -459,6 +459,38 @@ def report(
         print(f"  [timeseries: {perf_counter() - _t0:.1f}s]")
 
     if gen["index"]:
+        # Generate a netCDF inventory page per compiled dataset present, and
+        # collect (label, href) pills for the summary page.  One pill per file
+        # keeps a single discovery point on the summary rather than a top-nav
+        # pill per single-target page (which does not scale as more compiled
+        # products — e.g. ladcp_profiles.nc — are added).
+        inventory_datasets: list[dict[str, str]] = []
+        for _src in (profiles_path,):
+            if _src is None or not Path(_src).exists():
+                continue
+            _src = Path(_src)
+            _href = f"{_src.stem}_inventory.html"
+            _t0 = perf_counter()
+            try:
+                from ctdcast.reports._dataset import generate_dataset_page
+
+                generate_dataset_page(
+                    _src,
+                    out_dir / _href,
+                    title=f"{_src.name} — {cruise} data inventory",
+                    cruise=cruise,
+                    nav_prefix="",
+                    show_nav=True,
+                )
+                inventory_datasets.append({"label": _src.name, "href": _href})
+                print(f"  [{_href}: {perf_counter() - _t0:.1f}s]")
+            except Exception:  # noqa: BLE001
+                import traceback
+
+                print(f"  {_href}: FAILED")
+                _failed += 1
+                traceback.print_exc()
+
         _t0 = perf_counter()
         _write_index(
             all_meta,
@@ -472,6 +504,7 @@ def report(
             vmax_override=vmax_override,
             cruise_info=cruise_info,
             timeseries_cfg=timeseries_cfg,
+            inventory_datasets=inventory_datasets,
             cfg=cfg,
         )
         print(f"  [index.html: {perf_counter() - _t0:.1f}s]")
@@ -553,9 +586,14 @@ def _write_index(
     vmax_override: dict[str, float] | None = None,
     cruise_info: dict[str, Any] | None = None,
     timeseries_cfg: dict[str, Any] | None = None,
+    inventory_datasets: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
-    """Write index.html with header card, stats, overview map, and stacked property panels."""
+    """Write index.html with header card, stats, overview map, and stacked property panels.
+
+    *inventory_datasets* is a list of ``{"label", "href"}`` dicts, one per compiled
+    netCDF product, rendered as a strip of data-inventory pills on the summary page.
+    """
     times = [m["time_start"] for m in all_meta if m.get("time_start")]
     times_str = sorted(str(t)[:10] for t in times if t)
     n_days = 0
@@ -720,6 +758,7 @@ def _write_index(
         "max_depth_str": f"{max_depth:.0f} dbar",
         "n_days": n_days,
         "report": report,
+        "inventory_datasets": inventory_datasets or [],
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
