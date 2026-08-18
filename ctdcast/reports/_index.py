@@ -48,6 +48,7 @@ from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
     _make_cruise_map_b64,
+    _make_ladcp_overview_b64,
     _make_overview_panel_b64,
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
@@ -67,6 +68,7 @@ def report(
     profiles_path: Path | None = None,
     section_yaml: Path | None = None,
     ladcp_dir: Path | None = None,
+    ladcp_profiles_path: Path | None = None,
     ladcp_pattern: str | None = None,
     ship_track_nc: Path | None = None,
     generate: dict[str, bool] | None = None,
@@ -99,6 +101,10 @@ def report(
     ladcp_dir:
         Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
         or ``NNNb.mat`` (letter-suffix variants supported).
+    ladcp_profiles_path:
+        Path to compiled ``ladcp_profiles.nc``.  When present, the summary page
+        gains a Velocity section (cruise-wide U/V overview panels) and a
+        data-inventory pill for the file.
     ladcp_pattern:
         Optional filename glob for non-standard LADCP naming, e.g.
         ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the zero-padded
@@ -291,7 +297,7 @@ def report(
                 _skip_reason
                 and _mat is not None
                 and _expected.exists()
-                and b"fig-profile-ladcp" not in _expected.read_bytes()
+                and b"s-ladcp" not in _expected.read_bytes()
             ):
                 _ladcp_note = " — LADCP available, use --force"
 
@@ -465,7 +471,7 @@ def report(
         # pill per single-target page (which does not scale as more compiled
         # products — e.g. ladcp_profiles.nc — are added).
         inventory_datasets: list[dict[str, str]] = []
-        for _src in (profiles_path,):
+        for _src in (profiles_path, ladcp_profiles_path):
             if _src is None or not Path(_src).exists():
                 continue
             _src = Path(_src)
@@ -499,6 +505,7 @@ def report(
             out_dir,
             force,
             profiles_path=profiles_path,
+            ladcp_profiles_path=ladcp_profiles_path,
             section_style=section_style,
             vmin_override=vmin_override,
             vmax_override=vmax_override,
@@ -581,6 +588,7 @@ def _write_index(
     out_dir: Path,
     force: bool,  # noqa: ARG001
     profiles_path: Path | None = None,
+    ladcp_profiles_path: Path | None = None,
     section_style: str = "pcolormesh",
     vmin_override: dict[str, float] | None = None,
     vmax_override: dict[str, float] | None = None,
@@ -736,6 +744,24 @@ def _write_index(
         except Exception:  # noqa: BLE001
             pass  # Overview panels are optional; never crash index generation
 
+    # Cruise-wide LADCP velocity overview (compiled ladcp_profiles.nc).  Optional
+    # and rendered up front like the other overview panels — an empty list drops
+    # the Velocity section rather than stubbing it.
+    velocity_panels_idx: tuple[RenderedPanel, ...] = ()
+    if ladcp_profiles_path is not None and Path(ladcp_profiles_path).exists():
+        try:
+            ds_ladcp = xr.open_dataset(
+                ladcp_profiles_path, decode_timedelta=False, engine="netcdf4"
+            ).load()
+            velocity_panels_idx = tuple(
+                _make_ladcp_overview_b64(
+                    ds_ladcp, cast_groups=cast_groups, style=section_style, cfg=cfg
+                )
+            )
+            ds_ladcp.close()
+        except Exception:  # noqa: BLE001
+            pass  # Velocity panels are optional; never crash index generation
+
     date_start = times_str[0] if times_str else ""
     date_end = times_str[-1] if len(times_str) >= 2 else ""
 
@@ -743,6 +769,7 @@ def _write_index(
         map_b64=fig_map_b64,
         physics_panels=physics_panels_idx,
         biogeo_panels=biogeo_panels_idx,
+        velocity_panels=velocity_panels_idx,
         ts_panels=ts_panels_idx,
     )
     report = resolve_index(page_ctx)
@@ -789,6 +816,7 @@ class IndexPageCtx:
     map_b64: str | None
     physics_panels: tuple[RenderedPanel, ...]
     biogeo_panels: tuple[RenderedPanel, ...]
+    velocity_panels: tuple[RenderedPanel, ...]
     ts_panels: tuple[RenderedPanel, ...]
 
 
@@ -850,6 +878,19 @@ INDEX_DEFAULT: Profile = Profile(
             intro=(
                 "Cruise-wide overview of oxygen, fluorescence and turbidity across all "
                 "downcast stations."
+            ),
+        ),
+        Section(
+            "velocity",
+            "Velocity",
+            (
+                PanelGroup(
+                    over=lambda c: c.velocity_panels, panel=_index_overview_panel
+                ),
+            ),
+            intro=(
+                "Cruise-wide eastward (U) and northward (V) velocity from the "
+                "LADCP inverse solution across all stations."
             ),
         ),
         Section(

@@ -55,9 +55,7 @@ def test_source_name_kept_in_expandable_attrs():
     """cnv_original_name stays in the expandable attrs (not a dedicated column)."""
     meta = read_dataset_meta(CAST_011)
     named = [
-        r
-        for r in meta["data_vars"]
-        if any(a in r["attrs"] for a in _SOURCE_NAME_ATTRS)
+        r for r in meta["data_vars"] if any(a in r["attrs"] for a in _SOURCE_NAME_ATTRS)
     ]
     assert named, "expected at least one variable carrying cnv_original_name"
 

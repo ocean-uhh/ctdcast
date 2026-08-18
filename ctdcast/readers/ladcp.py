@@ -120,21 +120,90 @@ def read_ladcp_cast(
     n = depth.size
 
     data_vars: dict[str, tuple] = {
-        "u": ("depth", _profile(dr, "u", n), {"standard_name": "eastward_sea_water_velocity"}),
-        "v": ("depth", _profile(dr, "v", n), {"standard_name": "northward_sea_water_velocity"}),
-        "u_shear": ("depth", _profile(dr, "u_shear_method", n), {"standard_name": "eastward_sea_water_velocity"}),
-        "v_shear": ("depth", _profile(dr, "v_shear_method", n), {"standard_name": "northward_sea_water_velocity"}),
-        "w_shear": ("depth", _profile(dr, "w_shear_method", n), {"standard_name": "upward_sea_water_velocity"}),
-        "u_error": ("depth", _profile(dr, "uerr", n), {"standard_name": "error_sea_water_velocity"}),
-        "ensemble_vel_err": ("depth", _profile(dr, "ensemble_vel_err", n), {"long_name": "ensemble velocity error", "units": "m s-1"}),
-        "nvel": ("depth", _profile(dr, "nvel", n), {"long_name": "number of velocity samples per bin"}),
-        "profiling_range": ("depth", _profile(dr, "range", n), {"long_name": "effective acoustic profiling range at each depth bin", "units": "m"}),
-        "u_downlooker": ("depth", _profile(dr, "u_do", n), {"standard_name": "eastward_sea_water_velocity"}),
-        "v_downlooker": ("depth", _profile(dr, "v_do", n), {"standard_name": "northward_sea_water_velocity"}),
-        "u_uplooker": ("depth", _profile(dr, "u_up", n), {"standard_name": "eastward_sea_water_velocity"}),
-        "v_uplooker": ("depth", _profile(dr, "v_up", n), {"standard_name": "northward_sea_water_velocity"}),
-        "target_strength": ("depth", _profile(dr, "ts", n), {"long_name": "target strength, 2nd downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)", "units": "dB"}),
-        "target_strength_out": ("depth", _profile(dr, "ts_out", n), {"long_name": "target strength, last downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)", "units": "dB"}),
+        "u": (
+            "depth",
+            _profile(dr, "u", n),
+            {"standard_name": "eastward_sea_water_velocity"},
+        ),
+        "v": (
+            "depth",
+            _profile(dr, "v", n),
+            {"standard_name": "northward_sea_water_velocity"},
+        ),
+        "u_shear": (
+            "depth",
+            _profile(dr, "u_shear_method", n),
+            {"standard_name": "eastward_sea_water_velocity"},
+        ),
+        "v_shear": (
+            "depth",
+            _profile(dr, "v_shear_method", n),
+            {"standard_name": "northward_sea_water_velocity"},
+        ),
+        "w_shear": (
+            "depth",
+            _profile(dr, "w_shear_method", n),
+            {"standard_name": "upward_sea_water_velocity"},
+        ),
+        "u_error": (
+            "depth",
+            _profile(dr, "uerr", n),
+            {"standard_name": "error_sea_water_velocity"},
+        ),
+        "ensemble_vel_err": (
+            "depth",
+            _profile(dr, "ensemble_vel_err", n),
+            {"long_name": "ensemble velocity error", "units": "m s-1"},
+        ),
+        "nvel": (
+            "depth",
+            _profile(dr, "nvel", n),
+            {"long_name": "number of velocity samples per bin"},
+        ),
+        "profiling_range": (
+            "depth",
+            _profile(dr, "range", n),
+            {
+                "long_name": "effective acoustic profiling range at each depth bin",
+                "units": "m",
+            },
+        ),
+        "u_downlooker": (
+            "depth",
+            _profile(dr, "u_do", n),
+            {"standard_name": "eastward_sea_water_velocity"},
+        ),
+        "v_downlooker": (
+            "depth",
+            _profile(dr, "v_do", n),
+            {"standard_name": "northward_sea_water_velocity"},
+        ),
+        "u_uplooker": (
+            "depth",
+            _profile(dr, "u_up", n),
+            {"standard_name": "eastward_sea_water_velocity"},
+        ),
+        "v_uplooker": (
+            "depth",
+            _profile(dr, "v_up", n),
+            {"standard_name": "northward_sea_water_velocity"},
+        ),
+        "target_strength": (
+            "depth",
+            _profile(dr, "ts", n),
+            {
+                "long_name": "target strength, 2nd downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)",
+                "units": "dB",
+            },
+        ),
+        "target_strength_out": (
+            "depth",
+            _profile(dr, "ts_out", n),
+            {
+                "long_name": "target strength, last downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)",
+                "units": "dB",
+            },
+        ),
     }
     for name, (_dim, _arr, attrs) in data_vars.items():
         if name.startswith(("u", "v", "w")) and name != "nvel":
@@ -146,9 +215,29 @@ def read_ladcp_cast(
     vbot = np.asarray(_field(dr, "vbot", np.nan), dtype=float).ravel()
     zbot = np.asarray(_field(dr, "zbot", np.nan), dtype=float).ravel()
     bt_vars: dict[str, tuple] = {
-        "u_bottom": (("bottom_track",), ubot, {"long_name": "bottom-track eastward velocity per bottom bin", "units": "m s-1", "standard_name": "eastward_sea_water_velocity"}),
-        "v_bottom": (("bottom_track",), vbot, {"long_name": "bottom-track northward velocity per bottom bin", "units": "m s-1", "standard_name": "northward_sea_water_velocity"}),
-        "z_bottom": (("bottom_track",), zbot, {"long_name": "bottom-track bin depth", "units": "m", "positive": "down"}),
+        "u_bottom": (
+            ("bottom_track",),
+            ubot,
+            {
+                "long_name": "bottom-track eastward velocity per bottom bin",
+                "units": "m s-1",
+                "standard_name": "eastward_sea_water_velocity",
+            },
+        ),
+        "v_bottom": (
+            ("bottom_track",),
+            vbot,
+            {
+                "long_name": "bottom-track northward velocity per bottom bin",
+                "units": "m s-1",
+                "standard_name": "northward_sea_water_velocity",
+            },
+        ),
+        "z_bottom": (
+            ("bottom_track",),
+            zbot,
+            {"long_name": "bottom-track bin depth", "units": "m", "positive": "down"},
+        ),
     }
 
     def _scalar(v: Any, dtype: type = float) -> Any:
@@ -157,16 +246,53 @@ def read_ladcp_cast(
     scalars: dict[str, tuple] = {
         "cast_number": ((), np.int32(cast_num), {}),
         "cast_suffix": ((), cast_suffix, {}),
-        "latitude": ((), _scalar(_field(dr, "lat")), {"standard_name": "latitude", "units": "degrees_north"}),
-        "longitude": ((), _scalar(_field(dr, "lon")), {"standard_name": "longitude", "units": "degrees_east"}),
-        "u_barotropic": ((), _scalar(_field(dr, "ubar")), {"long_name": "barotropic (depth-mean) eastward velocity", "units": "m s-1"}),
-        "v_barotropic": ((), _scalar(_field(dr, "vbar")), {"long_name": "barotropic (depth-mean) northward velocity", "units": "m s-1"}),
-        "instrument_config": ((), _instrument_config(dr, ps, n), {"long_name": "ADCP instrument(s) with valid data for this cast", "flag_values": "both downlooker uplooker unknown"}),
+        "latitude": (
+            (),
+            _scalar(_field(dr, "lat")),
+            {"standard_name": "latitude", "units": "degrees_north"},
+        ),
+        "longitude": (
+            (),
+            _scalar(_field(dr, "lon")),
+            {"standard_name": "longitude", "units": "degrees_east"},
+        ),
+        "u_barotropic": (
+            (),
+            _scalar(_field(dr, "ubar")),
+            {
+                "long_name": "barotropic (depth-mean) eastward velocity",
+                "units": "m s-1",
+            },
+        ),
+        "v_barotropic": (
+            (),
+            _scalar(_field(dr, "vbar")),
+            {
+                "long_name": "barotropic (depth-mean) northward velocity",
+                "units": "m s-1",
+            },
+        ),
+        "instrument_config": (
+            (),
+            _instrument_config(dr, ps, n),
+            {
+                "long_name": "ADCP instrument(s) with valid data for this cast",
+                "flag_values": "both downlooker uplooker unknown",
+            },
+        ),
     }
     if da is not None:
         for src, dst, attrs in (
-            ("GEN_Ocean_depth_m", "ocean_depth", {"long_name": "ocean depth", "units": "m", "positive": "down"}),
-            ("GEN_Magnetic_deviation_deg", "magnetic_deviation_deg", {"long_name": "magnetic deviation", "units": "degree"}),
+            (
+                "GEN_Ocean_depth_m",
+                "ocean_depth",
+                {"long_name": "ocean depth", "units": "m", "positive": "down"},
+            ),
+            (
+                "GEN_Magnetic_deviation_deg",
+                "magnetic_deviation_deg",
+                {"long_name": "magnetic deviation", "units": "degree"},
+            ),
         ):
             val = _field(da, src)
             if val is not None and np.isscalar(val):
@@ -175,8 +301,16 @@ def read_ladcp_cast(
     ds = xr.Dataset(
         data_vars={**data_vars, **bt_vars, **scalars},
         coords={
-            "depth": ("depth", depth, {"standard_name": "depth", "units": "m", "positive": "down"}),
-            "pressure": ("depth", _profile(dr, "p", n), {"standard_name": "sea_water_pressure", "units": "dbar"}),
+            "depth": (
+                "depth",
+                depth,
+                {"standard_name": "depth", "units": "m", "positive": "down"},
+            ),
+            "pressure": (
+                "depth",
+                _profile(dr, "p", n),
+                {"standard_name": "sea_water_pressure", "units": "dbar"},
+            ),
             # Integer index so the compiler can pad the (per-cast-varying) count.
             "bottom_track": ("bottom_track", np.arange(ubot.size)),
         },
@@ -227,7 +361,13 @@ def _provenance_attrs(dr: Any, ps: Any, da: Any) -> dict[str, Any]:
         ):
             val = _field(da, src)
             if val is not None:
-                attrs[key] = str(val) if isinstance(val, str) else float(val) if np.isscalar(val) else str(val)
+                attrs[key] = (
+                    str(val)
+                    if isinstance(val, str)
+                    else float(val)
+                    if np.isscalar(val)
+                    else str(val)
+                )
         # Hardware serials are flagged explicitly: a present-but-blank (nan)
         # serial is recorded as "UNK" and warned about rather than written as a
         # silent nan, so a data reviewer sees the gap.  An entirely absent field

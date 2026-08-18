@@ -152,6 +152,20 @@ def run(args: argparse.Namespace) -> int:
         rc = _convert.run(convert_ns)
         if rc != 0:
             return rc
+
+        # Build LADCP velocity products if the ladcp_* keys are configured.
+        # Optional: a cruise without LADCP simply skips this (required=False).
+        import yaml
+
+        with open(cfg_path) as _f:
+            _data = (yaml.safe_load(_f) or {}).get("data") or {}
+        if _data.get("ladcp_dir"):
+            print("=== ladcp ===")
+            rc = _convert.run_ladcp_pipeline(
+                _data, force=args.force, dry_run=args.dry_run, required=False
+            )
+            if rc != 0:
+                return rc
     # cast_filter set but no --ctd: skip convert entirely (just regenerate the HTML).
 
     # ------------------------------------------------------------------ report

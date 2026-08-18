@@ -92,9 +92,11 @@ def resolve_stage(stage: int | str) -> Stage:
     """
     if stage is None:
         raise ValueError("stage must be a number or name, not None")
+    # The CLI passes stage numbers as strings ("1"); accept those as the number.
+    key: int | str = int(stage) if isinstance(stage, str) and stage.isdigit() else stage
     for s in STAGES:
-        if not isinstance(stage, bool) and (
-            stage == s.number or (isinstance(stage, str) and stage.lower() == s.name)
+        if not isinstance(key, bool) and (
+            key == s.number or (isinstance(key, str) and key.lower() == s.name)
         ):
             return s
     valid = ", ".join(

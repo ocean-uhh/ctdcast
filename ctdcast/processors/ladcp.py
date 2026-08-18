@@ -11,12 +11,14 @@ those per-cast files onto a common depth axis.  Schema and rationale:
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.readers.ladcp import read_ladcp_cast
 from ctdcast.writers.dtypes import cast_output_dtypes
 from ctdcast.writers.netcdf import write as write_nc
@@ -105,19 +107,31 @@ def run_convert(
         mats = [(i, p) for (i, p) in mats if any(t in p.stem for t in cast_tags)]
 
     if dry_run:
-        print(f"[dry-run] ladcp convert: {ladcp_dir} → {ladcp_nc_dir}  ({len(mats)} file(s))")
+        print(
+            f"[dry-run] ladcp convert: {ladcp_dir} → {ladcp_nc_dir}  ({len(mats)} file(s))"
+        )
         for _ident, p in mats:
             print(f"  [dry-run] would convert: {p.name}")
         return 0
 
     ladcp_nc_dir.mkdir(parents=True, exist_ok=True)
     n_written = 0
-    for (cast_num, cast_suffix), mat_path in mats:
-        nc_path = ladcp_nc_dir / f"ladcp_{format_cast_id(cast_num, cast_suffix)}.nc"
-        if convert_ladcp_cast(
-            mat_path, nc_path, cast_num=cast_num, cast_suffix=cast_suffix, force=force
-        ):
-            n_written += 1
+    # Per-cast data-quality warnings (e.g. blank instrument serials) are captured
+    # across the batch and collapsed into one counted summary line per message,
+    # so a whole-cruise convert does not emit the same warning hundreds of times.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        for (cast_num, cast_suffix), mat_path in mats:
+            nc_path = ladcp_nc_dir / f"ladcp_{format_cast_id(cast_num, cast_suffix)}.nc"
+            if convert_ladcp_cast(
+                mat_path,
+                nc_path,
+                cast_num=cast_num,
+                cast_suffix=cast_suffix,
+                force=force,
+            ):
+                n_written += 1
+    summarise_warnings(caught)
     return n_written
 
 
@@ -160,9 +174,7 @@ def build_ladcp_profiles(
             if nbt and d.sizes.get("bottom_track", 0) < nbt:
                 d = d.reindex(bottom_track=np.arange(nbt))
             aligned.append(d)
-        ds_out = xr.concat(
-            aligned, dim="N_PROF", combine_attrs="drop_conflicts"
-        )
+        ds_out = xr.concat(aligned, dim="N_PROF", combine_attrs="drop_conflicts")
     finally:
         for d in dss:
             d.close()
@@ -193,6 +205,8 @@ def run_compile(
     """
     if dry_run:
         n = len(_select_ladcp_files(ladcp_nc_dir))
-        print(f"[dry-run] ladcp-profiles: {ladcp_nc_dir} → {ladcp_profiles_path}  ({n} cast(s))")
+        print(
+            f"[dry-run] ladcp-profiles: {ladcp_nc_dir} → {ladcp_profiles_path}  ({n} cast(s))"
+        )
         return False
     return build_ladcp_profiles(ladcp_nc_dir, ladcp_profiles_path, force=force)

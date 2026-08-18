@@ -286,13 +286,14 @@ def run(args: argparse.Namespace) -> int:
     rc = 0
     for stage_token in requested:
         s = resolve_stage(stage_token)
+        # cast_tags selects individual casts and only applies to cast-scope stages;
+        # cruise-scope stages (profiles, ladcp-profiles) compile every cast and
+        # their run() functions do not accept it.
+        _run_kw = dict(force=args.force, dry_run=args.dry_run, **stage_kw[s.name])
+        if s.scope == "cast":
+            _run_kw["cast_tags"] = cast_tags
         try:
-            _result = s.run(
-                force=args.force,
-                dry_run=args.dry_run,
-                cast_tags=cast_tags,
-                **stage_kw[s.name],
-            )
+            _result = s.run(**_run_kw)
         except (ImportError, NotImplementedError) as exc:
             print(f"{s.name} error: {exc}", file=sys.stderr)
             rc = 1

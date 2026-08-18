@@ -108,7 +108,11 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
         rename_map: dict[str, str] = {}
         for name in list(ds.coords) + list(ds.data_vars):
             source = next(
-                (ds[name].attrs[a] for a in _SOURCE_NAME_ATTRS if ds[name].attrs.get(a)),
+                (
+                    ds[name].attrs[a]
+                    for a in _SOURCE_NAME_ATTRS
+                    if ds[name].attrs.get(a)
+                ),
                 None,
             )
             if source and source != name:

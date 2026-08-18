@@ -226,6 +226,9 @@ def run(args: argparse.Namespace) -> int:
         Path(data["section_yaml"]) if data.get("section_yaml") else None
     )
     ladcp_dir: Path | None = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
+    ladcp_profiles_path: Path | None = (
+        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
+    )
     ladcp_pattern: str | None = data.get("ladcp_pattern") or None
     ship_track_nc: Path | None = (
         Path(data["ship_track"]) if data.get("ship_track") else None
@@ -320,6 +323,7 @@ def run(args: argparse.Namespace) -> int:
         profiles_path=profiles_path,
         section_yaml=section_yaml,
         ladcp_dir=ladcp_dir,
+        ladcp_profiles_path=ladcp_profiles_path,
         ladcp_pattern=ladcp_pattern,
         ship_track_nc=ship_track_nc,
         generate=gen,
