@@ -188,6 +188,11 @@ def run(args: argparse.Namespace) -> int:
     nc_dir = Path(nc_dir_raw)
     cnv_dir = Path(data["cnv_dir"]) if data.get("cnv_dir") else None
     profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
+    ladcp_dir = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
+    ladcp_nc_dir = Path(data["ladcp_nc"]) if data.get("ladcp_nc") else None
+    ladcp_profiles_path = (
+        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
+    )
 
     # Deduplicate and force canonical order
     requested = [s for s in _STAGE_CHOICES if s in args.stage]
@@ -208,6 +213,19 @@ def run(args: argparse.Namespace) -> int:
     if "profiles" in requested and not profiles_path:
         print(
             "Config error: data.profiles_nc required for stage 'profiles'.",
+            file=sys.stderr,
+        )
+        return 1
+    if "ladcp" in requested and not (ladcp_dir and ladcp_nc_dir):
+        print(
+            "Config error: data.ladcp_dir and data.ladcp_nc required for stage 'ladcp'.",
+            file=sys.stderr,
+        )
+        return 1
+    if "ladcp-profiles" in requested and not (ladcp_nc_dir and ladcp_profiles_path):
+        print(
+            "Config error: data.ladcp_nc and data.ladcp_profiles_nc required for "
+            "stage 'ladcp-profiles'.",
             file=sys.stderr,
         )
         return 1
@@ -253,6 +271,15 @@ def run(args: argparse.Namespace) -> int:
             "nc_dir": nc_dir,
             "profiles_path": profiles_path,
             "gebco_path": args.gebco,
+        },
+        "ladcp": {
+            "ladcp_dir": ladcp_dir,
+            "ladcp_nc_dir": ladcp_nc_dir,
+            "ladcp_pattern": data.get("ladcp_pattern"),
+        },
+        "ladcp-profiles": {
+            "ladcp_nc_dir": ladcp_nc_dir,
+            "ladcp_profiles_path": ladcp_profiles_path,
         },
     }
 

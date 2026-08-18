@@ -63,11 +63,14 @@ class Panel:
         Content discriminator.  The template macro branches on it so that only
         ``"html"``/``"table"`` payloads are emitted ``|safe``; a ``"figure"``
         payload is always escaped into an image ``src``.
-    slot : str or Callable, optional
+    slot : str or Callable or None, optional
         ``SLOTS`` key giving the panel's display width, or a callable
         ``ctx -> slot`` that computes it (e.g. from a section's aspect ratio).
         Belongs to the panel, not the section, so a panel is the same width
-        wherever it is placed.  The resolver calls it when callable.
+        wherever it is placed.  The resolver calls it when callable.  ``None``
+        marks a figure that is not rendered through the slot system: it is
+        emitted as a bare ``.fig`` that fills the content column (no
+        ``slot-*`` class, so no rendered-width contract).
     caption : str, optional
         Caption text rendered beneath the panel.
     applies_to : Callable, optional
@@ -87,7 +90,7 @@ class Panel:
     id: str
     render: Callable[[Any], str | None]
     kind: PanelKind = "figure"
-    slot: str | Callable[[Any], str] = "full"
+    slot: str | Callable[[Any], str] | None = "full"
     caption: str | None = None
     applies_to: Callable[[Any], bool] = _always
     unavailable_if: Callable[[Any], str | None] = _unavailable_never
@@ -143,6 +146,11 @@ class Section:
         ``"content"`` (numbered ``1..N``) or ``"appendix"`` (numbered ``A..``),
         so appendix material such as a NetCDF-variable table does not pad the
         science numbering.
+    layout : str, optional
+        Within-section panel arrangement.  ``None`` (default) stacks panels
+        vertically; ``"row"`` lays them out in a wrapping flex row, each panel in
+        a cell sized by its ``slot`` (so two ``slot="half"`` figures sit
+        side-by-side and a ``slot="full"`` one wraps to its own line).
 
     """
 
@@ -153,6 +161,7 @@ class Section:
     intro: str | None = None
     applies_to: Callable[[Any], bool] | None = None
     role: str = "content"
+    layout: str | None = None
 
 
 @dataclass(frozen=True)
@@ -202,7 +211,7 @@ class ResolvedPanel:
 
     id: str
     kind: PanelKind
-    slot: str
+    slot: str | None
     payload: str | None
     caption: str | None
     stub_reason: str | None = None
@@ -224,6 +233,7 @@ class ResolvedSection:
     intro: str | None
     panels: tuple[ResolvedPanel, ...]
     role: str
+    layout: str | None = None
 
 
 @dataclass(frozen=True)
@@ -430,6 +440,7 @@ def resolve(
                 intro=sec.intro,
                 panels=rpanels,
                 role=sec.role,
+                layout=sec.layout,
             )
         )
 

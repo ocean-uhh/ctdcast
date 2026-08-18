@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from ctdcast.processors import ladcp as _ladcp
 from ctdcast.processors import profiles as _profiles
 from ctdcast.processors import stage1 as _stage1
 from ctdcast.processors import stage2 as _stage2
@@ -64,6 +65,10 @@ STAGES: tuple[Stage, ...] = (
     Stage("stage2", 2, "cast", _stage2.run),
     Stage("stage3", 3, "cast", _stage3.run),
     Stage("profiles", None, "cruise", _profiles.run),
+    # LADCP: an optional parallel pipeline (mirrors stage1 + profiles).  Skipped
+    # when its paths are not supplied, since not every cruise has LADCP.
+    Stage("ladcp", None, "cast", _ladcp.run_convert),
+    Stage("ladcp-profiles", None, "cruise", _ladcp.run_compile),
 )
 
 
@@ -105,6 +110,9 @@ def process(
     cnv_dir: Path | str | None = None,
     nc_dir: Path | str | None = None,
     profiles_path: Path | str | None = None,
+    ladcp_dir: Path | str | None = None,
+    ladcp_nc_dir: Path | str | None = None,
+    ladcp_profiles_path: Path | str | None = None,
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
@@ -144,6 +152,11 @@ def process(
     _cnv_dir = Path(cnv_dir) if cnv_dir is not None else None
     _nc_dir = Path(nc_dir) if nc_dir is not None else None
     _profiles_path = Path(profiles_path) if profiles_path is not None else None
+    _ladcp_dir = Path(ladcp_dir) if ladcp_dir is not None else None
+    _ladcp_nc_dir = Path(ladcp_nc_dir) if ladcp_nc_dir is not None else None
+    _ladcp_profiles_path = (
+        Path(ladcp_profiles_path) if ladcp_profiles_path is not None else None
+    )
 
     common = {"force": force, "dry_run": dry_run}
 
@@ -160,6 +173,23 @@ def process(
             if _nc_dir is None or _profiles_path is None:
                 raise ValueError("profiles stage requires nc_dir and profiles_path.")
             return s.run(_nc_dir, _profiles_path, **common, **kw)
+        # LADCP stages are optional: a full ``process()`` run without LADCP paths
+        # skips them (returns None) rather than raising, since not every cruise
+        # ships LADCP.  Requesting one explicitly without its paths is an error.
+        if s.name == "ladcp":
+            if _ladcp_dir is None or _ladcp_nc_dir is None:
+                if stage is None:
+                    return None
+                raise ValueError("ladcp stage requires ladcp_dir and ladcp_nc_dir.")
+            return s.run(_ladcp_dir, _ladcp_nc_dir, cast_tags=cast_tags, **common, **kw)
+        if s.name == "ladcp-profiles":
+            if _ladcp_nc_dir is None or _ladcp_profiles_path is None:
+                if stage is None:
+                    return None
+                raise ValueError(
+                    "ladcp-profiles stage requires ladcp_nc_dir and ladcp_profiles_path."
+                )
+            return s.run(_ladcp_nc_dir, _ladcp_profiles_path, **common, **kw)
         raise ValueError(f"Unhandled stage: {s.name!r}")  # pragma: no cover
 
     if stage is None:
