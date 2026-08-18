@@ -42,3 +42,6 @@ demo_report/
 
 # Local runtime config (generate with `ctdcast init`)
 config.yaml
+
+# Large processing reference PDF — kept locally, not committed
+docs/source/_static/Processing_HowTo.pdf

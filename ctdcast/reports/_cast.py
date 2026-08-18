@@ -24,6 +24,7 @@ from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
+from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
@@ -240,6 +241,7 @@ def generate_station_page(
         ladcp_configured=ladcp_dir is not None,
         ladcp_exists=ladcp_exists,
         sensor_info=sensor_info,
+        nc_path=nc_path,
     )
     report = resolve_cast(page_ctx, drop_stub=drop_stub)
 
@@ -317,6 +319,7 @@ class PageCtx:
     ladcp_configured: bool
     ladcp_exists: bool
     sensor_info: list[dict[str, Any]]
+    nc_path: Path
 
 
 def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
@@ -338,6 +341,37 @@ def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
         '<table class="sensor-table">'
         "<tr><th>Sensor</th><th>S/N</th><th>Cal date</th></tr>"
         f"{rows}</table>"
+    )
+
+
+def _render_data_ranges_table(nc_path: Path) -> str | None:
+    """Return the per-cast netCDF data-ranges table markup, or None when empty.
+
+    Lists min/max/valid for every variable in the file on disk (not the trimmed
+    or derived data plotted above), plus the display ``label_units`` so a reader
+    can see how a figure's axis label was derived.  Values are escaped here
+    because the manifest table macro emits this payload with ``|safe``.
+    """
+    meta = read_dataset_meta(nc_path)
+    rows_data = meta.get("coords", []) + meta.get("data_vars", [])
+    if not rows_data:
+        return None
+    rows = "".join(
+        f"<tr><td class='mono'>{escape(v['name'])}</td>"
+        f"<td>{escape(str(v['units']))}</td>"
+        f"<td>{escape(str(v['label_units']))}</td>"
+        f"<td class='num'>{escape(str(v['v_min']))}</td>"
+        f"<td class='num'>{escape(str(v['v_max']))}</td>"
+        f"<td class='num'>{escape(str(v['n_valid']))}"
+        f"{' / ' + escape(str(v['n'])) if v['n_valid'] < v['n'] else ''}</td></tr>"
+        for v in rows_data
+    )
+    return (
+        '<table class="nc data-ranges">'
+        "<thead><tr><th>Variable</th><th>Units</th><th>Label units</th>"
+        "<th class='num'>Min</th><th class='num'>Max</th>"
+        "<th class='num'>Valid</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
     )
 
 
@@ -460,6 +494,11 @@ CAST_PANELS: dict[str, Panel] = {
         kind="table",
         render=lambda c: _render_sensor_table(c.sensor_info),
     ),
+    "data_ranges": Panel(
+        id="data_ranges",
+        kind="table",
+        render=lambda c: _render_data_ranges_table(c.nc_path),
+    ),
 }
 
 
@@ -520,6 +559,13 @@ CAST_DEFAULT: Profile = Profile(
             ("sensors_table",),
             role="appendix",
             applies_to=lambda c: bool(c.sensor_info),
+        ),
+        Section(
+            "data_ranges",
+            "netCDF data ranges",
+            ("data_ranges",),
+            intro="Min · max · valid count for every variable in the cast file on disk.",
+            role="appendix",
         ),
     ),
 )

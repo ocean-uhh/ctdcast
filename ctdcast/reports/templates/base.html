@@ -27,6 +27,7 @@
     <span class="masthead-type">{% block masthead_type %}{% endblock %}</span>
   </div>
   <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated {{ generated_at }}</p>
+  {% if show_nav | default(true) %}
   <div style="margin-top:0.65rem;margin-bottom:0.5rem">
     <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
     <a href="{{ nav_prefix }}index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-landing){% if nav_current == 'summary' %};opacity:0.55{% endif %}">Summary</a>
@@ -35,6 +36,7 @@
     <a href="{{ nav_prefix }}timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-b){% if nav_current == 'timeseries' %};opacity:0.55{% endif %}">Timeseries</a>
     <a href="{{ nav_prefix }}leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-map){% if nav_current == 'interactive' %};opacity:0.55{% endif %}">Interactive</a>
   </div>
+  {% endif %}
   {% block masthead_meta %}{% endblock %}
   <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
 </div>
