@@ -49,6 +49,17 @@ def test_resolve_stage_name_case_insensitive() -> None:
     assert resolve_stage("STAGE1") == resolve_stage("stage1")
 
 
+def test_resolve_stage_numeric_string() -> None:
+    """The CLI passes stage numbers as strings; '1' must resolve to stage1.
+
+    Regression: ``--stage 1`` forwarded the string ``"1"``, which only matched the
+    integer ``1`` and raised "unknown stage '1'" while listing 1 as valid.
+    """
+    assert resolve_stage("1").name == "stage1"
+    assert resolve_stage("2").name == "stage2"
+    assert resolve_stage("3").name == "stage3"
+
+
 def test_resolve_stage_none_raises() -> None:
     """resolve_stage(None) must raise ValueError, not silently match 'profiles'.
 

@@ -188,6 +188,11 @@ def run(args: argparse.Namespace) -> int:
     nc_dir = Path(nc_dir_raw)
     cnv_dir = Path(data["cnv_dir"]) if data.get("cnv_dir") else None
     profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
+    ladcp_dir = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
+    ladcp_nc_dir = Path(data["ladcp_nc"]) if data.get("ladcp_nc") else None
+    ladcp_profiles_path = (
+        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
+    )
 
     # Deduplicate and force canonical order
     requested = [s for s in _STAGE_CHOICES if s in args.stage]
@@ -208,6 +213,19 @@ def run(args: argparse.Namespace) -> int:
     if "profiles" in requested and not profiles_path:
         print(
             "Config error: data.profiles_nc required for stage 'profiles'.",
+            file=sys.stderr,
+        )
+        return 1
+    if "ladcp" in requested and not (ladcp_dir and ladcp_nc_dir):
+        print(
+            "Config error: data.ladcp_dir and data.ladcp_nc required for stage 'ladcp'.",
+            file=sys.stderr,
+        )
+        return 1
+    if "ladcp-profiles" in requested and not (ladcp_nc_dir and ladcp_profiles_path):
+        print(
+            "Config error: data.ladcp_nc and data.ladcp_profiles_nc required for "
+            "stage 'ladcp-profiles'.",
             file=sys.stderr,
         )
         return 1
@@ -254,18 +272,28 @@ def run(args: argparse.Namespace) -> int:
             "profiles_path": profiles_path,
             "gebco_path": args.gebco,
         },
+        "ladcp": {
+            "ladcp_dir": ladcp_dir,
+            "ladcp_nc_dir": ladcp_nc_dir,
+            "ladcp_pattern": data.get("ladcp_pattern"),
+        },
+        "ladcp-profiles": {
+            "ladcp_nc_dir": ladcp_nc_dir,
+            "ladcp_profiles_path": ladcp_profiles_path,
+        },
     }
 
     rc = 0
     for stage_token in requested:
         s = resolve_stage(stage_token)
+        # cast_tags selects individual casts and only applies to cast-scope stages;
+        # cruise-scope stages (profiles, ladcp-profiles) compile every cast and
+        # their run() functions do not accept it.
+        _run_kw = dict(force=args.force, dry_run=args.dry_run, **stage_kw[s.name])
+        if s.scope == "cast":
+            _run_kw["cast_tags"] = cast_tags
         try:
-            _result = s.run(
-                force=args.force,
-                dry_run=args.dry_run,
-                cast_tags=cast_tags,
-                **stage_kw[s.name],
-            )
+            _result = s.run(**_run_kw)
         except (ImportError, NotImplementedError) as exc:
             print(f"{s.name} error: {exc}", file=sys.stderr)
             rc = 1

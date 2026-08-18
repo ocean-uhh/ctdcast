@@ -22,6 +22,7 @@ from typing import Protocol
 import xarray as xr
 
 from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
+from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.writers.netcdf import write as write_nc
 
 
@@ -346,24 +347,29 @@ def stage1(
         cnv_files = [p for p in cnv_files if any(t in p.stem for t in tags)]
 
     n = 0
-    for cnv_path in cnv_files:
-        nc_path = nc_dir / (cnv_path.stem + ".nc")
-        try:
-            with warnings.catch_warnings():
-                # GSW Nsquared() warns on dp=0 (stationary CTD between 1-second samples).
-                warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+    # Capture per-cast backend warnings (e.g. seasenselib's 'db' vs 'dbar' unit
+    # notice) across the whole batch and print one counted summary line each,
+    # instead of the same warning once per cast.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        # GSW Nsquared() warns on dp=0 (stationary CTD between 1-second samples).
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+        for cnv_path in cnv_files:
+            nc_path = nc_dir / (cnv_path.stem + ".nc")
+            try:
                 written = b.convert_cast(cnv_path, nc_path, force=force)
-        except Exception as exc:  # noqa: BLE001
-            print(
-                f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})",
-                file=sys.stderr,
-            )
-            continue
-        if written:
-            print(f"  ok: {cnv_path.name} → {nc_path.name}")
-            n += 1
-        else:
-            print(f"  skip: {nc_path.name}")
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})",
+                    file=sys.stderr,
+                )
+                continue
+            if written:
+                print(f"  ok: {cnv_path.name} → {nc_path.name}")
+                n += 1
+            else:
+                print(f"  skip: {nc_path.name}")
+    summarise_warnings(caught)
     return n
 
 

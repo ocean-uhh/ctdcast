@@ -430,6 +430,180 @@ def _make_ladcp_section_b64(
         return []
 
 
+def _make_ladcp_overview_b64(
+    ds_ladcp: xr.Dataset,
+    cast_groups: dict[str, list[int]] | None = None,
+    style: str = "pcolormesh",
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+) -> list[RenderedPanel]:
+    """Return full-width LADCP U and V overview panels versus cast number × depth.
+
+    The LADCP parallel of :func:`draw_overview_panel_fig`: reads the compiled
+    ``ladcp_profiles.nc`` dataset (dims ``N_PROF`` × ``depth``), sorts by cast
+    number, and draws two evenly-spaced cast-number panels sharing one symmetric
+    RdBu_r colorbar (positive = east/north).  *cast_groups* draws the same
+    coloured section markers as the CTD overview panels.  Returns ``[]`` if fewer
+    than two casts carry finite velocity.
+    """
+    try:
+        with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
+            if "u" not in ds_ladcp or "v" not in ds_ladcp:
+                return []
+            order = np.argsort(ds_ladcp["cast_number"].values)
+            ds = ds_ladcp.isel(N_PROF=order)
+            cast_nums = ds["cast_number"].values.astype(int)
+            depth = ds["depth"].values
+            u = np.asarray(ds["u"].values, dtype=float)  # (N_PROF, depth)
+            v = np.asarray(ds["v"].values, dtype=float)
+
+            # Trim the depth axis to the deepest level with finite velocity.
+            valid_rows = np.where(np.any(np.isfinite(u) | np.isfinite(v), axis=0))[0]
+            if len(valid_rows) < 1 or len(cast_nums) < 2:
+                return []
+            z_hi = valid_rows[-1] + 1
+            depth = depth[:z_hi]
+            u = u[:, :z_hi]
+            v = v[:, :z_hi]
+
+            all_fin = np.concatenate([u[np.isfinite(u)], v[np.isfinite(v)]])
+            if not len(all_fin):
+                return []
+            vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
+            bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
+            cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
+            norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+
+            x_pos = np.arange(len(cast_nums), dtype=float)
+            _cast_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
+
+            # Black bathymetry fill from GEBCO at each cast position (matches the
+            # CTD overview panels on the same page).
+            lats = ds["latitude"].values.tolist()
+            lons = ds["longitude"].values.tolist()
+            bathy = interpolate_bathy_at_casts(lats, lons, path=cfg.gebco_path)
+            z_max = float(depth[-1])
+            bathy_max = (
+                float(np.nanmax(bathy))
+                if bathy is not None and len(bathy) and np.any(np.isfinite(bathy))
+                else 0.0
+            )
+            y_bottom = max(z_max, bathy_max) * 1.05
+
+            # Evenly-spaced cast-number ticks and grid lines.  Unlike the CTD
+            # overview panels (every cast present, ticks at multiples of 5), LADCP
+            # coverage is sparse and unpredictable, so tick at ~10 evenly-spaced
+            # actual casts — always integer cast numbers, never fractional defaults.
+            _tick_step = max(1, round(len(cast_nums) / 10))
+            _tick_idx = list(range(0, len(cast_nums), _tick_step))
+            _tick_xpos = [x_pos[i] for i in _tick_idx]
+            _tick_labels = [str(int(cast_nums[i])) for i in _tick_idx]
+
+            panels: list[RenderedPanel] = []
+            for grid_data, panel_title, panel_short, panel_label in (
+                (u, "U velocity (east +)", "U", "U  East +"),
+                (v, "V velocity (north +)", "V", "V  North +"),
+            ):
+                fig, ax = plt.subplots(figsize=cfg.overview_figsize)
+
+                for _gx in _tick_xpos:
+                    ax.axvline(_gx, color="white", alpha=0.25, zorder=0)
+
+                if style == "contourf":
+                    X, Y = np.meshgrid(x_pos, depth)
+                    Z = np.ma.masked_invalid(grid_data.T)
+                    mappable = ax.contourf(
+                        X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both"
+                    )
+                else:
+                    mappable = ax.pcolormesh(
+                        x_pos,
+                        depth,
+                        grid_data.T,
+                        cmap=cmap,
+                        norm=norm,
+                        shading="nearest",
+                    )
+                unit_colorbar(
+                    ax,
+                    mappable,
+                    unit="m s⁻¹",
+                    ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
+                    extend="both",
+                    reserve=True,
+                    title_loc="left",
+                )
+
+                if bathy is not None and len(bathy) == len(cast_nums):
+                    ax.fill_between(
+                        x_pos, bathy, y_bottom, color="black", step="mid", lw=0
+                    )
+
+                # Coloured section markers above the top axis, matching the CTD
+                # overview panels.
+                if cast_groups:
+                    for color, group_casts in cast_groups.items():
+                        gx = [
+                            _cast_to_xpos[cn]
+                            for cn in group_casts
+                            if cn in _cast_to_xpos
+                        ]
+                        if gx:
+                            ax.scatter(
+                                gx,
+                                np.ones(len(gx)) * 1.03,
+                                marker="v",
+                                facecolors="none",
+                                edgecolors=color,
+                                s=18,
+                                clip_on=False,
+                                zorder=6,
+                                transform=ax.get_xaxis_transform(),
+                            )
+
+                ax.set_ylim(y_bottom, 0)
+                ax.set_ylabel("Depth (m)")
+                ax.set_xlabel("Cast number")
+
+                ax.set_xticks(_tick_xpos)
+                ax.set_xticklabels(_tick_labels, rotation=45, ha="right")
+
+                ax.text(
+                    0.01,
+                    0.97,
+                    panel_label,
+                    transform=ax.transAxes,
+                    va="top",
+                    ha="left",
+                    fontsize=report_tokens.ANNOT_FS,
+                    bbox={
+                        "facecolor": "white",
+                        "alpha": 0.6,
+                        "pad": 2,
+                        "edgecolor": "none",
+                    },
+                )
+                _hide_outer_spines(ax, clean=cfg.clean_spines)
+                fig.tight_layout()
+                _panel_b64 = _fig_to_base64(fig)
+                _figdebug_record(_panel_b64, "_make_ladcp_overview_b64", fig)
+                panels.append(
+                    RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
+                )
+                plt.close(fig)
+
+            return panels
+    except Exception:
+        if report_tokens.RAISE_ON_PLOT_ERROR:
+            raise
+        warnings.warn(
+            "_make_ladcp_overview_b64 failed; panels omitted",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return []
+
+
 def _make_section_ts_profiles_b64(
     ds_prof: xr.Dataset,
     x_vals: np.ndarray,

@@ -25,11 +25,12 @@ from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 
-#: Per-variable attribute holding the raw source column name, written by the
-#: reader (seasenselib) at read time.  The source→canonical rename table is
-#: reconstructed from these, so provenance lives on each variable rather than a
+#: Per-variable attributes holding the raw source name, written by a reader at
+#: read time: ``cnv_original_name`` (seasenselib CTD) or ``source_variable``
+#: (LADCP ``.mat`` field).  The source→canonical rename table is reconstructed
+#: from whichever is present, so provenance lives on each variable rather than a
 #: parallel global mapping that could drift.
-_SOURCE_NAME_ATTR = "cnv_original_name"
+_SOURCE_NAME_ATTRS = ("cnv_original_name", "source_variable")
 
 
 def _fmt_val(x: Any) -> str:
@@ -101,12 +102,19 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     with ds:
         coords = [_var_meta(n, ds[n]) for n in sorted(ds.coords)]
         data_vars = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars)]
-        # Build the source→canonical rename table from each variable's
-        # cnv_original_name (written by the reader), keeping only variables whose
-        # raw column name actually differs from the canonical name.
+        # Build the source→canonical rename table from each variable's recorded
+        # source name (written by the reader), keeping only variables whose raw
+        # source name actually differs from the canonical name.
         rename_map: dict[str, str] = {}
         for name in list(ds.coords) + list(ds.data_vars):
-            source = ds[name].attrs.get(_SOURCE_NAME_ATTR)
+            source = next(
+                (
+                    ds[name].attrs[a]
+                    for a in _SOURCE_NAME_ATTRS
+                    if ds[name].attrs.get(a)
+                ),
+                None,
+            )
             if source and source != name:
                 rename_map[str(source)] = str(name)
         global_attrs = {str(k): str(v)[:200] for k, v in ds.attrs.items()}

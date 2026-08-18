@@ -20,13 +20,16 @@ from ctdcast.reports._index import (
 
 
 def _ctx(
-    *, map_b64="MAP", physics=("CT", "SA"), biogeo=("O2",), ts=True
+    *, map_b64="MAP", physics=("CT", "SA"), biogeo=("O2",), velocity=("U", "V"), ts=True
 ) -> IndexPageCtx:
     """Build an IndexPageCtx with placeholder payloads for the requested panels."""
     return IndexPageCtx(
         map_b64=map_b64,
         physics_panels=tuple(RenderedPanel(b64="x", title=t, short=t) for t in physics),
         biogeo_panels=tuple(RenderedPanel(b64="x", title=t, short=t) for t in biogeo),
+        velocity_panels=tuple(
+            RenderedPanel(b64="x", title=t, short=t) for t in velocity
+        ),
         ts_panels=(RenderedPanel(b64="x", title="hist"),) if ts else (),
     )
 
@@ -46,18 +49,32 @@ def test_section_ids_have_a_legacy_anchor_alias() -> None:
 
 
 def test_ids_are_subset_of_section_page_ids() -> None:
-    """The index reuses the section page's slugs (it has no Velocity section)."""
+    """The index reuses the section page's slugs, including Velocity."""
     index_ids = {sec.id for sec in INDEX_DEFAULT.entries}
     section_ids = {sec.id for sec in SECTION_DEFAULT.entries}
-    assert index_ids < section_ids
-    assert "velocity" not in index_ids
+    assert index_ids <= section_ids
+    assert "velocity" in index_ids
 
 
 def test_numbering_contiguous_full_page() -> None:
-    """A complete cruise numbers Map..T–S as 1..4 with no stubs."""
+    """A complete cruise numbers Map..T–S as 1..5 with no stubs."""
     report = resolve_index(_ctx())
-    assert [s.number for s in report.sections] == ["1", "2", "3", "4"]
+    assert [s.number for s in report.sections] == ["1", "2", "3", "4", "5"]
     assert not any(p.is_stub for s in report.sections for p in s.panels)
+
+
+def test_empty_velocity_omits_the_section() -> None:
+    """No LADCP velocity panels → the Velocity section is dropped, not stubbed."""
+    report = resolve_index(_ctx(velocity=()))
+    assert "velocity" not in {s.id for s in report.sections}
+    assert not any(p.is_stub for s in report.sections for p in s.panels)
+
+
+def test_velocity_present_when_panels_exist() -> None:
+    """LADCP velocity panels present → a Velocity section renders both U and V."""
+    report = resolve_index(_ctx())
+    vel = next(s for s in report.sections if s.id == "velocity")
+    assert len(vel.panels) == 2
 
 
 def test_map_dropped_and_renumbered_when_absent() -> None:

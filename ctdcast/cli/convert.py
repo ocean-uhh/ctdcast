@@ -11,6 +11,78 @@ import yaml
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
 
 
+def run_ladcp_pipeline(
+    data: dict,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    required: bool = True,
+) -> int:
+    """Convert LADCP ``.mat`` files and compile ``ladcp_profiles.nc`` from config *data*.
+
+    The LADCP analogue of ``convert --ctd --profiles``: reads ``ladcp_dir``,
+    ``ladcp_nc`` and ``ladcp_profiles_nc`` from the config's ``data`` block,
+    converts every ``.mat`` to a per-cast netCDF, then compiles them onto a
+    common depth grid.  Returns a process exit code (0 on success).
+
+    When *required* is False (the ``run`` verb building products opportunistically)
+    and no ``ladcp_dir`` is configured, the step is skipped and 0 returned so a
+    cruise without LADCP is not an error.  When *required* is True (an explicit
+    ``convert --ladcp``) a missing ``ladcp_dir`` is a configuration error.
+    """
+    from ctdcast.processors.ladcp import run_compile, run_convert
+
+    ladcp_dir = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
+    ladcp_nc_dir = Path(data["ladcp_nc"]) if data.get("ladcp_nc") else None
+    ladcp_profiles_path = (
+        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
+    )
+
+    if not ladcp_dir:
+        if required:
+            print(
+                "Config error: data.ladcp_dir is required for --ladcp.",
+                file=sys.stderr,
+            )
+            return 1
+        return 0  # nothing configured — silently skip during a full run
+    if not (ladcp_nc_dir and ladcp_profiles_path):
+        msg = (
+            "data.ladcp_nc and data.ladcp_profiles_nc are required to build "
+            "ladcp_profiles.nc."
+        )
+        if required:
+            print(f"Config error: {msg}", file=sys.stderr)
+            return 1
+        # Opportunistic build during `run`: a partial LADCP config should not abort
+        # the report — nudge the user and skip.
+        print(f"NOTE: LADCP skipped — {msg}")
+        return 0
+    if not ladcp_dir.exists():
+        print(f"ladcp_dir not found: {ladcp_dir}", file=sys.stderr)
+        return 1
+
+    ladcp_pattern = data.get("ladcp_pattern")
+    n = run_convert(
+        ladcp_dir,
+        ladcp_nc_dir,
+        force=force,
+        dry_run=dry_run,
+        ladcp_pattern=ladcp_pattern,
+    )
+    if not dry_run:
+        print(f"Converted {n} LADCP cast(s).")
+    written = run_compile(
+        ladcp_nc_dir, ladcp_profiles_path, force=force, dry_run=dry_run
+    )
+    if not dry_run:
+        if written:
+            print(f"Built ladcp_profiles.nc → {ladcp_profiles_path}")
+        else:
+            print("Skipped (ladcp_profiles.nc already exists; use --force to rebuild).")
+    return 0
+
+
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
 ) -> argparse.ArgumentParser:
@@ -18,7 +90,8 @@ def build_parser(
     _epilog = """
 Default (no step flag): runs --profiles only if data.profiles_nc is configured.
   --ctd must be requested explicitly; it requires an external backend.
-  --ladcp is not yet implemented.
+  --ladcp converts every LADCP .mat and compiles ladcp_profiles.nc
+    (requires data.ladcp_dir, data.ladcp_nc and data.ladcp_profiles_nc).
 
 Examples:
   # Build profiles.nc from existing per-cast netCDF files (most common):
@@ -30,6 +103,9 @@ Examples:
   # CNV → per-cast netCDF using seasenselib (default backend), then profiles:
   ctdcast convert config.yaml --ctd
   ctdcast convert config.yaml --profiles
+
+  # LADCP .mat → per-cast netCDF → compiled ladcp_profiles.nc:
+  ctdcast convert config.yaml --ladcp
 
   # Force reprocess a single cast:
   ctdcast convert config.yaml --ctd --only 42 --force
@@ -72,7 +148,8 @@ Examples:
         "--ladcp",
         action="store_true",
         default=False,
-        help="Convert LADCP data (not yet implemented).",
+        help="Convert LADCP .mat files and compile ladcp_profiles.nc "
+        "(requires data.ladcp_dir, data.ladcp_nc, data.ladcp_profiles_nc).",
     )
 
     # Backend (applies only to --ctd)
@@ -173,10 +250,6 @@ def run(args: argparse.Namespace) -> int:
         run_profiles = bool(profiles_nc_raw)
         run_ladcp = False
 
-    if run_ladcp:
-        print("--ladcp is not yet implemented.", file=sys.stderr)
-        return 1
-
     if run_ctd and not cnv_dir_raw:
         print(
             "Config error: data.cnv_dir is required for --ctd. "
@@ -203,6 +276,10 @@ def run(args: argparse.Namespace) -> int:
             )
         if run_profiles:
             print(f"[dry-run] --profiles: {nc_dir} → {profiles_path}")
+        if run_ladcp:
+            _ld = data.get("ladcp_dir")
+            _lp = data.get("ladcp_profiles_nc")
+            print(f"[dry-run] --ladcp:   {_ld} → {_lp}")
         if args.only is not None:
             print(f"[dry-run] --only {args.only}: single-cast only")
         print(f"[dry-run] force={args.force}")
@@ -238,5 +315,12 @@ def run(args: argparse.Namespace) -> int:
             print(f"Built profiles.nc → {profiles_path}")
         else:
             print("Skipped (profiles.nc already exists; use --force to rebuild).")
+
+    if run_ladcp:
+        rc = run_ladcp_pipeline(
+            data, force=args.force, dry_run=args.dry_run, required=True
+        )
+        if rc != 0:
+            return rc
 
     return 0

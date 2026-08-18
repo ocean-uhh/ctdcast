@@ -13,7 +13,9 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ctdcast.cli import convert as _convert
 from ctdcast.cli import draft as _draft
+from ctdcast.cli import process as _process
 from ctdcast.cli import init as _init
 from ctdcast.cli import main as cli_main
 from ctdcast.cli import report as _report
@@ -616,6 +618,108 @@ class TestRun:
         mtime_before = page.stat().st_mtime
         _run.run(_run_ns(config=cfg, skip_existing=True))
         assert page.stat().st_mtime == mtime_before
+
+
+class TestConvertLadcp:
+    """``ctdcast convert --ladcp`` and the shared ``run_ladcp_pipeline`` helper."""
+
+    def _convert_ns(self, cfg, **kwargs) -> argparse.Namespace:
+        defaults = {
+            "config": cfg,
+            "ctd": False,
+            "profiles": False,
+            "ladcp": False,
+            "backend": "seasenselib",
+            "only": None,
+            "pattern": "*.cnv",
+            "force": False,
+            "dry_run": False,
+            "deprecated_alias_used": False,
+        }
+        defaults.update(kwargs)
+        return argparse.Namespace(**defaults)
+
+    def _write_cfg(self, tmp_path, **ladcp_keys) -> Path:
+        data = {"nc_dir": str(_FIXTURES_NC)}
+        data.update(ladcp_keys)
+        p = tmp_path / "config.yaml"
+        p.write_text(yaml.dump({"data": data, "output": {"dir": str(tmp_path / "o")}}))
+        return p
+
+    def test_convert_ladcp_builds_profiles(self, tmp_path):
+        """convert --ladcp converts the fixtures and compiles ladcp_profiles.nc."""
+        out = tmp_path / "ladcp_profiles.nc"
+        cfg = self._write_cfg(
+            tmp_path,
+            ladcp_dir=str(_FIXTURES_LADCP),
+            ladcp_nc=str(tmp_path / "ladcp_nc"),
+            ladcp_profiles_nc=str(out),
+        )
+        rc = _convert.run(self._convert_ns(cfg, ladcp=True, force=True))
+        assert rc == 0
+        assert out.exists()
+
+    def test_convert_ladcp_missing_dir_errors(self, tmp_path):
+        """Explicit --ladcp without ladcp_dir configured is an error."""
+        cfg = self._write_cfg(tmp_path)
+        rc = _convert.run(self._convert_ns(cfg, ladcp=True))
+        assert rc == 1
+
+    def test_pipeline_skips_silently_when_not_required(self):
+        """run's opportunistic build skips (rc 0) when no LADCP is configured."""
+        assert _convert.run_ladcp_pipeline({}, required=False) == 0
+
+    def test_pipeline_partial_keys_skip_when_not_required(self):
+        """During run, ladcp_dir but no output keys skips (rc 0), never aborts."""
+        rc = _convert.run_ladcp_pipeline(
+            {"ladcp_dir": str(_FIXTURES_LADCP)}, required=False
+        )
+        assert rc == 0
+
+    def test_pipeline_partial_keys_error_when_required(self):
+        """Explicit convert --ladcp with ladcp_dir but no output keys is an error."""
+        rc = _convert.run_ladcp_pipeline(
+            {"ladcp_dir": str(_FIXTURES_LADCP)}, required=True
+        )
+        assert rc == 1
+
+
+class TestProcess:
+    """``ctdcast process`` stage dispatch (regression for CLI stage bugs)."""
+
+    def _cfg(self, tmp_path) -> Path:
+        cfg = {
+            "data": {
+                # cnv_dir only needs to exist for the stage-1 dry-run pre-flight.
+                "cnv_dir": str(_FIXTURES_NC),
+                "nc_dir": str(_FIXTURES_NC),
+                "profiles_nc": str(tmp_path / "profiles.nc"),
+            }
+        }
+        p = tmp_path / "config.yaml"
+        p.write_text(yaml.dump(cfg))
+        return p
+
+    def test_stage_numeric_string_resolves(self, tmp_path):
+        """``--stage 1 --dry-run`` resolves the string '1' without raising."""
+        cfg = self._cfg(tmp_path)
+        args = _process.build_parser().parse_args(
+            [str(cfg), "--stage", "1", "--dry-run"]
+        )
+        assert _process.run(args) == 0
+
+    def test_stage_profiles_does_not_pass_cast_tags(self, tmp_path):
+        """``--stage profiles`` builds profiles.nc; cruise stages reject cast_tags.
+
+        Regression: the CLI passed ``cast_tags`` to every stage, but the cruise-scope
+        ``profiles`` run() does not accept it, raising a TypeError mid-run.
+        """
+        cfg = self._cfg(tmp_path)
+        args = _process.build_parser().parse_args(
+            [str(cfg), "--stage", "profiles", "--force"]
+        )
+        assert _process.run(args) == 0
+        assert (tmp_path / "profiles.nc").exists()
 
 
 # ---------------------------------------------------------------------------
