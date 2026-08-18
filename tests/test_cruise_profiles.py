@@ -19,6 +19,34 @@ class TestBuildProfilesCruise:
         )
         ds.close()
 
+    def test_science_vars_get_cf_attrs(self, tmp_path):
+        """Binned science variables carry units/standard_name/long_name/label_units."""
+        from ctdcast.processors.profiles import build_profiles
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(FIXTURES_NC, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        for var in ("ctd_temperature_1", "ctd_salinity_1", "conductivity_1"):
+            a = ds[var].attrs
+            assert a.get("units"), f"{var} missing units"
+            assert a.get("standard_name"), f"{var} missing standard_name"
+            # long_name must be the descriptive name, not the placeholder var name
+            assert a.get("long_name") and a["long_name"] != var
+            assert a.get("label_units"), f"{var} missing label_units"
+        ds.close()
+
+    def test_coords_get_standard_name(self, tmp_path):
+        """latitude/longitude/pressure coordinates carry standard_name."""
+        from ctdcast.processors.profiles import build_profiles
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(FIXTURES_NC, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        assert ds["latitude"].attrs.get("standard_name") == "latitude"
+        assert ds["longitude"].attrs.get("standard_name") == "longitude"
+        assert ds["pressure"].attrs.get("standard_name") == "sea_water_pressure"
+        ds.close()
+
     def test_cast_direction_values(self, tmp_path):
         """cast_direction must contain only 'down' and 'up'."""
         from ctdcast.processors.profiles import build_profiles

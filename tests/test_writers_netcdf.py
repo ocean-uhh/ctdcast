@@ -50,6 +50,29 @@ class TestWrite:
             assert "units" in ds_back["temperature_1"].attrs
         ds_back.close()
 
+    def test_known_variable_gets_label_units(self, tmp_path):
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "test.nc"
+        write(ds, out)
+        ds_back = xr.open_dataset(out, engine="netcdf4")
+        assert ds_back["ctd_salinity_1"].attrs.get("label_units") == "PSU"
+        ds_back.close()
+
+    def test_latitude_coordinate_gets_standard_name(self, tmp_path):
+        """Coordinate variables in VARIABLES receive CF attrs, not just data_vars."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        # strip any existing standard_name so we prove write() supplies it
+        ds["latitude"].attrs.pop("standard_name", None)
+        out = tmp_path / "test.nc"
+        write(ds, out)
+        ds_back = xr.open_dataset(out, engine="netcdf4")
+        assert ds_back["latitude"].attrs.get("standard_name") == "latitude"
+        ds_back.close()
+
     def test_qc_variable_gets_flag_attrs(self, tmp_path):
         from ctdcast.processors.stage2 import apply_stage2
         from ctdcast.writers.netcdf import write

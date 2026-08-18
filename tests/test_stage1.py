@@ -55,6 +55,27 @@ class TestStage1:
             assert ds.sizes["time"] > 0
             ds.close()
 
+    def test_conductivity_converted_to_mscm(self, tmp_path):
+        """Conductivity is converted S/m -> mS/cm (factor 10) during stage1."""
+        import numpy as np
+
+        from ctdcast.processors.stage1 import stage1
+
+        nc_dir = tmp_path / "nc"
+        stage1(FIXTURES_CNV, nc_dir)
+        checked = 0
+        for nc_path in sorted(nc_dir.glob("*.nc")):
+            ds = xr.open_dataset(nc_path, engine="netcdf4")
+            if "conductivity_1" in ds:
+                c = ds["conductivity_1"]
+                assert c.attrs.get("units") == "mS cm-1"
+                # seawater conductivity is ~10-70 mS/cm; S/m would read ~1-7
+                cmax = float(np.nanmax(c.values))
+                assert 10.0 < cmax < 70.0, f"conductivity max {cmax} not in mS/cm range"
+                checked += 1
+            ds.close()
+        assert checked > 0, "no fixture exercised the conductivity conversion"
+
     def test_nc_filename_matches_cnv_stem(self, tmp_path):
         """Each NC file must have the same stem as its source CNV."""
         from ctdcast.processors.stage1 import stage1

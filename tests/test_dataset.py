@@ -158,7 +158,7 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     assert 'id="data_ranges"' in html  # appendix section anchor
     assert "(B) netCDF data ranges" in html  # lettered appendix in heading + jump-nav
     assert "Label units" in html  # the label-units column
-    assert "S m⁻¹" in html  # a populated label_units value (conductivity)
+    assert "mS cm⁻¹" in html  # a populated label_units value (conductivity)
 
 
 def test_var_meta_label_units_from_registry():

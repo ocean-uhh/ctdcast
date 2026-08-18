@@ -62,7 +62,8 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
     Steps, in order:
 
     1. Rename variables using :data:`~ctdcast.config.parameters.CNV_ALIASES`
-       (keys are lower-cased before lookup).
+       (keys are lower-cased before lookup), handle the oxygen unit variants,
+       and convert conductivity from S/m to mS/cm (the CCHDO convention).
     2. Drop variables in ``_DROP_VARS`` (SeaBird bookkeeping) and
        ``_DERIVE_ON_DEMAND`` (quantities computed on demand, not stored).
     3. Drop any remaining variables not in
@@ -139,6 +140,21 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
                 )
                 ds = ds.drop_vars([_v])
         # else: % saturation, volts, or unknown — falls through to _DERIVE_ON_DEMAND drop
+
+    # Step 1c: convert conductivity from S/m to mS/cm — the CCHDO/oceanographic
+    # convention and what gsw.SP_from_C expects.  1 S/m = 10 mS/cm.  Guarded on
+    # the source units so a file already in mS/cm is not double-converted.
+    for _c in ("conductivity_1", "conductivity_2"):
+        if _c not in ds.data_vars:
+            continue
+        _u = ds[_c].attrs.get("units", "").lower().replace(" ", "").replace("^", "")
+        if _u in ("s/m", "sm-1", "sm⁻1", "siemens/m", "siemenspermetre"):
+            converted = ds[_c] * 10.0
+            _attrs = dict(ds[_c].attrs)
+            _attrs["units"] = "mS cm-1"
+            _attrs["comment"] = "converted from S m-1 to mS cm-1 (factor 10)"
+            converted.attrs = _attrs
+            ds = ds.assign({_c: converted})
 
     # Step 2: drop bookkeeping and derive-on-demand variables
     to_drop = [v for v in ds.data_vars if v in _DROP_VARS or v in _DERIVE_ON_DEMAND]
