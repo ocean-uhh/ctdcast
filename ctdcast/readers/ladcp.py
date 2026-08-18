@@ -10,6 +10,7 @@ its ~50 fields are mapped to the compiled-dataset schema in
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,37 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.identity import format_cast_id
+
+#: Canonical variable name → source field in the LDEO ``.mat`` ``dr`` struct.
+#: Written onto each variable as ``source_variable`` so the .mat→canonical
+#: mapping is reconstructable from the output file alone (the LADCP parallel of
+#: the CTD ``cnv_original_name``; feeds the netCDF-inventory renaming table).
+_SOURCE_MAP: dict[str, str] = {
+    "u": "dr.u",
+    "v": "dr.v",
+    "u_shear": "dr.u_shear_method",
+    "v_shear": "dr.v_shear_method",
+    "w_shear": "dr.w_shear_method",
+    "u_error": "dr.uerr",
+    "ensemble_vel_err": "dr.ensemble_vel_err",
+    "nvel": "dr.nvel",
+    "profiling_range": "dr.range",
+    "u_downlooker": "dr.u_do",
+    "v_downlooker": "dr.v_do",
+    "u_uplooker": "dr.u_up",
+    "v_uplooker": "dr.v_up",
+    "target_strength": "dr.ts",
+    "target_strength_out": "dr.ts_out",
+    "u_bottom": "dr.ubot",
+    "v_bottom": "dr.vbot",
+    "z_bottom": "dr.zbot",
+    "latitude": "dr.lat",
+    "longitude": "dr.lon",
+    "u_barotropic": "dr.ubar",
+    "v_barotropic": "dr.vbar",
+    "depth": "dr.z",
+    "pressure": "dr.p",
+}
 
 
 def read_ladcp(path: Path | str) -> dict[str, Any]:
@@ -151,6 +183,10 @@ def read_ladcp_cast(
     )
     ds["time"] = ((), _ladcp_time(dr))
     ds = ds.set_coords(["cast_number", "cast_suffix", "latitude", "longitude", "time"])
+    # Record the .mat source field on each variable (provenance-in-file).
+    for _name, _src in _SOURCE_MAP.items():
+        if _name in ds.variables:
+            ds[_name].attrs["source_variable"] = _src
     ds.attrs.update(_provenance_attrs(dr, ps, da))
     return ds
 
@@ -184,13 +220,34 @@ def _provenance_attrs(dr: Any, ps: Any, da: Any) -> dict[str, Any]:
             ("GEN_Inverse_weight_bottom", "ladcp_inverse_weight_bottom"),
             ("GEN_Inverse_weight_navigation", "ladcp_inverse_weight_navigation"),
             ("GEN_Inverse_weight_smooth", "ladcp_inverse_weight_smooth"),
-            ("LADCP_dn_hard_SN", "ladcp_downlooker_serial"),
             ("LADCP_dn_hard_freq_kHz", "ladcp_downlooker_freq_khz"),
             ("LADCP_dn_hard_beam_ang_deg", "ladcp_downlooker_beam_angle_deg"),
+            ("LADCP_up_hard_freq_kHz", "ladcp_uplooker_freq_khz"),
+            ("LADCP_up_hard_beam_ang_deg", "ladcp_uplooker_beam_angle_deg"),
         ):
             val = _field(da, src)
             if val is not None:
                 attrs[key] = str(val) if isinstance(val, str) else float(val) if np.isscalar(val) else str(val)
+        # Hardware serials are flagged explicitly: a present-but-blank (nan)
+        # serial is recorded as "UNK" and warned about rather than written as a
+        # silent nan, so a data reviewer sees the gap.  An entirely absent field
+        # means that instrument is not in this .mat and is skipped.
+        for src, key, looker in (
+            ("LADCP_dn_hard_SN", "ladcp_downlooker_serial", "downlooker"),
+            ("LADCP_up_hard_SN", "ladcp_uplooker_serial", "uplooker"),
+        ):
+            val = _field(da, src)
+            if val is None:
+                continue
+            if isinstance(val, float) and np.isnan(val):
+                attrs[key] = "UNK"
+                warnings.warn(
+                    f"LADCP {looker} serial number is blank in the .mat; "
+                    "recorded as 'UNK'.",
+                    stacklevel=2,
+                )
+            else:
+                attrs[key] = str(val)
     if ps is not None:
         dz = _field(ps, "dz")
         if dz is not None and np.isscalar(dz):

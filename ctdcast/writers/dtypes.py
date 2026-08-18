@@ -40,9 +40,9 @@ def find_best_dtype(var_name: str, da: xr.DataArray) -> type:
     - ``time`` in name: unchanged (preserve datetime64 / float encoding).
     - ``*_qc`` suffix or ``flag`` in name: ``int8``.
     - ``serial_number`` or ``serial``: ``int32``.
-    - ``latitude`` / ``longitude`` in name: ``float64``.
     - Integer input: downsize to ``int32`` if stored as ``int64``, else unchanged.
-    - ``float64`` input: ``float32``.
+    - ``float64`` input: ``float32`` (including ``latitude``/``longitude`` —
+      float32 gives ~1 m position precision, adequate for CTD/LADCP stations).
     - Anything else: unchanged.
 
     """
@@ -55,8 +55,6 @@ def find_best_dtype(var_name: str, da: xr.DataArray) -> type:
         return np.int8
     if var_name in ("serial_number", "serial"):
         return np.int32
-    if "latitude" in var_name.lower() or "longitude" in var_name.lower():
-        return np.float64
     if da.dtype.kind in ("i", "u") and da.dtype.itemsize == 8:
         return np.int32
     if input_dtype == np.float64:

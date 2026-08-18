@@ -6,7 +6,7 @@ import pytest
 from conftest import CAST_011, FIXTURES_NC
 
 from ctdcast.reports._dataset import (
-    _SOURCE_NAME_ATTR,
+    _SOURCE_NAME_ATTRS,
     generate_dataset_page,
     read_dataset_meta,
 )
@@ -54,7 +54,11 @@ def test_columned_attrs_excluded_from_expandable():
 def test_source_name_kept_in_expandable_attrs():
     """cnv_original_name stays in the expandable attrs (not a dedicated column)."""
     meta = read_dataset_meta(CAST_011)
-    named = [r for r in meta["data_vars"] if _SOURCE_NAME_ATTR in r["attrs"]]
+    named = [
+        r
+        for r in meta["data_vars"]
+        if any(a in r["attrs"] for a in _SOURCE_NAME_ATTRS)
+    ]
     assert named, "expected at least one variable carrying cnv_original_name"
 
 
