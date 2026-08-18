@@ -17,7 +17,6 @@ from ctdcast.config.report_tokens import (
 )
 
 
-
 def sigma0_isopycnals(
     ax: Any, x: np.ndarray, y: np.ndarray, data2d: np.ndarray
 ) -> None:
@@ -37,9 +36,7 @@ def sigma0_isopycnals(
         pass
 
 
-def nice_colorbar_ticks(
-    vmin: float, vmax: float, *, max_ticks: int = 6
-) -> np.ndarray:
+def nice_colorbar_ticks(vmin: float, vmax: float, *, max_ticks: int = 6) -> np.ndarray:
     """Return at most *max_ticks* nicely-rounded tick positions in ``[vmin, vmax]``.
 
     Decoupled from the colorbar's colour discretisation: a 20-level ``BoundaryNorm``
@@ -61,9 +58,9 @@ def nice_colorbar_ticks(
 
     """
     lo, hi = (vmin, vmax) if vmin <= vmax else (vmax, vmin)
-    ticks = mticker.MaxNLocator(
-        nbins=max_ticks, steps=[1, 2, 2.5, 5, 10]
-    ).tick_values(lo, hi)
+    ticks = mticker.MaxNLocator(nbins=max_ticks, steps=[1, 2, 2.5, 5, 10]).tick_values(
+        lo, hi
+    )
     ticks = ticks[(ticks >= lo) & (ticks <= hi)]
     # A near-degenerate range can leave every rounded tick outside [lo, hi]; fall
     # back to the endpoints so the colorbar never renders with zero labels.

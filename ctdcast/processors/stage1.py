@@ -88,7 +88,10 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
 
     ds = ds.copy()
 
-    # Step 1: rename via CNV_ALIASES (lowercase key lookup)
+    # Step 1: rename via CNV_ALIASES (lowercase key lookup).  The reader
+    # (seasenselib) records the raw column name per variable as
+    # ``cnv_original_name``, so the source→canonical provenance survives these
+    # renames without any extra bookkeeping here.
     rename_map: dict[str, str] = {}
     for var in list(ds.data_vars):
         target = CNV_ALIASES.get(var.lower())

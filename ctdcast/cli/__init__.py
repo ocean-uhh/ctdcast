@@ -10,6 +10,7 @@ from ctdcast._version import __version__
 from . import convert as _convert
 from . import draft as _draft
 from . import init as _init
+from . import inspect as _inspect
 from . import process as _process
 from . import report as _report
 from . import run as _run
@@ -57,6 +58,7 @@ def main() -> None:
     _report.build_parser(subparsers)
     _run.build_parser(subparsers)
     _validate.build_parser(subparsers)
+    _inspect.build_parser(subparsers)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
