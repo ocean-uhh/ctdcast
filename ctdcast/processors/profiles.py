@@ -14,7 +14,9 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
+from ctdcast.config.parameters import VARIABLES
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.writers.netcdf import write as _write_nc
 
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
@@ -228,11 +230,16 @@ def build_profiles(
         "N_PROF": ("N_PROF", n_prof_idx),
         "pressure": ("pressure", p_grid),
     }
+    # Science vars carry only the coordinates pointer here; write() supplies
+    # units/long_name/standard_name/label_units from VARIABLES.  A var not in
+    # VARIABLES keeps a placeholder long_name so it is not left wholly unlabelled.
     data_vars: dict = {
         v: (
             ["N_PROF", "pressure"],
             data_2d[v],
-            {"long_name": v, "coordinates": "latitude longitude"},
+            {"coordinates": "latitude longitude"}
+            if v in VARIABLES
+            else {"long_name": v, "coordinates": "latitude longitude"},
         )
         for v in var_names
     }
@@ -285,15 +292,17 @@ def build_profiles(
                     "flag_values": "down up",
                 },
             ),
+            # long_name/units/standard_name come from VARIABLES via write(); the
+            # comment records that the position is the per-profile median fix.
             "latitude": (
                 ["N_PROF"],
                 lats,
-                {"units": "degrees_north", "long_name": "median latitude"},
+                {"comment": "median of the position fixes over the cast direction"},
             ),
             "longitude": (
                 ["N_PROF"],
                 lons,
-                {"units": "degrees_east", "long_name": "median longitude"},
+                {"comment": "median of the position fixes over the cast direction"},
             ),
             "time_start": (
                 ["N_PROF"],
@@ -347,10 +356,11 @@ def build_profiles(
     }
     ds_out["N_PROF"].attrs = {"long_name": "Profile index (0-based sequential)"}
 
-    profiles_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = profiles_path.with_suffix(".nc.tmp")
-    ds_out.to_netcdf(str(tmp))
-    tmp.replace(profiles_path)
+    # Route through the CF writer so the binned science variables and the
+    # latitude/longitude/pressure coordinates receive their VARIABLES metadata
+    # (units, standard_name, long_name, label_units) — a plain to_netcdf here
+    # would leave them unlabelled.  write() writes atomically.
+    _write_nc(ds_out, profiles_path)
     return True
 
 
