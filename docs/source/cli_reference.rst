@@ -120,8 +120,55 @@ Validate config paths and data before the first run.  Does not write any files.
 
 ----
 
-ctdcast convert
+ctdcast process
 -----------------
+
+Run one or more pipeline stages, across every configured data source.  A stage
+runs for whichever sources are configured: with both CTD and LADCP paths set,
+``--stage 1`` ingests both (CNV → nc *and* ``.mat`` → nc) and ``--stage profiles``
+compiles both (``profiles.nc`` *and* ``ladcp_profiles.nc``).  A source whose paths
+are absent is silently skipped.
+
+.. code-block:: text
+
+   ctdcast process <config> --stage {1,2,3,profiles} [more] [options]
+
+   positional arguments:
+     config           Path to config.yaml
+
+   required:
+     --stage ...      One or more of: 1, 2, 3, profiles.  Multiple values run in
+                      canonical order (1 → 2 → 3 → profiles) regardless of the
+                      order given.
+
+   options:
+     --only N         Restrict cast-scope stages (1, 2, 3) to cast N
+     --force          Overwrite existing output files
+     --dry-run        Print what would be done without writing any files
+     --gebco NC       GEBCO bathymetry for the profiles stage
+
+Stage 1 ingests raw files to per-cast netCDF; stages 2 and 3 apply CTD soak/deck
+flagging and QC/calibration (LADCP has no stage 2 or 3); ``profiles`` compiles the
+per-cast files into the gridded products.
+
+**Examples**::
+
+   ctdcast process config.yaml --stage 1                # ingest CTD + LADCP
+   ctdcast process config.yaml --stage 1 2 3 profiles   # full pipeline
+   ctdcast process config.yaml --stage profiles         # compile products only
+   ctdcast process config.yaml --stage 1 --only 42      # re-ingest one cast
+
+----
+
+ctdcast convert (deprecated)
+------------------------------
+
+.. note::
+
+   ``ctdcast convert`` is deprecated — use ``ctdcast process --stage ...``.
+   ``convert --ctd`` → ``process --stage 1``; ``convert --profiles`` →
+   ``process --stage profiles``; ``convert --ladcp`` → ``process --stage 1 profiles``.
+   The command still runs, with a notice.
 
 Convert raw data to netCDF inputs without generating HTML.
 
@@ -197,7 +244,7 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
 ctdcast run
 -------------
 
-Run convert then report in one step (most common workflow).
+Run the processing pipeline then the reports in one step (most common workflow).
 
 .. code-block:: text
 
@@ -207,23 +254,30 @@ Run convert then report in one step (most common workflow).
      config           Path to config.yaml
 
    options:
-     --ctd            Also run CNV → netCDF conversion before building profiles
-                      (requires data.cnv_dir in config)
-     --only N [N ...] Rebuild only the pages for cast N (skips profiles step)
+     --stage ...      Stage(s) to run before reporting, across every configured
+                      source (default: all — 1 2 3 profiles). E.g. --stage profiles
+                      to only compile and report.
+     --only N [N ...] Process only these cast(s): cast-scope stages (1 2 3) run for
+                      them and only their pages rebuild; profiles is skipped
      --force          Force regeneration of all outputs regardless of modification times
      --skip-existing  Skip pages whose HTML already exists
      --dry-run        Print what would be done without writing any files
 
-Equivalent to running ``ctdcast convert`` then ``ctdcast report`` in sequence.
-``run`` is the recommended everyday command — it builds ``profiles.nc`` first, so it
-works from a fresh checkout; use ``report`` when the profiles are already current and
-you only want to regenerate specific pages.  (The former ``--cast`` spelling still
-works as a deprecated alias for ``--only``.)
+Equivalent to ``ctdcast process --stage ...`` then ``ctdcast report``.  ``run`` is
+the recommended everyday command: by default it runs every stage (ingest → QC →
+compile) across every configured source, then builds the HTML — so it works from
+raw on a fresh checkout.  Narrow with ``--stage`` when you do not want the full
+pipeline (``--stage profiles`` compiles and reports without re-ingesting raw).  Use
+``report`` when the compiled products are already current and you only want to
+regenerate pages.  (The former ``--cast`` spelling is a deprecated alias for
+``--only``; the former ``--ctd`` flag is deprecated — ``run`` now ingests raw by
+default.)
 
 **Examples**::
 
-   ctdcast run config.yaml                      # smart update (skips up-to-date pages)
+   ctdcast run config.yaml                      # full pipeline (all stages) + reports
+   ctdcast run config.yaml --stage profiles     # compile + report only (skip ingest)
+   ctdcast run config.yaml --stage 1 profiles   # ingest + compile + report (skip QC)
    ctdcast run config.yaml --force              # rebuild everything
-   ctdcast run config.yaml --only 42            # rebuild one cast page
-   ctdcast run config.yaml --ctd --force        # full pipeline including CNV conversion
+   ctdcast run config.yaml --only 42            # reprocess + rebuild one cast page
    ctdcast run config.yaml --dry-run

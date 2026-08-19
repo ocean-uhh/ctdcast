@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+from ctdcast.cli.process import _STAGE_METAVAR, _stage_token
 
 
 def build_parser(
@@ -14,20 +15,24 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     """Build the argument parser for ``ctdcast run``."""
     _epilog = """
-Equivalent to running ``ctdcast convert`` then ``ctdcast report`` in sequence.
-The convert step builds (or skips) profiles.nc; the report step generates HTML.
+Equivalent to running ``ctdcast process`` then ``ctdcast report`` in sequence.
+By default runs every stage (1 2 3 profiles) across every configured source,
+then generates HTML. Narrow with --stage; both steps are mtime-smart.
 
 Examples:
-  # Full smart update (profiles if stale, then reports if stale):
+  # Full pipeline (all stages, all sources) then reports:
   ctdcast run config.yaml
+
+  # Compile profiles from existing per-cast files, then report (skip raw ingest):
+  ctdcast run config.yaml --stage profiles
+
+  # Ingest + compile, skipping QC:
+  ctdcast run config.yaml --stage 1 profiles
 
   # Rebuild everything:
   ctdcast run config.yaml --force
 
-  # Include CNV → nc conversion (requires an external backend):
-  ctdcast run config.yaml --ctd
-
-  # Regenerate one cast page without rebuilding profiles:
+  # Regenerate one cast page (cast-scope stages only, profiles skipped):
   ctdcast run config.yaml --only 42
 """
     kwargs: dict = {
@@ -48,10 +53,20 @@ Examples:
     parser.add_argument("config", type=Path, help="Path to config YAML file.")
 
     parser.add_argument(
+        "--stage",
+        nargs="+",
+        type=_stage_token,
+        metavar=_STAGE_METAVAR,
+        default=None,
+        help="Processing stage(s) to run before reporting, across every configured"
+        " source (default: all — 1 2 3 profiles). E.g. --stage profiles to only"
+        " compile and report.",
+    )
+    parser.add_argument(
         "--ctd",
         action="store_true",
         default=False,
-        help="Also run CNV → netCDF conversion before building profiles (requires data.cnv_dir).",
+        help=argparse.SUPPRESS,  # deprecated: `run` now ingests raw by default
     )
     parser.add_argument(
         "--only",
@@ -114,59 +129,59 @@ def run(args: argparse.Namespace) -> int:
 
     cast_filter: list[int] | None = args.only
 
-    # ------------------------------------------------------------------ convert
-    from . import convert as _convert
-
-    if cast_filter is not None and args.ctd:
-        # Single-cast + --ctd: convert that one CNV file, skip profiles rebuild.
-        convert_ns = argparse.Namespace(
-            config=cfg_path,
-            ctd=True,
-            profiles=False,
-            ladcp=False,
-            backend="seasenselib",
-            only=cast_filter,
-            pattern="*.cnv",
-            force=args.force,
-            dry_run=args.dry_run,
+    if args.ctd:
+        print(
+            "NOTE: 'ctdcast run --ctd' is deprecated; run now ingests raw by default."
+            " Use '--stage 1 profiles' to skip QC, or '--stage profiles' to skip"
+            " ingest.",
+            file=sys.stderr,
         )
-        print("=== convert ===")
-        rc = _convert.run(convert_ns)
-        if rc != 0:
-            return rc
-    elif cast_filter is None:
-        # Full run: build profiles (and optionally CTD-convert first if --ctd).
-        # Without --ctd, the default branch in convert runs profiles only.
-        convert_ns = argparse.Namespace(
-            config=cfg_path,
-            ctd=args.ctd,
-            profiles=args.ctd,
-            ladcp=False,
-            backend="seasenselib",
-            only=None,
-            pattern="*.cnv",
-            force=args.force,
-            dry_run=args.dry_run,
-        )
-        print("=== convert ===")
-        rc = _convert.run(convert_ns)
-        if rc != 0:
-            return rc
 
-        # Build LADCP velocity products if the ladcp_* keys are configured.
-        # Optional: a cruise without LADCP simply skips this (required=False).
-        import yaml
+    # ------------------------------------------------------------------ process
+    # Run the pipeline stages across every configured source (CTD + LADCP): a
+    # stage ingests/compiles both when both are configured, so there is no
+    # separate LADCP step here.
+    import yaml
 
-        with open(cfg_path) as _f:
-            _data = (yaml.safe_load(_f) or {}).get("data") or {}
-        if _data.get("ladcp_dir"):
-            print("=== ladcp ===")
-            rc = _convert.run_ladcp_pipeline(
-                _data, force=args.force, dry_run=args.dry_run, required=False
+    from ctdcast.config.parameters import CAST_TAG_WIDTH
+    from ctdcast.processors import process as _process
+    from ctdcast.processors import stages_for
+
+    with open(cfg_path) as _f:
+        _data = (yaml.safe_load(_f) or {}).get("data") or {}
+    # --only/--cast use nargs='+', so cast_filter is a list or None.
+    _cast_tags = (
+        {f"{c:0{CAST_TAG_WIDTH}d}" for c in cast_filter} if cast_filter else None
+    )
+
+    # Default (no --stage) runs every stage; --stage narrows.  With --only we
+    # process just those casts, so cruise-scope stages (profiles) are skipped —
+    # a single-cast profile compile is not meaningful.
+    _stages = stages_for(args.stage)
+    if cast_filter is not None:
+        _stages = tuple(s for s in _stages if s.scope == "cast")
+    stages = [s.name for s in _stages]
+
+    if stages:
+        print("=== process ===")
+        try:
+            _process(
+                stage=stages,
+                cnv_dir=_data.get("cnv_dir"),
+                nc_dir=_data.get("nc_dir"),
+                profiles_path=_data.get("profiles_nc"),
+                ladcp_dir=_data.get("ladcp_dir"),
+                ladcp_nc_dir=_data.get("ladcp_nc"),
+                ladcp_profiles_path=_data.get("ladcp_profiles_nc"),
+                force=args.force,
+                dry_run=args.dry_run,
+                cast_tags=_cast_tags,
+                pattern=_data.get("cnv_pattern") or "*.cnv",
+                ladcp_pattern=_data.get("ladcp_pattern"),
             )
-            if rc != 0:
-                return rc
-    # cast_filter set but no --ctd: skip convert entirely (just regenerate the HTML).
+        except (ValueError, OSError, ImportError, NotImplementedError) as exc:
+            print(f"process error: {exc}", file=sys.stderr)
+            return 1
 
     # ------------------------------------------------------------------ report
     from . import report as _report

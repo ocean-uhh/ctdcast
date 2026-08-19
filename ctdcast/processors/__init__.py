@@ -31,8 +31,27 @@ Scope = Literal["cast", "cruise"]
 
 
 @dataclass(frozen=True)
+class StagePaths:
+    """The full set of pipeline input/output paths, as resolved from config.
+
+    A single value threaded to every stage's normalised ``run`` so each stage
+    can pick the paths for whichever sources are configured (CTD, LADCP, …) and
+    ignore the rest.  Sources are inferred from which paths are present: a
+    ``None`` path means that source is not configured and its half of a stage is
+    silently skipped.
+    """
+
+    cnv_dir: Path | None = None
+    nc_dir: Path | None = None
+    profiles_path: Path | None = None
+    ladcp_dir: Path | None = None
+    ladcp_nc_dir: Path | None = None
+    ladcp_profiles_path: Path | None = None
+
+
+@dataclass(frozen=True)
 class Stage:
-    """One pipeline stage.
+    """One pipeline stage — a row in the :data:`STAGES` single source of truth.
 
     Attributes
     ----------
@@ -45,11 +64,11 @@ class Stage:
     scope:
         Whether the stage operates per-cast or per-cruise.
     run:
-        Entry point.  Signature varies by stage — each stage's ``run()``
-        takes explicit path arguments (e.g. ``cnv_dir`` + ``nc_dir`` for
-        stage1; ``nc_dir`` alone for stage2/stage3; ``nc_dir`` +
-        ``profiles_path`` for profiles), plus ``force``, ``dry_run``,
-        ``cast_tags``, and stage-specific keyword arguments.
+        Normalised entry point with the uniform signature
+        ``run(paths: StagePaths, *, force, dry_run, cast_tags, **kw) -> object``.
+        The wrapper fans out over every configured source for that stage and
+        names only the tuning kwargs it uses (swallowing the rest via ``**_kw``),
+        so :func:`process` and the CLI dispatch identically for every stage.
     """
 
     name: str
@@ -58,17 +77,159 @@ class Stage:
     run: Callable
 
 
-#: Pipeline stages in execution order.  Single source of truth for
-#: :func:`process`, the CLI, and the re-run rule.
+# ---------------------------------------------------------------------------
+# Normalised stage wrappers — one per stage token.  Each takes the uniform
+# ``(paths, *, force, dry_run, cast_tags, **kw)`` signature, fans out over the
+# sources configured in *paths*, and names only the tuning kwargs it needs.
+# This is what lets the registry store a single callable per stage and dispatch
+# without any per-stage branching (mirrors oceanarray's normalised wrappers).
+# ---------------------------------------------------------------------------
+
+
+def _run_stage1(
+    paths: StagePaths,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    backend: str = "seasenselib",
+    pattern: str = "*.cnv",
+    ladcp_pattern: str | None = None,
+    **_kw: object,
+) -> int:
+    """Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP)."""
+    total = 0
+    if paths.cnv_dir is not None and paths.nc_dir is not None:
+        total += (
+            _stage1.run(
+                paths.cnv_dir,
+                paths.nc_dir,
+                force=force,
+                dry_run=dry_run,
+                cast_tags=cast_tags,
+                backend=backend,
+                pattern=pattern,
+            )
+            or 0
+        )
+    if paths.ladcp_dir is not None and paths.ladcp_nc_dir is not None:
+        total += (
+            _ladcp.run_convert(
+                paths.ladcp_dir,
+                paths.ladcp_nc_dir,
+                force=force,
+                dry_run=dry_run,
+                cast_tags=cast_tags,
+                ladcp_pattern=ladcp_pattern,
+            )
+            or 0
+        )
+    return total
+
+
+def _run_stage2(
+    paths: StagePaths,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    **kw: object,
+) -> int:
+    """Apply soak/deck flagging to per-cast CTD netCDF (LADCP has no stage 2)."""
+    if paths.nc_dir is None:
+        return 0
+    # stage2.run filters kw to its own accepted keys, so forwarding the full
+    # tuning bag is safe here.
+    return (
+        _stage2.run(
+            paths.nc_dir,
+            force=force,
+            dry_run=dry_run,
+            cast_tags=cast_tags,
+            **kw,
+        )
+        or 0
+    )
+
+
+def _run_stage3(
+    paths: StagePaths,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    cast_tags: set[str] | None = None,
+    cruise_cfg: dict | None = None,
+    **_kw: object,
+) -> int:
+    """Apply QC + calibration to per-cast CTD netCDF (LADCP has no stage 3)."""
+    if paths.nc_dir is None:
+        return 0
+    return (
+        _stage3.run(
+            paths.nc_dir,
+            force=force,
+            dry_run=dry_run,
+            cast_tags=cast_tags,
+            cruise_cfg=cruise_cfg,
+        )
+        or 0
+    )
+
+
+def _run_profiles(
+    paths: StagePaths,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    gebco_path: Path | None = None,
+    **_kw: object,
+) -> bool:
+    """Compile per-cast netCDF → gridded products for every configured source.
+
+    Builds ``profiles.nc`` (CTD) and/or ``ladcp_profiles.nc`` (LADCP), returning
+    True if any product was written.
+    """
+    wrote = False
+    if paths.nc_dir is not None and paths.profiles_path is not None:
+        wrote = (
+            bool(
+                _profiles.run(
+                    paths.nc_dir,
+                    paths.profiles_path,
+                    force=force,
+                    dry_run=dry_run,
+                    gebco_path=gebco_path,
+                )
+            )
+            or wrote
+        )
+    if paths.ladcp_nc_dir is not None and paths.ladcp_profiles_path is not None:
+        wrote = (
+            bool(
+                _ladcp.run_compile(
+                    paths.ladcp_nc_dir,
+                    paths.ladcp_profiles_path,
+                    force=force,
+                    dry_run=dry_run,
+                )
+            )
+            or wrote
+        )
+    return wrote
+
+
+#: Pipeline stages in execution order.  **Single source of truth** for
+#: :func:`process`, the CLI (``--stage`` choices, help, dispatch), and the
+#: re-run rule.  Adding a stage — a new CTD step, a cruise-level export, another
+#: source — is one row here; everything user-facing derives from this tuple.
+#: Each stage fans out over all configured sources inside its ``run`` wrapper,
+#: so there is no per-source token: ``--stage 1`` ingests CTD *and* LADCP,
+#: ``--stage profiles`` compiles both.
 STAGES: tuple[Stage, ...] = (
-    Stage("stage1", 1, "cast", _stage1.run),
-    Stage("stage2", 2, "cast", _stage2.run),
-    Stage("stage3", 3, "cast", _stage3.run),
-    Stage("profiles", None, "cruise", _profiles.run),
-    # LADCP: an optional parallel pipeline (mirrors stage1 + profiles).  Skipped
-    # when its paths are not supplied, since not every cruise has LADCP.
-    Stage("ladcp", None, "cast", _ladcp.run_convert),
-    Stage("ladcp-profiles", None, "cruise", _ladcp.run_compile),
+    Stage("stage1", 1, "cast", _run_stage1),
+    Stage("stage2", 2, "cast", _run_stage2),
+    Stage("stage3", 3, "cast", _run_stage3),
+    Stage("profiles", None, "cruise", _run_profiles),
 )
 
 
@@ -79,10 +240,10 @@ def resolve_stage(stage: int | str) -> Stage:
     ----------
     stage:
         ``1``, ``2``, ``3``; or a name — ``"stage1"``, ``"stage2"``,
-        ``"stage3"``, ``"profiles"``.  Names are matched
-        case-insensitively. Integers resolve only to numbered stages:
-        ``"profiles"`` has no number, so ``4`` would be an error rather
-        than a guess.
+        ``"stage3"``, ``"profiles"``.  Names are matched case-insensitively.
+        Numeric strings (``"1"``) resolve as the number.  Integers resolve only
+        to numbered stages: ``"profiles"`` has no number, so ``4`` is an error
+        rather than a guess.
 
     Raises
     ------
@@ -95,6 +256,8 @@ def resolve_stage(stage: int | str) -> Stage:
     # The CLI passes stage numbers as strings ("1"); accept those as the number.
     key: int | str = int(stage) if isinstance(stage, str) and stage.isdigit() else stage
     for s in STAGES:
+        # Guard bool before int: True == 1, so without this resolve_stage(True)
+        # would silently return stage1.
         if not isinstance(key, bool) and (
             key == s.number or (isinstance(key, str) and key.lower() == s.name)
         ):
@@ -106,8 +269,22 @@ def resolve_stage(stage: int | str) -> Stage:
     raise ValueError(f"unknown stage {stage!r}; expected one of: {valid}")
 
 
+def stages_for(stage: int | str | list[int | str] | None) -> tuple[Stage, ...]:
+    """Resolve *stage* into the stages to run, always in :data:`STAGES` order.
+
+    ``None`` → every stage.  A list/tuple → that subset (deduplicated, canonical
+    order regardless of the order requested).  A scalar → that one stage.
+    """
+    if stage is None:
+        return STAGES
+    if isinstance(stage, (list, tuple)):
+        requested = {resolve_stage(s) for s in stage}
+        return tuple(s for s in STAGES if s in requested)
+    return (resolve_stage(stage),)
+
+
 def process(
-    stage: int | str | None = None,
+    stage: int | str | list[int | str] | None = None,
     *,
     cnv_dir: Path | str | None = None,
     nc_dir: Path | str | None = None,
@@ -120,80 +297,58 @@ def process(
     cast_tags: set[str] | None = None,
     **kw: object,
 ) -> object:
-    """Run one pipeline stage, or every stage in order.
+    """Run one or more pipeline stages across every configured source.
+
+    A stage runs for whichever sources are configured: with both CTD and LADCP
+    paths supplied, ``stage="stage1"`` ingests both, and ``stage="profiles"``
+    compiles both.  A source whose paths are absent is silently skipped, so a
+    cruise without LADCP is not an error.
 
     Parameters
     ----------
     stage:
-        Which stage to run — ``1``, ``2``, ``3``, or a name such as
-        ``"stage1"`` or ``"profiles"``.  ``None`` (the default) runs all
-        stages in :data:`STAGES` order.
-    cnv_dir:
-        Directory of raw SBE CNV files (required for stage 1).
-    nc_dir:
-        Directory of per-cast netCDF files (required for stages 1–3 and profiles).
-    profiles_path:
-        Output path for the compiled profiles netCDF (required for profiles stage).
+        Which stage(s) to run — ``1``, ``2``, ``3``, a name such as ``"stage1"``
+        or ``"profiles"``, or a list of these.  A list runs its subset in
+        :data:`STAGES` order regardless of the order requested.  ``None`` (the
+        default) runs every stage in order.
+    cnv_dir, nc_dir, profiles_path:
+        CTD pipeline paths.  Present → CTD participates in the relevant stages.
+    ladcp_dir, ladcp_nc_dir, ladcp_profiles_path:
+        LADCP pipeline paths.  Present → LADCP participates in stage 1 (convert)
+        and ``profiles`` (compile).
     force:
         Re-run even when outputs already exist.
     dry_run:
         Print what would run without writing any files.
     cast_tags:
         If given, process only files whose stem contains one of the zero-padded
-        3-digit cast numbers (e.g. ``{"042", "043"}``).  Ignored by the profiles stage.
+        cast numbers (e.g. ``{"042", "043"}``).  Cruise-scope stages ignore it.
     **kw:
-        Forwarded to the chosen stage's ``run()`` function (e.g. ``backend``,
-        ``near_surface_dbar``, ``cruise_cfg``, ``gebco_path``).
+        Tuning forwarded to the stage wrappers (e.g. ``backend``, ``pattern``,
+        ``near_surface_dbar``, ``cruise_cfg``, ``gebco_path``, ``ladcp_pattern``).
+        Each wrapper names the kwargs it uses and ignores the rest.
 
     Returns
     -------
     object
-        The return value of the stage's ``run()`` for a single-stage call;
-        a list of per-stage return values when *stage* is ``None``.
+        A list of per-stage return values when *stage* is ``None`` or a list;
+        the single stage's return value for a scalar *stage*.
     """
-    _cnv_dir = Path(cnv_dir) if cnv_dir is not None else None
-    _nc_dir = Path(nc_dir) if nc_dir is not None else None
-    _profiles_path = Path(profiles_path) if profiles_path is not None else None
-    _ladcp_dir = Path(ladcp_dir) if ladcp_dir is not None else None
-    _ladcp_nc_dir = Path(ladcp_nc_dir) if ladcp_nc_dir is not None else None
-    _ladcp_profiles_path = (
-        Path(ladcp_profiles_path) if ladcp_profiles_path is not None else None
+    paths = StagePaths(
+        cnv_dir=Path(cnv_dir) if cnv_dir is not None else None,
+        nc_dir=Path(nc_dir) if nc_dir is not None else None,
+        profiles_path=Path(profiles_path) if profiles_path is not None else None,
+        ladcp_dir=Path(ladcp_dir) if ladcp_dir is not None else None,
+        ladcp_nc_dir=Path(ladcp_nc_dir) if ladcp_nc_dir is not None else None,
+        ladcp_profiles_path=(
+            Path(ladcp_profiles_path) if ladcp_profiles_path is not None else None
+        ),
     )
 
-    common = {"force": force, "dry_run": dry_run}
-
-    def _run_stage(s: Stage) -> object:
-        if s.name == "stage1":
-            if _cnv_dir is None or _nc_dir is None:
-                raise ValueError("stage1 requires cnv_dir and nc_dir.")
-            return s.run(_cnv_dir, _nc_dir, cast_tags=cast_tags, **common, **kw)
-        if s.name in ("stage2", "stage3"):
-            if _nc_dir is None:
-                raise ValueError(f"{s.name} requires nc_dir.")
-            return s.run(_nc_dir, cast_tags=cast_tags, **common, **kw)
-        if s.name == "profiles":
-            if _nc_dir is None or _profiles_path is None:
-                raise ValueError("profiles stage requires nc_dir and profiles_path.")
-            return s.run(_nc_dir, _profiles_path, **common, **kw)
-        # LADCP stages are optional: a full ``process()`` run without LADCP paths
-        # skips them (returns None) rather than raising, since not every cruise
-        # ships LADCP.  Requesting one explicitly without its paths is an error.
-        if s.name == "ladcp":
-            if _ladcp_dir is None or _ladcp_nc_dir is None:
-                if stage is None:
-                    return None
-                raise ValueError("ladcp stage requires ladcp_dir and ladcp_nc_dir.")
-            return s.run(_ladcp_dir, _ladcp_nc_dir, cast_tags=cast_tags, **common, **kw)
-        if s.name == "ladcp-profiles":
-            if _ladcp_nc_dir is None or _ladcp_profiles_path is None:
-                if stage is None:
-                    return None
-                raise ValueError(
-                    "ladcp-profiles stage requires ladcp_nc_dir and ladcp_profiles_path."
-                )
-            return s.run(_ladcp_nc_dir, _ladcp_profiles_path, **common, **kw)
-        raise ValueError(f"Unhandled stage: {s.name!r}")  # pragma: no cover
-
-    if stage is None:
-        return [_run_stage(s) for s in STAGES]
-    return _run_stage(resolve_stage(stage))
+    results = [
+        s.run(paths, force=force, dry_run=dry_run, cast_tags=cast_tags, **kw)
+        for s in stages_for(stage)
+    ]
+    if stage is None or isinstance(stage, (list, tuple)):
+        return results
+    return results[0]
