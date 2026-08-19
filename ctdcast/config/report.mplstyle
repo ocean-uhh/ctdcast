@@ -1,9 +1,10 @@
-axes.titlesize : 12
+axes.titlesize : 10
 axes.labelsize : 10
 date.autoformatter.day: %Y-%m-%d
 date.converter: auto
 figure.figsize: 8, 4
 figure.dpi: 100
+figure.titlesize: 10
 font.family:  sans-serif
 font.sans-serif: Helvetica Neue, Helvetica, Arial, Liberation Sans, DejaVu Sans
 font.style:   normal

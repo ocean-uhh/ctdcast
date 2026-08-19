@@ -100,7 +100,7 @@ CBAR_PAD_IN: float = 0.10  # gap between the axes and the colorbar
 # not be set per call.  The "no stray typography" test allow-lists exactly these
 # three names.
 CLABEL_FS: int = 8  # ax.clabel() contour labels
-ANNOT_FS: int = 8  # in-axes annotation / panel-label text boxes
+ANNOT_FS: int = 9  # colorbar unit titles + in-axes annotation / panel-label text
 CAST_LABEL_FS: int = 6  # dense in-axes cast-number labels on maps and sections
 
 # ---------------------------------------------------------------------------
