@@ -227,30 +227,62 @@ def run(args: argparse.Namespace) -> int:
         {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.only} if args.only else None
     )
 
-    # Pre-flight: each requested stage must have at least one configured source,
-    # and any configured input directory it will read must exist.
-    if "stage1" in names and not (cnv_dir or ladcp_dir):
-        print(
-            "Config error: stage 1 needs data.cnv_dir (CTD) or data.ladcp_dir (LADCP).",
-            file=sys.stderr,
-        )
-        return 1
-    if "stage1" in names and cnv_dir and not cnv_dir.exists():
-        print(f"cnv_dir not found: {cnv_dir}", file=sys.stderr)
-        return 1
-    if "stage1" in names and ladcp_dir and not ladcp_dir.exists():
-        print(f"ladcp_dir not found: {ladcp_dir}", file=sys.stderr)
-        return 1
+    # Pre-flight: a requested stage needs at least one *complete* source (both its
+    # input and output configured).  A half-configured source — an input without
+    # its output, or an output without its input — is an error, not a silent
+    # no-op: the wrapper would otherwise skip it and exit 0 having written nothing.
+    if "stage1" in names:
+        if cnv_dir and not nc_dir:
+            print(
+                "Config error: stage 1 has data.cnv_dir but no data.nc_dir.",
+                file=sys.stderr,
+            )
+            return 1
+        if ladcp_dir and not ladcp_nc_dir:
+            print(
+                "Config error: stage 1 has data.ladcp_dir but no data.ladcp_nc.",
+                file=sys.stderr,
+            )
+            return 1
+        if not ((cnv_dir and nc_dir) or (ladcp_dir and ladcp_nc_dir)):
+            print(
+                "Config error: stage 1 needs data.cnv_dir+nc_dir (CTD) or "
+                "data.ladcp_dir+ladcp_nc (LADCP).",
+                file=sys.stderr,
+            )
+            return 1
+        if cnv_dir and not cnv_dir.exists():
+            print(f"cnv_dir not found: {cnv_dir}", file=sys.stderr)
+            return 1
+        if ladcp_dir and not ladcp_dir.exists():
+            print(f"ladcp_dir not found: {ladcp_dir}", file=sys.stderr)
+            return 1
     if names & {"stage2", "stage3"} and not nc_dir:
         print("Config error: data.nc_dir required for stages 2/3.", file=sys.stderr)
         return 1
-    if "profiles" in names and not (profiles_path or ladcp_profiles_path):
-        print(
-            "Config error: stage 'profiles' needs data.profiles_nc (CTD) or "
-            "data.ladcp_profiles_nc (LADCP).",
-            file=sys.stderr,
-        )
-        return 1
+    if "profiles" in names:
+        if profiles_path and not nc_dir:
+            print(
+                "Config error: stage 'profiles' has data.profiles_nc but no data.nc_dir.",
+                file=sys.stderr,
+            )
+            return 1
+        if ladcp_profiles_path and not ladcp_nc_dir:
+            print(
+                "Config error: stage 'profiles' has data.ladcp_profiles_nc but no "
+                "data.ladcp_nc.",
+                file=sys.stderr,
+            )
+            return 1
+        if not (
+            (nc_dir and profiles_path) or (ladcp_nc_dir and ladcp_profiles_path)
+        ):
+            print(
+                "Config error: stage 'profiles' needs data.nc_dir+profiles_nc (CTD) "
+                "or data.ladcp_nc+ladcp_profiles_nc (LADCP).",
+                file=sys.stderr,
+            )
+            return 1
 
     # Flat tuning bag forwarded to every stage wrapper; each names the kwargs it
     # uses and ignores the rest.

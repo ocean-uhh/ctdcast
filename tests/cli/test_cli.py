@@ -8,6 +8,7 @@ tests/integration/; here we test the thin CLI layer only.
 from __future__ import annotations
 
 import argparse
+import shutil
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,7 @@ def _run_ns(**kwargs) -> argparse.Namespace:
     """Build a Namespace for run.run() with safe defaults."""
     defaults = {
         "ctd": False,
+        "stage": None,
         "only": None,
         "force": False,
         "skip_existing": False,
@@ -552,8 +554,15 @@ class TestReport:
 
 class TestRun:
     def _write_cfg(self, tmp_path, **extras) -> Path:
+        # `run` now runs stage 2/3 by default, which modify the per-cast nc files
+        # in place — copy the fixtures to a disposable dir so the committed
+        # fixtures are never mutated.
+        nc = tmp_path / "nc"
+        nc.mkdir(exist_ok=True)
+        for f in _FIXTURES_NC.glob("*.nc"):
+            shutil.copy(f, nc / f.name)
         cfg: dict = {
-            "data": {"nc_dir": str(_FIXTURES_NC)},
+            "data": {"nc_dir": str(nc)},
             "output": {"dir": str(tmp_path / "out")},
         }
         for k, v in extras.items():
@@ -585,9 +594,9 @@ class TestRun:
             assert (tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html").exists()
 
     def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
-        """--cast N skips convert entirely; generates only the one station page."""
+        """--only N runs cast-scope stages for that cast and generates only its page."""
         cfg = self._write_cfg(tmp_path)
-        rc = _run.run(_run_ns(config=cfg, only=11, force=True))
+        rc = _run.run(_run_ns(config=cfg, only=[11], force=True))
         assert rc == 0
         assert (tmp_path / "out" / "casts" / "cast_011.html").exists()
         assert not (tmp_path / "out" / "casts" / "cast_012.html").exists()
@@ -609,6 +618,20 @@ class TestRun:
         parser = _run.build_parser()
         args = parser.parse_args(["config.yaml", "--skip-existing"])
         assert args.skip_existing is True
+
+    def test_run_parser_stage_default_all(self):
+        """No --stage → args.stage is None, which run resolves to every stage."""
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml"])
+        assert args.stage is None
+
+    def test_run_parser_stage_narrows(self):
+        """--stage narrows and validates tokens via the shared _stage_token."""
+        parser = _run.build_parser()
+        args = parser.parse_args(["config.yaml", "--stage", "1", "profiles"])
+        assert args.stage == [1, "profiles"]
+        with pytest.raises(SystemExit):
+            parser.parse_args(["config.yaml", "--stage", "ladcp"])
 
     def test_run_skip_existing_does_not_overwrite(self, tmp_path):
         """--skip-existing leaves existing station pages untouched."""
