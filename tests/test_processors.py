@@ -7,8 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from conftest import FIXTURES_NC
-from ctdcast.processors import STAGES, Stage, resolve_stage
+from conftest import FIXTURES_LADCP, FIXTURES_NC
+from ctdcast.processors import (
+    STAGES,
+    Stage,
+    StagePaths,
+    process,
+    resolve_stage,
+    stages_for,
+)
 from ctdcast.processors.profiles import run as profiles_run
 from ctdcast.processors.stage1 import run as stage1_run
 from ctdcast.processors.stage2 import run as stage2_run
@@ -207,3 +214,65 @@ def test_run_stage3_cast_tags(tmp_path: Path) -> None:
     assert (nc_dir / "mixsed2_012.nc").stat().st_mtime == mtime_012_before, (
         "012 should not be touched"
     )
+
+
+# ---------------------------------------------------------------------------
+# Stage registry — single source of truth, one token per stage, source fan-out
+# ---------------------------------------------------------------------------
+
+
+def test_stages_are_the_four_pipeline_tokens() -> None:
+    """STAGES holds exactly stage1/2/3/profiles — LADCP is a source, not a token."""
+    assert [s.name for s in STAGES] == ["stage1", "stage2", "stage3", "profiles"]
+
+
+def test_retired_ladcp_tokens_do_not_resolve() -> None:
+    """The old per-source tokens are gone; LADCP runs under stage1/profiles now."""
+    for token in ("ladcp", "ladcp-profiles"):
+        with pytest.raises(ValueError, match="unknown stage"):
+            resolve_stage(token)
+
+
+def test_stages_for_orders_and_dedups() -> None:
+    """A requested subset always runs in STAGES order, deduplicated."""
+    got = [s.name for s in stages_for(["profiles", 1, "1"])]
+    assert got == ["stage1", "profiles"]
+    assert [s.name for s in stages_for(None)] == [s.name for s in STAGES]
+
+
+def test_stage1_fans_out_to_ladcp(tmp_path: Path) -> None:
+    """process(stage1) with only LADCP paths converts the .mat files (CTD skipped)."""
+    ladcp_nc = tmp_path / "ladcp_nc"
+    process(
+        "stage1",
+        ladcp_dir=FIXTURES_LADCP,
+        ladcp_nc_dir=ladcp_nc,
+        force=True,
+    )
+    assert len(list(ladcp_nc.glob("ladcp_*.nc"))) == 4
+
+
+def test_profiles_fans_out_to_both_sources(tmp_path: Path) -> None:
+    """process(profiles) compiles profiles.nc (CTD) and ladcp_profiles.nc (LADCP)."""
+    ladcp_nc = tmp_path / "ladcp_nc"
+    process("stage1", ladcp_dir=FIXTURES_LADCP, ladcp_nc_dir=ladcp_nc, force=True)
+    profiles_path = tmp_path / "profiles.nc"
+    ladcp_profiles = tmp_path / "ladcp_profiles.nc"
+    process(
+        "profiles",
+        nc_dir=FIXTURES_NC,
+        profiles_path=profiles_path,
+        ladcp_nc_dir=ladcp_nc,
+        ladcp_profiles_path=ladcp_profiles,
+        force=True,
+    )
+    assert profiles_path.exists()
+    assert ladcp_profiles.exists()
+
+
+def test_stagepaths_unconfigured_source_is_skipped(tmp_path: Path) -> None:
+    """A stage with no configured source for it does nothing, without error."""
+    # profiles with neither profiles_path nor ladcp_profiles_path configured.
+    result = process("profiles", nc_dir=FIXTURES_NC)
+    assert result is False  # nothing written
+    assert isinstance(StagePaths(), StagePaths)

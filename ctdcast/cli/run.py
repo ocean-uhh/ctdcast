@@ -114,59 +114,57 @@ def run(args: argparse.Namespace) -> int:
 
     cast_filter: list[int] | None = args.only
 
-    # ------------------------------------------------------------------ convert
-    from . import convert as _convert
+    # ------------------------------------------------------------------ process
+    # Run the pipeline stages across every configured source (CTD + LADCP): a
+    # stage ingests/compiles both when both are configured, so there is no
+    # separate LADCP step here.
+    import yaml
+
+    from ctdcast.config.parameters import CAST_TAG_WIDTH
+    from ctdcast.processors import process as _process
+
+    with open(cfg_path) as _f:
+        _data = (yaml.safe_load(_f) or {}).get("data") or {}
+    # cast_filter may be a single int (from --cast) or a list (from --only).
+    _cast_nums = (
+        [cast_filter]
+        if isinstance(cast_filter, int)
+        else list(cast_filter)
+        if cast_filter
+        else []
+    )
+    _cast_tags = {f"{c:0{CAST_TAG_WIDTH}d}" for c in _cast_nums} or None
 
     if cast_filter is not None and args.ctd:
-        # Single-cast + --ctd: convert that one CNV file, skip profiles rebuild.
-        convert_ns = argparse.Namespace(
-            config=cfg_path,
-            ctd=True,
-            profiles=False,
-            ladcp=False,
-            backend="seasenselib",
-            only=cast_filter,
-            pattern="*.cnv",
-            force=args.force,
-            dry_run=args.dry_run,
-        )
-        print("=== convert ===")
-        rc = _convert.run(convert_ns)
-        if rc != 0:
-            return rc
+        # Single-cast + --ctd: re-ingest that one cast only, skip the cruise compile.
+        stages: list[str] = ["stage1"]
     elif cast_filter is None:
-        # Full run: build profiles (and optionally CTD-convert first if --ctd).
-        # Without --ctd, the default branch in convert runs profiles only.
-        convert_ns = argparse.Namespace(
-            config=cfg_path,
-            ctd=args.ctd,
-            profiles=args.ctd,
-            ladcp=False,
-            backend="seasenselib",
-            only=None,
-            pattern="*.cnv",
-            force=args.force,
-            dry_run=args.dry_run,
-        )
-        print("=== convert ===")
-        rc = _convert.run(convert_ns)
-        if rc != 0:
-            return rc
+        # Full run: compile products, ingesting raw first when --ctd is set.
+        stages = ["stage1", "profiles"] if args.ctd else ["profiles"]
+    else:
+        # Single cast, no --ctd: skip processing, just regenerate the HTML.
+        stages = []
 
-        # Build LADCP velocity products if the ladcp_* keys are configured.
-        # Optional: a cruise without LADCP simply skips this (required=False).
-        import yaml
-
-        with open(cfg_path) as _f:
-            _data = (yaml.safe_load(_f) or {}).get("data") or {}
-        if _data.get("ladcp_dir"):
-            print("=== ladcp ===")
-            rc = _convert.run_ladcp_pipeline(
-                _data, force=args.force, dry_run=args.dry_run, required=False
+    if stages:
+        print("=== process ===")
+        try:
+            _process(
+                stage=stages,
+                cnv_dir=_data.get("cnv_dir"),
+                nc_dir=_data.get("nc_dir"),
+                profiles_path=_data.get("profiles_nc"),
+                ladcp_dir=_data.get("ladcp_dir"),
+                ladcp_nc_dir=_data.get("ladcp_nc"),
+                ladcp_profiles_path=_data.get("ladcp_profiles_nc"),
+                force=args.force,
+                dry_run=args.dry_run,
+                cast_tags=_cast_tags,
+                pattern=_data.get("cnv_pattern") or "*.cnv",
+                ladcp_pattern=_data.get("ladcp_pattern"),
             )
-            if rc != 0:
-                return rc
-    # cast_filter set but no --ctd: skip convert entirely (just regenerate the HTML).
+        except (ValueError, OSError, ImportError) as exc:
+            print(f"process error: {exc}", file=sys.stderr)
+            return 1
 
     # ------------------------------------------------------------------ report
     from . import report as _report

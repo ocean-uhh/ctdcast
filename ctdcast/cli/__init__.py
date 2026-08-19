@@ -20,9 +20,9 @@ _EPILOG = """
 Typical mid-cruise workflow:
   ctdcast init                                  write a template config.yaml
   ctdcast validate config.yaml                  check paths and data
-  ctdcast process config.yaml --stage 1         CNV → per-cast netCDF
+  ctdcast process config.yaml --stage 1         raw → per-cast netCDF (CTD + LADCP)
   ctdcast process config.yaml --stage 2 3       soak/deck flags, QC + calibration
-  ctdcast process config.yaml --stage profiles  compile profiles.nc
+  ctdcast process config.yaml --stage profiles  compile profiles.nc (+ ladcp_profiles.nc)
   ctdcast report config.yaml                    generate HTML reports
   ctdcast run config.yaml                       profiles + all HTML in one step
 

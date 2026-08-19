@@ -114,14 +114,15 @@ Examples:
   ctdcast convert config.yaml --ctd --pattern "msm*1sec.cnv"
 """
     kwargs: dict = {
-        "description": "Convert raw CTD (CNV) files to netCDF inputs for ctdcast report.",
+        "description": "Deprecated — use 'ctdcast process --stage ...'. Convert raw CTD"
+        " (CNV) files to netCDF inputs for ctdcast report.",
         "formatter_class": argparse.RawDescriptionHelpFormatter,
         "epilog": _epilog,
     }
     if subparsers is not None:
         parser = subparsers.add_parser(
             "convert",
-            help="Convert raw CTD (CNV) files to netCDF.",
+            help="(deprecated) Convert raw CTD (CNV) files to netCDF; use 'process'.",
             **kwargs,
         )
         parser.set_defaults(func=run)
@@ -203,8 +204,22 @@ Examples:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Execute ``ctdcast convert``."""
+    """Execute ``ctdcast convert`` (deprecated — use ``ctdcast process``)."""
     warn_deprecated(args)
+    # `convert` is superseded by `process`, which runs the same steps as stages
+    # across every configured source.  Kept working with a notice for one release.
+    _equiv = {"--ctd": "--stage 1", "--profiles": "--stage profiles"}
+    _flags = [f for f, on in (("--ctd", args.ctd), ("--profiles", args.profiles)) if on]
+    if args.ladcp:
+        _suggest = "process CONFIG --stage 1 profiles"
+    elif _flags:
+        _suggest = "process CONFIG " + " ".join(_equiv[f] for f in _flags)
+    else:
+        _suggest = "process CONFIG --stage profiles"
+    print(
+        f"NOTE: 'ctdcast convert' is deprecated; use 'ctdcast {_suggest}'.",
+        file=sys.stderr,
+    )
     cfg_path: Path = args.config
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)

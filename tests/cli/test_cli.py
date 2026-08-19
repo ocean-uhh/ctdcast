@@ -683,6 +683,14 @@ class TestConvertLadcp:
         )
         assert rc == 1
 
+    def test_convert_prints_deprecation_notice(self, tmp_path, capsys):
+        """`ctdcast convert` still works but points users to `process`."""
+        cfg = self._write_cfg(tmp_path, profiles_nc=str(tmp_path / "profiles.nc"))
+        _convert.run(self._convert_ns(cfg, profiles=True, force=True))
+        err = capsys.readouterr().err
+        assert "deprecated" in err
+        assert "process" in err
+
 
 class TestProcess:
     """``ctdcast process`` stage dispatch (regression for CLI stage bugs)."""
@@ -720,6 +728,39 @@ class TestProcess:
         )
         assert _process.run(args) == 0
         assert (tmp_path / "profiles.nc").exists()
+
+    def test_retired_ladcp_token_rejected_at_parse(self, tmp_path):
+        """The old ``--stage ladcp`` token no longer parses (LADCP rides stage 1)."""
+        cfg = self._cfg(tmp_path)
+        with pytest.raises(SystemExit):
+            _process.build_parser().parse_args([str(cfg), "--stage", "ladcp"])
+
+    def test_stage_profiles_fans_out_to_ladcp(self, tmp_path):
+        """``--stage profiles`` compiles both profiles.nc and ladcp_profiles.nc."""
+        # First build the per-cast LADCP nc via stage 1 fan-out.
+        ladcp_nc = tmp_path / "ladcp_nc"
+        cfg = {
+            "data": {
+                "nc_dir": str(_FIXTURES_NC),
+                "profiles_nc": str(tmp_path / "profiles.nc"),
+                "ladcp_dir": str(_FIXTURES_LADCP),
+                "ladcp_nc": str(ladcp_nc),
+                "ladcp_profiles_nc": str(tmp_path / "ladcp_profiles.nc"),
+            }
+        }
+        p = tmp_path / "config.yaml"
+        p.write_text(yaml.dump(cfg))
+        _process.run(
+            _process.build_parser().parse_args([str(p), "--stage", "1", "--force"])
+        )
+        assert list(ladcp_nc.glob("ladcp_*.nc")), "stage 1 should convert LADCP .mat"
+        _process.run(
+            _process.build_parser().parse_args(
+                [str(p), "--stage", "profiles", "--force"]
+            )
+        )
+        assert (tmp_path / "profiles.nc").exists()
+        assert (tmp_path / "ladcp_profiles.nc").exists()
 
 
 # ---------------------------------------------------------------------------

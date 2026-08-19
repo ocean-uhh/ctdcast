@@ -11,12 +11,31 @@ import yaml
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
 
 from ctdcast.config.parameters import CAST_TAG_WIDTH
-from ctdcast.processors import STAGES, resolve_stage
+from ctdcast.processors import STAGES, StagePaths, resolve_stage, stages_for
 
-# Derived from STAGES — single source of truth for the valid stage set and run order.
-_STAGE_CHOICES: tuple[str, ...] = tuple(
-    str(s.number) if s.number is not None else s.name for s in STAGES
+# Derived from STAGES — the single source of truth for the valid stage set,
+# used only to build the ``--stage`` help/metavar. Validation goes through
+# ``_stage_token`` → ``resolve_stage`` so retired tokens report clearly.
+_STAGE_METAVAR = (
+    "{"
+    + ",".join(str(s.number) if s.number is not None else s.name for s in STAGES)
+    + "}"
 )
+
+
+def _stage_token(value: str) -> int | str:
+    """Argparse ``type`` for ``--stage``: coerce and validate one stage token.
+
+    Numeric strings become ints; every token is validated through
+    :func:`~ctdcast.processors.resolve_stage`, so an unknown or retired token
+    (e.g. the old ``ladcp``) fails at parse time with the list of valid values.
+    """
+    coerced: int | str = int(value) if value.isdigit() else value
+    try:
+        resolve_stage(coerced)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    return coerced
 
 
 def build_parser(
@@ -60,11 +79,13 @@ Examples:
     parser.add_argument(
         "--stage",
         nargs="+",
-        choices=_STAGE_CHOICES,
-        metavar="{1,2,3,profiles}",
+        type=_stage_token,
+        metavar=_STAGE_METAVAR,
         required=True,
         help=(
-            "Stage(s) to run. Multiple values run in canonical order (1→2→3→profiles)."
+            "Stage(s) to run, across every configured source. Multiple values run"
+            " in canonical order (1→2→3→profiles). A stage ingests/compiles CTD"
+            " and LADCP together when both are configured."
             " Example: --stage 1 2 3 profiles"
         ),
     )
@@ -181,119 +202,101 @@ def run(args: argparse.Namespace) -> int:
     processing_cfg = cfg.get("processing") or {}
     trim_cfg = processing_cfg.get("trim") or {}
 
-    nc_dir_raw = data.get("nc_dir")
-    if not nc_dir_raw:
-        print("Config error: data.nc_dir is required.", file=sys.stderr)
-        return 1
-    nc_dir = Path(nc_dir_raw)
     cnv_dir = Path(data["cnv_dir"]) if data.get("cnv_dir") else None
+    nc_dir = Path(data["nc_dir"]) if data.get("nc_dir") else None
     profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
     ladcp_dir = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
     ladcp_nc_dir = Path(data["ladcp_nc"]) if data.get("ladcp_nc") else None
     ladcp_profiles_path = (
         Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
     )
+    paths = StagePaths(
+        cnv_dir=cnv_dir,
+        nc_dir=nc_dir,
+        profiles_path=profiles_path,
+        ladcp_dir=ladcp_dir,
+        ladcp_nc_dir=ladcp_nc_dir,
+        ladcp_profiles_path=ladcp_profiles_path,
+    )
 
-    # Deduplicate and force canonical order
-    requested = [s for s in _STAGE_CHOICES if s in args.stage]
+    requested = stages_for(args.stage)
+    names = {s.name for s in requested}
 
     # Cast filter: set of zero-padded tags, or None for all
     cast_tags: set[str] | None = (
         {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.only} if args.only else None
     )
 
-    # Pre-flight checks
-    if "1" in requested:
-        if not cnv_dir:
-            print("Config error: data.cnv_dir required for stage 1.", file=sys.stderr)
-            return 1
-        if not cnv_dir.exists():
-            print(f"cnv_dir not found: {cnv_dir}", file=sys.stderr)
-            return 1
-    if "profiles" in requested and not profiles_path:
+    # Pre-flight: each requested stage must have at least one configured source,
+    # and any configured input directory it will read must exist.
+    if "stage1" in names and not (cnv_dir or ladcp_dir):
         print(
-            "Config error: data.profiles_nc required for stage 'profiles'.",
+            "Config error: stage 1 needs data.cnv_dir (CTD) or data.ladcp_dir (LADCP).",
             file=sys.stderr,
         )
         return 1
-    if "ladcp" in requested and not (ladcp_dir and ladcp_nc_dir):
-        print(
-            "Config error: data.ladcp_dir and data.ladcp_nc required for stage 'ladcp'.",
-            file=sys.stderr,
-        )
+    if "stage1" in names and cnv_dir and not cnv_dir.exists():
+        print(f"cnv_dir not found: {cnv_dir}", file=sys.stderr)
         return 1
-    if "ladcp-profiles" in requested and not (ladcp_nc_dir and ladcp_profiles_path):
+    if "stage1" in names and ladcp_dir and not ladcp_dir.exists():
+        print(f"ladcp_dir not found: {ladcp_dir}", file=sys.stderr)
+        return 1
+    if names & {"stage2", "stage3"} and not nc_dir:
+        print("Config error: data.nc_dir required for stages 2/3.", file=sys.stderr)
+        return 1
+    if "profiles" in names and not (profiles_path or ladcp_profiles_path):
         print(
-            "Config error: data.ladcp_nc and data.ladcp_profiles_nc required for "
-            "stage 'ladcp-profiles'.",
+            "Config error: stage 'profiles' needs data.profiles_nc (CTD) or "
+            "data.ladcp_profiles_nc (LADCP).",
             file=sys.stderr,
         )
         return 1
 
-    # Per-stage path and tuning kwargs
-    stage_kw: dict[str, dict] = {
-        "stage1": {
-            "cnv_dir": cnv_dir,
-            "nc_dir": nc_dir,
-            "backend": args.backend,
-            "pattern": args.pattern or data.get("cnv_pattern") or "*.cnv",
-        },
-        "stage2": {
-            "nc_dir": nc_dir,
-            "near_surface_dbar": (
-                args.near_surface_dbar
-                if args.near_surface_dbar is not None
-                else trim_cfg.get("near_surface_dbar", 10.0)
-            ),
-            "search_seconds": (
-                args.search_seconds
-                if args.search_seconds is not None
-                else trim_cfg.get("search_seconds", 20.0)
-            ),
-            "deck_window_seconds": (
-                args.deck_window_seconds
-                if args.deck_window_seconds is not None
-                else trim_cfg.get("deck_window_seconds", 20.0)
-            ),
-            "margin_dbar": (
-                args.margin_dbar
-                if args.margin_dbar is not None
-                else trim_cfg.get("margin_dbar", 0.5)
-            ),
-            "max_deck_dbar": (
-                args.max_deck_dbar
-                if args.max_deck_dbar is not None
-                else trim_cfg.get("max_deck_dbar", 20.0)
-            ),
-        },
-        "stage3": {"nc_dir": nc_dir, "cruise_cfg": processing_cfg},
-        "profiles": {
-            "nc_dir": nc_dir,
-            "profiles_path": profiles_path,
-            "gebco_path": args.gebco,
-        },
-        "ladcp": {
-            "ladcp_dir": ladcp_dir,
-            "ladcp_nc_dir": ladcp_nc_dir,
-            "ladcp_pattern": data.get("ladcp_pattern"),
-        },
-        "ladcp-profiles": {
-            "ladcp_nc_dir": ladcp_nc_dir,
-            "ladcp_profiles_path": ladcp_profiles_path,
-        },
+    # Flat tuning bag forwarded to every stage wrapper; each names the kwargs it
+    # uses and ignores the rest.
+    tuning: dict[str, object] = {
+        "backend": args.backend,
+        "pattern": args.pattern or data.get("cnv_pattern") or "*.cnv",
+        "ladcp_pattern": data.get("ladcp_pattern"),
+        "cruise_cfg": processing_cfg,
+        "gebco_path": args.gebco,
+        "near_surface_dbar": (
+            args.near_surface_dbar
+            if args.near_surface_dbar is not None
+            else trim_cfg.get("near_surface_dbar", 10.0)
+        ),
+        "search_seconds": (
+            args.search_seconds
+            if args.search_seconds is not None
+            else trim_cfg.get("search_seconds", 20.0)
+        ),
+        "deck_window_seconds": (
+            args.deck_window_seconds
+            if args.deck_window_seconds is not None
+            else trim_cfg.get("deck_window_seconds", 20.0)
+        ),
+        "margin_dbar": (
+            args.margin_dbar
+            if args.margin_dbar is not None
+            else trim_cfg.get("margin_dbar", 0.5)
+        ),
+        "max_deck_dbar": (
+            args.max_deck_dbar
+            if args.max_deck_dbar is not None
+            else trim_cfg.get("max_deck_dbar", 20.0)
+        ),
     }
 
     rc = 0
-    for stage_token in requested:
-        s = resolve_stage(stage_token)
-        # cast_tags selects individual casts and only applies to cast-scope stages;
-        # cruise-scope stages (profiles, ladcp-profiles) compile every cast and
-        # their run() functions do not accept it.
-        _run_kw = dict(force=args.force, dry_run=args.dry_run, **stage_kw[s.name])
-        if s.scope == "cast":
-            _run_kw["cast_tags"] = cast_tags
+    for s in requested:
         try:
-            _result = s.run(**_run_kw)
+            s.run(
+                paths,
+                force=args.force,
+                dry_run=args.dry_run,
+                cast_tags=cast_tags,
+                **tuning,
+            )
         except (ImportError, NotImplementedError) as exc:
             print(f"{s.name} error: {exc}", file=sys.stderr)
             rc = 1
