@@ -274,9 +274,7 @@ def run(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 1
-        if not (
-            (nc_dir and profiles_path) or (ladcp_nc_dir and ladcp_profiles_path)
-        ):
+        if not ((nc_dir and profiles_path) or (ladcp_nc_dir and ladcp_profiles_path)):
             print(
                 "Config error: stage 'profiles' needs data.nc_dir+profiles_nc (CTD) "
                 "or data.ladcp_nc+ladcp_profiles_nc (LADCP).",
