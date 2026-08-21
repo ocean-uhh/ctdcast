@@ -300,10 +300,14 @@ def map_panel(
     cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
     norm_b = mcolors.BoundaryNorm(bounds_b, ncolors=cmap_b.N)
     LON2, LAT2 = np.meshgrid(lons_b, lats_b)
+    # Mask land (depth <= 0) so those cells are transparent and the grey land
+    # facecolor shows through, rather than the colormap's shallowest (near-white)
+    # colour that BoundaryNorm otherwise gives values below its first bound.
+    depth_ocean = np.ma.masked_less_equal(depth_b, 0.0)
     bathy_pc = ax.pcolormesh(
         LON2,
         LAT2,
-        depth_b,
+        depth_ocean,
         cmap=cmap_b,
         norm=norm_b,
         shading="nearest",
@@ -445,20 +449,34 @@ def _discrete_norm(
     return cmap, norm, bounds, cmap_name
 
 
-def _sigma0_backdrop(ax: Any, sa: np.ndarray, ct: np.ndarray, n: int = 80) -> None:
-    """Draw σ₀ density contours as a grey backdrop on a T–S axes."""
-    sa_lo = float(np.nanpercentile(sa, 0.5))
-    sa_hi = float(np.nanpercentile(sa, 99.5))
-    ct_lo = float(np.nanpercentile(ct, 0.5))
-    ct_hi = float(np.nanpercentile(ct, 99.5))
-    sa_g = np.linspace(sa_lo - 0.05, sa_hi + 0.05, n)
-    ct_g = np.linspace(ct_lo - 0.1, ct_hi + 0.1, n)
+def _sigma0_backdrop(ax: Any, n: int = 80) -> None:
+    """Draw σ₀ density contours over the current axes extent, behind the data.
+
+    Call this **after** the data has been plotted so the σ₀ grid spans the same
+    salinity/temperature range the axes ended up with.  Gridding on the data
+    percentiles (the previous behaviour) fell short of an outlier-driven axis
+    limit, leaving the contours not filling the panel.  Contours are drawn at
+    zorder 0 (behind the data); the axes limits are restored afterwards because
+    contouring can nudge them.
+    """
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    sa_g = np.linspace(xlim[0], xlim[1], n)
+    ct_g = np.linspace(ylim[0], ylim[1], n)
     SA_g, CT_g = np.meshgrid(sa_g, ct_g)
     sig0_g = gsw.sigma0(SA_g, CT_g)
     cs = ax.contour(
-        SA_g, CT_g, sig0_g, levels=8, colors=_SIGMA0_CONTOUR_COLOR, linewidths=0.6
+        SA_g,
+        CT_g,
+        sig0_g,
+        levels=8,
+        colors=_SIGMA0_CONTOUR_COLOR,
+        linewidths=0.6,
+        zorder=0,
     )
     ax.clabel(cs, fmt="%.1f", fontsize=CLABEL_FS)
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
 
 
 # ---------------------------------------------------------------------------
@@ -618,9 +636,8 @@ def draw_ts_diagram_fig(
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
 
-    _sigma0_backdrop(ax, sa, ct)
-
     sc = ax.scatter(sa, ct, c=o2, cmap=cmap, norm=norm, s=6, alpha=0.8)
+    _sigma0_backdrop(ax)
     cb = fig.colorbar(
         sc,
         ax=ax,
@@ -1137,7 +1154,6 @@ def draw_section_ts_profiles_fig(
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-    _sigma0_backdrop(ax, sa_fin, ct_fin)
 
     for i in range(sa_all.shape[0]):
         mask = np.isfinite(sa_all[i]) & np.isfinite(ct_all[i])
@@ -1150,6 +1166,7 @@ def draw_section_ts_profiles_fig(
             alpha=0.6,
             lw=pen("thin"),
         )
+    _sigma0_backdrop(ax)
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
@@ -1206,7 +1223,6 @@ def draw_ts_diagram_timeseries_fig(
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-    _sigma0_backdrop(ax, sa_fin, ct_fin)
 
     for i in range(sa_all.shape[0]):
         mask = np.isfinite(sa_all[i]) & np.isfinite(ct_all[i])
@@ -1219,6 +1235,7 @@ def draw_ts_diagram_timeseries_fig(
             alpha=0.6,
             lw=pen("thin"),
         )
+    _sigma0_backdrop(ax)
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
@@ -1279,8 +1296,8 @@ def draw_section_ts_histogram_fig(
     norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=256)
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-    _sigma0_backdrop(ax, sa, ct)
     pc = ax.pcolormesh(sa_c, ct_c, counts_log, cmap=cmap_c, norm=norm_c)
+    _sigma0_backdrop(ax)
     cb = fig.colorbar(
         pc,
         ax=ax,
@@ -1361,8 +1378,8 @@ def draw_section_ts_o2_fig(
     norm_o = mcolors.BoundaryNorm(bounds_o, ncolors=cmap_o.N)
 
     fig, ax = plt.subplots(figsize=(_W_THIRD, 3.8))
-    _sigma0_backdrop(ax, sa, ct)
     pc = ax.pcolormesh(sa_c, ct_c, o2_grid, cmap=cmap_o, norm=norm_o)
+    _sigma0_backdrop(ax)
     cb = fig.colorbar(
         pc,
         ax=ax,

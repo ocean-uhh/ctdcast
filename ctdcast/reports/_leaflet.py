@@ -32,8 +32,10 @@ import numpy as np
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import load_gebco
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
+from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import expand_cast_numbers, format_cast_id
-from ctdcast.reports._env import get_template_raw
+from ctdcast.reports._env import get_template
+from ctdcast.reports._report_css import SHARED_CSS
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"
@@ -262,13 +264,31 @@ def _make_gebco_layers(
     try:
         import matplotlib.pyplot as plt
 
+        # Size the longitude margin so a wide map has bathymetry to its edges
+        # instead of grey bars.  A widescreen map at latitude φ shows far more
+        # longitude than latitude (1° lon ≈ cos φ × 1° lat in Mercator), so a
+        # fixed pad that suits latitude leaves the sides bare — most visibly for
+        # a tall cruise at high latitude.  Aim to fill a ~1.6-aspect map at the
+        # data's latitude, capped so an extreme latitude span does not extract
+        # half an ocean.  Latitude keeps the fixed pad.
+        _mean_lat = (lat_min + lat_max) / 2.0
+        _cos_lat = float(max(0.15, np.cos(np.radians(_mean_lat))))
+        # 1.8 ≈ a wide screen's aspect with headroom, so the extracted GEBCO is a
+        # touch wider than the client fits (which caps the view at this extent).
+        _lon_fill = 1.8 * (lat_max - lat_min) / _cos_lat
+        _lon_pad = float(
+            min(15.0, max(_GEBCO_PAD, (_lon_fill - (lon_max - lon_min)) / 2.0))
+        )
         _gebco = load_gebco(
-            lat_min,
-            lat_max,
-            lon_min,
-            lon_max,
-            margin=_GEBCO_PAD,
+            lat_min - _GEBCO_PAD,
+            lat_max + _GEBCO_PAD,
+            lon_min - _lon_pad,
+            lon_max + _lon_pad,
+            margin=0.0,
             path=gebco_path,
+            # Read the file directly: this region is wider than the preloaded
+            # cruise extent, which would clip the map's longitude to grey bars.
+            use_cache=False,
         )
         if _gebco is None:
             return None, None, None
@@ -517,7 +537,12 @@ def generate_leaflet_map(
             "CDN links used (requires internet at view time)"
         )
 
-    html = get_template_raw("leaflet.html").render(
+    html = get_template("leaflet.html").render(
+        css=SHARED_CSS,
+        nav_current="interactive",
+        nav_prefix="",
+        show_nav=True,
+        masthead_bg=ROLE_ACCENT.get("map", ""),
         cruise=cruise,
         leaflet_inline=bool(leaflet_js),
         leaflet_js=leaflet_js,

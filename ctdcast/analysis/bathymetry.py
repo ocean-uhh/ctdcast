@@ -75,6 +75,7 @@ def load_gebco(
     lon_hi: float,
     margin: float = 0.05,
     path: Path | None = None,
+    use_cache: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
     """Return a GEBCO subset as (lons, lats, depth_m) or None if unavailable.
 
@@ -86,12 +87,17 @@ def load_gebco(
     path:
         Path to GEBCO_2025.nc. Pass ``cfg.gebco_path`` from the caller.
         Returns None if not provided or file not found.
+    use_cache:
+        When ``False``, read the requested region from the file directly instead
+        of subsetting the preloaded cache.  Use this for a region wider than the
+        preloaded cruise extent (e.g. the interactive map, which frames far more
+        longitude than the per-cast maps) — the cache would otherwise clip it.
     """
     if path is None or not Path(path).exists():
         return None
     path_str = str(path)
     try:
-        if path_str in _GEBCO_CACHE:
+        if use_cache and path_str in _GEBCO_CACHE:
             all_lons, all_lats, all_depth = _GEBCO_CACHE[path_str]
             lon_mask = (all_lons >= lon_lo - margin) & (all_lons <= lon_hi + margin)
             lat_mask = (all_lats >= lat_lo - margin) & (all_lats <= lat_hi + margin)

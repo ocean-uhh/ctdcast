@@ -69,33 +69,34 @@ def _build_sensor_catalog(
             if not role or not serial:  # skip Free/unused and serial-less slots
                 continue
             canon = overrides.canonical_serial(serial)
-            attrs = resolve_sensor(
-                sensor_id=rec["sensor_id"],
-                serial=serial,
-                role=role,
-                calibration_date=rec["calibration_date"],
-                element=rec["element"],
-                cast=cast_num,
-                registry=registry,
-                overrides=overrides,
-            )
             name = catalog_var_name(role, canon)
             prior = catalog.get(name)
-            if prior is not None and prior.get("sensor_calibration_date") != attrs.get(
-                "sensor_calibration_date"
-            ):
+            if prior is None:
+                # Resolve (and warn on an unresolved model) once per distinct
+                # device — not once per cast, which floods the log for a device
+                # present on every cast (e.g. an un-overridden UVP6).
+                catalog[name] = resolve_sensor(
+                    sensor_id=rec["sensor_id"],
+                    serial=serial,
+                    role=role,
+                    calibration_date=rec["calibration_date"],
+                    element=rec["element"],
+                    cast=cast_num,
+                    registry=registry,
+                    overrides=overrides,
+                )
+                serial_to_vars.setdefault(canon, set()).add(name)
+            elif prior.get("sensor_calibration_date") != rec["calibration_date"]:
                 # A serial cannot be recalibrated mid-cruise (that needs a return
                 # to the manufacturer), so two calibration dates for one device
                 # mean a parsing/data error — surface it rather than overwrite.
                 warnings.warn(
                     f"Sensor catalog conflict for {name}: calibration date "
                     f"{prior.get('sensor_calibration_date')!r} then "
-                    f"{attrs.get('sensor_calibration_date')!r} (cast {cast_num}); "
-                    "a serial cannot be recalibrated at sea — check CNV parsing.",
+                    f"{rec['calibration_date']!r} (cast {cast_num}); a serial "
+                    "cannot be recalibrated at sea — check CNV parsing.",
                     stacklevel=2,
                 )
-            catalog[name] = attrs
-            serial_to_vars.setdefault(canon, set()).add(name)
             if role not in link:
                 roles.append(role)
                 link[role] = np.array([""] * n_profiles, dtype=object)
