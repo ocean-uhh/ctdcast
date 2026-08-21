@@ -14,6 +14,7 @@ from conftest import FIXTURES_NC
 from ctdcast.config.sensors import SensorOverrides
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.readers.metadata import parse_sensor_channels
+from ctdcast.reports._sensors import read_sensor_tables
 
 
 def _fixture_records() -> list[dict[str, str]]:
@@ -89,3 +90,35 @@ def test_serial_alias_collapses_shared_flntu(tmp_path) -> None:
         assert ds[tu].attrs.get("sensor_shared_with") == fl
     finally:
         ds.close()
+
+
+def test_read_sensor_tables_builds_catalog_and_blocks(tmp_path) -> None:
+    """read_sensor_tables assembles the catalog, config blocks and role columns.
+
+    The four mixsed2 fixtures share one sensor configuration, so the change and
+    rewiring logs are empty and the configuration collapses to a single block
+    spanning casts 011–129.
+    """
+    out = tmp_path / "profiles.nc"
+    build_profiles(FIXTURES_NC, out, force=True)
+    m = read_sensor_tables(out)
+    assert m["has_catalog"] is True
+    assert m["n_casts"] == 4
+    # roles the fixture exercises show up as configuration columns
+    keys = {c["key"] for c in m["role_cols"]}
+    assert {"temperature_1", "conductivity_2", "ph", "transmissometer"} <= keys
+    # one shared configuration across the four fixture casts
+    assert len(m["blocks"]) == 1
+    assert m["blocks"][0]["cast_start"] == 11
+    assert m["blocks"][0]["cast_end"] == 129
+    assert m["changes"] == [] and m["rewiring"] == []
+    # the pH sensor (serial 339) resolves to SBE 18 in the catalog
+    ph = next(d for d in m["catalog"] if d["serial"] == "339")
+    assert ph["model"] == "SBE 18"
+    assert ph["roles"] == ["Ph"]
+
+
+def test_read_sensor_tables_reports_read_error() -> None:
+    """A missing/unreadable file returns an error rather than raising."""
+    m = read_sensor_tables(FIXTURES_NC / "does_not_exist.nc")
+    assert "error" in m

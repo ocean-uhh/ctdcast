@@ -121,6 +121,7 @@ distinct cast and must be named explicitly as a quoted ``"NNNb"`` string.
     casts.html      table of all casts (latest first)
     sections.html           section cards with links
     timeseries.html         T, S, O₂ vs time × pressure
+    sbe_sensors.html        sensor inventory + which sensor was used on which cast
     casts/
         cast_001.html
         cast_002.html

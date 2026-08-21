@@ -76,6 +76,42 @@ config.yaml
      - ``false``
      - If ``true``, regenerate all pages even if they already exist.
 
+``sensors`` block (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Per-cruise sensor provenance that the CNV header cannot supply: sensors it cannot
+identify (the altimeter and user-polynomial channels carry no make/model) and
+model refinements (a combined FLNTU(RT)D reads as a generic fluorometer plus
+turbidity from its SensorID alone).  The universal SensorID → model table ships
+in ``ctdcast/config/sbe_sensors.yaml``; this block adds only what is
+cruise-specific.  Overrides are keyed by **role** (not SensorID, which the newer
+Sea-Bird XML drops); use ``role:serial`` only to disambiguate two different-model
+devices in one role.
+
+.. code-block:: yaml
+
+   sensors:
+     overrides:
+       altimeter:                       # SensorID 0 records no make/model
+         sensor_model: "Benthos PSA-916T"
+         sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0134/"
+         sensor_maker: "Teledyne Benthos"
+         model_source: operator
+       fluorometer:                     # sharpen the generic default to the combined unit
+         sensor_model: "WET Labs ECO FLNTU(RT)D"
+         sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"
+       turbidity:
+         sensor_model: "WET Labs ECO FLNTU(RT)D"
+         sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"
+     aliases:
+       "3508": "FLNTURTD-3508"          # one device recorded under two serial spellings
+
+Roles: ``temperature_1``/``_2``, ``conductivity_1``/``_2``, ``oxygen_1``/``_2``,
+``pressure``, ``fluorometer``, ``turbidity``, ``transmissometer``, ``ph``,
+``altimeter``.  A sensor left unresolved (no override, and the SensorID gives no
+model) is recorded with ``sensor_model: "UNK"`` and a build-time warning —
+ctdcast never guesses a model.
+
 Example
 ~~~~~~~
 
@@ -322,8 +358,8 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
      - Description
    * - ``cast_number``
      - Integer cast number.
-   * - ``cast_type``
-     - ``"down"`` or ``"up"``.
+   * - ``cast_direction``
+     - ``"down"`` or ``"up"`` (``cast_type`` is a deprecated alias for the same values).
    * - ``latitude``
      - Latitude in decimal degrees north.
    * - ``longitude``
@@ -338,3 +374,40 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
      - Practical salinity on the 1 dbar grid.
    * - ``ctd_oxygen`` / ``ctd_oxygen_1``
      - Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.
+
+Sensor provenance
+~~~~~~~~~~~~~~~~~
+
+``profiles.nc`` also records which physical sensor produced each measurement,
+using three families of variables. The capitalisation and the ``_channel_``
+infix are meaningful — keep them distinct:
+
+``SENSOR_<TYPE>_<SERIAL>`` — upper-case, dimensionless
+  One variable per **distinct physical device** used anywhere in the cruise,
+  e.g. ``SENSOR_TEMPERATURE_5806`` or ``SENSOR_FLUOROMETER_FLNTURTD_3219``. It
+  holds no data; all provenance is in its attributes (``sensor_model``,
+  ``sensor_serial_number``, ``sensor_calibration_date``, ``sensor_maker``, the
+  L05/L22/L35 vocabulary URIs, and ``model_source``). The serial identifies the
+  device, so a cell used as both primary and secondary of one type is a single
+  entry; ``sensor_shared_with`` cross-links one device serving two roles (e.g. a
+  combined FLNTU as both fluorometer and turbidity).
+
+``sensor_<role>`` — lower-case, dimension ``N_PROF``
+  Per profile, a **string** naming the ``SENSOR_*`` variable that filled each
+  role — e.g. ``sensor_temperature_1`` may be ``"SENSOR_TEMPERATURE_5806"`` on
+  early casts and ``"SENSOR_TEMPERATURE_4823"`` after a swap. This answers
+  "which sensor's calibration applies to this cast?"; diffing it down the casts
+  gives the sensor-change log.
+
+``sensor_channel_<role>`` — lower-case, dimension ``N_PROF``
+  Per profile, the **integer** raw acquisition channel that role's sensor was
+  wired into (``-1`` where unused). A change here while ``sensor_<role>`` holds
+  constant is a re-cabling, not a hardware swap.
+
+Roles use ctdcast's canonical names: ``temperature_1``/``_2``,
+``conductivity_1``/``_2``, ``oxygen_1``/``_2``, ``pressure``, ``fluorometer``,
+``turbidity``, ``transmissometer``, ``ph``, ``altimeter``. The universal
+SensorID → model table ships in ``ctdcast/config/sbe_sensors.yaml``; per-cruise
+refinements come from the ``sensors:`` block in ``config.yaml`` (see above). The
+``SBE sensors`` report page presents all of this as configuration, inventory and
+rewiring tables.
