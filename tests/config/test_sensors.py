@@ -257,14 +257,16 @@ def test_alias_resolves_role_serial_key() -> None:
 
 
 def test_catalog_var_name_and_sanitize() -> None:
-    """Catalog names follow SENSOR_<TYPE>_<INDEX>_<SERIAL> with OG1-style sanitizing."""
-    assert catalog_var_name("temperature_1", "5806") == "SENSOR_TEMPERATURE_1_5806"
-    assert catalog_var_name("conductivity_2", "4062") == "SENSOR_CONDUCTIVITY_2_4062"
+    """Catalog names follow SENSOR_<TYPE>_<SERIAL>; the role index is dropped."""
+    assert catalog_var_name("temperature_1", "5806") == "SENSOR_TEMPERATURE_5806"
     assert (
         catalog_var_name("fluorometer", "FLNTURTD-3219")
-        == "SENSOR_FLUOROMETER_1_FLNTURTD_3219"
+        == "SENSOR_FLUOROMETER_FLNTURTD_3219"
     )
     assert sanitize_serial("FLNTURTD-3219") == "FLNTURTD_3219"
+    # A device used as both primary and secondary of one type is a SINGLE entry.
+    assert catalog_var_name("conductivity_1", "4062") == "SENSOR_CONDUCTIVITY_4062"
+    assert catalog_var_name("conductivity_2", "4062") == "SENSOR_CONDUCTIVITY_4062"
 
 
 def test_element_mismatch_warns() -> None:

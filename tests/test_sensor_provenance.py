@@ -57,13 +57,13 @@ def test_profiles_carry_sensor_catalog(tmp_path) -> None:
         catalog = [v for v in ds.variables if str(v).startswith("SENSOR_")]
         assert catalog, "no SENSOR_* catalog variables written"
         # pH sensor 339 resolves to SBE 18 from the package registry
-        assert "SENSOR_PH_1_339" in ds.variables
-        assert ds["SENSOR_PH_1_339"].attrs["sensor_model"] == "SBE 18"
+        assert "SENSOR_PH_339" in ds.variables
+        assert ds["SENSOR_PH_339"].attrs["sensor_model"] == "SBE 18"
         # linkage exists for a role present in the fixture
         assert "sensor_ph" in ds.variables
         assert "sensor_channel_ph" in ds.variables
         # the catalog variable is dimensionless
-        assert ds["SENSOR_PH_1_339"].dims == ()
+        assert ds["SENSOR_PH_339"].dims == ()
     finally:
         ds.close()
 
@@ -82,8 +82,8 @@ def test_serial_alias_collapses_shared_flntu(tmp_path) -> None:
     build_profiles(FIXTURES_NC, out, force=True, sensor_overrides=ov)
     ds = xr.open_dataset(out, engine="netcdf4")
     try:
-        fl = "SENSOR_FLUOROMETER_1_FLNTURTD_3508"
-        tu = "SENSOR_TURBIDITY_1_FLNTURTD_3508"
+        fl = "SENSOR_FLUOROMETER_FLNTURTD_3508"
+        tu = "SENSOR_TURBIDITY_FLNTURTD_3508"
         assert fl in ds.variables and tu in ds.variables
         assert ds[fl].attrs.get("sensor_shared_with") == tu
         assert ds[tu].attrs.get("sensor_shared_with") == fl

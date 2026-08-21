@@ -130,15 +130,17 @@ def sanitize_serial(serial: str) -> str:
 
 
 def catalog_var_name(role: str, serial: str) -> str:
-    """Return the sensor-catalog variable name ``SENSOR_<TYPE>_<INDEX>_<SERIAL>``.
+    """Return the sensor-catalog variable name ``SENSOR_<TYPE>_<SERIAL>``.
 
-    ``role`` is a canonical ctdcast role (``temperature_1``, ``fluorometer``);
-    a trailing ``_N`` is the role index, defaulting to ``1`` when absent.
+    ``role`` is a canonical ctdcast role (``temperature_1``, ``fluorometer``); any
+    trailing primary/secondary index (``_1``/``_2``) is dropped, because the
+    serial alone identifies the physical device.  Primary-vs-secondary is a
+    *role* fact carried by the linkage variables, not a hardware fact — so one
+    device serving two roles of the same type (e.g. a conductivity cell used as
+    primary on some casts and secondary on others) is a single catalog entry.
     """
-    m = re.match(r"(?P<base>.+?)(?:_(?P<idx>\d+))?$", role)
-    base = (m.group("base") if m else role).upper()
-    idx = (m.group("idx") if m else None) or "1"
-    return f"SENSOR_{base}_{idx}_{sanitize_serial(serial)}"
+    sensor_type = re.sub(r"_\d+$", "", role).upper()
+    return f"SENSOR_{sensor_type}_{sanitize_serial(serial)}"
 
 
 def _is_unresolved(attrs: dict[str, str]) -> bool:
