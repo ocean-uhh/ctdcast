@@ -29,12 +29,21 @@ from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 
 #: Display order for roles across the tables (unlisted roles sort last).
 _ROLE_ORDER: tuple[str, ...] = (
-    "temperature_1", "temperature_2",
-    "conductivity_1", "conductivity_2",
-    "oxygen_1", "oxygen_2",
+    "temperature_1",
+    "temperature_2",
+    "conductivity_1",
+    "conductivity_2",
+    "oxygen_1",
+    "oxygen_2",
     "pressure",
-    "fluorometer", "turbidity", "transmissometer", "ph",
-    "altimeter", "spar", "par", "user_polynomial",
+    "fluorometer",
+    "turbidity",
+    "transmissometer",
+    "ph",
+    "altimeter",
+    "spar",
+    "par",
+    "user_polynomial",
 )
 
 

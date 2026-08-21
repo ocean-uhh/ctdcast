@@ -1090,7 +1090,9 @@ def draw_section_fig(
         )
         if len(bathy_depths) == len(bx):
             step = "mid" if bathy_x is None else None
-            ax.fill_between(bx, bathy_depths, y_bottom, color="#3a3a3a", step=step, lw=0)
+            ax.fill_between(
+                bx, bathy_depths, y_bottom, color="#3a3a3a", step=step, lw=0
+            )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_vals, p_trim, data_trim)
@@ -1539,7 +1541,9 @@ def draw_overview_panel_fig(
     )
 
     if bathy_depths is not None:
-        ax.fill_between(x_pos, bathy_depths, y_bottom, color="#3a3a3a", step="mid", lw=0)
+        ax.fill_between(
+            x_pos, bathy_depths, y_bottom, color="#3a3a3a", step="mid", lw=0
+        )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_pos, p_trim, data_trim)
