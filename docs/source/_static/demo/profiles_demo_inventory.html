@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>profiles_demo.nc — odb26 data inventory — netCDF inventory</title>
+<style>
+:root {
+  --ocean: #1a3a5c;
+  --seafoam: #e8f4f8;
+  --muted: #95a5a6;
+  --text: #2c3e50;
+  --rule: #dfe6e9;
+  --bg: #ffffff;
+  --bg-sunken: #f7f9fa;
+  --warn: #e67e22;
+  --warn-bg: #fdf3e7;
+  --error: #c0392b;
+  --gray-1: #f5f7fa;
+  --gray-2: #e0e0e0;
+  --gray-3: #aaaaaa;
+  --gray-4: #888888;
+  --gray-5: #555555;
+  --gray-6: #333333;
+  --gray-7: #111111;
+  --ok: #2c6e49;
+  --role-landing: #2980b9;
+  --role-entity: #1a3a5c;
+  --role-collection: #1a3a5c;
+  --role-component: #1a3a5c;
+  --role-aggregate-a: #8e44ad;
+  --role-aggregate-b: #27ae60;
+  --role-map: #ee3377;
+  --package-accent: var(--ocean);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs-root: 14px;
+  --fs-h1: 1.75rem;
+  --fs-type: 1.35rem;
+  --fs-h2: 1rem;
+  --fs-meta: 0.84rem;
+  --fs-note: 0.82rem;
+  --fs-nav: 0.8rem;
+  --fs-cap: 0.76rem;
+  --fs-xs: 0.75rem;
+  --fs-top: 0.72rem;
+  --fs-dt: 0.7rem;
+  --lh-root: 1.5;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-root); color: var(--text);
+  max-width: 1150px; margin: 0 auto;
+  padding: 1.5rem 2rem 4rem; line-height: var(--lh-root);
+}
+p, li { max-width: 78ch; }
+.masthead {
+  background: var(--ocean); color: #fff; position: relative;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
+}
+.masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
+.wordmark {
+  position: absolute; right: 2rem; bottom: 1.2rem;
+  font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;
+  color: var(--package-accent); background: #fff; opacity: 0.85;
+  padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); text-decoration: none;
+}
+.wordmark:hover { opacity: 1; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem 2rem; font-size: var(--fs-meta); margin-top: 0.9rem;
+}
+.meta-grid dt {
+  opacity: 0.7; text-transform: uppercase; font-size: var(--fs-dt);
+  letter-spacing: 0.06em; margin-bottom: 0.1rem;
+}
+.meta-grid dd { margin: 0; font-weight: 600; }
+h2 {
+  color: var(--ocean); font-size: var(--fs-h2);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 0.3rem; margin: 2.5rem 0 1rem;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.top-link {
+  font-size: var(--fs-top); font-weight: 400; color: var(--muted);
+  text-decoration: none; margin-left: auto;
+}
+.top-link:hover { color: var(--ocean); text-decoration: underline; }
+.caption {
+  color: var(--gray-5); font-size: var(--fs-note);
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
+}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption { margin-top: -0.5rem; max-width: none; }
+.explainer {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}
+.warn {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}
+.warn::before { content: "⚠ "; }
+.warn.error { border-left-color: var(--error); }
+.jump-nav {
+  background: var(--seafoam); padding: 0.55rem 1rem;
+  border-radius: 6px; margin-bottom: 1.5rem;
+  font-size: var(--fs-nav); line-height: 2.2;
+}
+.jump-nav::before { content: "Jump to: "; opacity: 0.55; font-size: var(--fs-xs); margin-right: 0.25rem; }
+.jump-nav a {
+  color: var(--ocean); text-decoration: none;
+  font-weight: 600; margin: 0 0.5rem 0 0;
+}
+.jump-nav a::before { content: "▸ "; font-size: var(--fs-dt); }
+.fig-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+.fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.fig-row.center { justify-content: center; }
+figure { margin: 0; }
+figure img {
+  border: 1px solid var(--rule); border-radius: var(--radius-btn);
+  display: block; width: 100%; height: auto;
+}
+figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn { max-width: none; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}
+th {
+  background: var(--package-accent); color: #fff; text-align: left;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}
+th.num { text-align: right; }
+td {
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg-sunken); }
+td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.slot-full         { width: 100%; }
+.slot-twothirds     { width: calc(66.67% - 0.33rem); }
+.slot-three-fifths  { width: calc(60% - 0.40rem); }
+.slot-half          { width: calc(50% - 0.50rem); }
+.slot-two-fifths    { width: calc(40% - 0.60rem); }
+.slot-third         { width: calc(33.33% - 0.67rem); }
+.slot-quarter       { width: calc(25% - 0.75rem); }
+.masthead-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+.masthead-header h1 { margin: 0 0 0.1rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead-type {
+  font-size: var(--fs-type); font-weight: 700; opacity: 0.88; line-height: 1.35;
+  padding-top: 0.25rem;
+}
+.nav-btns { display: flex; gap: 0.5rem; }
+.btn-nav {
+  background: var(--ocean); color: #fff; padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
+}
+.btn-nav:hover { opacity: 0.85; }
+footer {
+  text-align: center; padding: 1rem;
+  border-top: 1px solid var(--package-accent);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+footer a { color: var(--muted); }
+@media print {
+  body { max-width: 100%; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+  h2 { page-break-after: avoid; }
+  .fig-row, figure, table { break-inside: avoid; }
+  .jump-nav { display: none; }
+}
+
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
+</style>
+
+<style>
+/* Dataset inventory page */
+.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
+.dims-line code { color: var(--text); }
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+details.attrs > summary {
+  cursor: pointer; color: var(--ocean); font-size: var(--fs-xs); user-select: none;
+}
+details.attrs table { margin: 0.3rem 0 0.2rem; }
+details.attrs td { font-size: var(--fs-xs); }
+.rename { color: var(--muted); }
+.rename .arrow { color: var(--ocean); }
+</style>
+
+</head>
+<body>
+<div id="top"></div>
+
+
+
+<div class="masthead" style="background:#1a3a5c;">
+  <div class="masthead-header">
+    <h1>profiles_demo.nc</h1>
+    <span class="masthead-type">netCDF inventory</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-21 18:55 UTC</p>
+  
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-landing)">Summary</a>
+    <a href="casts.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-collection)">Casts</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-a)">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-b)">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-map)">Interactive</a>
+  </div>
+  
+  
+  <dl class="meta-grid">
+    <div><dt>File</dt><dd>profiles_demo.nc</dd></div>
+    <div><dt>Size</dt><dd>336.2 KB</dd></div>
+    <div><dt>Dimensions</dt><dd>N_PROF=8, pressure=718</dd></div>
+    <div><dt>Coordinates</dt><dd>4</dd></div>
+    <div><dt>Data variables</dt><dd>19</dd></div>
+  </dl>
+
+  <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="jump-nav">
+  <a href="#s-coords">(1) Coordinates</a>
+  <a href="#s-vars">(2) Data variables</a>
+  <a href="#s-sensor-catalog">(3) Sensor catalog</a>
+  <a href="#s-sensor-linkage">(4) Sensor linkage</a>
+  <a href="#s-sensor-channel">(5) Sensor channels</a>
+  <a href="#s-global">(6) Global attributes</a>
+  
+</div>
+
+
+
+<h2 id="s-coords">(1) Coordinates</h2>
+
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th><th class="num">Length</th><th>Type</th><th>Units</th><th>Standard / long name</th>
+      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">N_PROF</td>
+      <td class="mono">N_PROF</td>
+      <td class="num">8</td>
+      <td class="mono">int32</td>
+      <td></td>
+      <td>Profile index (0-based sequential)</td>
+      <td class="num">0</td><td class="num">7</td>
+      <td class="num" >8</td>
+      <td>
+        —
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">latitude</td>
+      <td class="mono">N_PROF</td>
+      <td class="num">8</td>
+      <td class="mono">float64</td>
+      <td>degrees_north</td>
+      <td><strong>latitude</strong>: Latitude</td>
+      <td class="num">65.58</td><td class="num">65.86</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>2 attrs</summary>
+          <table><tr><td class="mono">comment</td><td>median of the position fixes over the cast direction</td></tr><tr><td class="mono">label_units</td><td>°N</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">longitude</td>
+      <td class="mono">N_PROF</td>
+      <td class="num">8</td>
+      <td class="mono">float64</td>
+      <td>degrees_east</td>
+      <td><strong>longitude</strong>: Longitude</td>
+      <td class="num">-29.59</td><td class="num">-29.43</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>2 attrs</summary>
+          <table><tr><td class="mono">comment</td><td>median of the position fixes over the cast direction</td></tr><tr><td class="mono">label_units</td><td>°E</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">pressure</td>
+      <td class="mono">pressure</td>
+      <td class="num">718</td>
+      <td class="mono">float32</td>
+      <td>dbar</td>
+      <td><strong>sea_water_pressure</strong>: Sea water pressure</td>
+      <td class="num">1</td><td class="num">718</td>
+      <td class="num" >718</td>
+      <td>
+        
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">positive</td><td>down</td></tr><tr><td class="mono">axis</td><td>Z</td></tr><tr><td class="mono">label_units</td><td>dbar</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+<h2 id="s-vars">(2) Data variables</h2>
+<p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
+
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th><th>Type</th><th>Units</th><th>Standard / long name</th>
+      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">cast_direction</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U4</td>
+      <td></td>
+      <td>Profile direction</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>2 attrs</summary>
+          <table><tr><td class="mono">flag_values</td><td>down up</td></tr><tr><td class="mono">comment</td><td>replaces the N_PROF = cast + 0.5 float encoding</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">cast_id</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U3</td>
+      <td></td>
+      <td>Cast identifier</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>Zero-padded cast number with optional letter suffix, e.g. &#39;004&#39; or &#39;004b&#39;.</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">cast_number</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">int32</td>
+      <td></td>
+      <td>original cast number from filename</td>
+      <td class="num">11</td><td class="num">129</td>
+      <td class="num" >8</td>
+      <td>
+        —
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">cast_suffix</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U1</td>
+      <td></td>
+      <td>cast letter suffix from filename</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>empty for a plain cast; a letter (e.g. &#39;b&#39;) marks a distinct sibling event at the same station number</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">cast_type</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U4</td>
+      <td></td>
+      <td>downcast or upcast (deprecated alias for cast_direction)</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">flag_values</td><td>down up</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">conductivity_1</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>mS cm-1</td>
+      <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (primary)</td>
+      <td class="num">18.26</td><td class="num">36.76</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>mS cm⁻¹</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">conductivity_2</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>mS cm-1</td>
+      <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (secondary)</td>
+      <td class="num">18.17</td><td class="num">36.75</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>mS cm⁻¹</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_altimeter</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>m</td>
+      <td><strong>altitude_of_sea_floor</strong>: Altimeter distance to seafloor</td>
+      <td class="num">-9.99e-29</td><td class="num">102.5</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>m</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_fluor</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>mg m-3</td>
+      <td><strong>mass_concentration_of_chlorophyll_in_sea_water</strong>: Chlorophyll fluorescence</td>
+      <td class="num">-9.99e-29</td><td class="num">5.346</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>mg m⁻³</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_oxygen</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>umol kg-1</td>
+      <td><strong>moles_of_oxygen_per_unit_mass_in_sea_water</strong>: Dissolved oxygen (preferred sensor)</td>
+      <td class="num">236.9</td><td class="num">368</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>µmol kg⁻¹</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_salinity_1</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>1</td>
+      <td><strong>sea_water_practical_salinity</strong>: Practical salinity (primary)</td>
+      <td class="num">19.09</td><td class="num">35.19</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_salinity_2</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>1</td>
+      <td><strong>sea_water_practical_salinity</strong>: Practical salinity (secondary)</td>
+      <td class="num">18.98</td><td class="num">35.19</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_temperature_1</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>degree_Celsius</td>
+      <td><strong>sea_water_temperature</strong>: In-situ temperature (primary)</td>
+      <td class="num">0.1661</td><td class="num">8.499</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>°C</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_temperature_2</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>degree_Celsius</td>
+      <td><strong>sea_water_temperature</strong>: In-situ temperature (secondary)</td>
+      <td class="num">0.1682</td><td class="num">8.493</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>°C</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_turbidity</td>
+      <td class="mono">N_PROF, pressure</td>
+      
+      <td class="mono">float32</td>
+      <td>1</td>
+      <td><strong>sea_water_turbidity</strong>: Turbidity</td>
+      <td class="num">-9.99e-29</td><td class="num">0.6267</td>
+      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">label_units</td><td>NTU</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">gebco_depth_m</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">float32</td>
+      <td>m</td>
+      <td>GEBCO bathymetry depth at max-pressure position</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0 / 8</td>
+      <td>
+        
+        <details class="attrs"><summary>2 attrs</summary>
+          <table><tr><td class="mono">positive</td><td>down</td></tr><tr><td class="mono">comment</td><td>Bilinearly interpolated from GEBCO_2025 at the lat/lon of maximum pressure. NaN when GEBCO file is unavailable.</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">max_pressure_dbar</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">float32</td>
+      <td>dbar</td>
+      <td>Maximum pressure recorded during full cast</td>
+      <td class="num">307</td><td class="num">718</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>Same value for downcast and upcast profiles of the same cast.</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">time_end</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">datetime64[ns]</td>
+      <td></td>
+      <td>end time of cast direction</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        —
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">time_start</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">datetime64[ns]</td>
+      <td></td>
+      <td>start time of cast direction</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        —
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+<h2 id="s-sensor-catalog">(3) Sensor catalog</h2>
+<p class="dims-line">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no type, units, or value range.</p>
+
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th><th>Standard / long name</th>
+      <th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">SENSOR_CONDUCTIVITY_3120</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 4C conductivity sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3120</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-May-23</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_CONDUCTIVITY_4922</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 4C conductivity sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>4922</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_FLUOROMETER_FLNTURTD_3508</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>WET Labs ECO FL fluorometer</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>fluorometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/113/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO FL</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0172/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>FLNTURTD-3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016-Apr-12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>20</td></tr><tr><td class="mono">sbe_sensor_element</td><td>FluoroWetlabECO_AFL_FL_Sensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_OXYGEN_0707</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 43 dissolved oxygen sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>dissolved gas sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/351/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 43</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0036/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>header</td></tr><tr><td class="mono">sensor_serial_number</td><td>0707</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2025-Dec-10</td></tr><tr><td class="mono">sbe_sensor_id</td><td>38</td></tr><tr><td class="mono">sbe_sensor_element</td><td>OxygenSensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_PH_339</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 18 pH sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>pH sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 18</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>339</td></tr><tr><td class="mono">sensor_calibration_date</td><td>13/02/24</td></tr><tr><td class="mono">sbe_sensor_id</td><td>43</td></tr><tr><td class="mono">sbe_sensor_element</td><td>pH_Sensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_PRESSURE_0814</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Paroscientific Digiquartz pressure sensor (SBE 9plus)</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water pressure sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><td class="mono">sensor_model</td><td>Digiquartz</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><td class="mono">sensor_maker</td><td>Paroscientific, Inc.</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>0814</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>45</td></tr><tr><td class="mono">sbe_sensor_element</td><td>PressureSensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_TEMPERATURE_6000</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 3plus temperature sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6000</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_TEMPERATURE_6435</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>Sea-Bird SBE 3plus temperature sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6435</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_TRANSMISSOMETER_2033</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>WET Labs C-Star transmissometer</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>transmissometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs C-Star</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>2033</td></tr><tr><td class="mono">sensor_calibration_date</td><td>14/04/2020</td></tr><tr><td class="mono">sbe_sensor_id</td><td>71</td></tr><tr><td class="mono">sbe_sensor_element</td><td>WET_LabsCStar</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_TURBIDITY_3508</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>WET Labs ECO NTU turbidity sensor</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>11 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>optical backscatter sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO NTU</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016/04/12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>67</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TurbidityMeter</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">SENSOR_USER_POLYNOMIAL_UVP6</td>
+      <td class="mono">()</td>
+      
+      
+      
+      <td>user polynomial (derived voltage channel)</td>
+      
+      
+      <td>
+        
+        <details class="attrs"><summary>7 attrs</summary>
+          <table><tr><td class="mono">sensor_model</td><td>UNK</td></tr><tr><td class="mono">sensor_maker</td><td>UNK</td></tr><tr><td class="mono">model_source</td><td>UNK</td></tr><tr><td class="mono">sensor_serial_number</td><td>UVP6</td></tr><tr><td class="mono">sensor_calibration_date</td><td>090726</td></tr><tr><td class="mono">sbe_sensor_id</td><td>61</td></tr><tr><td class="mono">sbe_sensor_element</td><td>UserPolynomialSensor</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+<h2 id="s-sensor-linkage">(4) Sensor linkage</h2>
+<p class="dims-line">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
+
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th><th>Type</th><th>Standard / long name</th>
+      <th class="num">Valid</th><th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">sensor_conductivity_1</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U24</td>
+      
+      <td>catalog variable naming the conductivity_1 sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_conductivity_2</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U24</td>
+      
+      <td>catalog variable naming the conductivity_2 sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_fluorometer</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U32</td>
+      
+      <td>catalog variable naming the fluorometer sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_oxygen_1</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U18</td>
+      
+      <td>catalog variable naming the oxygen_1 sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_ph</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U13</td>
+      
+      <td>catalog variable naming the ph sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_pressure</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U20</td>
+      
+      <td>catalog variable naming the pressure sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_temperature_1</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U23</td>
+      
+      <td>catalog variable naming the temperature_1 sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_temperature_2</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U23</td>
+      
+      <td>catalog variable naming the temperature_2 sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_transmissometer</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U27</td>
+      
+      <td>catalog variable naming the transmissometer sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_turbidity</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U21</td>
+      
+      <td>catalog variable naming the turbidity sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_user_polynomial</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U27</td>
+      
+      <td>catalog variable naming the user_polynomial sensor per profile</td>
+      
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+<h2 id="s-sensor-channel">(5) Sensor channels</h2>
+<p class="dims-line">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
+
+<table class="nc">
+  <thead>
+    <tr>
+      <th>Variable</th><th>Dimensions</th><th>Standard / long name</th>
+      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">sensor_channel_conductivity_1</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the conductivity_1 sensor</td>
+      <td class="num">2</td><td class="num">2</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_conductivity_2</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the conductivity_2 sensor</td>
+      <td class="num">5</td><td class="num">5</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_fluorometer</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the fluorometer sensor</td>
+      <td class="num">13</td><td class="num">13</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_oxygen_1</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the oxygen_1 sensor</td>
+      <td class="num">8</td><td class="num">8</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_ph</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the ph sensor</td>
+      <td class="num">9</td><td class="num">9</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_pressure</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the pressure sensor</td>
+      <td class="num">3</td><td class="num">3</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_temperature_1</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the temperature_1 sensor</td>
+      <td class="num">1</td><td class="num">1</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_temperature_2</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the temperature_2 sensor</td>
+      <td class="num">4</td><td class="num">4</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_transmissometer</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the transmissometer sensor</td>
+      <td class="num">10</td><td class="num">10</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_turbidity</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the turbidity sensor</td>
+      <td class="num">12</td><td class="num">12</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">sensor_channel_user_polynomial</td>
+      <td class="mono">N_PROF</td>
+      
+      
+      
+      <td>raw CNV acquisition channel of the user_polynomial sensor</td>
+      <td class="num">6</td><td class="num">6</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+<h2 id="s-global">(6) Global attributes</h2>
+<table class="nc">
+  <tbody>
+    <tr><td class="mono">title</td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr><tr><td class="mono">cruise</td><td>UNK</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr><tr><td class="mono">pressure_binning</td><td>mean of raw samples per 1-dbar bin</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13</td></tr>
+  </tbody>
+</table>
+
+
+
+<script>
+document.querySelectorAll('h2').forEach(h => {
+  const a = document.createElement('a');
+  a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
+  h.appendChild(a);
+});
+</script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-21 18:55 UTC</footer>
+</body>
+</html>

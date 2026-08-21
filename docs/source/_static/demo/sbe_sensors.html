@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBE sensors — odb26</title>
+<style>
+:root {
+  --ocean: #1a3a5c;
+  --seafoam: #e8f4f8;
+  --muted: #95a5a6;
+  --text: #2c3e50;
+  --rule: #dfe6e9;
+  --bg: #ffffff;
+  --bg-sunken: #f7f9fa;
+  --warn: #e67e22;
+  --warn-bg: #fdf3e7;
+  --error: #c0392b;
+  --gray-1: #f5f7fa;
+  --gray-2: #e0e0e0;
+  --gray-3: #aaaaaa;
+  --gray-4: #888888;
+  --gray-5: #555555;
+  --gray-6: #333333;
+  --gray-7: #111111;
+  --ok: #2c6e49;
+  --role-landing: #2980b9;
+  --role-entity: #1a3a5c;
+  --role-collection: #1a3a5c;
+  --role-component: #1a3a5c;
+  --role-aggregate-a: #8e44ad;
+  --role-aggregate-b: #27ae60;
+  --role-map: #ee3377;
+  --package-accent: var(--ocean);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs-root: 14px;
+  --fs-h1: 1.75rem;
+  --fs-type: 1.35rem;
+  --fs-h2: 1rem;
+  --fs-meta: 0.84rem;
+  --fs-note: 0.82rem;
+  --fs-nav: 0.8rem;
+  --fs-cap: 0.76rem;
+  --fs-xs: 0.75rem;
+  --fs-top: 0.72rem;
+  --fs-dt: 0.7rem;
+  --lh-root: 1.5;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-root); color: var(--text);
+  max-width: 1150px; margin: 0 auto;
+  padding: 1.5rem 2rem 4rem; line-height: var(--lh-root);
+}
+p, li { max-width: 78ch; }
+.masthead {
+  background: var(--ocean); color: #fff; position: relative;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
+}
+.masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
+.wordmark {
+  position: absolute; right: 2rem; bottom: 1.2rem;
+  font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;
+  color: var(--package-accent); background: #fff; opacity: 0.85;
+  padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); text-decoration: none;
+}
+.wordmark:hover { opacity: 1; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem 2rem; font-size: var(--fs-meta); margin-top: 0.9rem;
+}
+.meta-grid dt {
+  opacity: 0.7; text-transform: uppercase; font-size: var(--fs-dt);
+  letter-spacing: 0.06em; margin-bottom: 0.1rem;
+}
+.meta-grid dd { margin: 0; font-weight: 600; }
+h2 {
+  color: var(--ocean); font-size: var(--fs-h2);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 0.3rem; margin: 2.5rem 0 1rem;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.top-link {
+  font-size: var(--fs-top); font-weight: 400; color: var(--muted);
+  text-decoration: none; margin-left: auto;
+}
+.top-link:hover { color: var(--ocean); text-decoration: underline; }
+.caption {
+  color: var(--gray-5); font-size: var(--fs-note);
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
+}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption { margin-top: -0.5rem; max-width: none; }
+.explainer {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}
+.warn {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}
+.warn::before { content: "⚠ "; }
+.warn.error { border-left-color: var(--error); }
+.jump-nav {
+  background: var(--seafoam); padding: 0.55rem 1rem;
+  border-radius: 6px; margin-bottom: 1.5rem;
+  font-size: var(--fs-nav); line-height: 2.2;
+}
+.jump-nav::before { content: "Jump to: "; opacity: 0.55; font-size: var(--fs-xs); margin-right: 0.25rem; }
+.jump-nav a {
+  color: var(--ocean); text-decoration: none;
+  font-weight: 600; margin: 0 0.5rem 0 0;
+}
+.jump-nav a::before { content: "▸ "; font-size: var(--fs-dt); }
+.fig-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+.fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.fig-row.center { justify-content: center; }
+figure { margin: 0; }
+figure img {
+  border: 1px solid var(--rule); border-radius: var(--radius-btn);
+  display: block; width: 100%; height: auto;
+}
+figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn { max-width: none; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}
+th {
+  background: var(--package-accent); color: #fff; text-align: left;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}
+th.num { text-align: right; }
+td {
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg-sunken); }
+td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.slot-full         { width: 100%; }
+.slot-twothirds     { width: calc(66.67% - 0.33rem); }
+.slot-three-fifths  { width: calc(60% - 0.40rem); }
+.slot-half          { width: calc(50% - 0.50rem); }
+.slot-two-fifths    { width: calc(40% - 0.60rem); }
+.slot-third         { width: calc(33.33% - 0.67rem); }
+.slot-quarter       { width: calc(25% - 0.75rem); }
+.masthead-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+.masthead-header h1 { margin: 0 0 0.1rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead-type {
+  font-size: var(--fs-type); font-weight: 700; opacity: 0.88; line-height: 1.35;
+  padding-top: 0.25rem;
+}
+.nav-btns { display: flex; gap: 0.5rem; }
+.btn-nav {
+  background: var(--ocean); color: #fff; padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
+}
+.btn-nav:hover { opacity: 0.85; }
+footer {
+  text-align: center; padding: 1rem;
+  border-top: 1px solid var(--package-accent);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+footer a { color: var(--muted); }
+@media print {
+  body { max-width: 100%; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+  h2 { page-break-after: avoid; }
+  .fig-row, figure, table { break-inside: avoid; }
+  .jump-nav { display: none; }
+}
+
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
+</style>
+
+<style>
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
+td.arrow { color: var(--ocean); text-align: center; }
+td.was { color: var(--muted); }
+.src { font-size: var(--fs-xs); color: var(--muted); }
+.roles { color: var(--muted); font-size: var(--fs-xs); }
+.scroll-x { overflow-x: auto; }
+table.config td.range { white-space: nowrap; font-weight: 600; }
+table.config th { white-space: nowrap; }
+</style>
+
+</head>
+<body>
+<div id="top"></div>
+
+
+
+<div class="masthead" style="background:#1a3a5c;">
+  <div class="masthead-header">
+    <h1>SBE sensors</h1>
+    <span class="masthead-type">sensor inventory &amp; change log</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-21 18:55 UTC</p>
+  
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-landing)">Summary</a>
+    <a href="casts.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-collection)">Casts</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-a)">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-b)">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-map)">Interactive</a>
+  </div>
+  
+  
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>odb26</dd></div>
+    <div><dt>Source</dt><dd>profiles_demo.nc</dd></div>
+    <div><dt>Casts</dt><dd>4</dd></div>
+    <div><dt>Devices</dt><dd>11</dd></div>
+    <div><dt>Configurations</dt><dd>1</dd></div>
+  </dl>
+
+  <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
+</div>
+
+
+
+
+<div class="jump-nav">
+  <a href="#s-config">(1) Sensor configuration</a>
+  <a href="#s-inventory">(2) Sensor inventory</a>
+  <a href="#s-rewiring">(3) Rewiring</a>
+</div>
+
+<h2 id="s-config">(1) Sensor configuration</h2>
+<p class="dims-line">Which sensor (by serial number) served each role, over which casts. Each row is a run of casts that shared the same set of sensors; a new row marks a hardware change. Serials resolve to model and calibration in the inventory below.</p>
+<div class="scroll-x">
+<table class="nc config">
+  <thead>
+    <tr><th class="num">Casts</th><th>Temperature 1</th><th>Temperature 2</th><th>Conductivity 1</th><th>Conductivity 2</th><th>Oxygen 1</th><th>Pressure</th><th>Fluorometer</th><th>Turbidity</th><th>Transmissometer</th><th>Ph</th><th>User Polynomial</th></tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td class="range">011–129</td>
+      <td class="mono">6435</td><td class="mono">6000</td><td class="mono">4922</td><td class="mono">3120</td><td class="mono">0707</td><td class="mono">0814</td><td class="mono">FLNTURTD-3508</td><td class="mono">3508</td><td class="mono">2033</td><td class="mono">339</td><td class="mono">UVP6</td>
+    </tr>
+    
+  </tbody>
+</table>
+</div>
+
+<h2 id="s-inventory">(2) Sensor inventory</h2>
+<p class="dims-line">Every distinct physical device used during the cruise, identified by serial number. <span class="src">model_source: <em>header</em> = named in the file; <em>assumed</em> = inferred from the SensorID; <em>operator</em> = supplied in the cruise config.</span></p>
+<table class="nc">
+  <thead>
+    <tr><th>Type</th><th>Model</th><th>Serial</th><th>Calibration</th><th>Maker</th><th>Source</th><th>Role(s)</th></tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td></td>
+      <td>UNK</td>
+      <td class="mono">UVP6</td>
+      <td class="mono">090726</td>
+      <td>UNK</td>
+      <td class="src">UNK</td>
+      <td class="roles">User Polynomial</td>
+    </tr>
+    
+    <tr>
+      <td>dissolved gas sensors</td>
+      <td>SBE 43</td>
+      <td class="mono">0707</td>
+      <td class="mono">2025-Dec-10</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">header</td>
+      <td class="roles">Oxygen 1</td>
+    </tr>
+    
+    <tr>
+      <td>fluorometers</td>
+      <td>WET Labs ECO FL</td>
+      <td class="mono">FLNTURTD-3508</td>
+      <td class="mono">2016-Apr-12</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Fluorometer</td>
+    </tr>
+    
+    <tr>
+      <td>optical backscatter sensors</td>
+      <td>WET Labs ECO NTU</td>
+      <td class="mono">3508</td>
+      <td class="mono">2016/04/12</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Turbidity</td>
+    </tr>
+    
+    <tr>
+      <td>pH sensors</td>
+      <td>SBE 18</td>
+      <td class="mono">339</td>
+      <td class="mono">13/02/24</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Ph</td>
+    </tr>
+    
+    <tr>
+      <td>salinity sensor</td>
+      <td>SBE 4C</td>
+      <td class="mono">3120</td>
+      <td class="mono">2023-May-23</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Conductivity 2</td>
+    </tr>
+    
+    <tr>
+      <td>salinity sensor</td>
+      <td>SBE 4C</td>
+      <td class="mono">4922</td>
+      <td class="mono">2026-Feb-17</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Conductivity 1</td>
+    </tr>
+    
+    <tr>
+      <td>transmissometers</td>
+      <td>WET Labs C-Star</td>
+      <td class="mono">2033</td>
+      <td class="mono">14/04/2020</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Transmissometer</td>
+    </tr>
+    
+    <tr>
+      <td>water pressure sensors</td>
+      <td>Digiquartz</td>
+      <td class="mono">0814</td>
+      <td class="mono">2023-Feb-17</td>
+      <td>Paroscientific, Inc.</td>
+      <td class="src">assumed</td>
+      <td class="roles">Pressure</td>
+    </tr>
+    
+    <tr>
+      <td>water temperature sensor</td>
+      <td>SBE 3plus</td>
+      <td class="mono">6000</td>
+      <td class="mono">2023-Apr-14</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Temperature 2</td>
+    </tr>
+    
+    <tr>
+      <td>water temperature sensor</td>
+      <td>SBE 3plus</td>
+      <td class="mono">6435</td>
+      <td class="mono">2026-Feb-17</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Temperature 1</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+<h2 id="s-rewiring">(3) Rewiring</h2>
+<p class="dims-line">Casts where a device stayed the same but moved to a different acquisition channel — a re-cabling, not a hardware change.</p>
+
+<p class="dims-line">No rewiring — every device stayed on its original channel.</p>
+
+
+
+
+<script>
+document.querySelectorAll('h2').forEach(h => {
+  const a = document.createElement('a');
+  a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
+  h.appendChild(a);
+});
+</script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-21 18:55 UTC</footer>
+</body>
+</html>

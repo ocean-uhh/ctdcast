@@ -497,6 +497,32 @@ def report(
                 _failed += 1
                 traceback.print_exc()
 
+        # SBE sensors page — reads the sensor catalog/linkage from profiles.nc and
+        # renders the configuration / inventory / rewiring tables.  Pill sits
+        # beside the netCDF inventory pills.
+        if profiles_path is not None and Path(profiles_path).exists():
+            _t0 = perf_counter()
+            try:
+                from ctdcast.reports._sensors import generate_sensors_page
+
+                generate_sensors_page(
+                    Path(profiles_path),
+                    out_dir / "sbe_sensors.html",
+                    cruise=cruise,
+                    nav_prefix="",
+                    show_nav=True,
+                )
+                inventory_datasets.append(
+                    {"label": "SBE sensors", "href": "sbe_sensors.html"}
+                )
+                print(f"  [sbe_sensors.html: {perf_counter() - _t0:.1f}s]")
+            except Exception:  # noqa: BLE001
+                import traceback
+
+                print("  sbe_sensors.html: FAILED")
+                _failed += 1
+                traceback.print_exc()
+
         _t0 = perf_counter()
         _write_index(
             all_meta,

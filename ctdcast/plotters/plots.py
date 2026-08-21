@@ -79,6 +79,11 @@ _UPCAST_COLOR: str = "#666666"
 # Grey level for σ₀ density contours on T–S diagrams.
 _SIGMA0_CONTOUR_COLOR: str = "0.4"
 
+# Land fill on cruise maps.  GEBCO cells above sea level fall below the depth
+# BoundaryNorm and render transparent, so a light-grey axes background shows
+# land as landmass rather than the white page colour.
+_LAND_COLOR: str = "#d9d9d9"
+
 
 def _map_lim(
     lat_lo: float,
@@ -282,6 +287,7 @@ def map_panel(
     if gebco is None:
         cax.set_visible(False)
         return
+    ax.set_facecolor(_LAND_COLOR)  # masked land cells show this behind the ocean field
     lons_b, lats_b, depth_b = gebco
     lons_b, lats_b, depth_b = _downsample_gebco_for_map(lons_b, lats_b, depth_b)
     d_fin = depth_b[depth_b > 0]
@@ -1084,7 +1090,9 @@ def draw_section_fig(
         )
         if len(bathy_depths) == len(bx):
             step = "mid" if bathy_x is None else None
-            ax.fill_between(bx, bathy_depths, y_bottom, color="black", step=step, lw=0)
+            ax.fill_between(
+                bx, bathy_depths, y_bottom, color="#3a3a3a", step=step, lw=0
+            )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_vals, p_trim, data_trim)
@@ -1533,7 +1541,9 @@ def draw_overview_panel_fig(
     )
 
     if bathy_depths is not None:
-        ax.fill_between(x_pos, bathy_depths, y_bottom, color="black", step="mid", lw=0)
+        ax.fill_between(
+            x_pos, bathy_depths, y_bottom, color="#3a3a3a", step="mid", lw=0
+        )
 
     if var == "sigma0":
         sigma0_isopycnals(ax, x_pos, p_trim, data_trim)

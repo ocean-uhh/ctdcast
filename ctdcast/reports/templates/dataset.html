@@ -36,12 +36,12 @@ details.attrs td { font-size: var(--fs-xs); }
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}
 
-{% macro var_table(rows, with_length=false) %}
+{% macro var_table(rows, with_length=false, show_type=true, show_units=true, show_minmax=true, show_valid=true) %}
 <table class="nc">
   <thead>
     <tr>
-      <th>Variable</th><th>Dimensions</th>{% if with_length %}<th class="num">Length</th>{% endif %}<th>Type</th><th>Units</th><th>Standard / long name</th>
-      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
+      <th>Variable</th><th>Dimensions</th>{% if with_length %}<th class="num">Length</th>{% endif %}{% if show_type %}<th>Type</th>{% endif %}{% if show_units %}<th>Units</th>{% endif %}<th>Standard / long name</th>
+      {% if show_minmax %}<th class="num">Min</th><th class="num">Max</th>{% endif %}{% if show_valid %}<th class="num">Valid</th>{% endif %}<th>Attributes</th>
     </tr>
   </thead>
   <tbody>
@@ -50,12 +50,11 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">{{ v.name }}</td>
       <td class="mono">{{ v.dims }}</td>
       {% if with_length %}<td class="num">{{ v.n }}</td>{% endif %}
-      <td class="mono">{{ v.dtype }}</td>
-      <td>{{ v.units }}</td>
+      {% if show_type %}<td class="mono">{{ v.dtype }}</td>{% endif %}
+      {% if show_units %}<td>{{ v.units }}</td>{% endif %}
       <td>{% if v.standard_name %}<strong>{{ v.standard_name }}</strong>{% endif %}{% if v.standard_name and v.long_name %}: {% endif %}{% if v.long_name %}{{ v.long_name }}{% endif %}</td>
-      <td class="num">{{ v.v_min }}</td>
-      <td class="num">{{ v.v_max }}</td>
-      <td class="num" {% if v.n_valid < v.n %}style="color:var(--warn);font-weight:600"{% endif %}>{{ v.n_valid }}{% if v.n_valid < v.n %} / {{ v.n }}{% endif %}</td>
+      {% if show_minmax %}<td class="num">{{ v.v_min }}</td><td class="num">{{ v.v_max }}</td>{% endif %}
+      {% if show_valid %}<td class="num" {% if v.n_valid < v.n %}style="color:var(--warn);font-weight:600"{% endif %}>{{ v.n_valid }}{% if v.n_valid < v.n %} / {{ v.n }}{% endif %}</td>{% endif %}
       <td>
         {% if v.attrs %}
         <details class="attrs"><summary>{{ v.attrs|length }} attr{{ "s" if v.attrs|length != 1 }}</summary>
@@ -75,6 +74,9 @@ details.attrs td { font-size: var(--fs-xs); }
 {% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
 {% set _ = secs.append(("s-coords", "Coordinates")) %}
 {% set _ = secs.append(("s-vars", "Data variables")) %}
+{% if meta.sensor_catalog %}{% set _ = secs.append(("s-sensor-catalog", "Sensor catalog")) %}{% endif %}
+{% if meta.sensor_linkage %}{% set _ = secs.append(("s-sensor-linkage", "Sensor linkage")) %}{% endif %}
+{% if meta.sensor_channel %}{% set _ = secs.append(("s-sensor-channel", "Sensor channels")) %}{% endif %}
 {% if meta.global_attrs %}{% set _ = secs.append(("s-global", "Global attributes")) %}{% endif %}
 {% set nums = {} %}
 {% for sid, title in secs %}{% set _ = nums.update({sid: loop.index}) %}{% endfor %}
@@ -102,6 +104,24 @@ details.attrs td { font-size: var(--fs-xs); }
 <h2 id="s-vars">{{ m.heading_text(nums["s-vars"], "Data variables") }}</h2>
 <p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
 {{ var_table(meta.data_vars) }}
+
+{% if meta.sensor_catalog %}
+<h2 id="s-sensor-catalog">{{ m.heading_text(nums["s-sensor-catalog"], "Sensor catalog") }}</h2>
+<p class="dims-line">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no type, units, or value range.</p>
+{{ var_table(meta.sensor_catalog, show_type=false, show_units=false, show_minmax=false, show_valid=false) }}
+{% endif %}
+
+{% if meta.sensor_linkage %}
+<h2 id="s-sensor-linkage">{{ m.heading_text(nums["s-sensor-linkage"], "Sensor linkage") }}</h2>
+<p class="dims-line">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
+{{ var_table(meta.sensor_linkage, show_units=false, show_minmax=false) }}
+{% endif %}
+
+{% if meta.sensor_channel %}
+<h2 id="s-sensor-channel">{{ m.heading_text(nums["s-sensor-channel"], "Sensor channels") }}</h2>
+<p class="dims-line">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
+{{ var_table(meta.sensor_channel, show_type=false, show_units=false) }}
+{% endif %}
 
 {% if meta.global_attrs %}
 <h2 id="s-global">{{ m.heading_text(nums["s-global"], "Global attributes") }}</h2>

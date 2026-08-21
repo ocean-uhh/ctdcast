@@ -10,16 +10,133 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import warnings
+
 import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.sensors import (
+    SensorOverrides,
+    SensorRegistry,
+    catalog_var_name,
+    resolve_sensor,
+)
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
+
+
+def _build_sensor_catalog(
+    cast_sensor_records: list[list[dict[str, str]]],
+    cast_list: list[tuple[int, str, Path]],
+    n_profiles: int,
+    overrides: SensorOverrides,
+) -> tuple[dict, dict]:
+    """Build the sensor catalog and per-profile linkage variables.
+
+    Attribute names follow OG1 conventions for interoperability, but this is
+    shipboard CTD data and the per-profile linkage has no OG1 equivalent.
+
+    *cast_sensor_records* is one :func:`parse_sensor_channels` result per cast,
+    in the same rank order as *cast_list*.  Each cast contributes to two profiles
+    (down, up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``.
+
+    Returns ``(catalog_vars, linkage_vars)`` as xarray-style
+    ``{name: (dims, data, attrs)}`` mappings:
+
+    - **catalog** — one dimensionless ``SENSOR_<TYPE>_<INDEX>_<SERIAL>`` variable
+      per distinct physical sensor, carrying its resolved attributes.
+    - **linkage** — ``sensor_<role>(N_PROF)`` naming the catalog variable in that
+      role for each profile, and ``sensor_channel_<role>(N_PROF)`` recording the
+      raw acquisition channel.
+    """
+    registry = SensorRegistry.load()
+    catalog: dict[str, dict[str, str]] = {}
+    serial_to_vars: dict[str, set[str]] = {}
+    roles: list[str] = []  # first-appearance order
+    link: dict[str, np.ndarray] = {}
+    chan: dict[str, np.ndarray] = {}
+
+    for rank, records in enumerate(cast_sensor_records):
+        cast_num = cast_list[rank][0]
+        for rec in records:
+            role, serial = rec["role"], rec["serial"]
+            if not role or not serial:  # skip Free/unused and serial-less slots
+                continue
+            canon = overrides.canonical_serial(serial)
+            attrs = resolve_sensor(
+                sensor_id=rec["sensor_id"],
+                serial=serial,
+                role=role,
+                calibration_date=rec["calibration_date"],
+                element=rec["element"],
+                cast=cast_num,
+                registry=registry,
+                overrides=overrides,
+            )
+            name = catalog_var_name(role, canon)
+            prior = catalog.get(name)
+            if prior is not None and prior.get("sensor_calibration_date") != attrs.get(
+                "sensor_calibration_date"
+            ):
+                # A serial cannot be recalibrated mid-cruise (that needs a return
+                # to the manufacturer), so two calibration dates for one device
+                # mean a parsing/data error — surface it rather than overwrite.
+                warnings.warn(
+                    f"Sensor catalog conflict for {name}: calibration date "
+                    f"{prior.get('sensor_calibration_date')!r} then "
+                    f"{attrs.get('sensor_calibration_date')!r} (cast {cast_num}); "
+                    "a serial cannot be recalibrated at sea — check CNV parsing.",
+                    stacklevel=2,
+                )
+            catalog[name] = attrs
+            serial_to_vars.setdefault(canon, set()).add(name)
+            if role not in link:
+                roles.append(role)
+                link[role] = np.array([""] * n_profiles, dtype=object)
+                chan[role] = np.full(n_profiles, -1, dtype=np.int32)
+            for k in (rank * 2, rank * 2 + 1):
+                link[role][k] = name
+                chan[role][k] = rec["channel"]
+
+    # Cross-link catalog entries that resolve to the same physical serial
+    # (e.g. one FLNTU serving both fluorometer and turbidity roles).
+    for names in serial_to_vars.values():
+        if len(names) > 1:
+            for name in names:
+                catalog[name]["sensor_shared_with"] = " ".join(sorted(names - {name}))
+
+    catalog_vars: dict = {
+        name: ((), np.int32(0), {k: v for k, v in attrs.items() if v != ""})
+        for name, attrs in catalog.items()
+    }
+    linkage_vars: dict = {}
+    for role in roles:
+        linkage_vars[f"sensor_{role}"] = (
+            ["N_PROF"],
+            link[role].astype(str),
+            {
+                "long_name": f"catalog variable naming the {role} sensor per profile",
+                "comment": (
+                    "value is a SENSOR_* variable name in this file; "
+                    "empty where no sensor filled this role"
+                ),
+            },
+        )
+        linkage_vars[f"sensor_channel_{role}"] = (
+            ["N_PROF"],
+            chan[role],
+            {
+                "long_name": f"raw CNV acquisition channel of the {role} sensor",
+                "comment": "-1 where no sensor filled this role",
+            },
+        )
+    return catalog_vars, linkage_vars
 
 
 def _select_cast_files(nc_dir: Path) -> list[tuple[int, str, Path]]:
@@ -48,16 +165,24 @@ def _turnaround_index(pressure: np.ndarray) -> int:
     return int(near_max[-1]) if len(near_max) else len(pressure) // 2
 
 
-def _bin_to_1dbar(ds_half: xr.Dataset, p_grid: np.ndarray) -> dict[str, np.ndarray]:
-    """Bin each data variable onto p_grid (1 dbar steps) by mean per bin.
+def _bin_to_grid(
+    ds_half: xr.Dataset, p_grid: np.ndarray, dbar: int = 1
+) -> dict[str, np.ndarray]:
+    """Bin each data variable onto *p_grid* (``dbar``-spaced) by mean per bin.
 
-    Uses numpy bincount — no pandas dependency required.
+    Uses numpy bincount — no pandas dependency required.  Each raw sample is
+    assigned to its nearest grid centre and every variable becomes the mean of
+    the samples in that bin.  With ``dbar=1`` this reproduces the 1-dbar grid
+    exactly (``idx == p_bin - p0``); ``dbar=2`` averages each adjacent pressure
+    pair, halving the number of levels and reducing per-level sample noise.
     """
     p_raw = ds_half["pressure"].values
     p_bin = np.round(p_raw).astype(int)
     p0 = int(p_grid[0])
     n = len(p_grid)
-    idx = p_bin - p0  # index into p_grid for each raw sample
+    # Uniform dbar-wide bins: grid level i collects p_bin in [p0+i*dbar, p0+(i+1)*dbar).
+    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).
+    idx = (p_bin - p0) // dbar
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
@@ -94,14 +219,18 @@ def build_profiles(
     *,
     force: bool = False,
     gebco_path: Path | None = None,
+    dbar: int = 1,
+    sensor_overrides: SensorOverrides | None = None,
 ) -> bool:
-    """Compile per-cast netCDF files into a single profiles.nc on a 1-dbar grid.
+    """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
 
     Reads all ``*.nc`` files in nc_dir, splits each cast into downcast and
-    upcast halves, bins to a common 1-dbar pressure grid, and writes a single
-    (N_PROF × pressure) netCDF.  N_PROF is a plain integer index (0, 1, 2, …);
-    cast identity is carried by ``cast_number``, ``cast_suffix``, and
-    ``cast_direction`` variables.
+    upcast halves, bins to a common *dbar*-dbar pressure grid (default 1 dbar),
+    and writes a single (N_PROF × pressure) netCDF.  N_PROF is a plain integer
+    index (0, 1, 2, …); cast identity is carried by ``cast_number``,
+    ``cast_suffix``, and ``cast_direction`` variables.  The bin spacing is
+    recorded in the ``pressure_spacing_dbar`` global attribute so the gridding
+    can be reconstructed from the output file alone.
 
     Per-cast scalar variables added to the output:
 
@@ -125,6 +254,10 @@ def build_profiles(
         Path to a GEBCO_2025.nc file.  Used to look up water depth at each
         cast's max-pressure position.  Pass ``cfg.gebco_path`` when calling
         from report generation code.  Silently omitted when None.
+    dbar:
+        Vertical bin spacing (dbar) of the output grid.  Default 1.  Use 2 (or
+        more) to average adjacent pressure levels together, reducing per-level
+        noise when the raw scan resolution does not justify a 1-dbar grid.
 
     Returns
     -------
@@ -139,6 +272,9 @@ def build_profiles(
     if profiles_path.exists() and not force:
         return False
 
+    if not isinstance(dbar, int) or dbar < 1:
+        raise ValueError(f"dbar must be an integer >= 1, got {dbar!r}.")
+
     cast_list = _select_cast_files(nc_dir)
     if not cast_list:
         raise ValueError(f"No recognised cast netCDF files found in {nc_dir}.")
@@ -149,7 +285,13 @@ def build_profiles(
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
-    p_grid = np.arange(1, int(p_max_global) + 1, dtype=np.float32)
+    # p_grid holds the bin LOWER EDGES used for the binning assignment in
+    # _bin_to_grid (level i collects rounded pressures [1+i*dbar, 1+(i+1)*dbar)).
+    p_grid = np.arange(1, int(p_max_global) + 1, dbar, dtype=np.float32)
+    # The reported pressure coordinate is the bin CENTRE, so a binned value sits
+    # at the mean depth of the samples it averages rather than (dbar-1)/2 dbar
+    # shallow of it.  For dbar=1 the centre equals the edge (unchanged).
+    pressure_coord = (p_grid + (dbar - 1) / 2.0).astype(np.float32)
 
     # Get variable names and cruise attr from the first file
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
@@ -179,9 +321,13 @@ def build_profiles(
     lats_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
     lons_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
 
+    # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
+    cast_sensor_records: list[list[dict[str, str]]] = []
+
     # Pass 2: split and bin each cast
     for rank, (cast_num, cast_suffix, path) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
+        cast_sensor_records.append(parse_sensor_channels(ds))
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -196,7 +342,7 @@ def build_profiles(
         ]:
             prof_idx = rank * 2 + (0 if direction == "down" else 1)
             ds_half = ds.isel(time=sl)
-            binned = _bin_to_1dbar(ds_half, p_grid)
+            binned = _bin_to_grid(ds_half, p_grid, dbar)
             lat, lon, t0, t1 = _cast_meta(ds_half)
 
             for v in var_names:
@@ -228,7 +374,7 @@ def build_profiles(
     n_prof_idx = np.arange(n_profiles, dtype=np.int32)
     coords = {
         "N_PROF": ("N_PROF", n_prof_idx),
-        "pressure": ("pressure", p_grid),
+        "pressure": ("pressure", pressure_coord),
     }
     # Science vars carry only the coordinates pointer here; write() supplies
     # units/long_name/standard_name/label_units from VARIABLES.  A var not in
@@ -338,12 +484,27 @@ def build_profiles(
             ),
         }
     )
+    # Sensor catalog + per-profile linkage (dimensionless SENSOR_* variables
+    # and sensor_<role>/sensor_channel_<role> on N_PROF).
+    catalog_vars, linkage_vars = _build_sensor_catalog(
+        cast_sensor_records,
+        cast_list,
+        n_profiles,
+        sensor_overrides or SensorOverrides(),
+    )
+    data_vars.update(catalog_vars)
+    data_vars.update(linkage_vars)
+
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,
         "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdcast",
         "pressure_units": "dbar",
-        "pressure_spacing_dbar": 1,
+        "pressure_spacing_dbar": dbar,
+        "pressure_binning": (
+            f"mean of raw samples per {dbar}-dbar bin; pressure coordinate is the "
+            "bin centre"
+        ),
         "Conventions": "CF-1.13",
     }
 

@@ -101,7 +101,33 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
         return {"filename": nc_path.name, "error": str(exc)}
     with ds:
         coords = [_var_meta(n, ds[n]) for n in sorted(ds.coords)]
-        data_vars = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars)]
+        all_vars = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars)]
+
+        # Split the sensor-provenance variables into their own inventory tables:
+        # the catalog carries no numeric data (attributes only), the linkage is a
+        # string per profile, and the channel is an integer per profile — each
+        # wants a different column set from the science variables.
+        def _is_catalog(n: str) -> bool:
+            return n.startswith("SENSOR_")
+
+        def _is_channel(n: str) -> bool:
+            return n.startswith("sensor_channel_")
+
+        def _is_linkage(n: str) -> bool:
+            return n.startswith("sensor_") and not _is_channel(n)
+
+        sensor_catalog = [v for v in all_vars if _is_catalog(v["name"])]
+        sensor_channel = [v for v in all_vars if _is_channel(v["name"])]
+        sensor_linkage = [v for v in all_vars if _is_linkage(v["name"])]
+        data_vars = [
+            v
+            for v in all_vars
+            if not (
+                _is_catalog(v["name"])
+                or _is_channel(v["name"])
+                or _is_linkage(v["name"])
+            )
+        ]
         # Build the source→canonical rename table from each variable's recorded
         # source name (written by the reader), keeping only variables whose raw
         # source name actually differs from the canonical name.
@@ -124,6 +150,9 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "dims": dict(ds.sizes),
             "coords": coords,
             "data_vars": data_vars,
+            "sensor_catalog": sensor_catalog,
+            "sensor_linkage": sensor_linkage,
+            "sensor_channel": sensor_channel,
             "rename_map": dict(sorted(rename_map.items(), key=lambda kv: kv[1])),
             "global_attrs": global_attrs,
         }

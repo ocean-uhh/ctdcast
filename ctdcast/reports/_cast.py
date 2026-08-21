@@ -460,9 +460,11 @@ CAST_PANELS: dict[str, Panel] = {
     "ladcp_bottomtrack": Panel(
         id="ladcp_bottomtrack",
         slot="third",
-        render=lambda c: _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg)
-        if c.ladcp_exists
-        else None,
+        render=lambda c: (
+            _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg)
+            if c.ladcp_exists
+            else None
+        ),
     ),
     "pressure_time": Panel(
         id="pressure_time",

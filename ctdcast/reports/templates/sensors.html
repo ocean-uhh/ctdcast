@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}SBE sensors — {{ cruise }}{% endblock %}
+{% block masthead_title %}SBE sensors{% endblock %}
+{% block masthead_type %}sensor inventory &amp; change log{% endblock %}
+
+{% block head_extra %}
+<style>
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
+td.arrow { color: var(--ocean); text-align: center; }
+td.was { color: var(--muted); }
+.src { font-size: var(--fs-xs); color: var(--muted); }
+.roles { color: var(--muted); font-size: var(--fs-xs); }
+.scroll-x { overflow-x: auto; }
+table.config td.range { white-space: nowrap; font-weight: 600; }
+table.config th { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    {% if cruise %}<div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>{% endif %}
+    <div><dt>Source</dt><dd>{{ meta.filename }}</dd></div>
+    <div><dt>Casts</dt><dd>{{ meta.n_casts }}</dd></div>
+    <div><dt>Devices</dt><dd>{{ meta.n_devices }}</dd></div>
+    <div><dt>Configurations</dt><dd>{{ meta.blocks | length }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block content %}
+{% if meta.error %}
+<p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
+{% elif not meta.has_catalog %}
+<p class="warn">No sensor catalog in {{ meta.filename }}. Rebuild it with
+<code>ctdcast process config.yaml --stage profiles --force</code> so the compiled
+profiles carry the sensor catalog and per-profile linkage.</p>
+{% else %}
+
+<div class="jump-nav">
+  <a href="#s-config">{{ m.heading_text(1, "Sensor configuration") }}</a>
+  <a href="#s-inventory">{{ m.heading_text(2, "Sensor inventory") }}</a>
+  {% if meta.has_channel %}<a href="#s-rewiring">{{ m.heading_text(3, "Rewiring") }}</a>{% endif %}
+</div>
+
+<h2 id="s-config">{{ m.heading_text(1, "Sensor configuration") }}</h2>
+<p class="dims-line">Which sensor (by serial number) served each role, over which casts. Each row is a run of casts that shared the same set of sensors; a new row marks a hardware change. Serials resolve to model and calibration in the inventory below.</p>
+<div class="scroll-x">
+<table class="nc config">
+  <thead>
+    <tr><th class="num">Casts</th>{% for r in meta.role_cols %}<th>{{ r.label }}</th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+    {% for b in meta.blocks %}
+    <tr>
+      <td class="range">{{ b.range }}</td>
+      {% for r in meta.role_cols %}<td class="mono">{{ b.cells[r.key] or "—" }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2 id="s-inventory">{{ m.heading_text(2, "Sensor inventory") }}</h2>
+<p class="dims-line">Every distinct physical device used during the cruise, identified by serial number. <span class="src">model_source: <em>header</em> = named in the file; <em>assumed</em> = inferred from the SensorID; <em>operator</em> = supplied in the cruise config.</span></p>
+<table class="nc">
+  <thead>
+    <tr><th>Type</th><th>Model</th><th>Serial</th><th>Calibration</th><th>Maker</th><th>Source</th><th>Role(s)</th></tr>
+  </thead>
+  <tbody>
+    {% for d in meta.catalog %}
+    <tr>
+      <td>{{ d.sensor_type }}</td>
+      <td>{{ d.model }}</td>
+      <td class="mono">{{ d.serial }}</td>
+      <td class="mono">{{ d.calibration_date or "—" }}</td>
+      <td>{{ d.maker }}</td>
+      <td class="src">{{ d.model_source }}</td>
+      <td class="roles">{{ d.roles | join(", ") }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if meta.has_channel %}
+<h2 id="s-rewiring">{{ m.heading_text(3, "Rewiring") }}</h2>
+<p class="dims-line">Casts where a device stayed the same but moved to a different acquisition channel — a re-cabling, not a hardware change.</p>
+{% if meta.rewiring %}
+<table class="nc">
+  <thead>
+    <tr><th class="num">Cast</th><th>Role</th><th>Serial</th><th>Moved</th></tr>
+  </thead>
+  <tbody>
+    {% for r in meta.rewiring %}
+    <tr>
+      <td class="num">{{ "%03d"|format(r.cast) }}</td>
+      <td>{{ r.role }}</td>
+      <td class="mono">{{ r.serial }}</td>
+      <td class="mono">ch{{ r.from_ch }} → ch{{ r.to_ch }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="dims-line">No rewiring — every device stayed on its original channel.</p>
+{% endif %}
+{% endif %}
+
+{% endif %}
+{{ js_top_links | safe }}
+{% endblock %}

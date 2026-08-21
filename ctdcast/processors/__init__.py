@@ -182,6 +182,8 @@ def _run_profiles(
     force: bool = False,
     dry_run: bool = False,
     gebco_path: Path | None = None,
+    profiles_dbar: int = 1,
+    sensor_overrides: object = None,
     **_kw: object,
 ) -> bool:
     """Compile per-cast netCDF → gridded products for every configured source.
@@ -199,6 +201,8 @@ def _run_profiles(
                     force=force,
                     dry_run=dry_run,
                     gebco_path=gebco_path,
+                    dbar=profiles_dbar,
+                    sensor_overrides=sensor_overrides,
                 )
             )
             or wrote

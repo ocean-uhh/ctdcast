@@ -11,6 +11,7 @@ import yaml
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
 
 from ctdcast.config.parameters import CAST_TAG_WIDTH
+from ctdcast.config.sensors import SensorOverrides
 from ctdcast.processors import STAGES, StagePaths, resolve_stage, stages_for
 
 # Derived from STAGES — the single source of truth for the valid stage set,
@@ -290,6 +291,7 @@ def run(args: argparse.Namespace) -> int:
         "ladcp_pattern": data.get("ladcp_pattern"),
         "cruise_cfg": processing_cfg,
         "gebco_path": args.gebco,
+        "profiles_dbar": int(processing_cfg.get("profiles_dbar", 1)),
         "near_surface_dbar": (
             args.near_surface_dbar
             if args.near_surface_dbar is not None
@@ -315,6 +317,9 @@ def run(args: argparse.Namespace) -> int:
             if args.max_deck_dbar is not None
             else trim_cfg.get("max_deck_dbar", 20.0)
         ),
+        # Cruise-level sensor overrides (config.yaml `sensors:` block) — used by
+        # the profiles stage to resolve the OG1 sensor catalog.
+        "sensor_overrides": SensorOverrides.from_cruise_config(cfg),
     }
 
     rc = 0

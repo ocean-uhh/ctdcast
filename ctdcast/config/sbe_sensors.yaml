@@ -1,0 +1,258 @@
+# SBE sensor reference — SeaBird SensorID → sensor-variable attributes.
+#
+# This is the UNIVERSAL, maintainer-owned layer: it ships inside the ctdcast
+# package and maps the numeric SeaBird SensorID carried in the CNV header
+# (e.g. <TemperatureSensor SensorID="55">) to sensor attributes (model, maker,
+# type, controlled-vocabulary URIs).  Attribute names follow the OceanGliders
+# OG1 conventions for interoperability; this is shipboard CTD data, not a glider
+# mission, and nothing here claims OG1 conformance.
+#
+# Per-sensor serial number and calibration date come from the CNV `raw_metadata`
+# at build time, NOT from here.  Cruise-specific per-sensor overrides and serial
+# aliases do NOT live here either — they belong in the operator's cruise
+# config.yaml under a `sensors:` block, because a pip-installed user cannot edit
+# a file inside the package and the values (altimeter make, FLNTU variant, ...)
+# differ every cruise.  Resolution order at build time:
+#     SensorID default (this file) -> role override (cruise config) -> alias.
+#
+# When a SensorID is not listed here, or its model cannot be determined, the
+# build records `sensor_model: "UNK"` with `model_source: UNK` and warns — it
+# never guesses.  Add a row when a new SensorID appears.
+#
+# Controlled vocabularies (all URIs below verified against vocab.nerc.ac.uk,
+# none deprecated):
+#   sensor_type_vocabulary   = NERC L05 (instrument categories)     [mandatory]
+#   sensor_model_vocabulary  = NERC L22 (instrument models)         [mandatory]
+#   sensor_maker_vocabulary  = NERC L35 (organisations)             [desirable]
+#     Sea-Bird Scientific = MAN0013; WET Labs = MAN0026 (a live Sea-Bird brand,
+#     not a retired entry); Paroscientific, Inc. = MAN0302.
+#
+# `sensor_type` matches its L05 prefLabel EXACTLY, including L05's own
+# singular/plural inconsistency (e.g. "dissolved gas sensors" plural,
+# "water temperature sensor" singular).  Do not "tidy" these — the point of a
+# controlled vocabulary is that the label and its URI agree.
+#
+# `model_source` records how the model string was determined:
+#   header  = the SensorID names the model outright (only SBE 43: "Oxygen, SBE 43")
+#   assumed = this file asserts the model from the SensorID (e.g. 55 -> SBE 3plus;
+#             an SBE 3F would look identical in the header)
+#   UNK     = cannot be determined from the header; needs a cruise-config override
+
+sensors:
+  "55":
+    element: TemperatureSensor
+    long_name: "Sea-Bird SBE 3plus temperature sensor"
+    sensor_type: "water temperature sensor"          # L05/134
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/134/"
+    sensor_model: "SBE 3plus"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/"
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: assumed
+
+  "3":
+    element: ConductivitySensor
+    long_name: "Sea-Bird SBE 4C conductivity sensor"
+    sensor_type: "salinity sensor"                   # L05/350 (L05 has no dedicated conductivity term)
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/350/"
+    sensor_model: "SBE 4C"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/"
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: assumed
+
+  "45":
+    element: PressureSensor
+    # TOOL1508 ("Sea-Bird SBE 9plus CTD") is the whole package, not the pressure
+    # sensor; L22 has no "SBE 9plus pressure sensor" term.  TOOL0931 is the
+    # Paroscientific Digiquartz family — the honest default.  The 410K/415K part
+    # number that would sharpen it (TOOL0403/TOOL0475) is not in the CNV.
+    long_name: "Paroscientific Digiquartz pressure sensor (SBE 9plus)"
+    sensor_type: "water pressure sensors"            # L05/WPS
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/WPS/"
+    sensor_model: "Digiquartz"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/"
+    sensor_maker: "Paroscientific, Inc."
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/"
+    model_source: assumed
+
+  "38":
+    element: OxygenSensor
+    long_name: "Sea-Bird SBE 43 dissolved oxygen sensor"
+    sensor_type: "dissolved gas sensors"             # L05/351
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/351/"
+    sensor_model: "SBE 43"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0036/"
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: header                             # SensorID 38 is literally "Oxygen, SBE 43"
+
+  "0":
+    element: AltimeterSensor
+    # SensorID 0 is SeaBird's GENERIC altimeter A/D channel — the CNV records
+    # only serial + ScaleFactor/Offset, never the make/model.  Supply the model
+    # via the cruise config: sensors.overrides.altimeter.
+    long_name: "altimeter"
+    sensor_type: "altimeters"                        # L05/379
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/379/"
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "UNK"
+    sensor_maker_vocabulary: ""
+    model_source: UNK
+
+  "20":
+    element: FluoroWetlabECO_AFL_FL_Sensor
+    # SensorID 20 does not say whether this is a standalone ECO FL or one half of
+    # a combined FLNTU(RT)D.  Default to the standalone ECO FL (TOOL0172);
+    # sharpen per cruise via sensors.overrides.fluorometer (-> TOOL1531).
+    long_name: "WET Labs ECO FL fluorometer"
+    sensor_type: "fluorometers"                      # L05/113
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/113/"
+    sensor_model: "WET Labs ECO FL"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0172/"
+    sensor_maker: "WET Labs"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/"
+    model_source: assumed
+
+  "67":
+    element: TurbidityMeter
+    # Standalone ECO NTU default (TOOL0879); sharpen to the combined FLNTU(RT)D
+    # per cruise via sensors.overrides.turbidity (-> TOOL1531).
+    long_name: "WET Labs ECO NTU turbidity sensor"
+    sensor_type: "optical backscatter sensors"       # L05/123 (L05 has no dedicated turbidity term)
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/123/"
+    sensor_model: "WET Labs ECO NTU"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/"
+    sensor_maker: "WET Labs"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/"
+    model_source: assumed
+
+  "71":
+    element: WET_LabsCStar
+    long_name: "WET Labs C-Star transmissometer"
+    sensor_type: "transmissometers"                  # L05/124
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/124/"
+    sensor_model: "WET Labs C-Star"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/"
+    sensor_maker: "WET Labs"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/"
+    model_source: assumed
+
+  "43":
+    element: pH_Sensor
+    # Model inferred as SBE 18: the CNV stores only Slope/Offset, matching
+    # Sea-Bird application note 18-1 (seabirdscientific's only pH conversion,
+    # convert_sbe18_ph).  Caveat: the older SBE 27 uses the same slope/offset
+    # form, so the data alone can't distinguish 18 from 27 — confirm against the
+    # cruise log if it matters.  L22 has no SBE 27 term.
+    long_name: "Sea-Bird SBE 18 pH sensor"
+    sensor_type: "pH sensors"                        # L05/355
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/355/"
+    sensor_model: "SBE 18"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/"
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: assumed
+
+  "61":
+    element: UserPolynomialSensor
+    # SensorID 61 is a generic user-polynomial voltage channel carrying whatever
+    # instrument is wired to it (mixsed2's is a UVP6 particle imager).  Its
+    # identity is not in the CNV — supply via a cruise-config override; it only
+    # belongs in the sensor catalog through one.
+    long_name: "user polynomial (derived voltage channel)"
+    sensor_type: ""
+    sensor_type_vocabulary: ""
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "UNK"
+    sensor_maker_vocabulary: ""
+    model_source: UNK
+
+  # -------------------------------------------------------------------------
+  # Added 2026-08-21 after sweeping tests/fixtures/hex (13 cruises).  These
+  # SensorIDs appear in fixtures other than MSM142.  The L05 category is
+  # confident for each; where the specific model is not determinable from the
+  # SensorID alone the model is UNK with model_source UNK — recognised (no
+  # "unknown SensorID" warning), honestly unresolved, sharpen via a cruise
+  # override or a later row.  (SensorID 27 = NotInUse and "Free" channels are
+  # empty A/D slots — the reader skips them; they are never cataloged, so no
+  # row is needed here.)
+  # -------------------------------------------------------------------------
+
+  "11":
+    element: FluoroSeapointSensor
+    long_name: "Seapoint chlorophyll fluorometer"
+    sensor_type: "fluorometers"                      # L05/113
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/113/"
+    sensor_model: "Seapoint chlorophyll fluorometer"
+    sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL0119/"
+    sensor_maker: "Seapoint Sensors, Inc."
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0177/"
+    model_source: assumed                            # element names the maker (Seapoint)
+
+  "13":
+    element: FluoroSeatechWetlabsFLF_Sensor
+    # Element lumps Sea Tech and WET Labs FLF; the specific model/maker is not
+    # determinable from SensorID 13 alone — resolve per serial if needed.
+    long_name: "Sea Tech / WET Labs FLF fluorometer"
+    sensor_type: "fluorometers"                      # L05/113
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/113/"
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "UNK"
+    sensor_maker_vocabulary: ""
+    model_source: UNK
+
+  "42":
+    element: PAR_BiosphericalLicorChelseaSensor
+    # Element lumps three makers (Biospherical / Li-Cor / Chelsea); maker and
+    # model are not determinable from SensorID 42 alone.  L05 PAR term not yet
+    # confirmed against NERC — left blank rather than guessed.
+    long_name: "PAR (photosynthetically active radiation) sensor"
+    sensor_type: "PAR sensor"
+    sensor_type_vocabulary: ""                       # TODO L05 (PAR term unconfirmed)
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "UNK"
+    sensor_maker_vocabulary: ""
+    model_source: UNK
+
+  "51":
+    element: SPAR_Sensor
+    long_name: "surface PAR (SPAR) sensor"
+    sensor_type: "surface PAR sensor"
+    sensor_type_vocabulary: ""                       # TODO L05 (PAR/irradiance term unconfirmed)
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "UNK"
+    sensor_maker_vocabulary: ""
+    model_source: UNK
+
+  "46":
+    element: PressureSensor
+    # SensorID 46 is the SBE19plus's integrated strain-gauge pressure (distinct
+    # from 45, the SBE 9plus Digiquartz).  Like 45, L22 has no standalone term
+    # for the channel; the integrated CTD serial is shared across T/C/P.
+    long_name: "strain-gauge pressure sensor (SBE19plus integrated CTD)"
+    sensor_type: "water pressure sensors"            # L05/WPS
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/WPS/"
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: UNK
+
+  "58":
+    element: TemperatureSensor
+    # SensorID 58 is the SBE19plus's integrated temperature (distinct from 55,
+    # the standalone SBE 3plus); no standalone L22 model term, same as 46.
+    long_name: "temperature sensor (SBE19plus integrated CTD)"
+    sensor_type: "water temperature sensor"          # L05/134
+    sensor_type_vocabulary: "https://vocab.nerc.ac.uk/collection/L05/current/134/"
+    sensor_model: "UNK"
+    sensor_model_vocabulary: ""
+    sensor_maker: "Sea-Bird Scientific"
+    sensor_maker_vocabulary: "https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/"
+    model_source: UNK
