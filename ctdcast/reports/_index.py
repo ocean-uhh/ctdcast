@@ -230,14 +230,25 @@ def report(
             m["lon"] for m in all_meta if np.isfinite(m.get("lon", float("nan")))
         ]
         if _cast_lats:
-            _t0 = perf_counter()
-            preload_gebco(
-                _gebco_path,
-                float(min(_cast_lats)),
-                float(max(_cast_lats)),
-                float(min(_cast_lons)),
-                float(max(_cast_lons)),
+            # The cruise maps frame to a square (in Mercator proportion) around
+            # the data plus up to a ~30% margin.  Preload that framed extent, not
+            # just the raw data box, so the bathymetry fills each map instead of
+            # leaving a grey border — most visible for a tall cruise, where the
+            # square widens longitude well past the data.
+            from ctdcast.plotters.plots import (
+                _GEBCO_RENDER_PAD,
+                _square_map_limits,
             )
+
+            _la0, _la1 = float(min(_cast_lats)), float(max(_cast_lats))
+            _lo0, _lo1 = float(min(_cast_lons)), float(max(_cast_lons))
+            _mrg = max(0.5, max(_la1 - _la0, _lo1 - _lo0) * 0.30)
+            _cos = float(max(0.15, np.cos(np.radians((_la0 + _la1) / 2.0))))
+            _py0, _py1, _px0, _px1 = _square_map_limits(
+                _la0 - _mrg, _la1 + _mrg, _lo0 - _mrg, _lo1 + _mrg, _cos
+            )
+            _t0 = perf_counter()
+            preload_gebco(_gebco_path, _py0, _py1, _px0, _px1, margin=_GEBCO_RENDER_PAD)
             print(f"  GEBCO preloaded ({perf_counter() - _t0:.1f}s)")
 
     # Build cruise-wide cast_notes mapping from all sections and timeseries.

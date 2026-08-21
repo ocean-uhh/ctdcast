@@ -133,7 +133,7 @@ VARIABLES: dict[str, dict] = {
     },
     "conductivity_1": {
         "label": "$C_1$",
-        "label_units": "mS cm⁻¹",
+        "label_units": "mS/cm",
         "long_name": "Conductivity (primary)",
         "units": "mS cm-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -143,7 +143,7 @@ VARIABLES: dict[str, dict] = {
     },
     "conductivity_2": {
         "label": "$C_2$",
-        "label_units": "mS cm⁻¹",
+        "label_units": "mS/cm",
         "long_name": "Conductivity (secondary)",
         "units": "mS cm-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -187,7 +187,7 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_oxygen_1": {
         "label": "$O_2$",
-        "label_units": "µmol kg⁻¹",
+        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (primary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -197,7 +197,7 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_oxygen_2": {
         "label": "$O_2$ (2)",
-        "label_units": "µmol kg⁻¹",
+        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (secondary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -208,7 +208,7 @@ VARIABLES: dict[str, dict] = {
     # ctd_oxygen: preferred sensor composite — see ctd_temperature note above.
     "ctd_oxygen": {
         "label": "$O_2$",
-        "label_units": "µmol kg⁻¹",
+        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (preferred sensor)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -230,7 +230,7 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_fluor": {
         "label": "Fluorescence",
-        "label_units": "mg m⁻³",
+        "label_units": "mg/m³",
         "long_name": "Chlorophyll fluorescence",
         "units": "mg m-3",
         "standard_name": "mass_concentration_of_chlorophyll_in_sea_water",
@@ -272,7 +272,7 @@ VARIABLES: dict[str, dict] = {
     },
     "absolute_salinity": {
         "label": "SA",
-        "label_units": "g kg⁻¹",
+        "label_units": "g/kg",
         "long_name": "Absolute Salinity",
         "units": "g kg-1",
         "standard_name": "sea_water_absolute_salinity",
@@ -283,7 +283,7 @@ VARIABLES: dict[str, dict] = {
     },
     "sigma0": {
         "label": "$\\sigma_0$",
-        "label_units": "kg m⁻³",
+        "label_units": "kg/m³",
         "long_name": "Potential density anomaly (ref 0 dbar)",
         "units": "kg m-3",
         "standard_name": "sea_water_sigma_theta",
@@ -294,7 +294,7 @@ VARIABLES: dict[str, dict] = {
     # Derived diagnostics
     "AOU": {
         "label": "AOU",
-        "label_units": "µmol kg⁻¹",
+        "label_units": "µmol/kg",
         "long_name": "Apparent Oxygen Utilization",
         "units": "umol kg-1",
         "standard_name": None,

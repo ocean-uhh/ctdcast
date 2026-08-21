@@ -162,6 +162,6 @@ def test_vlabel_html_round_trips() -> None:
 
 def test_vlabel_html_known_subscripts() -> None:
     """Spot-check the subscript conversions used on HTML pages."""
-    assert vlabel_html("sigma0") == "σ₀ (kg m⁻³)"
+    assert vlabel_html("sigma0") == "σ₀ (kg/m³)"
     assert vlabel_html("oxygen_saturation") == "O₂ sat (%)"
     assert vlabel_html("ctd_salinity_1") == "SP₁ (PSU)"
