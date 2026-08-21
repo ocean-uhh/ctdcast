@@ -15,11 +15,109 @@ import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.sensors import (
+    SensorOverrides,
+    SensorRegistry,
+    catalog_var_name,
+    resolve_sensor,
+)
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
 # seasenselib time-bookkeeping columns that are not physical data
 _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
+
+
+def _build_sensor_catalog(
+    cast_sensor_records: list[list[dict[str, str]]],
+    cast_list: list[tuple[int, str, Path]],
+    n_profiles: int,
+    overrides: SensorOverrides,
+) -> tuple[dict, dict]:
+    """Build the OG1 sensor catalog and per-profile linkage variables.
+
+    *cast_sensor_records* is one :func:`parse_sensor_channels` result per cast,
+    in the same rank order as *cast_list*.  Each cast contributes to two profiles
+    (down, up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``.
+
+    Returns ``(catalog_vars, linkage_vars)`` as xarray-style
+    ``{name: (dims, data, attrs)}`` mappings:
+
+    - **catalog** — one dimensionless ``SENSOR_<TYPE>_<INDEX>_<SERIAL>`` variable
+      per distinct physical sensor, carrying its resolved OG1 attributes.
+    - **linkage** — ``sensor_<role>(N_PROF)`` naming the catalog variable in that
+      role for each profile, and ``sensor_channel_<role>(N_PROF)`` recording the
+      raw acquisition channel.
+    """
+    registry = SensorRegistry.load()
+    catalog: dict[str, dict[str, str]] = {}
+    serial_to_vars: dict[str, set[str]] = {}
+    roles: list[str] = []  # first-appearance order
+    link: dict[str, np.ndarray] = {}
+    chan: dict[str, np.ndarray] = {}
+
+    for rank, records in enumerate(cast_sensor_records):
+        cast_num = cast_list[rank][0]
+        for rec in records:
+            role, serial = rec["role"], rec["serial"]
+            if not role or not serial:  # skip Free/unused and serial-less slots
+                continue
+            canon = overrides.canonical_serial(serial)
+            attrs = resolve_sensor(
+                sensor_id=rec["sensor_id"],
+                serial=serial,
+                role=role,
+                calibration_date=rec["calibration_date"],
+                element=rec["element"],
+                cast=cast_num,
+                registry=registry,
+                overrides=overrides,
+            )
+            name = catalog_var_name(role, canon)
+            catalog[name] = attrs
+            serial_to_vars.setdefault(canon, set()).add(name)
+            if role not in link:
+                roles.append(role)
+                link[role] = np.array([""] * n_profiles, dtype=object)
+                chan[role] = np.full(n_profiles, -1, dtype=np.int32)
+            for k in (rank * 2, rank * 2 + 1):
+                link[role][k] = name
+                chan[role][k] = rec["channel"]
+
+    # Cross-link catalog entries that resolve to the same physical serial
+    # (e.g. one FLNTU serving both fluorometer and turbidity roles).
+    for names in serial_to_vars.values():
+        if len(names) > 1:
+            for name in names:
+                catalog[name]["sensor_shared_with"] = " ".join(sorted(names - {name}))
+
+    catalog_vars: dict = {
+        name: ((), np.int32(0), {k: v for k, v in attrs.items() if v != ""})
+        for name, attrs in catalog.items()
+    }
+    linkage_vars: dict = {}
+    for role in roles:
+        linkage_vars[f"sensor_{role}"] = (
+            ["N_PROF"],
+            link[role].astype(str),
+            {
+                "long_name": f"catalog variable naming the {role} sensor per profile",
+                "comment": (
+                    "value is a SENSOR_* variable name in this file; "
+                    "empty where no sensor filled this role"
+                ),
+            },
+        )
+        linkage_vars[f"sensor_channel_{role}"] = (
+            ["N_PROF"],
+            chan[role],
+            {
+                "long_name": f"raw CNV acquisition channel of the {role} sensor",
+                "comment": "-1 where no sensor filled this role",
+            },
+        )
+    return catalog_vars, linkage_vars
 
 
 def _select_cast_files(nc_dir: Path) -> list[tuple[int, str, Path]]:
@@ -103,6 +201,7 @@ def build_profiles(
     force: bool = False,
     gebco_path: Path | None = None,
     dbar: int = 1,
+    sensor_overrides: SensorOverrides | None = None,
 ) -> bool:
     """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
 
@@ -197,9 +296,13 @@ def build_profiles(
     lats_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
     lons_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
 
+    # Per-cast sensor descriptors, in rank order, for the OG1 catalog below.
+    cast_sensor_records: list[list[dict[str, str]]] = []
+
     # Pass 2: split and bin each cast
     for rank, (cast_num, cast_suffix, path) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
+        cast_sensor_records.append(parse_sensor_channels(ds))
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -356,6 +459,17 @@ def build_profiles(
             ),
         }
     )
+    # OG1 sensor catalog + per-profile linkage (dimensionless SENSOR_* variables
+    # and sensor_<role>/sensor_channel_<role> on N_PROF).
+    catalog_vars, linkage_vars = _build_sensor_catalog(
+        cast_sensor_records,
+        cast_list,
+        n_profiles,
+        sensor_overrides or SensorOverrides(),
+    )
+    data_vars.update(catalog_vars)
+    data_vars.update(linkage_vars)
+
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,

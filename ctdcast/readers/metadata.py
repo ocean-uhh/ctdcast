@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 
 import xarray as xr
 
@@ -99,3 +100,110 @@ def parse_sensor_info(ds: xr.Dataset) -> list[dict[str, str]]:
             }
         )
     return results
+
+
+# CNV comment quantity word -> canonical ctdcast role base.  The comment is the
+# authoritative role statement (design note: it is emitted per channel and
+# agrees with the deck-unit star lines across every cast checked).
+_ROLE_QUANTITY: dict[str, str] = {
+    "Temperature": "temperature",
+    "Conductivity": "conductivity",
+    "Pressure": "pressure",
+    "Oxygen": "oxygen",
+    "Altimeter": "altimeter",
+    "Fluorometer": "fluorometer",
+    "Turbidity Meter": "turbidity",
+    "Transmissometer": "transmissometer",
+    "pH": "ph",
+    "SPAR": "spar",
+    "PAR": "par",
+    "User Polynomial": "user_polynomial",
+}
+
+#: Roles that carry a primary/secondary index (dual sensors); all others are bare.
+_INDEXED_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "oxygen"})
+
+_COMMENT_RE = re.compile(
+    r"<!--\s*(?:Frequency|A/D voltage)\s+\d+,\s*(?P<rest>.*?)\s*-->"
+)
+
+# Parse the raw CNV <Sensors> block directly: seasenselib's per-channel
+# cnv_sensor_N dicts are lossy (e.g. MSM142's turbidity channel keeps only the
+# channel number), whereas the header block carries every field.
+_SENSORS_BLOCK_RE = re.compile(r"<Sensors count.*?</Sensors>", re.DOTALL)
+_SENSOR_ENTRY_RE = re.compile(r'<sensor Channel="(\d+)"\s*>(.*?)</sensor>', re.DOTALL)
+_ELEM_RE = re.compile(r'<([A-Za-z_]\w*)\s+SensorID="(\d+)"')
+_SERIAL_RE = re.compile(r"<SerialNumber>\s*([^<\s]*)\s*</SerialNumber>")
+_CAL_RE = re.compile(r"<CalibrationDate>\s*([^<]*?)\s*</CalibrationDate>")
+
+
+def _role_from_comment(rest: str) -> str | None:
+    """Return the canonical role for a CNV sensor-block comment body, or None.
+
+    *rest* is the text after the ``Frequency N,`` / ``A/D voltage N,`` prefix,
+    e.g. ``"Temperature, 2"``, ``"Oxygen, SBE 43, 2"``,
+    ``"Turbidity Meter, WET Labs, ECO-NTU"`` or ``"Free"``.  The first
+    comma-part is the measured quantity; a trailing bare integer is the
+    secondary index.  Returns None for a ``Free`` (unused) channel.
+    """
+    parts = [p.strip() for p in rest.split(",")]
+    quantity = parts[0]
+    if quantity == "Free" or not quantity:
+        return None
+    index = int(parts[-1]) if len(parts) > 1 and parts[-1].isdigit() else 1
+    base = _ROLE_QUANTITY.get(quantity)
+    if base is None:
+        base = re.sub(r"[^a-z0-9]+", "_", quantity.lower()).strip("_")
+    return f"{base}_{index}" if base in _INDEXED_ROLES else base
+
+
+def parse_sensor_channels(ds: xr.Dataset) -> list[dict[str, str]]:
+    """Return one full descriptor per sensor channel in *ds*, from the raw header.
+
+    Parses the CNV ``<Sensors>`` block embedded in ``raw_metadata``'s
+    ``blocks.header`` — the authoritative source, since seasenselib's per-channel
+    ``cnv_sensor_N`` dicts are lossy for some channels.  For each
+    ``<sensor Channel="N">`` entry it reads the block comment (role), the type
+    element and its ``SensorID``, the ``SerialNumber`` and the
+    ``CalibrationDate``.  ``Free`` (unused) channels get ``role = None`` and an
+    empty serial.
+
+    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent.
+    Each dict has keys ``channel``, ``element``, ``sensor_id``, ``serial``,
+    ``calibration_date`` (normalised) and ``role`` (canonical role or ``None``).
+    """
+    raw = ds.attrs.get("raw_metadata", "")
+    if not raw:
+        return []
+    try:
+        header = json.loads(raw)["blocks"].get("header", "")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return []
+
+    text = re.sub(r"(?m)^#\s?", "", header)  # drop CNV comment prefixes
+    block = _SENSORS_BLOCK_RE.search(text)
+    if block is None:
+        return []
+
+    records: list[dict[str, str]] = []
+    for m in _SENSOR_ENTRY_RE.finditer(block.group(0)):
+        channel = int(m.group(1))
+        body = m.group(2)
+        comment = _COMMENT_RE.search(body)
+        elem = _ELEM_RE.search(body)
+        serial = _SERIAL_RE.search(body)
+        cal = _CAL_RE.search(body)
+        records.append(
+            {
+                "channel": channel,
+                "element": elem.group(1) if elem else "",
+                "sensor_id": elem.group(2) if elem else "",
+                "serial": serial.group(1) if serial and serial.group(1) else "",
+                "calibration_date": (
+                    _normalise_calibration_date(cal.group(1)) if cal else ""
+                ),
+                "role": _role_from_comment(comment.group("rest")) if comment else None,
+            }
+        )
+    records.sort(key=lambda r: r["channel"])
+    return records
