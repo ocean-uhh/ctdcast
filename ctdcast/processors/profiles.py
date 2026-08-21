@@ -48,16 +48,24 @@ def _turnaround_index(pressure: np.ndarray) -> int:
     return int(near_max[-1]) if len(near_max) else len(pressure) // 2
 
 
-def _bin_to_1dbar(ds_half: xr.Dataset, p_grid: np.ndarray) -> dict[str, np.ndarray]:
-    """Bin each data variable onto p_grid (1 dbar steps) by mean per bin.
+def _bin_to_grid(
+    ds_half: xr.Dataset, p_grid: np.ndarray, dbar: int = 1
+) -> dict[str, np.ndarray]:
+    """Bin each data variable onto *p_grid* (``dbar``-spaced) by mean per bin.
 
-    Uses numpy bincount — no pandas dependency required.
+    Uses numpy bincount — no pandas dependency required.  Each raw sample is
+    assigned to its nearest grid centre and every variable becomes the mean of
+    the samples in that bin.  With ``dbar=1`` this reproduces the 1-dbar grid
+    exactly (``idx == p_bin - p0``); ``dbar=2`` averages each adjacent pressure
+    pair, halving the number of levels and reducing per-level sample noise.
     """
     p_raw = ds_half["pressure"].values
     p_bin = np.round(p_raw).astype(int)
     p0 = int(p_grid[0])
     n = len(p_grid)
-    idx = p_bin - p0  # index into p_grid for each raw sample
+    # Uniform dbar-wide bins: grid level i collects p_bin in [p0+i*dbar, p0+(i+1)*dbar).
+    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).
+    idx = (p_bin - p0) // dbar
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
@@ -94,14 +102,17 @@ def build_profiles(
     *,
     force: bool = False,
     gebco_path: Path | None = None,
+    dbar: int = 1,
 ) -> bool:
-    """Compile per-cast netCDF files into a single profiles.nc on a 1-dbar grid.
+    """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
 
     Reads all ``*.nc`` files in nc_dir, splits each cast into downcast and
-    upcast halves, bins to a common 1-dbar pressure grid, and writes a single
-    (N_PROF × pressure) netCDF.  N_PROF is a plain integer index (0, 1, 2, …);
-    cast identity is carried by ``cast_number``, ``cast_suffix``, and
-    ``cast_direction`` variables.
+    upcast halves, bins to a common *dbar*-dbar pressure grid (default 1 dbar),
+    and writes a single (N_PROF × pressure) netCDF.  N_PROF is a plain integer
+    index (0, 1, 2, …); cast identity is carried by ``cast_number``,
+    ``cast_suffix``, and ``cast_direction`` variables.  The bin spacing is
+    recorded in the ``pressure_spacing_dbar`` global attribute so the gridding
+    can be reconstructed from the output file alone.
 
     Per-cast scalar variables added to the output:
 
@@ -125,6 +136,10 @@ def build_profiles(
         Path to a GEBCO_2025.nc file.  Used to look up water depth at each
         cast's max-pressure position.  Pass ``cfg.gebco_path`` when calling
         from report generation code.  Silently omitted when None.
+    dbar:
+        Vertical bin spacing (dbar) of the output grid.  Default 1.  Use 2 (or
+        more) to average adjacent pressure levels together, reducing per-level
+        noise when the raw scan resolution does not justify a 1-dbar grid.
 
     Returns
     -------
@@ -139,6 +154,9 @@ def build_profiles(
     if profiles_path.exists() and not force:
         return False
 
+    if not isinstance(dbar, int) or dbar < 1:
+        raise ValueError(f"dbar must be an integer >= 1, got {dbar!r}.")
+
     cast_list = _select_cast_files(nc_dir)
     if not cast_list:
         raise ValueError(f"No recognised cast netCDF files found in {nc_dir}.")
@@ -149,7 +167,7 @@ def build_profiles(
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
-    p_grid = np.arange(1, int(p_max_global) + 1, dtype=np.float32)
+    p_grid = np.arange(1, int(p_max_global) + 1, dbar, dtype=np.float32)
 
     # Get variable names and cruise attr from the first file
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
@@ -196,7 +214,7 @@ def build_profiles(
         ]:
             prof_idx = rank * 2 + (0 if direction == "down" else 1)
             ds_half = ds.isel(time=sl)
-            binned = _bin_to_1dbar(ds_half, p_grid)
+            binned = _bin_to_grid(ds_half, p_grid, dbar)
             lat, lon, t0, t1 = _cast_meta(ds_half)
 
             for v in var_names:
@@ -343,7 +361,8 @@ def build_profiles(
         "cruise": cruise,
         "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdcast",
         "pressure_units": "dbar",
-        "pressure_spacing_dbar": 1,
+        "pressure_spacing_dbar": dbar,
+        "pressure_binning": f"mean of raw samples per {dbar}-dbar bin",
         "Conventions": "CF-1.13",
     }
 

@@ -148,7 +148,9 @@ def run(args: argparse.Namespace) -> int:
     from ctdcast.processors import stages_for
 
     with open(cfg_path) as _f:
-        _data = (yaml.safe_load(_f) or {}).get("data") or {}
+        _cfg = yaml.safe_load(_f) or {}
+    _data = _cfg.get("data") or {}
+    _processing = _cfg.get("processing") or {}
     # --only/--cast use nargs='+', so cast_filter is a list or None.
     _cast_tags = (
         {f"{c:0{CAST_TAG_WIDTH}d}" for c in cast_filter} if cast_filter else None
@@ -178,6 +180,7 @@ def run(args: argparse.Namespace) -> int:
                 cast_tags=_cast_tags,
                 pattern=_data.get("cnv_pattern") or "*.cnv",
                 ladcp_pattern=_data.get("ladcp_pattern"),
+                profiles_dbar=int(_processing.get("profiles_dbar", 1)),
             )
         except (ValueError, OSError, ImportError, NotImplementedError) as exc:
             print(f"process error: {exc}", file=sys.stderr)
