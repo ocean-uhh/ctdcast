@@ -290,6 +290,7 @@ def run(args: argparse.Namespace) -> int:
         "ladcp_pattern": data.get("ladcp_pattern"),
         "cruise_cfg": processing_cfg,
         "gebco_path": args.gebco,
+        "profiles_dbar": int(processing_cfg.get("profiles_dbar", 1)),
         "near_surface_dbar": (
             args.near_surface_dbar
             if args.near_surface_dbar is not None
