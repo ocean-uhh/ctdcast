@@ -146,3 +146,11 @@ The file (~8 GB) is not bundled. Maps render without bathymetry if the path is m
 ## Documentation
 
 Full documentation: [ocean-uhh.github.io/ctdcast](https://ocean-uhh.github.io/ctdcast/)
+
+---
+
+## Acknowledgements
+
+Development of this package started during the Odón de Buen cruise of AEI-DFG DS-MIXSED. DS-MIXSED is funded by the Agencia Estatal de Investigación (AEI) through the PCI 2024 call — projects PCI2024-155022-2 and PCI2024-155084-2 — and the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) — Projektnummer 541914507.
+
+Development was assisted by Claude Code (Anthropic) and GitHub Copilot code review.
