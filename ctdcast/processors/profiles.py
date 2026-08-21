@@ -35,7 +35,10 @@ def _build_sensor_catalog(
     n_profiles: int,
     overrides: SensorOverrides,
 ) -> tuple[dict, dict]:
-    """Build the OG1 sensor catalog and per-profile linkage variables.
+    """Build the sensor catalog and per-profile linkage variables.
+
+    Attribute names follow OG1 conventions for interoperability, but this is
+    shipboard CTD data and the per-profile linkage has no OG1 equivalent.
 
     *cast_sensor_records* is one :func:`parse_sensor_channels` result per cast,
     in the same rank order as *cast_list*.  Each cast contributes to two profiles
@@ -45,7 +48,7 @@ def _build_sensor_catalog(
     ``{name: (dims, data, attrs)}`` mappings:
 
     - **catalog** — one dimensionless ``SENSOR_<TYPE>_<INDEX>_<SERIAL>`` variable
-      per distinct physical sensor, carrying its resolved OG1 attributes.
+      per distinct physical sensor, carrying its resolved attributes.
     - **linkage** — ``sensor_<role>(N_PROF)`` naming the catalog variable in that
       role for each profile, and ``sensor_channel_<role>(N_PROF)`` recording the
       raw acquisition channel.
@@ -296,7 +299,7 @@ def build_profiles(
     lats_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
     lons_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
 
-    # Per-cast sensor descriptors, in rank order, for the OG1 catalog below.
+    # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
     cast_sensor_records: list[list[dict[str, str]]] = []
 
     # Pass 2: split and bin each cast
@@ -459,7 +462,7 @@ def build_profiles(
             ),
         }
     )
-    # OG1 sensor catalog + per-profile linkage (dimensionless SENSOR_* variables
+    # Sensor catalog + per-profile linkage (dimensionless SENSOR_* variables
     # and sensor_<role>/sensor_channel_<role> on N_PROF).
     catalog_vars, linkage_vars = _build_sensor_catalog(
         cast_sensor_records,

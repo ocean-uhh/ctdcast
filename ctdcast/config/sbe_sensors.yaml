@@ -1,9 +1,11 @@
-# SBE sensor reference — SeaBird SensorID → OG1 sensor-variable attributes.
+# SBE sensor reference — SeaBird SensorID → sensor-variable attributes.
 #
 # This is the UNIVERSAL, maintainer-owned layer: it ships inside the ctdcast
 # package and maps the numeric SeaBird SensorID carried in the CNV header
-# (e.g. <TemperatureSensor SensorID="55">) to the OceanGliders OG1 v1.0.0
-# sensor attributes (model, maker, type, controlled-vocabulary URIs).
+# (e.g. <TemperatureSensor SensorID="55">) to sensor attributes (model, maker,
+# type, controlled-vocabulary URIs).  Attribute names follow the OceanGliders
+# OG1 conventions for interoperability; this is shipboard CTD data, not a glider
+# mission, and nothing here claims OG1 conformance.
 #
 # Per-sensor serial number and calibration date come from the CNV `raw_metadata`
 # at build time, NOT from here.  Cruise-specific per-sensor overrides and serial
@@ -158,7 +160,7 @@ sensors:
     # SensorID 61 is a generic user-polynomial voltage channel carrying whatever
     # instrument is wired to it (mixsed2's is a UVP6 particle imager).  Its
     # identity is not in the CNV — supply via a cruise-config override; it only
-    # belongs in the OG1 catalog through one.
+    # belongs in the sensor catalog through one.
     long_name: "user polynomial (derived voltage channel)"
     sensor_type: ""
     sensor_type_vocabulary: ""

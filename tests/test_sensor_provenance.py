@@ -1,4 +1,4 @@
-"""Tests for sensor-provenance parsing and the OG1 catalog in profiles.nc.
+"""Tests for sensor-provenance parsing and the sensor catalog in profiles.nc.
 
 Exercised against the committed mixsed2 fixtures, which cover pH, a
 transmissometer, a UVP6 user-polynomial channel, an empty-serial altimeter, a
@@ -48,7 +48,7 @@ def test_turbidity_serial_recovered_from_header() -> None:
     assert turb["sensor_id"] == "67"
 
 
-def test_profiles_carry_og1_catalog(tmp_path) -> None:
+def test_profiles_carry_sensor_catalog(tmp_path) -> None:
     """build_profiles emits SENSOR_* catalog vars and sensor_<role> linkage."""
     out = tmp_path / "profiles.nc"
     build_profiles(FIXTURES_NC, out, force=True)
