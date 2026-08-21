@@ -12,18 +12,45 @@ import re
 
 import xarray as xr
 
+from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
+
+
+# Calibration-date formats seen across real SBE config files (XMLCON, CON, CNV).
+# Day-first is the SeaBird convention; month-first is deliberately NOT included,
+# to avoid mis-reading an ambiguous "13/02/24".  A year-only string ("2013") has
+# no format here, so it is left raw rather than invented into 2013-01-01.
+_CAL_DATE_FORMATS: tuple[str, ...] = (
+    "%d-%b-%y",
+    "%d-%b-%Y",  # 11-Apr-17 / 30-sep-2004
+    "%d %b %y",
+    "%d %b %Y",  # 20 Nov 92 / 15 Jan 2016
+    "%d/%m/%y",
+    "%d/%m/%Y",  # 13/02/24 / 18/06/2013
+    "%Y/%m/%d",  # 2016/04/12
+    "%d.%m.%y",
+    "%d.%m.%Y",  # 20.12.11 / 15.06.2010
+    "%d-%m-%y",
+    "%d-%m-%Y",  # 27-03-2009
+)
+
 
 def _normalise_calibration_date(raw: str) -> str:
-    """Return *raw* reformatted as ``YYYY-MMM-DD``, or *raw* unchanged on failure.
+    """Return *raw* reformatted as ``YYYY-Mon-DD``, or *raw* unchanged on failure.
 
-    SeaBird writes dates in ``DD-Mon-YY`` or ``DD-Mon-YYYY`` form
-    (e.g. ``"17-Feb-26"`` or ``"17-Feb-2026"``).
+    Tries the SeaBird calibration-date formats in :data:`_CAL_DATE_FORMATS`.  A
+    parse is accepted only if the resulting year is plausible (1980–2035), which
+    rejects a bad match such as ``%d/%m/%Y`` reading ``"13/02/24"`` as year 24.
+    Anything unrecognised (e.g. a bare year, or ``"090726"``) is returned raw
+    rather than guessed.
     """
-    for fmt in ("%d-%b-%y", "%d-%b-%Y"):
+    raw = (raw or "").strip()
+    for fmt in _CAL_DATE_FORMATS:
         try:
-            return datetime.datetime.strptime(raw, fmt).date().strftime("%Y-%b-%d")
+            d = datetime.datetime.strptime(raw, fmt).date()
         except ValueError:
             continue
+        if 1980 <= d.year <= 2035:
+            return d.strftime("%Y-%b-%d")
     return raw
 
 
@@ -102,27 +129,6 @@ def parse_sensor_info(ds: xr.Dataset) -> list[dict[str, str]]:
     return results
 
 
-# CNV comment quantity word -> canonical ctdcast role base.  The comment is the
-# authoritative role statement (design note: it is emitted per channel and
-# agrees with the deck-unit star lines across every cast checked).
-_ROLE_QUANTITY: dict[str, str] = {
-    "Temperature": "temperature",
-    "Conductivity": "conductivity",
-    "Pressure": "pressure",
-    "Oxygen": "oxygen",
-    "Altimeter": "altimeter",
-    "Fluorometer": "fluorometer",
-    "Turbidity Meter": "turbidity",
-    "Transmissometer": "transmissometer",
-    "pH": "ph",
-    "SPAR": "spar",
-    "PAR": "par",
-    "User Polynomial": "user_polynomial",
-}
-
-#: Roles that carry a primary/secondary index (dual sensors); all others are bare.
-_INDEXED_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "oxygen"})
-
 _COMMENT_RE = re.compile(
     r"<!--\s*(?:Frequency|A/D voltage)\s+\d+,\s*(?P<rest>.*?)\s*-->"
 )
@@ -151,10 +157,10 @@ def _role_from_comment(rest: str) -> str | None:
     if quantity == "Free" or not quantity:
         return None
     index = int(parts[-1]) if len(parts) > 1 and parts[-1].isdigit() else 1
-    base = _ROLE_QUANTITY.get(quantity)
+    base = ROLE_QUANTITY.get(quantity)
     if base is None:
         base = re.sub(r"[^a-z0-9]+", "_", quantity.lower()).strip("_")
-    return f"{base}_{index}" if base in _INDEXED_ROLES else base
+    return f"{base}_{index}" if base in INDEXED_ROLES else base
 
 
 def parse_sensor_channels(ds: xr.Dataset) -> list[dict[str, str]]:

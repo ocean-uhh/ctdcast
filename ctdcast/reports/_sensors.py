@@ -24,37 +24,10 @@ import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.config.report_tokens import ROLE_ACCENT
+from ctdcast.config.sensors import role_label as _role_label
+from ctdcast.config.sensors import role_sort_key as _role_sort_key
 from ctdcast.reports._env import get_template
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
-
-#: Display order for roles across the tables (unlisted roles sort last).
-_ROLE_ORDER: tuple[str, ...] = (
-    "temperature_1",
-    "temperature_2",
-    "conductivity_1",
-    "conductivity_2",
-    "oxygen_1",
-    "oxygen_2",
-    "pressure",
-    "fluorometer",
-    "turbidity",
-    "transmissometer",
-    "ph",
-    "altimeter",
-    "spar",
-    "par",
-    "user_polynomial",
-)
-
-
-def _role_sort_key(role: str) -> tuple[int, str]:
-    """Sort roles by :data:`_ROLE_ORDER`, unlisted ones last (alphabetical)."""
-    return (_ROLE_ORDER.index(role) if role in _ROLE_ORDER else len(_ROLE_ORDER), role)
-
-
-def _role_label(role: str) -> str:
-    """Render a role as a short human label (``temperature_1`` -> ``Temperature 1``)."""
-    return role.replace("_", " ").title()
 
 
 def read_sensor_tables(profiles_path: Path) -> dict[str, Any]:

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import warnings
+
 import numpy as np
 import xarray as xr
 
@@ -78,6 +80,20 @@ def _build_sensor_catalog(
                 overrides=overrides,
             )
             name = catalog_var_name(role, canon)
+            prior = catalog.get(name)
+            if prior is not None and prior.get("sensor_calibration_date") != attrs.get(
+                "sensor_calibration_date"
+            ):
+                # A serial cannot be recalibrated mid-cruise (that needs a return
+                # to the manufacturer), so two calibration dates for one device
+                # mean a parsing/data error — surface it rather than overwrite.
+                warnings.warn(
+                    f"Sensor catalog conflict for {name}: calibration date "
+                    f"{prior.get('sensor_calibration_date')!r} then "
+                    f"{attrs.get('sensor_calibration_date')!r} (cast {cast_num}); "
+                    "a serial cannot be recalibrated at sea — check CNV parsing.",
+                    stacklevel=2,
+                )
             catalog[name] = attrs
             serial_to_vars.setdefault(canon, set()).add(name)
             if role not in link:
@@ -269,7 +285,13 @@ def build_profiles(
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
+    # p_grid holds the bin LOWER EDGES used for the binning assignment in
+    # _bin_to_grid (level i collects rounded pressures [1+i*dbar, 1+(i+1)*dbar)).
     p_grid = np.arange(1, int(p_max_global) + 1, dbar, dtype=np.float32)
+    # The reported pressure coordinate is the bin CENTRE, so a binned value sits
+    # at the mean depth of the samples it averages rather than (dbar-1)/2 dbar
+    # shallow of it.  For dbar=1 the centre equals the edge (unchanged).
+    pressure_coord = (p_grid + (dbar - 1) / 2.0).astype(np.float32)
 
     # Get variable names and cruise attr from the first file
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
@@ -352,7 +374,7 @@ def build_profiles(
     n_prof_idx = np.arange(n_profiles, dtype=np.int32)
     coords = {
         "N_PROF": ("N_PROF", n_prof_idx),
-        "pressure": ("pressure", p_grid),
+        "pressure": ("pressure", pressure_coord),
     }
     # Science vars carry only the coordinates pointer here; write() supplies
     # units/long_name/standard_name/label_units from VARIABLES.  A var not in
@@ -479,7 +501,10 @@ def build_profiles(
         "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdcast",
         "pressure_units": "dbar",
         "pressure_spacing_dbar": dbar,
-        "pressure_binning": f"mean of raw samples per {dbar}-dbar bin",
+        "pressure_binning": (
+            f"mean of raw samples per {dbar}-dbar bin; pressure coordinate is the "
+            "bin centre"
+        ),
         "Conventions": "CF-1.13",
     }
 

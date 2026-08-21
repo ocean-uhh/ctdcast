@@ -144,6 +144,7 @@ def run(args: argparse.Namespace) -> int:
     import yaml
 
     from ctdcast.config.parameters import CAST_TAG_WIDTH
+    from ctdcast.config.sensors import SensorOverrides
     from ctdcast.processors import process as _process
     from ctdcast.processors import stages_for
 
@@ -181,6 +182,7 @@ def run(args: argparse.Namespace) -> int:
                 pattern=_data.get("cnv_pattern") or "*.cnv",
                 ladcp_pattern=_data.get("ladcp_pattern"),
                 profiles_dbar=int(_processing.get("profiles_dbar", 1)),
+                sensor_overrides=SensorOverrides.from_cruise_config(_cfg),
             )
         except (ValueError, OSError, ImportError, NotImplementedError) as exc:
             print(f"process error: {exc}", file=sys.stderr)

@@ -46,6 +46,64 @@ SENSOR_ATTR_FIELDS: tuple[str, ...] = (
     "sensor_maker_vocabulary",
 )
 
+# ---------------------------------------------------------------------------
+# Canonical sensor roles — the single source of truth for the role vocabulary.
+# The reader (readers/metadata.py) maps CNV comment words to roles with
+# ROLE_QUANTITY/INDEXED_ROLES; the report (reports/_sensors.py) orders and
+# labels them with ROLE_ORDER/role_sort_key/role_label.  Add a new sensor role
+# here and both consumers pick it up.
+# ---------------------------------------------------------------------------
+
+#: Canonical sensor roles in display order (roles not listed sort last).
+ROLE_ORDER: tuple[str, ...] = (
+    "temperature_1",
+    "temperature_2",
+    "conductivity_1",
+    "conductivity_2",
+    "oxygen_1",
+    "oxygen_2",
+    "pressure",
+    "fluorometer",
+    "turbidity",
+    "transmissometer",
+    "ph",
+    "altimeter",
+    "spar",
+    "par",
+    "user_polynomial",
+)
+
+#: Roles that carry a primary/secondary index (dual sensors); others are bare.
+INDEXED_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "oxygen"})
+
+#: CNV sensor-block comment quantity word -> canonical role base.  The comment
+#: is the authoritative per-channel role statement (see readers/metadata.py).
+ROLE_QUANTITY: dict[str, str] = {
+    "Temperature": "temperature",
+    "Conductivity": "conductivity",
+    "Pressure": "pressure",
+    "Oxygen": "oxygen",
+    "Altimeter": "altimeter",
+    "Fluorometer": "fluorometer",
+    "Turbidity Meter": "turbidity",
+    "Transmissometer": "transmissometer",
+    "pH": "ph",
+    "SPAR": "spar",
+    "PAR": "par",
+    "User Polynomial": "user_polynomial",
+}
+
+
+def role_sort_key(role: str) -> tuple[int, str]:
+    """Sort roles by :data:`ROLE_ORDER`, unlisted ones last (alphabetical)."""
+    return (ROLE_ORDER.index(role) if role in ROLE_ORDER else len(ROLE_ORDER), role)
+
+
+def role_label(role: str) -> str:
+    """Render a role as a short human label (``temperature_1`` -> ``Temperature 1``)."""
+    return role.replace("_", " ").title()
+
+
 #: Attributes filled for a SensorID the registry does not know at all.
 _UNKNOWN_DEFAULT: dict[str, str] = {
     "long_name": "unknown sensor",
@@ -203,7 +261,12 @@ def resolve_sensor(
     # A cruise role override merges over the default (or the UNK stub), so it can
     # fill any gap — including a SensorID the package table does not know.
     if overrides is not None:
-        base.update(overrides.for_role(role, serial))
+        over = overrides.for_role(role, serial)
+        base.update(over)
+        # An override that supplies a model is operator-sourced by definition;
+        # don't leave a stale UNK/assumed model_source it did not set itself.
+        if over.get("sensor_model") and "model_source" not in over:
+            base["model_source"] = "operator"
 
     # Warn only if still unresolved AFTER the override, so a filled gap is silent.
     if _is_unresolved(base):
