@@ -320,6 +320,10 @@ def run(args: argparse.Namespace) -> int:
         # Cruise-level sensor overrides (config.yaml `sensors:` block) — used by
         # the profiles stage to resolve the OG1 sensor catalog.
         "sensor_overrides": SensorOverrides.from_cruise_config(cfg),
+        # Cruise metadata (config.yaml `cruise_info:` block) — the profiles stage
+        # writes it into the compiled files as ACDD global attributes, people,
+        # embargo, and the EXPOCODE coordinate.
+        "cruise_info": cfg.get("cruise_info") or {},
     }
 
     rc = 0

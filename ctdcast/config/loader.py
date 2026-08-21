@@ -21,7 +21,9 @@ class SectionsConfig:
 
     sections: dict[str, dict[str, Any]] = field(default_factory=dict)
     timeseries: dict[str, dict[str, Any]] = field(default_factory=dict)
-    cruise_info: dict[str, str] = field(default_factory=dict)
+    # Values are not all strings: ``contributors`` is a list of mappings and
+    # ``creator``/``embargo`` are mappings.  See ctdcast.config.people.
+    cruise_info: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> SectionsConfig:

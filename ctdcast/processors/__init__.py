@@ -184,12 +184,15 @@ def _run_profiles(
     gebco_path: Path | None = None,
     profiles_dbar: int = 1,
     sensor_overrides: object = None,
+    cruise_info: dict | None = None,
     **_kw: object,
 ) -> bool:
     """Compile per-cast netCDF → gridded products for every configured source.
 
     Builds ``profiles.nc`` (CTD) and/or ``ladcp_profiles.nc`` (LADCP), returning
-    True if any product was written.
+    True if any product was written.  ``cruise_info`` (the config ``cruise_info:``
+    block) supplies the cruise id, discovery metadata, people, embargo, and the
+    ship/date from which the EXPOCODE is derived; it is threaded to both builders.
     """
     wrote = False
     if paths.nc_dir is not None and paths.profiles_path is not None:
@@ -203,6 +206,7 @@ def _run_profiles(
                     gebco_path=gebco_path,
                     dbar=profiles_dbar,
                     sensor_overrides=sensor_overrides,
+                    cruise_info=cruise_info,
                 )
             )
             or wrote
@@ -215,6 +219,7 @@ def _run_profiles(
                     paths.ladcp_profiles_path,
                     force=force,
                     dry_run=dry_run,
+                    cruise_info=cruise_info,
                 )
             )
             or wrote

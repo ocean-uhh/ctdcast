@@ -16,6 +16,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
+from ctdcast.config.global_attrs import cruise_expocode, cruise_global_attrs
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
     SensorOverrides,
@@ -222,6 +223,7 @@ def build_profiles(
     gebco_path: Path | None = None,
     dbar: int = 1,
     sensor_overrides: SensorOverrides | None = None,
+    cruise_info: dict | None = None,
 ) -> bool:
     """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
 
@@ -259,6 +261,12 @@ def build_profiles(
         Vertical bin spacing (dbar) of the output grid.  Default 1.  Use 2 (or
         more) to average adjacent pressure levels together, reducing per-level
         noise when the raw scan resolution does not justify a 1-dbar grid.
+    cruise_info:
+        The ``cruise_info:`` mapping from the cruise config.  Supplies the cruise
+        id (so the compiled file is not labelled ``UNK``), the authored discovery
+        fields, people, embargo, and the ``ship``/``start_date`` from which the
+        EXPOCODE coordinate is derived.  Coverage bounds and creation time are
+        computed from the data, not taken from here.
 
     Returns
     -------
@@ -294,10 +302,13 @@ def build_profiles(
     # shallow of it.  For dbar=1 the centre equals the edge (unchanged).
     pressure_coord = (p_grid + (dbar - 1) / 2.0).astype(np.float32)
 
-    # Get variable names and cruise attr from the first file
+    # Get variable names and cruise attr from the first file.  The config's
+    # cruise_id wins over the per-cast file attr (OdB per-cast files carry no
+    # cruise attr, which is why the compiled file used to read "UNK").
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
     var_names = [v for v in ds0.data_vars if v not in _SKIP_VARS]
-    cruise = ds0.attrs.get("cruise", "UNK")
+    _ci = cruise_info or {}
+    cruise = str(_ci.get("cruise_id") or ds0.attrs.get("cruise") or "UNK")
     ds0.close()
 
     n_casts = len(cast_list)
@@ -496,6 +507,27 @@ def build_profiles(
     data_vars.update(catalog_vars)
     data_vars.update(linkage_vars)
 
+    # EXPOCODE as an N_PROF coordinate (per CCHDO — one file may hold more than
+    # one cruise, so this is per-profile, not a global attribute).  Omitted when
+    # the config supplies no ship/start_date to derive it from.
+    expocode = cruise_expocode(_ci)
+    if expocode:
+        data_vars["expocode"] = (
+            ["N_PROF"],
+            np.array([expocode] * n_profiles),
+            {
+                "long_name": "Expedition code (ICES ship code + departure date)",
+                "comment": (
+                    "Derived as <ICES platform code><YYYYMMDD departure>; "
+                    "CCHDO/GO-SHIP EXPOCODE convention."
+                ),
+            },
+        )
+
+    # Base provenance attrs, then the ACDD/derived/authored layer on top (which
+    # upgrades Conventions to include ACDD-1.3 and adds coverage bounds, people,
+    # embargo, and platform fields).  Coverage is computed from the data here so
+    # the bounding box brackets every station rather than copying one cast up.
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,
@@ -508,6 +540,18 @@ def build_profiles(
         ),
         "Conventions": "CF-1.13",
     }
+    attrs.update(
+        cruise_global_attrs(
+            _ci,
+            lats=lats,
+            lons=lons,
+            vertical_min=float(np.nanmin(pressure_coord)),
+            vertical_max=float(np.nanmax(max_pressure_prof)),
+            vertical_units=VARIABLES["pressure"]["units"],
+            times=time_starts,
+            source="ctd",
+        )
+    )
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     ds_out["pressure"].attrs = {

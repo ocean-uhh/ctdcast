@@ -28,7 +28,8 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     coordinate variables such as ``latitude``/``longitude`` — applies
     ``units``, ``long_name``, ``standard_name``, and ``label_units`` (when
     defined).  For each ``{var}_qc`` variable, generates complete CF flag
-    attributes.  Appends ``Conventions = "CF-1.13"`` to the global attrs.
+    attributes.  Sets ``Conventions = "CF-1.13"`` unless the caller already
+    declared one (a richer value such as ``"CF-1.13, ACDD-1.3"`` is preserved).
 
     Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
     replaces *path* so a failed write never leaves a partial file.
@@ -82,7 +83,10 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
         ds[var].attrs = attrs
 
     global_attrs = dict(ds.attrs)
-    global_attrs["Conventions"] = "CF-1.13"
+    # Default to CF-1.13, but let a caller that has already declared a richer
+    # conformance (e.g. the compiled profiles builder writes "CF-1.13, ACDD-1.3")
+    # keep it rather than being silently downgraded here.
+    global_attrs.setdefault("Conventions", "CF-1.13")
     ds.attrs = global_attrs
 
     path.parent.mkdir(parents=True, exist_ok=True)

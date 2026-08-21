@@ -1,0 +1,65 @@
+# Institutions — short slug → name and EDMO identifier
+#
+# [Contract — the EDMO URI is published in the netCDF as
+#  contributing_institutions_vocabulary. A wrong code attributes the work to
+#  another organisation.]
+#
+# Keyed on a short ASCII slug, referenced from config.yaml:
+#
+#   contributors:
+#     - name: "..."
+#       institution: uhh
+#
+# EDMO is the European Directory of Marine Organisations; the record URL form is
+# https://edmo.seadatanet.org/report/<code>, which is one of the two forms OG1
+# names for contributing_institutions_vocabulary (the other being ROR).
+#
+# `name_variants` exists so a name found in an external file can be matched back
+# to a slug. It mirrors the structure of AMOCatlas's
+# amocatlas/metadata/institution_registry.yml, which is keyed on the EDMO code
+# instead; the two convert trivially if the registries are ever merged.
+
+schema_version: 1
+
+institutions:
+
+  uhh:
+    name: "University of Hamburg, Institute of Oceanography"
+    edmo: 1156
+    edmo_uri: "https://edmo.seadatanet.org/report/1156"
+    country: "Germany"
+    name_variants:
+      - "University of Hamburg"
+      - "Universität Hamburg"
+      - "Institut für Meereskunde"
+      - "UHH"
+    note: >
+      EDMO 3323 is the university-level record; 1156 is the Institute of
+      Oceanography (IfM). There is no EDMO record for CEN (Center for Earth
+      System Research and Sustainability) — use a ROR id if CEN needs naming.
+
+  ulpgc:
+    name: "Las Palmas University, Department of Physics"
+    edmo: 342
+    edmo_uri: "https://edmo.seadatanet.org/report/342"
+    country: "Spain"
+    name_variants:
+      - "Universidad de Las Palmas de Gran Canaria"
+      - "University of Las Palmas de Gran Canaria"
+      - "ULPGC"
+    note: >
+      UNCONFIRMED — chosen from the EDMO register by institution name, not from
+      the person's own statement of affiliation. Other ULPGC records exist:
+      1398 Faculty of Marine Science, 1694 Chemistry. Confirm before publishing.
+
+  ub:
+    name: "Universitat de Barcelona, Department of Earth and Ocean Dynamics"
+    edmo: 5506
+    edmo_uri: "https://edmo.seadatanet.org/report/5506"
+    country: "Spain"
+    name_variants:
+      - "Universitat de Barcelona"
+      - "University of Barcelona"
+      - "UB"
+    note: >
+      UNCONFIRMED — as above. Confirm the department with each person.

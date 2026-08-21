@@ -27,8 +27,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.13"]
+        # Ubuntu covers the full Python range; macOS and Windows run one version
+        # (3.11) only — they catch platform issues, not version issues.
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.11"
 
     steps:
       - name: Checkout code

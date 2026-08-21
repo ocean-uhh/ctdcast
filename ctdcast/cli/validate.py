@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.identity import expand_cast_ids, format_cast_id
 
 
@@ -24,6 +25,9 @@ Checks performed:
   - profiles_nc exists (if sections or timeseries are enabled)
   - section_yaml exists and is valid YAML (if sections are enabled)
   - output directory is writable (or can be created)
+  - cruise_info contributors: no ";" or "," inside any value (they would split
+    one person into two), every role is a NERC W08 term, every institution
+    resolves in config/institutions.yaml, emails and ORCIDs are well formed
 
 With --strict:
   - every cast number in section_yaml exists in nc_dir
@@ -73,6 +77,16 @@ def run(args: argparse.Namespace) -> int:
     except yaml.YAMLError as exc:
         print(f"ERROR: config YAML parse error: {exc}", file=sys.stderr)
         return 1
+
+    # PyYAML resolves a repeated mapping key to the LAST occurrence and says
+    # nothing, so a second `cruise_info:` block silently discards the first --
+    # ship, cruise_id and project vanish from a file that still parses.  Cheap
+    # to detect, and invisible without the check.
+    for key, count in _duplicate_top_level_keys(cfg_path).items():
+        errors.append(
+            f"config defines top-level key '{key}' {count} times; YAML keeps "
+            f"only the last, silently discarding the earlier block(s). Merge them."
+        )
 
     if not isinstance(cfg, dict):
         print("ERROR: config file is empty or not a YAML mapping.", file=sys.stderr)
@@ -126,6 +140,25 @@ def run(args: argparse.Namespace) -> int:
             errors.append(f"data.profiles_nc not found: {profiles_path}")
         else:
             print(f"  profiles_nc: ok ({profiles_path})")
+
+    # cruise_info: contributors, creator, institutions
+    cruise_info = cfg.get("cruise_info") or {}
+    people_errors, people_warnings = check_contributors(cruise_info)
+    errors.extend(people_errors)
+    warnings.extend(people_warnings)
+    if not people_errors:
+        n_contrib = len(cruise_info.get("contributors") or [])
+        if n_contrib:
+            attrs = contributor_attrs(cruise_info)
+            n_inst = (
+                len((attrs.get("contributing_institutions") or "").split(";"))
+                if attrs.get("contributing_institutions")
+                else 0
+            )
+            print(
+                f"  contributors: {n_contrib} person(s), "
+                f"{n_inst} institution(s) resolved"
+            )
 
     # section_yaml
     need_sections = gen_cfg.get("sections", True)
@@ -228,6 +261,42 @@ def run(args: argparse.Namespace) -> int:
 
     print("\nValidation passed.")
     return 0
+
+
+def _duplicate_top_level_keys(path: Path) -> dict[str, int]:
+    """Return ``{key: count}`` for any top-level YAML key appearing more than once.
+
+    Scans the raw text rather than the parsed object, because parsing is exactly
+    what destroys the evidence: ``yaml.safe_load`` keeps the last occurrence of a
+    repeated key and reports nothing.
+
+    Parameters
+    ----------
+    path : Path
+        Config file to scan.
+
+    Returns
+    -------
+    dict of str to int
+        Keys seen more than once, with their occurrence counts. Empty when the
+        file is well formed or unreadable.
+    """
+    counts: dict[str, int] = {}
+    try:
+        text = path.read_text()
+    except OSError:
+        return {}
+    for line in text.splitlines():
+        # A top-level key starts in column 0 and is not a comment or list item.
+        if not line or line[0] in " \t#-":
+            continue
+        key, sep, _ = line.partition(":")
+        if not sep:
+            continue
+        key = key.strip()
+        if key:
+            counts[key] = counts.get(key, 0) + 1
+    return {k: n for k, n in counts.items() if n > 1}
 
 
 def _parse_cast_nums_from_dir(nc_dir: Path) -> set[int]:
