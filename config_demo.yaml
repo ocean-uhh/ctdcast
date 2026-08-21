@@ -21,6 +21,7 @@ data:
   profiles_nc:  tests/fixtures/profiles_demo.nc
   section_yaml: tests/fixtures/ctd_sections_demo.yaml
   ladcp_dir:    tests/fixtures/ladcp
+  gebco_nc:     ../cruiseplan/data/bathymetry/GEBCO_2025.nc   # optional — maps render without it
   # gebco_nc: /path/to/GEBCO_2025.nc   # optional — maps render without it
   # ladcp_pattern: "cruise_NNN_ladcp.mat"  # if your LADCP files aren't named NNN.mat
 
