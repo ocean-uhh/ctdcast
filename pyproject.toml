@@ -91,3 +91,37 @@ include = ["ctdcast*"]
 "ctdcast.config" = ["*.mplstyle"]
 "ctdcast.reports" = ["leaflet/*", "templates/*"]
 
+# Per-module coverage floors, checked by scripts/coverage_floors.py after the
+# suite.  coverage.py only offers a GLOBAL fail_under, which a new module can
+# hide under: three files landing at 40% barely move an aggregate.
+#
+# No `default` key on purpose -- the aggregate is guarded by --cov-fail-under in
+# CI, and repeating that number here would be the same fact in two files.
+#
+# Seeded at each module's measured coverage, rounded down, so a module can hold
+# or rise but never regress.  Improve one, bump its number; the checker prints
+# ratchet candidates to make that easy.  The list stays SHORT on purpose -- only
+# the stack's blast radius plus new modules -- because pinning ~40 modules is the
+# churn that kills these schemes.
+[tool.coverage_floors]
+"ctdcast/processors/stage1.py"       = 88
+"ctdcast/processors/stage2.py"       = 92
+"ctdcast/processors/stage3.py"       = 71   # lowest stage file — the refactor should lift it
+"ctdcast/processors/profiles.py"     = 97
+"ctdcast/processors/__init__.py"     = 97
+"ctdcast/config/global_attrs.py"     = 94
+"ctdcast/writers/netcdf.py"          = 100
+"ctdcast/processors/ladcp.py"        = 85    # measured 85.9
+"ctdcast/config/people.py"           = 90    # measured 90.3
+# Public module (not _private), so its naming/precedence contract is API surface.
+# Pure path logic with no I/O, and it measured 100% (51 stmts, 0 missing) on the
+# first pass -- so 100 is the seed, not an aspiration. 95 would have licensed an
+# untested branch in the module every other step of the stack rests on.
+"ctdcast/processors/stage_layout.py" = 100
+# One floor is still deferred: enrich.py does not exist yet, and a floor for a
+# file that is not in the coverage report fails as MISSING (verified by running
+# the checker) rather than passing quietly -- an unguarded module is the one
+# thing this table must never report as passing.
+#   branch 3, step 14 adds:
+#     "ctdcast/processors/enrich.py" = 90
+#       file I/O and error paths; the last 10% is genuinely expensive, so 90.

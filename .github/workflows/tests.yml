@@ -118,4 +118,9 @@ jobs:
 
       - name: All tests with coverage gate
         run: |
-          pytest --cov-fail-under=70
+          pytest --cov-fail-under=79
+
+      - name: Per-module coverage floors
+        run: |
+          coverage json -o coverage.json
+          python scripts/coverage_floors.py
