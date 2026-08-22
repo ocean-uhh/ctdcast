@@ -1,0 +1,697 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._leaflet &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._leaflet</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._leaflet</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Tier-2: self-contained interactive cruise map using Leaflet.js.</span>
+
+<span class="sd">Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/leaflet/`` as package</span>
+<span class="sd">data so the generated ``leaflet.html`` requires no internet access at either</span>
+<span class="sd">generation or view time.</span>
+
+<span class="sd">If a GEBCO path is configured, GEBCO bathymetry for the cruise</span>
+<span class="sd">region is rendered as an embedded PNG image layer using discrete depth bands</span>
+<span class="sd">(standard oceanographic levels: 0, 100, 200, 500, 1000, 2000, 3000, 4000,</span>
+<span class="sd">6000 m).</span>
+
+<span class="sd">Interaction:</span>
+<span class="sd">  - Hover cast dot or section line → info panel updates (bottom-left).</span>
+<span class="sd">  - Click cast dot → navigate directly to station page.</span>
+<span class="sd">  - Click section line → navigate directly to section page.</span>
+<span class="sd">  - Scroll or +/− buttons to zoom.</span>
+<span class="sd">  - Shift+drag to box-zoom (Leaflet built-in).</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.bathymetry</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_gebco</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span> <span class="n">ReportConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROLE_ACCENT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">expand_cast_numbers</span><span class="p">,</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._report_css</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHARED_CSS</span>
+
+<span class="n">_SECTION_COLOR_DEFAULT</span> <span class="o">=</span> <span class="s2">"#7b2d8b"</span>
+<span class="n">_LEAFLET_VERSION</span> <span class="o">=</span> <span class="s2">"1.9.4"</span>
+<span class="n">_LEAFLET_JS_URLS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sa">f</span><span class="s2">"https://cdn.jsdelivr.net/npm/leaflet@</span><span class="si">{</span><span class="n">_LEAFLET_VERSION</span><span class="si">}</span><span class="s2">/dist/leaflet.min.js"</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">"https://cdnjs.cloudflare.com/ajax/libs/leaflet/</span><span class="si">{</span><span class="n">_LEAFLET_VERSION</span><span class="si">}</span><span class="s2">/leaflet.min.js"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">_LEAFLET_CSS_URLS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sa">f</span><span class="s2">"https://cdn.jsdelivr.net/npm/leaflet@</span><span class="si">{</span><span class="n">_LEAFLET_VERSION</span><span class="si">}</span><span class="s2">/dist/leaflet.min.css"</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">"https://cdnjs.cloudflare.com/ajax/libs/leaflet/</span><span class="si">{</span><span class="n">_LEAFLET_VERSION</span><span class="si">}</span><span class="s2">/leaflet.min.css"</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">_LEAFLET_JS_URL</span> <span class="o">=</span> <span class="n">_LEAFLET_JS_URLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">_LEAFLET_CSS_URL</span> <span class="o">=</span> <span class="n">_LEAFLET_CSS_URLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">_LEAFLET_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">"leaflet"</span>
+<span class="n">_GEBCO_PAD</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># degrees of context beyond data extent</span>
+
+<span class="c1"># Discrete depth levels (metres, positive down).  Bin i spans [levels[i], levels[i+1]).</span>
+<span class="n">_DEPTH_LEVELS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="mi">4000</span><span class="p">,</span> <span class="mi">6000</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+<span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Info-panel HTML helpers</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cast_panel_html</span><span class="p">(</span>
+    <span class="n">m</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">section_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">section_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return HTML for the info panel when a cast marker is hovered."""</span>
+    <span class="n">cn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"cast_num"</span><span class="p">])</span>
+    <span class="n">cast_id</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cast_num_str"</span><span class="p">,</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">cn</span><span class="p">))</span>
+    <span class="n">cast_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"casts/cast_</span><span class="si">{</span><span class="n">cast_id</span><span class="si">}</span><span class="s2">.html"</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"time_start"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))[:</span><span class="mi">16</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"T"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lat"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)))</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lon"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)))</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_depth"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">lat_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">°</span><span class="si">{</span><span class="s1">'N'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">lat</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'S'</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">lon_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">°</span><span class="si">{</span><span class="s1">'E'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">lon</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'W'</span><span class="si">}</span><span class="s2">"</span>
+
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">"&lt;strong&gt;Cast </span><span class="si">{</span><span class="n">cast_id</span><span class="si">}</span><span class="s2">&lt;/strong&gt;"</span><span class="p">,</span>
+        <span class="n">dt</span> <span class="ow">or</span> <span class="s2">"—"</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lat_str</span><span class="si">}</span><span class="s2"> &amp;nbsp; </span><span class="si">{</span><span class="n">lon_str</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">depth</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> dbar"</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">section_name</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Section: </span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="s2">"&lt;br&gt;"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">'&lt;br&gt;&lt;a href="</span><span class="si">{</span><span class="n">cast_url</span><span class="si">}</span><span class="s1">"&gt;→ Station page&lt;/a&gt;'</span>
+    <span class="k">if</span> <span class="n">section_name</span> <span class="ow">and</span> <span class="n">section_url</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">'&lt;br&gt;&lt;a href="</span><span class="si">{</span><span class="n">section_url</span><span class="si">}</span><span class="s1">"&gt;→ Section page&lt;/a&gt;'</span>
+    <span class="k">return</span> <span class="n">html</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_section_panel_html</span><span class="p">(</span>
+    <span class="n">section_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">scfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">n_found</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return HTML for the info panel when a section line is hovered."""</span>
+    <span class="n">section_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"sections/section_</span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">.html"</span>
+    <span class="n">desc</span> <span class="o">=</span> <span class="n">scfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"description"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"&lt;strong&gt;</span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">&lt;/strong&gt;"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">desc</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_found</span><span class="si">}</span><span class="s2"> casts"</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">=</span> <span class="s2">"&lt;br&gt;"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">'&lt;br&gt;&lt;a href="</span><span class="si">{</span><span class="n">section_url</span><span class="si">}</span><span class="s1">"&gt;→ Section page&lt;/a&gt;'</span>
+    <span class="k">return</span> <span class="n">html</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Ship track loader</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_ship_track</span><span class="p">(</span>
+    <span class="n">ship_track_nc</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">max_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Subsample a ship-track netCDF and return ``[[lat, lon], ...]``.</span>
+
+<span class="sd">    Filters invalid positions and returns None if the file is unreadable or</span>
+<span class="sd">    contains no valid positions.  ``max_points`` caps the output size so the</span>
+<span class="sd">    embedded GeoJSON stays small.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ship_track_nc</span><span class="p">),</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span>
+        <span class="n">lats</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">lons</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lons</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">90</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lons</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">180</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">lats</span><span class="p">,</span> <span class="n">lons</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">valid</span><span class="p">],</span> <span class="n">lons</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span> <span class="o">//</span> <span class="n">max_points</span><span class="p">)</span>
+        <span class="n">lats</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[::</span><span class="n">step</span><span class="p">]</span>
+        <span class="n">lons</span> <span class="o">=</span> <span class="n">lons</span><span class="p">[::</span><span class="n">step</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">la</span><span class="p">),</span> <span class="mi">5</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lo</span><span class="p">),</span> <span class="mi">5</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">la</span><span class="p">,</span> <span class="n">lo</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Depth legend HTML builder</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_depth_legend_html</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return pre-rendered HTML rows for the depth-band legend panel.</span>
+
+<span class="sd">    Colours match the Blues LUT used in ``_make_gebco_layers``:</span>
+<span class="sd">    ``Blues(linspace(0.15, 0.95, n_bins))`` where bin 0 is shallowest.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+    <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_DEPTH_LEVELS</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">blues</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Blues</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'&lt;div class="dl-title"&gt;Depth&amp;nbsp;(m)&lt;/div&gt;'</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
+        <span class="n">d0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_DEPTH_LEVELS</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_DEPTH_LEVELS</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">blues</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+        <span class="n">hex_c</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"#</span><span class="si">{</span><span class="n">r</span><span class="si">:</span><span class="s2">02x</span><span class="si">}{</span><span class="n">g</span><span class="si">:</span><span class="s2">02x</span><span class="si">}{</span><span class="n">b</span><span class="si">:</span><span class="s2">02x</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">d0</span><span class="si">}</span><span class="s2">–</span><span class="si">{</span><span class="n">d1</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">d1</span> <span class="o">&lt;</span> <span class="mi">6000</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"&amp;gt;</span><span class="si">{</span><span class="n">d0</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">'&lt;div class="dl-row"&gt;'</span>
+            <span class="sa">f</span><span class="s1">'&lt;span class="dl-swatch" style="background:</span><span class="si">{</span><span class="n">hex_c</span><span class="si">}</span><span class="s1">"&gt;&lt;/span&gt;'</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&lt;/div&gt;"</span>
+        <span class="p">)</span>
+    <span class="c1"># Land swatch — colour must match rgba[~ocean_merc] assignment in _make_gebco_layers.</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="s1">'&lt;div class="dl-row"&gt;'</span>
+        <span class="s1">'&lt;span class="dl-swatch" style="background:#afb99b"&gt;&lt;/span&gt;'</span>
+        <span class="s2">"Land&lt;/div&gt;"</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Leaflet bundled asset loader</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_leaflet</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return (js_text, css_text) from bundled package files.</span>
+
+<span class="sd">    Falls back to CDN fetch if bundled files are absent (requires internet at</span>
+<span class="sd">    generation time).  Returns empty strings only if all sources fail.</span>
+<span class="sd">    """</span>
+    <span class="n">js_path</span> <span class="o">=</span> <span class="n">_LEAFLET_DIR</span> <span class="o">/</span> <span class="s2">"leaflet.min.js"</span>
+    <span class="n">css_path</span> <span class="o">=</span> <span class="n">_LEAFLET_DIR</span> <span class="o">/</span> <span class="s2">"leaflet.min.css"</span>
+
+    <span class="k">if</span> <span class="n">js_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">css_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">js_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">),</span> <span class="n">css_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">url_js</span><span class="p">,</span> <span class="n">url_css</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">_LEAFLET_JS_URLS</span><span class="p">,</span> <span class="n">_LEAFLET_CSS_URLS</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url_js</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span> <span class="k">as</span> <span class="n">r</span><span class="p">:</span>
+                <span class="n">js</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url_css</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span> <span class="k">as</span> <span class="n">r</span><span class="p">:</span>
+                <span class="n">css</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">js</span><span class="p">,</span> <span class="n">css</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="k">continue</span>
+    <span class="k">return</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># GEBCO rendering — discrete depth bands + vector contours</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># Max pixels in either dimension for the shared fill+contour grid.</span>
+<span class="c1"># Both the raster fill and the GeoJSON contours use this same grid,</span>
+<span class="c1"># guaranteeing that fill-band edges and contour lines are co-located.</span>
+<span class="n">_CONTOUR_MAX_PX</span> <span class="o">=</span> <span class="mi">600</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_gebco_layers</span><span class="p">(</span>
+    <span class="n">lat_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">lat_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">lon_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">lon_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">gebco_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Load GEBCO once and return (raster_b64, contour_geojson, bounds).</span>
+
+<span class="sd">    ``raster_b64`` — base64 PNG of discrete depth bands, reprojected to Web</span>
+<span class="sd">    Mercator.  ``L.imageOverlay`` stretches images linearly in Mercator pixel</span>
+<span class="sd">    space, so without reprojection a geographic (equirectangular) image appears</span>
+<span class="sd">    shifted northward relative to GeoJSON features at 60 °N by ~0.035 °</span>
+<span class="sd">    (~4 km) — visible on screen.  We fix this by building the image on a grid</span>
+<span class="sd">    that is uniformly spaced in Mercator Y, so each row maps directly to its</span>
+<span class="sd">    correct Mercator pixel position.</span>
+
+<span class="sd">    ``contour_geojson`` — GeoJSON FeatureCollection of LineString features at</span>
+<span class="sd">    100 m intervals.  Each feature has properties ``depth`` (positive metres)</span>
+<span class="sd">    and ``major`` (True for multiples of 500 m).</span>
+
+<span class="sd">    ``bounds`` — ``[[south, west], [north, east]]`` geographic degrees for the</span>
+<span class="sd">    Leaflet ``imageOverlay``.</span>
+
+<span class="sd">    Any returned value is None when GEBCO is unavailable or rendering fails.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">gebco_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">gebco_path</span><span class="p">))</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+        <span class="c1"># Size the longitude margin so a wide map has bathymetry to its edges</span>
+        <span class="c1"># instead of grey bars.  A widescreen map at latitude φ shows far more</span>
+        <span class="c1"># longitude than latitude (1° lon ≈ cos φ × 1° lat in Mercator), so a</span>
+        <span class="c1"># fixed pad that suits latitude leaves the sides bare — most visibly for</span>
+        <span class="c1"># a tall cruise at high latitude.  Aim to fill a ~1.6-aspect map at the</span>
+        <span class="c1"># data's latitude, capped so an extreme latitude span does not extract</span>
+        <span class="c1"># half an ocean.  Latitude keeps the fixed pad.</span>
+        <span class="n">_mean_lat</span> <span class="o">=</span> <span class="p">(</span><span class="n">lat_min</span> <span class="o">+</span> <span class="n">lat_max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">_cos_lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">_mean_lat</span><span class="p">))))</span>
+        <span class="c1"># 1.8 ≈ a wide screen's aspect with headroom, so the extracted GEBCO is a</span>
+        <span class="c1"># touch wider than the client fits (which caps the view at this extent).</span>
+        <span class="n">_lon_fill</span> <span class="o">=</span> <span class="mf">1.8</span> <span class="o">*</span> <span class="p">(</span><span class="n">lat_max</span> <span class="o">-</span> <span class="n">lat_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">_cos_lat</span>
+        <span class="n">_lon_pad</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="nb">min</span><span class="p">(</span><span class="mf">15.0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">_GEBCO_PAD</span><span class="p">,</span> <span class="p">(</span><span class="n">_lon_fill</span> <span class="o">-</span> <span class="p">(</span><span class="n">lon_max</span> <span class="o">-</span> <span class="n">lon_min</span><span class="p">))</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">_gebco</span> <span class="o">=</span> <span class="n">load_gebco</span><span class="p">(</span>
+            <span class="n">lat_min</span> <span class="o">-</span> <span class="n">_GEBCO_PAD</span><span class="p">,</span>
+            <span class="n">lat_max</span> <span class="o">+</span> <span class="n">_GEBCO_PAD</span><span class="p">,</span>
+            <span class="n">lon_min</span> <span class="o">-</span> <span class="n">_lon_pad</span><span class="p">,</span>
+            <span class="n">lon_max</span> <span class="o">+</span> <span class="n">_lon_pad</span><span class="p">,</span>
+            <span class="n">margin</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">gebco_path</span><span class="p">,</span>
+            <span class="c1"># Read the file directly: this region is wider than the preloaded</span>
+            <span class="c1"># cruise extent, which would clip the map's longitude to grey bars.</span>
+            <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">_gebco</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="n">lon_vals</span><span class="p">,</span> <span class="n">lat_vals</span><span class="p">,</span> <span class="n">depth</span> <span class="o">=</span> <span class="n">_gebco</span>
+        <span class="c1"># load_gebco stores depth positive-down; downstream code uses elevation (+up).</span>
+        <span class="n">elev</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">depth</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">elev</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">elev</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Geographic pixel-edge bounds (cell centres ± half cell).</span>
+        <span class="n">dlat</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lat_vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lat_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">if</span> <span class="n">ny</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">240</span>
+        <span class="n">dlon</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lon_vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lon_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">if</span> <span class="n">nx</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">240</span>
+        <span class="n">south_b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lat_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">dlat</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">north_b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lat_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">dlat</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">west_b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lon_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">dlon</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">east_b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lon_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">dlon</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">actual_bounds</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[[</span><span class="n">south_b</span><span class="p">,</span> <span class="n">west_b</span><span class="p">],</span> <span class="p">[</span><span class="n">north_b</span><span class="p">,</span> <span class="n">east_b</span><span class="p">]]</span>
+
+        <span class="c1"># --- Raster: Mercator-reprojected discrete depth-band PNG ---</span>
+        <span class="c1"># Build output image on a grid that is UNIFORMLY SPACED in Mercator Y</span>
+        <span class="c1"># so each row maps to its correct Mercator screen position.</span>
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">ny</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>
+        <span class="n">n_cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>
+
+        <span class="n">y_n</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">north_b</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)))</span>
+        <span class="n">y_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">south_b</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)))</span>
+
+        <span class="c1"># Row 0 = northernmost (image top), row n_rows-1 = southernmost.</span>
+        <span class="n">merc_y_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">y_n</span><span class="p">,</span> <span class="n">y_s</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">)</span>
+        <span class="c1"># Inverse-project each row's Mercator Y back to geographic latitude.</span>
+        <span class="n">geo_lats_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">merc_y_rows</span><span class="p">))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># Longitude is linear in Mercator, so cols stay geographic.</span>
+        <span class="n">geo_lons_cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">west_b</span><span class="p">,</span> <span class="n">east_b</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">)</span>
+
+        <span class="c1"># Nearest-neighbour lookup of GEBCO elevation on the Mercator grid.</span>
+        <span class="n">row_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">lat_vals</span><span class="p">,</span> <span class="n">geo_lats_rows</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">"right"</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ny</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">col_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">lon_vals</span><span class="p">,</span> <span class="n">geo_lons_cols</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">"right"</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nx</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="c1"># elev_merc[i, j] = GEBCO elevation at (geo_lats_rows[i], geo_lons_cols[j])</span>
+        <span class="n">elev_merc</span> <span class="o">=</span> <span class="n">elev</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">row_idx</span><span class="p">,</span> <span class="n">col_idx</span><span class="p">)]</span>  <span class="c1"># (n_rows, n_cols)</span>
+
+        <span class="n">ocean_merc</span> <span class="o">=</span> <span class="n">elev_merc</span> <span class="o">&lt;</span> <span class="mi">0</span>
+        <span class="n">depth_merc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ocean_merc</span><span class="p">,</span> <span class="o">-</span><span class="n">elev_merc</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_DEPTH_LEVELS</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">lut</span> <span class="o">=</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Blues</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">bin_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">_DEPTH_LEVELS</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">depth_merc</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+        <span class="n">rgba</span> <span class="o">=</span> <span class="n">lut</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span>  <span class="c1"># (n_rows, n_cols, 4)</span>
+        <span class="n">rgba</span><span class="p">[</span><span class="o">~</span><span class="n">ocean_merc</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">175</span><span class="p">,</span> <span class="mi">185</span><span class="p">,</span> <span class="mi">155</span><span class="p">,</span> <span class="mi">255</span><span class="p">]</span>  <span class="c1"># land colour</span>
+
+        <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">rgba</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"png"</span><span class="p">)</span>
+        <span class="n">raster_b64</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"ascii"</span><span class="p">)</span>
+
+        <span class="c1"># --- Contours: vector GeoJSON at 100 m intervals ---</span>
+        <span class="n">cy</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">ny</span> <span class="o">/</span> <span class="n">_CONTOUR_MAX_PX</span><span class="p">))</span>
+        <span class="n">cx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">nx</span> <span class="o">/</span> <span class="n">_CONTOUR_MAX_PX</span><span class="p">))</span>
+        <span class="n">elev_c</span> <span class="o">=</span> <span class="n">elev</span><span class="p">[::</span><span class="n">cy</span><span class="p">,</span> <span class="p">::</span><span class="n">cx</span><span class="p">]</span>
+        <span class="n">lats_c</span> <span class="o">=</span> <span class="n">lat_vals</span><span class="p">[::</span><span class="n">cy</span><span class="p">]</span>
+        <span class="n">lons_c</span> <span class="o">=</span> <span class="n">lon_vals</span><span class="p">[::</span><span class="n">cx</span><span class="p">]</span>
+
+        <span class="n">max_depth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="o">-</span><span class="n">elev_c</span><span class="p">[</span><span class="n">elev_c</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="k">if</span> <span class="p">(</span><span class="n">elev_c</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">contour_geojson</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">max_depth</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="n">levels_m</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_depth</span> <span class="o">+</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">6100</span><span class="p">),</span> <span class="mi">100</span><span class="p">))</span>
+            <span class="c1"># matplotlib contour requires ascending levels; elevation is negative</span>
+            <span class="n">elev_levels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="o">-</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">levels_m</span><span class="p">])</span>
+
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+            <span class="n">cs</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">lons_c</span><span class="p">,</span> <span class="n">lats_c</span><span class="p">,</span> <span class="n">elev_c</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="n">elev_levels</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+            <span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">level_val</span><span class="p">,</span> <span class="n">segs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">levels</span><span class="p">,</span> <span class="n">cs</span><span class="o">.</span><span class="n">allsegs</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="n">depth_m</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="o">-</span><span class="n">level_val</span><span class="p">)</span>
+                <span class="n">is_major</span> <span class="o">=</span> <span class="n">depth_m</span> <span class="o">%</span> <span class="mi">500</span> <span class="o">==</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">seg</span> <span class="o">=</span> <span class="n">seg</span><span class="p">[::</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># thin by 2× for compactness</span>
+                    <span class="n">coords</span> <span class="o">=</span> <span class="p">[[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="mi">4</span><span class="p">)]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">seg</span><span class="p">]</span>
+                    <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Feature"</span><span class="p">,</span>
+                            <span class="s2">"geometry"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"LineString"</span><span class="p">,</span> <span class="s2">"coordinates"</span><span class="p">:</span> <span class="n">coords</span><span class="p">},</span>
+                            <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"depth"</span><span class="p">:</span> <span class="n">depth_m</span><span class="p">,</span> <span class="s2">"major"</span><span class="p">:</span> <span class="n">is_major</span><span class="p">},</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+            <span class="n">contour_geojson</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"FeatureCollection"</span><span class="p">,</span> <span class="s2">"features"</span><span class="p">:</span> <span class="n">features</span><span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">raster_b64</span><span class="p">,</span> <span class="n">contour_geojson</span><span class="p">,</span> <span class="n">actual_bounds</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># JSON helper</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_json</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""JSON-encode obj, escaping ``&lt;/`` for safe embedding inside a &lt;script&gt; block."""</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"&lt;/"</span><span class="p">,</span> <span class="s2">"&lt;</span><span class="se">\\</span><span class="s2">/"</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># HTML template</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Public function</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="generate_leaflet_map">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._leaflet.generate_leaflet_map">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_leaflet_map</span><span class="p">(</span>
+    <span class="n">all_meta</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="n">sections_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: ARG001</span>
+    <span class="n">ship_track_nc</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"UNK"</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Generate a Leaflet.js interactive cruise map at ``&lt;out_dir&gt;/leaflet.html``.</span>
+
+<span class="sd">    Always regenerates (force is accepted for API symmetry but ignored).</span>
+<span class="sd">    If ``ship_track_nc`` is provided and the file exists, the ship track is</span>
+<span class="sd">    loaded, subsampled, and rendered as a grey polyline behind cast markers.</span>
+<span class="sd">    ``cruise`` should be the resolved cruise identifier (from ``cruise_info`` or</span>
+<span class="sd">    the NC file attribute); it is displayed in the map page title.</span>
+<span class="sd">    Returns the output path, or None if all_meta is empty.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">all_meta</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">out_file</span> <span class="o">=</span> <span class="n">out_dir</span> <span class="o">/</span> <span class="s2">"leaflet.html"</span>
+
+    <span class="n">lats</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">all_meta</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lat"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">))))</span>
+    <span class="p">]</span>
+    <span class="n">lons</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"lon"</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">all_meta</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lon"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">))))</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">lats</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">lat_min</span><span class="p">,</span> <span class="n">lat_max</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lats</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span>
+    <span class="n">lon_min</span><span class="p">,</span> <span class="n">lon_max</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lons</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">lons</span><span class="p">)</span>
+
+    <span class="n">meta_lookup</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"cast_num"</span><span class="p">]):</span> <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">all_meta</span><span class="p">}</span>
+
+    <span class="n">cast_section</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">sname</span><span class="p">,</span> <span class="n">scfg</span> <span class="ow">in</span> <span class="n">sections_cfg</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">scfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"color"</span><span class="p">,</span> <span class="n">_SECTION_COLOR_DEFAULT</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">scfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cast_numbers"</span><span class="p">,</span> <span class="p">[])):</span>
+            <span class="k">if</span> <span class="n">cn</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cast_section</span><span class="p">:</span>
+                <span class="n">cast_section</span><span class="p">[</span><span class="n">cn</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sname</span><span class="p">,</span> <span class="n">color</span><span class="p">)</span>
+
+    <span class="n">sections_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sname</span><span class="p">,</span> <span class="n">scfg</span> <span class="ow">in</span> <span class="n">sections_cfg</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">scfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"color"</span><span class="p">,</span> <span class="n">_SECTION_COLOR_DEFAULT</span><span class="p">))</span>
+        <span class="n">cast_nums</span> <span class="o">=</span> <span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">scfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cast_numbers"</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">latlons</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">cast_nums</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">meta_lookup</span><span class="p">:</span>
+                <span class="n">m</span> <span class="o">=</span> <span class="n">meta_lookup</span><span class="p">[</span><span class="n">cn</span><span class="p">]</span>
+                <span class="n">latlons</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"lon"</span><span class="p">])])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">latlons</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">sections_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"latlons"</span><span class="p">:</span> <span class="n">latlons</span><span class="p">,</span>
+                <span class="s2">"color"</span><span class="p">:</span> <span class="n">color</span><span class="p">,</span>
+                <span class="s2">"url"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"sections/section_</span><span class="si">{</span><span class="n">sname</span><span class="si">}</span><span class="s2">.html"</span><span class="p">,</span>
+                <span class="s2">"info"</span><span class="p">:</span> <span class="n">_section_panel_html</span><span class="p">(</span><span class="n">sname</span><span class="p">,</span> <span class="n">scfg</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">latlons</span><span class="p">)),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="n">casts_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">all_meta</span><span class="p">:</span>
+        <span class="n">cn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">"cast_num"</span><span class="p">])</span>
+        <span class="n">cast_id</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cast_num_str"</span><span class="p">,</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">cn</span><span class="p">))</span>
+        <span class="n">lat_f</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lat"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)))</span>
+        <span class="n">lon_f</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lon"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lat_f</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lon_f</span><span class="p">)):</span>
+            <span class="k">continue</span>
+        <span class="n">sname_c</span><span class="p">,</span> <span class="n">color_c</span> <span class="o">=</span> <span class="n">cast_section</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cn</span><span class="p">,</span> <span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="s2">"#888888"</span><span class="p">))</span>
+        <span class="n">section_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"sections/section_</span><span class="si">{</span><span class="n">sname_c</span><span class="si">}</span><span class="s2">.html"</span> <span class="k">if</span> <span class="n">sname_c</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">casts_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"lat"</span><span class="p">:</span> <span class="n">lat_f</span><span class="p">,</span>
+                <span class="s2">"lon"</span><span class="p">:</span> <span class="n">lon_f</span><span class="p">,</span>
+                <span class="s2">"color"</span><span class="p">:</span> <span class="n">color_c</span><span class="p">,</span>
+                <span class="s2">"num"</span><span class="p">:</span> <span class="n">cast_id</span><span class="p">,</span>
+                <span class="s2">"url"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"casts/cast_</span><span class="si">{</span><span class="n">cast_id</span><span class="si">}</span><span class="s2">.html"</span><span class="p">,</span>
+                <span class="s2">"info"</span><span class="p">:</span> <span class="n">_cast_panel_html</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">sname_c</span><span class="p">,</span> <span class="n">section_url</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"  leaflet: rendering GEBCO..."</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">" "</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">gebco_b64</span><span class="p">,</span> <span class="n">contour_geojson</span><span class="p">,</span> <span class="n">actual_bounds</span> <span class="o">=</span> <span class="n">_make_gebco_layers</span><span class="p">(</span>
+        <span class="n">lat_min</span><span class="p">,</span> <span class="n">lat_max</span><span class="p">,</span> <span class="n">lon_min</span><span class="p">,</span> <span class="n">lon_max</span><span class="p">,</span> <span class="n">gebco_path</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">gebco_path</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">gebco_b64</span><span class="p">:</span>
+        <span class="n">n_features</span> <span class="o">=</span> <span class="n">contour_geojson</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">'"Feature"'</span><span class="p">)</span> <span class="k">if</span> <span class="n">contour_geojson</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ok (</span><span class="si">{</span><span class="n">n_features</span><span class="si">}</span><span class="s2"> contour segments)"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"unavailable (no bathymetry layer)"</span><span class="p">)</span>
+
+    <span class="n">gebco_bounds</span> <span class="o">=</span> <span class="n">actual_bounds</span> <span class="ow">or</span> <span class="p">[</span>
+        <span class="p">[</span><span class="n">lat_min</span> <span class="o">-</span> <span class="n">_GEBCO_PAD</span><span class="p">,</span> <span class="n">lon_min</span> <span class="o">-</span> <span class="n">_GEBCO_PAD</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">lat_max</span> <span class="o">+</span> <span class="n">_GEBCO_PAD</span><span class="p">,</span> <span class="n">lon_max</span> <span class="o">+</span> <span class="n">_GEBCO_PAD</span><span class="p">],</span>
+    <span class="p">]</span>
+
+    <span class="n">ship_track</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">ship_track_nc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ship_track_nc</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  leaflet: loading ship track..."</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">" "</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ship_track</span> <span class="o">=</span> <span class="n">_load_ship_track</span><span class="p">(</span><span class="n">ship_track_nc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ship_track</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ok (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ship_track</span><span class="p">)</span><span class="si">}</span><span class="s2"> points)"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"failed (no valid positions)"</span><span class="p">)</span>
+
+    <span class="n">depth_legend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">_depth_legend_html</span><span class="p">()</span> <span class="k">if</span> <span class="n">gebco_b64</span> <span class="k">else</span> <span class="s2">""</span>
+
+    <span class="n">leaflet_js</span><span class="p">,</span> <span class="n">leaflet_css</span> <span class="o">=</span> <span class="n">_load_leaflet</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">leaflet_js</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">"  leaflet: WARNING — Leaflet JS/CSS not found; "</span>
+            <span class="s2">"CDN links used (requires internet at view time)"</span>
+        <span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="n">get_template</span><span class="p">(</span><span class="s2">"leaflet.html"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="n">css</span><span class="o">=</span><span class="n">SHARED_CSS</span><span class="p">,</span>
+        <span class="n">nav_current</span><span class="o">=</span><span class="s2">"interactive"</span><span class="p">,</span>
+        <span class="n">nav_prefix</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+        <span class="n">show_nav</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">masthead_bg</span><span class="o">=</span><span class="n">ROLE_ACCENT</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"map"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="n">cruise</span><span class="o">=</span><span class="n">cruise</span><span class="p">,</span>
+        <span class="n">leaflet_inline</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">leaflet_js</span><span class="p">),</span>
+        <span class="n">leaflet_js</span><span class="o">=</span><span class="n">leaflet_js</span><span class="p">,</span>
+        <span class="n">leaflet_css</span><span class="o">=</span><span class="n">leaflet_css</span><span class="p">,</span>
+        <span class="n">leaflet_js_url</span><span class="o">=</span><span class="n">_LEAFLET_JS_URL</span><span class="p">,</span>
+        <span class="n">leaflet_css_url</span><span class="o">=</span><span class="n">_LEAFLET_CSS_URL</span><span class="p">,</span>
+        <span class="n">casts_json</span><span class="o">=</span><span class="n">_safe_json</span><span class="p">(</span><span class="n">casts_data</span><span class="p">),</span>
+        <span class="n">sections_json</span><span class="o">=</span><span class="n">_safe_json</span><span class="p">(</span><span class="n">sections_data</span><span class="p">),</span>
+        <span class="n">gebco_b64_json</span><span class="o">=</span><span class="n">_safe_json</span><span class="p">(</span><span class="n">gebco_b64</span><span class="p">),</span>
+        <span class="n">gebco_bounds_json</span><span class="o">=</span><span class="n">_safe_json</span><span class="p">(</span><span class="n">gebco_bounds</span><span class="p">),</span>
+        <span class="n">contours_json</span><span class="o">=</span><span class="n">contour_geojson</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"&lt;/"</span><span class="p">,</span> <span class="s2">"&lt;</span><span class="se">\\</span><span class="s2">/"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">contour_geojson</span>
+        <span class="k">else</span> <span class="s2">"null"</span><span class="p">,</span>
+        <span class="n">ship_track_json</span><span class="o">=</span><span class="n">_safe_json</span><span class="p">(</span><span class="n">ship_track</span> <span class="ow">or</span> <span class="p">[]),</span>
+        <span class="n">depth_legend_html</span><span class="o">=</span><span class="n">depth_legend</span><span class="p">,</span>
+        <span class="n">lat_min</span><span class="o">=</span><span class="n">lat_min</span><span class="p">,</span>
+        <span class="n">lat_max</span><span class="o">=</span><span class="n">lat_max</span><span class="p">,</span>
+        <span class="n">lon_min</span><span class="o">=</span><span class="n">lon_min</span><span class="p">,</span>
+        <span class="n">lon_max</span><span class="o">=</span><span class="n">lon_max</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="n">_VERSION</span><span class="p">,</span>
+        <span class="n">generated_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M UTC"</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">out_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

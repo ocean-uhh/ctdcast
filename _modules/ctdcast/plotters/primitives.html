@@ -1,0 +1,313 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.plotters.primitives &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.plotters.primitives</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.plotters.primitives</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Layer-1 ``ax``-taking primitives that draw into a provided axes and create no Figure."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.ticker</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mticker</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mpl_toolkits.axes_grid1</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_axes_locatable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mpl_toolkits.axes_grid1.axes_size</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fixed</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ANNOT_FS</span><span class="p">,</span>
+    <span class="n">CBAR_PAD_IN</span><span class="p">,</span>
+    <span class="n">CBAR_WIDTH_IN</span><span class="p">,</span>
+    <span class="n">CLABEL_FS</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="sigma0_isopycnals">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.primitives.sigma0_isopycnals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sigma0_isopycnals</span><span class="p">(</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data2d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Overlay the 27.7 and 27.8 σ₀ isopycnal contours (labelled) on *ax*, swallowing contour failures."""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_iso</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">data2d</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+            <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="mf">27.7</span><span class="p">,</span> <span class="mf">27.8</span><span class="p">],</span>
+            <span class="n">colors</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span>
+            <span class="n">linewidths</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">linestyles</span><span class="o">=</span><span class="s2">"solid"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">_iso</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">"</span><span class="si">%.1f</span><span class="s2">"</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">CLABEL_FS</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="nice_colorbar_ticks">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.primitives.nice_colorbar_ticks">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">nice_colorbar_ticks</span><span class="p">(</span><span class="n">vmin</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">vmax</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">max_ticks</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return at most *max_ticks* nicely-rounded tick positions in ``[vmin, vmax]``.</span>
+
+<span class="sd">    Decoupled from the colorbar's colour discretisation: a 20-level ``BoundaryNorm``</span>
+<span class="sd">    bar can still show ~6 round labels (e.g. 34.8, 34.9, … 35.2) instead of one label</span>
+<span class="sd">    per boundary.  Uses :class:`~matplotlib.ticker.MaxNLocator` with round step</span>
+<span class="sd">    multiples so labels land on clean values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    vmin, vmax : float</span>
+<span class="sd">        Data range of the colorbar.</span>
+<span class="sd">    max_ticks : int</span>
+<span class="sd">        Maximum number of ticks (approximate; the locator may return a few fewer).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Tick positions, clipped to ``[vmin, vmax]``.</span>
+
+<span class="sd">    """</span>
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="p">(</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">)</span> <span class="k">if</span> <span class="n">vmin</span> <span class="o">&lt;=</span> <span class="n">vmax</span> <span class="k">else</span> <span class="p">(</span><span class="n">vmax</span><span class="p">,</span> <span class="n">vmin</span><span class="p">)</span>
+    <span class="n">ticks</span> <span class="o">=</span> <span class="n">mticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="n">nbins</span><span class="o">=</span><span class="n">max_ticks</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span><span class="o">.</span><span class="n">tick_values</span><span class="p">(</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span>
+    <span class="p">)</span>
+    <span class="n">ticks</span> <span class="o">=</span> <span class="n">ticks</span><span class="p">[(</span><span class="n">ticks</span> <span class="o">&gt;=</span> <span class="n">lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ticks</span> <span class="o">&lt;=</span> <span class="n">hi</span><span class="p">)]</span>
+    <span class="c1"># A near-degenerate range can leave every rounded tick outside [lo, hi]; fall</span>
+    <span class="c1"># back to the endpoints so the colorbar never renders with zero labels.</span>
+    <span class="k">return</span> <span class="n">ticks</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ticks</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="unit_colorbar">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.primitives.unit_colorbar">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">unit_colorbar</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">mappable</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">ticks</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">extend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"neither"</span><span class="p">,</span>
+    <span class="n">reserve</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">title_loc</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"center"</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Draw the report-standard colorbar with the unit as a title on top.</span>
+
+<span class="sd">    One entry point, two placement strategies so the *appearance* (bar width, gap,</span>
+<span class="sd">    tick choice, unit-on-top) is set in a single place regardless of how the axes</span>
+<span class="sd">    was laid out.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    target : matplotlib Axes</span>
+<span class="sd">        When *reserve* is False, a colorbar axes already reserved by a hand layout.</span>
+<span class="sd">        When *reserve* is True, the *host* plot axes, into which a fixed-inch cax is</span>
+<span class="sd">        appended — allowed **only for free-aspect axes** (see :func:`mesh_field`).</span>
+<span class="sd">    mappable : matplotlib ScalarMappable</span>
+<span class="sd">        The artist to map (``pcolormesh``, ``contourf`` set, ...).</span>
+<span class="sd">    unit : str</span>
+<span class="sd">        Text placed above the bar (``cax.set_title``) rather than as a rotated</span>
+<span class="sd">        side label — reads cleanly and, unlike a side label, does not widen the</span>
+<span class="sd">        figure.  A unit (``"m s⁻¹"``) or a full label (``"CT (°C)"``); empty</span>
+<span class="sd">        renders no title.</span>
+<span class="sd">    ticks : numpy.ndarray, optional</span>
+<span class="sd">        Explicit tick positions (e.g. from :func:`nice_colorbar_ticks`).</span>
+<span class="sd">    extend : str</span>
+<span class="sd">        ``"neither"``/``"both"``/``"min"``/``"max"`` — pointed ends for out-of-range.</span>
+<span class="sd">    reserve : bool</span>
+<span class="sd">        Append a fixed-inch cax to *target* instead of treating it as the cax.</span>
+<span class="sd">    title_loc : str</span>
+<span class="sd">        Horizontal anchor for the on-top title — ``"center"`` (default),</span>
+<span class="sd">        ``"left"`` or ``"right"``.  ``"left"`` anchors the title at the thin bar's</span>
+<span class="sd">        left edge so it extends right into the margin, clear of a figure's</span>
+<span class="sd">        top-left annotations (e.g. the cast-marker strip on field figures);</span>
+<span class="sd">        centering it over the thin bar would instead overhang the plot.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.colorbar.Colorbar</span>
+
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">reserve</span><span class="p">:</span>
+        <span class="n">cax</span> <span class="o">=</span> <span class="n">make_axes_locatable</span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">append_axes</span><span class="p">(</span>
+            <span class="s2">"right"</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">Fixed</span><span class="p">(</span><span class="n">CBAR_WIDTH_IN</span><span class="p">),</span> <span class="n">pad</span><span class="o">=</span><span class="n">Fixed</span><span class="p">(</span><span class="n">CBAR_PAD_IN</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cax</span> <span class="o">=</span> <span class="n">target</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">cax</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">mappable</span><span class="p">,</span> <span class="n">cax</span><span class="o">=</span><span class="n">cax</span><span class="p">,</span> <span class="n">ticks</span><span class="o">=</span><span class="n">ticks</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="n">extend</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">unit</span><span class="p">:</span>
+        <span class="n">cax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">ANNOT_FS</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="n">title_loc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cb</span></div>
+
+
+
+<div class="viewcode-block" id="mesh_field">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.primitives.mesh_field">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mesh_field</span><span class="p">(</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">fig</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG001 — kept for signature stability; colorbar uses cax.figure</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">data2d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">norm</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">cmap_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">bounds</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">style</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">cbar_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Draw a pcolormesh/contourf field with a matched discrete colorbar into *ax*; return the colorbar.</span>
+
+<span class="sd">    The colorbar has a *fixed inch width* (not a fraction of the host axes), so its</span>
+<span class="sd">    thickness and the resulting right margin are identical on every field figure</span>
+<span class="sd">    regardless of slot width, and its labels are ~6 round values</span>
+<span class="sd">    (:func:`nice_colorbar_ticks`) rather than one per discretisation boundary, with</span>
+<span class="sd">    *cbar_label* written as a title on top (:func:`unit_colorbar`) so it does not</span>
+<span class="sd">    widen the figure.</span>
+
+<span class="sd">    ``make_axes_locatable`` (via ``unit_colorbar(reserve=True)``) is used **only</span>
+<span class="sd">    because this axes is free-aspect**.  It attaches the colorbar to the divider of</span>
+<span class="sd">    the axes' box *at layout time*; if something resizes that box afterwards —</span>
+<span class="sd">    ``set_aspect("equal", adjustable="box")``, or a hand-placed map layout — the cax</span>
+<span class="sd">    tracks the pre-resize box and ends up the wrong size.  The rule (see</span>
+<span class="sd">    ``.claude/notes/2026-08-14-consistent-cruise-maps.md``): ``make_axes_locatable``</span>
+<span class="sd">    for free-aspect axes; hand-reserved inches whenever the aspect is locked or the</span>
+<span class="sd">    axes are hand-placed.  Do not add ``set_aspect("equal")`` to a figure that</span>
+<span class="sd">    colorbars through here without switching to the reserved-inches path.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">"contourf"</span><span class="p">:</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_invalid</span><span class="p">(</span><span class="n">data2d</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">mappable</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap_name</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s2">"both"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mappable</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">data2d</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">shading</span><span class="o">=</span><span class="s2">"nearest"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">unit_colorbar</span><span class="p">(</span>
+        <span class="n">ax</span><span class="p">,</span>
+        <span class="n">mappable</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">cbar_label</span><span class="p">,</span>
+        <span class="n">ticks</span><span class="o">=</span><span class="n">nice_colorbar_ticks</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])),</span>
+        <span class="n">extend</span><span class="o">=</span><span class="s2">"both"</span><span class="p">,</span>
+        <span class="n">reserve</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">title_loc</span><span class="o">=</span><span class="s2">"left"</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

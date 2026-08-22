@@ -1,0 +1,254 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast: HTML reports for shipboard CTD and LADCP data &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quickstart guide" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ctdcast: HTML reports for shipboard CTD and LADCP data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ctdcast-html-reports-for-shipboard-ctd-and-ladcp-data">
+<h1>ctdcast: HTML reports for shipboard CTD and LADCP data<a class="headerlink" href="#ctdcast-html-reports-for-shipboard-ctd-and-ladcp-data" title="Link to this heading"></a></h1>
+<p><strong>ctdcast</strong> generates self-contained HTML report files from shipboard CTD and LADCP data.
+All figures are embedded as base64 PNG images — no external requests are made at view time,
+so the output files work fully offline on a research vessel.</p>
+<p>Three report types are produced:</p>
+<ul class="simple">
+<li><p><strong>Cast pages</strong> — one page per cast, with hydrographic profiles, T-S diagram, and a
+cruise-track map highlighting the cast location.</p></li>
+<li><p><strong>Section pages</strong> — transect sections showing T, S, σ₀, and O₂ across user-defined groups
+of casts.</p></li>
+<li><p><strong>Time series page</strong> — cruise-wide hovmöller diagrams of T, S, and O₂ versus time and
+pressure.</p></li>
+</ul>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#quick-look-no-config-file-needed">Quick look (no config file needed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#full-workflow-prerequisites">Full workflow prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#prepare-your-input-files">Prepare your input files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#edit-config-yaml">Edit config.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#define-your-sections">Define your sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#generate-the-report">Generate the report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#open-the-report">Open the report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#updating-mid-cruise">Updating mid-cruise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-draft">ctdcast draft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-init">ctdcast init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-validate">ctdcast validate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-process">ctdcast process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-convert-deprecated">ctdcast convert (deprecated)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-report">ctdcast report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html#ctdcast-run">ctdcast run</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="processing_framework.html#the-stage-ladder">The stage ladder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing_framework.html#cast-level-processing">Cast-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing_framework.html#cruise-level-processing">Cruise-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing_framework.html#summary-table">Summary table</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="config_yaml.html#data-block"><code class="docutils literal notranslate"><span class="pre">data</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config_yaml.html#output-block"><code class="docutils literal notranslate"><span class="pre">output</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config_yaml.html#generate-block"><code class="docutils literal notranslate"><span class="pre">generate</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config_yaml.html#sensors-block-optional"><code class="docutils literal notranslate"><span class="pre">sensors</span></code> block (optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config_yaml.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cruise_metadata.html#shared-registries">Shared registries</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ctd_sections.html#section-ordering-the-two-modes">Section ordering: the two modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctd_sections.html#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctd_sections.html#repeat-stations-the-timeseries-block">Repeat stations (the <code class="docutils literal notranslate"><span class="pre">timeseries</span></code> block)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_files.html#per-cast-files-nc-dir">Per-cast files (<code class="docutils literal notranslate"><span class="pre">nc_dir</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_files.html#profiles-file-profiles-nc">Profiles file (<code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_files.html#sensor-provenance">Sensor provenance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#directory-layout">Directory layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#index-html">index.html</a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#casts-html">casts.html</a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#sections-html">sections.html</a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#cast-pages-casts-cast-nnn-html">Cast pages — <code class="docutils literal notranslate"><span class="pre">casts/cast_NNN.html</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#section-pages-sections-section-name-html">Section pages — <code class="docutils literal notranslate"><span class="pre">sections/section_NAME.html</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="report_output.html#timeseries-html">timeseries.html</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#main-entry-point">Main entry point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.identity">Cast identity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#figure-builders">Figure builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#layer-1-primitives">Layer-1 primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#base64-encoders">Base64 encoders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.config.parameters">Plotting parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#file-level-metadata">File-level metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#section-manifest">Section manifest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.reports._cast">Page generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.reports._leaflet">Interactive map</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.analysis.derive">Analysis helpers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.processors.stage1">Cast processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-ctdcast.readers.ladcp">Readers</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+</div>
+</section>
+<section id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-right" title="Quickstart guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

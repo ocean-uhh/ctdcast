@@ -1,0 +1,809 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.parameters &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.parameters</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.parameters</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Package-wide constants: plotting parameters, CNV aliases, variable metadata, CCHDO conventions.</span>
+
+<span class="sd">Compile-time constants only — the per-run display settings (GEBCO path,</span>
+<span class="sd">clean_spines, figsizes, map bounds, colormap overrides) live in the frozen</span>
+<span class="sd">:class:`ctdcast.config.report_config.ReportConfig`, built once and threaded down.</span>
+
+<span class="sd">Section headers mark what kind of constant each block holds, because that determines</span>
+<span class="sd">who may change it and what breaks when they do:</span>
+
+<span class="sd">  Contract  — changing it makes output wrong or non-conformant.</span>
+<span class="sd">              Requires a code review and a version bump.</span>
+<span class="sd">  Science   — changing it gives a different but equally valid answer.</span>
+<span class="sd">              Per-cruise overrides go in ``display.variables:`` in the cruise</span>
+<span class="sd">              ``config.yaml``; use :func:`ctdcast.config.loader.load_display_config`.</span>
+<span class="sd">  Derived   — computed from another constant; must live here to avoid drift.</span>
+<span class="sd">  Deferred  — belongs in ``oceanvis`` once that package exists.</span>
+
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Sentinel values  [Contract — changing breaks output provenance]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Fallback cruise identifier used in report titles and metadata when the netCDF</span>
+<span class="c1"># attributes contain no ``cruise`` key and no cruise_id is supplied via</span>
+<span class="c1"># cruise_info.  "UNK" is deliberately conspicuous so mislabelled output is</span>
+<span class="c1"># obvious rather than plausible.</span>
+<span class="n">UNKNOWN_CRUISE_ID</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"UNKCRUISE"</span>
+
+<span class="c1"># Zero-padding width for cast-number tags used in filename filtering.</span>
+<span class="c1"># Filenames are expected to embed a zero-padded 3-digit cast number (e.g.</span>
+<span class="c1"># "mixsed2_042.nc").  Adjust only if your naming convention uses a different</span>
+<span class="c1"># width; keeping it here avoids the constant being hardcoded in 4 different</span>
+<span class="c1"># places across the processors and CLI.</span>
+<span class="n">CAST_TAG_WIDTH</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="c1"># Slot widths, section aspect constants, and other presentation tokens now live</span>
+<span class="c1"># in the vendored, package-neutral ``config/report_tokens.py`` (spec §11/§14).</span>
+<span class="c1"># This file holds only scientific/variable metadata.</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Variable metadata  [Science — vmin/vmax/cmap are per-cruise science choices]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Internal variable name → CF metadata and display defaults.</span>
+<span class="c1">#</span>
+<span class="c1"># standard_name: CF 1.8 canonical. null when none exists.</span>
+<span class="c1"># units: CF canonical spelling (degree_Celsius, not degC; S m-1, not S/m).</span>
+<span class="c1"># reference_scale: only where non-trivial (ITS-90, PSS-78, TEOS-10).</span>
+<span class="c1"># cmap: matplotlib colormap; null when no standard section/profile orientation.</span>
+<span class="c1"># vmin/vmax: soft default axis limits — per-cruise science choices, override freely</span>
+<span class="c1">#   via display.variables: in cruise config.yaml (see load_display_config).</span>
+<span class="c1">#   null means cast-dependent or sensor-dependent; plotter clips to data range.</span>
+<span class="c1">#</span>
+<span class="c1"># To override for a cruise, add to config.yaml:</span>
+<span class="c1">#   display:</span>
+<span class="c1">#     variables:</span>
+<span class="c1">#       ctd_temperature_1:</span>
+<span class="c1">#         vmin: 4</span>
+<span class="c1">#         vmax: 25</span>
+<span class="n">VARIABLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"pressure"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Pressure"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Sea pressure"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_pressure"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"latitude"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Latitude"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°N"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Latitude"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_north"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"latitude"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"longitude"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Longitude"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°E"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Longitude"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_east"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"longitude"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_temperature_1"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$T_1$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°C"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"In-situ temperature (primary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_temperature"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"ITS-90"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_temperature_2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$T_2$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°C"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"In-situ temperature (secondary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_temperature"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"ITS-90"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># Best-sensor composite: copy of ctd_temperature_1 or ctd_temperature_2, whichever</span>
+    <span class="c1"># is set as preferred in config.yaml. Which sensor is in attrs["preferred_sensor"].</span>
+    <span class="c1"># Created by stage3 when preferred_temperature_sensor is configured; absent otherwise.</span>
+    <span class="s2">"ctd_temperature"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"T"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°C"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"In-situ temperature (preferred sensor)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_temperature"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"ITS-90"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"conductivity_1"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$C_1$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"mS/cm"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Conductivity (primary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"mS cm-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_electrical_conductivity"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"conductivity_2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$C_2$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"mS/cm"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Conductivity (secondary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"mS cm-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_electrical_conductivity"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_salinity_1"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$S_</span><span class="si">{P1}</span><span class="s2">$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"PSU"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Practical salinity (primary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span>  <span class="c1"># PSS-78 is dimensionless per CF</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_practical_salinity"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"PSS-78"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlGnBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mf">34.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">35.5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_salinity_2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$S_</span><span class="si">{P2}</span><span class="s2">$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"PSU"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Practical salinity (secondary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_practical_salinity"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"PSS-78"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlGnBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mf">34.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">35.5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># ctd_salinity: preferred sensor composite — see ctd_temperature note above.</span>
+    <span class="s2">"ctd_salinity"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"SP"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"PSU"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Practical salinity (preferred sensor)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_practical_salinity"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"PSS-78"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlGnBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mf">34.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">35.5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_oxygen_1"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$O_2$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"µmol/kg"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Dissolved oxygen (primary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol kg-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"moles_of_oxygen_per_unit_mass_in_sea_water"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlGn"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">350</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_oxygen_2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$O_2$ (2)"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"µmol/kg"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Dissolved oxygen (secondary)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol kg-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"moles_of_oxygen_per_unit_mass_in_sea_water"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlGn"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">350</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># ctd_oxygen: preferred sensor composite — see ctd_temperature note above.</span>
+    <span class="s2">"ctd_oxygen"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$O_2$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"µmol/kg"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Dissolved oxygen (preferred sensor)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol kg-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"moles_of_oxygen_per_unit_mass_in_sea_water"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlGn"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">350</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># oxygen_saturation: derived on demand from ctd_oxygen + T/S/P; not stored.</span>
+    <span class="c1"># Entry kept for vlabel() and plot metadata; no netCDF write.</span>
+    <span class="s2">"oxygen_saturation"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$O_2$ sat"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"%"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Dissolved oxygen saturation"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"percent"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlGn"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">110</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_fluor"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Fluorescence"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"mg/m³"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Chlorophyll fluorescence"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"mg m-3"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"mass_concentration_of_chlorophyll_in_sea_water"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlGn"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_turbidity"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Turbidity"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"NTU"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Turbidity"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span>  <span class="c1"># dimensionless per CF for NTU</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_turbidity"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlOrBr"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_altimeter"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Altimeter"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Altimeter distance to seafloor"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"altitude_of_sea_floor"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># TEOS-10 derived — computed on-the-fly by derive_teos10(), not stored in NC</span>
+    <span class="s2">"conservative_temperature"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"CT"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°C"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Conservative Temperature"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_conservative_temperature"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"TEOS-10"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"absolute_salinity"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"SA"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"g/kg"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Absolute Salinity"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"g kg-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_absolute_salinity"</span><span class="p">,</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"TEOS-10"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"YlGnBu_r"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mf">34.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">35.5</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"sigma0"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"$</span><span class="se">\\</span><span class="s2">sigma_0$"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"kg/m³"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Potential density anomaly (ref 0 dbar)"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"kg m-3"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_sigma_theta"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"Purples"</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="mf">26.5</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">28.2</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># Derived diagnostics</span>
+    <span class="s2">"AOU"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"AOU"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"µmol/kg"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Apparent Oxygen Utilization"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol kg-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="s2">"RdBu_r"</span><span class="p">,</span>  <span class="c1"># blue = near saturation, red = depleted</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># LADCP velocity components</span>
+    <span class="s2">"U"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"U"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"m s⁻¹"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Eastward velocity"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"V"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"V"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"m s⁻¹"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Northward velocity"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># Stability diagnostics</span>
+    <span class="s2">"N2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"N²"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"s⁻²"</span><span class="p">,</span>  <span class="c1"># rad² is conventional to omit on oceanographic plots</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Squared buoyancy frequency"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"rad2 s-2"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"square_of_brunt_vaisala_frequency_in_sea_water"</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"Turner"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Turner angle"</span><span class="p">,</span>
+        <span class="s2">"label_units"</span><span class="p">:</span> <span class="s2">"°"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Turner angle"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree"</span><span class="p">,</span>
+        <span class="s2">"standard_name"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"cmap"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"vmin"</span><span class="p">:</span> <span class="o">-</span><span class="mi">90</span><span class="p">,</span>
+        <span class="s2">"vmax"</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Colour and colormap tables  [Deferred — will move to oceanvis]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Physics (CT/SA/σ₀/U/V/N²/Turner): Okabe-Ito palette — Bang Wong, Nature Methods 8:441 (2011).</span>
+<span class="c1"># Biogeochemistry (O₂/fluorescence/turbidity): Paul Tol palette.</span>
+<span class="c1">#</span>
+<span class="c1"># Keys use the long internal names from VARIABLES (not short aliases like CT/SA).</span>
+<span class="n">VAR_COLORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"conservative_temperature"</span><span class="p">:</span> <span class="s2">"#56B4E9"</span><span class="p">,</span>  <span class="c1"># sky blue     — Okabe-Ito</span>
+    <span class="s2">"absolute_salinity"</span><span class="p">:</span> <span class="s2">"#E69F00"</span><span class="p">,</span>  <span class="c1"># orange       — Okabe-Ito</span>
+    <span class="s2">"sigma0"</span><span class="p">:</span> <span class="s2">"#009E73"</span><span class="p">,</span>  <span class="c1"># bluish green — Okabe-Ito</span>
+    <span class="s2">"U"</span><span class="p">:</span> <span class="s2">"#D55E00"</span><span class="p">,</span>  <span class="c1"># vermillion   — Okabe-Ito</span>
+    <span class="s2">"V"</span><span class="p">:</span> <span class="s2">"#0072B2"</span><span class="p">,</span>  <span class="c1"># blue         — Okabe-Ito</span>
+    <span class="s2">"ctd_oxygen_1"</span><span class="p">:</span> <span class="s2">"#332288"</span><span class="p">,</span>  <span class="c1"># indigo       — Paul Tol</span>
+    <span class="s2">"ctd_fluor"</span><span class="p">:</span> <span class="s2">"#117733"</span><span class="p">,</span>  <span class="c1"># forest green — Paul Tol</span>
+    <span class="s2">"ctd_turbidity"</span><span class="p">:</span> <span class="s2">"#661100"</span><span class="p">,</span>  <span class="c1"># dark red     — Paul Tol</span>
+    <span class="s2">"N2"</span><span class="p">:</span> <span class="s2">"#000000"</span><span class="p">,</span>
+    <span class="s2">"Turner"</span><span class="p">:</span> <span class="s2">"#000000"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Plotter-facing colormap lookup, derived from VARIABLES so the two cannot drift.</span>
+<span class="n">_VAR_CMAPS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="s2">"cmap"</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cmap"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="p">}</span>
+
+
+<span class="c1">#: Physics variables drawn on section, overview, and timeseries pages, in order.</span>
+<span class="c1">#: Use ``vlabel(var)`` for the axis/panel label and ``VARIABLES[var]["label"]``</span>
+<span class="c1">#: for the short caption.  Defined here so the three report modules share one</span>
+<span class="c1">#: source of truth and cannot silently diverge from each other or from VARIABLES.</span>
+<span class="n">SECTION_PHYSICS_VARS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"conservative_temperature"</span><span class="p">,</span>
+    <span class="s2">"absolute_salinity"</span><span class="p">,</span>
+    <span class="s2">"sigma0"</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1">#: Biogeochemical variables drawn on section, overview, and timeseries pages, in order.</span>
+<span class="n">SECTION_BIOGEO_VARS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"ctd_oxygen_1"</span><span class="p">,</span>
+    <span class="s2">"ctd_fluor"</span><span class="p">,</span>
+    <span class="s2">"ctd_turbidity"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="vlabel">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.parameters.vlabel">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">vlabel</span><span class="p">(</span><span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a matplotlib axis label for *var* using the VARIABLES registry.</span>
+
+<span class="sd">    Format is ``"Label (units)"`` when ``label_units`` is non-empty, or just</span>
+<span class="sd">    ``"Label"`` when there are no units (e.g. dimensionless quantities).</span>
+<span class="sd">    Units are always in the Unicode display form from ``label_units`` — never</span>
+<span class="sd">    the ASCII-safe ``units`` string used for netCDF attributes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    var:</span>
+<span class="sd">        VARIABLES key (e.g. ``"conservative_temperature"``).</span>
+<span class="sd">    prefix:</span>
+<span class="sd">        Optional prefix prepended to the label component only, not the units.</span>
+<span class="sd">        Use ``"Δ"`` to produce difference labels such as ``"ΔCT (°C)"``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Ready-to-use axis label string.  Falls back to *var* itself when *var*</span>
+<span class="sd">        is not in VARIABLES.</span>
+<span class="sd">    """</span>
+    <span class="n">entry</span> <span class="o">=</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">lbl</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'label'</span><span class="p">,</span><span class="w"> </span><span class="n">var</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">lu</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"label_units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">lu</span><span class="si">}</span><span class="s2">)"</span> <span class="k">if</span> <span class="n">lu</span> <span class="k">else</span> <span class="n">lbl</span></div>
+
+
+
+<div class="viewcode-block" id="vunit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.parameters.vunit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">vunit</span><span class="p">(</span><span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the Unicode display unit for *var*, or ``""`` when dimensionless.</span>
+
+<span class="sd">    The unit half of :func:`vlabel`, for field colorbars that place the unit as a</span>
+<span class="sd">    title on top of the bar rather than a ``"Label (units)"`` side label.  Uses the</span>
+<span class="sd">    ``label_units`` display form (never the ASCII ``units`` netCDF string).  Works</span>
+<span class="sd">    for both canonical and single-/dual-sensor-resolved names (both carry the same</span>
+<span class="sd">    ``label_units`` in :data:`VARIABLES`).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"label_units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span></div>
+
+
+
+<span class="c1">#: Greek/command replacements for the mathtext→Unicode label converter.</span>
+<span class="n">_MATHTEXT_TOKENS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="sa">r</span><span class="s2">"\sigma"</span><span class="p">:</span> <span class="s2">"σ"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"\log"</span><span class="p">:</span> <span class="s2">"log"</span><span class="p">}</span>
+<span class="n">_SUBSCRIPT_MAP</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">"0123456789+-=()"</span><span class="p">,</span> <span class="s2">"₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎"</span><span class="p">)</span>
+<span class="n">_SUPERSCRIPT_MAP</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">"0123456789+-=()n"</span><span class="p">,</span> <span class="s2">"⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_mathtext_to_unicode</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert the mathtext spans in *text* to their Unicode equivalents.</span>
+
+<span class="sd">    ``VARIABLES`` labels carry subscripts as mathtext (``$\\sigma_0$``) so matplotlib</span>
+<span class="sd">    renders them reliably; this rewrites those spans to Unicode (``σ₀``) for HTML</span>
+<span class="sd">    contexts, where mathtext would show as literal ``$…$``.  Handles the ``\\sigma``/</span>
+<span class="sd">    ``\\log`` tokens our labels use plus ``_`` subscripts and ``^`` superscripts; a</span>
+<span class="sd">    label using an unmapped TeX command is caught by ``test_vlabel_html_round_trips``</span>
+<span class="sd">    rather than leaking silently.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_convert</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Match</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">tex</span><span class="p">,</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">_MATHTEXT_TOKENS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="n">body</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tex</span><span class="p">,</span> <span class="n">char</span><span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">"_\{([^}]*)\}"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUBSCRIPT_MAP</span><span class="p">),</span> <span class="n">body</span>
+        <span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_(.)"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUBSCRIPT_MAP</span><span class="p">),</span> <span class="n">body</span><span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">"\^\{([^}]*)\}"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_MAP</span><span class="p">),</span> <span class="n">body</span>
+        <span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\^(.)"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_MAP</span><span class="p">),</span> <span class="n">body</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">body</span>
+
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\$([^$]*)\$"</span><span class="p">,</span> <span class="n">_convert</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="vlabel_html">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.parameters.vlabel_html">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">vlabel_html</span><span class="p">(</span><span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return :func:`vlabel` as HTML-ready text — mathtext subscripts as Unicode.</span>
+
+<span class="sd">    Use this wherever a variable label is written into HTML (a figure caption, a</span>
+<span class="sd">    table cell): matplotlib needs the mathtext form, but HTML must show ``σ₀``, not</span>
+<span class="sd">    the literal ``$\\sigma_0$``.  One helper so the label-form choice lives in one place.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_mathtext_to_unicode</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">prefix</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_sensor_var">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.parameters.resolve_sensor_var">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_sensor_var</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the name to use for *var* in *ds*, applying the single/dual-sensor rule.</span>
+
+<span class="sd">    A variable may be stored plain (single sensor, e.g. ``ctd_oxygen``) or suffixed</span>
+<span class="sd">    (dual sensor, e.g. ``ctd_oxygen_1``).  This resolves whichever form *ds* actually</span>
+<span class="sd">    holds: a suffixed *var* falls back to its plain form, and a plain *var* falls back</span>
+<span class="sd">    to the ``_1`` form.  Returns *var* unchanged when neither is present, so the</span>
+<span class="sd">    caller's draw function then returns ``None`` for the missing variable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        The dataset whose variables to resolve against.</span>
+<span class="sd">    var:</span>
+<span class="sd">        The requested variable name (plain or ``_1``/``_2`` suffixed).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The name present in *ds*, or *var* unchanged if neither form is found.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">var</span>
+    <span class="c1"># Suffixed var not found; try the plain (single-sensor) form.</span>
+    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_1"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">var</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">var</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="c1"># Plain var not found; try the suffixed form.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">"_1"</span><span class="p">,</span> <span class="s2">"_2"</span><span class="p">))</span> <span class="ow">and</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">_1"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">_1"</span>
+    <span class="k">return</span> <span class="n">var</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CNV input aliases  [Science — firmware column names, not per-cruise choices]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># SeaBird/CNV column name (lowercase) → ctdcast internal variable name.</span>
+<span class="c1"># Used by readers/cnv.py to rename columns on ingest.</span>
+<span class="c1"># Keys are lowercase; readers must lower-case incoming names before lookup.</span>
+<span class="c1">#</span>
+<span class="c1"># Entries confirmed from mixsed2_011.nc CNV header:</span>
+<span class="c1">#   t090C, c0S/m, t190C, c1S/m, altM, flECO-AFL, turbWETntu0, sbeox0PS, sbox0Mm/Kg, sbeox0V</span>
+<span class="c1"># Other entries are plausible SeaBird firmware variants, not yet verified.</span>
+<span class="c1">#</span>
+<span class="c1"># CCHDO read-direction mappings (CTDTMP → temperature_1) belong in CCHDO_VARIABLES below.</span>
+<span class="n">CNV_ALIASES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># -------------------------------------------------------------------</span>
+    <span class="c1"># Raw CNV column names (SBE firmware names, lowercase)</span>
+    <span class="c1"># Used when a future backend reads CNV directly without pre-sanitization.</span>
+    <span class="c1"># -------------------------------------------------------------------</span>
+    <span class="c1"># Temperature — CCHDO nc_var names with _1/_2 suffix for dual sensors</span>
+    <span class="s2">"t090c"</span><span class="p">:</span> <span class="s2">"ctd_temperature_1"</span><span class="p">,</span>  <span class="c1"># SBE 9+ primary, ITS-90</span>
+    <span class="s2">"t190c"</span><span class="p">:</span> <span class="s2">"ctd_temperature_2"</span><span class="p">,</span>  <span class="c1"># SBE 9+ secondary, ITS-90</span>
+    <span class="s2">"tv290c"</span><span class="p">:</span> <span class="s2">"ctd_temperature_2"</span><span class="p">,</span>  <span class="c1"># some SeaBird firmware variants</span>
+    <span class="c1"># Conductivity — no CCHDO equivalent; keep plain names</span>
+    <span class="s2">"c0s/m"</span><span class="p">:</span> <span class="s2">"conductivity_1"</span><span class="p">,</span>  <span class="c1"># SBE 9+ primary, S/m</span>
+    <span class="s2">"c1s/m"</span><span class="p">:</span> <span class="s2">"conductivity_2"</span><span class="p">,</span>  <span class="c1"># SBE 9+ secondary, S/m</span>
+    <span class="c1"># Pressure</span>
+    <span class="s2">"prsm"</span><span class="p">:</span> <span class="s2">"pressure"</span><span class="p">,</span>  <span class="c1"># strain-gauge, metres (rare)</span>
+    <span class="s2">"prdm"</span><span class="p">:</span> <span class="s2">"pressure"</span><span class="p">,</span>  <span class="c1"># strain-gauge, dbar</span>
+    <span class="c1"># Salinity (rarely written in CNV; normally derived from C/T/P)</span>
+    <span class="s2">"sal00"</span><span class="p">:</span> <span class="s2">"ctd_salinity_1"</span><span class="p">,</span>
+    <span class="s2">"sal11"</span><span class="p">:</span> <span class="s2">"ctd_salinity_2"</span><span class="p">,</span>
+    <span class="c1"># Oxygen — µmol/kg only; % saturation is derived on demand, not stored</span>
+    <span class="s2">"sbox0mm/kg"</span><span class="p">:</span> <span class="s2">"ctd_oxygen_1"</span><span class="p">,</span>  <span class="c1"># SBE 43, µmol/kg</span>
+    <span class="s2">"sbeox0v"</span><span class="p">:</span> <span class="s2">"oxygen_raw_1"</span><span class="p">,</span>  <span class="c1"># SBE 43 raw voltage; not used in normal pipeline</span>
+    <span class="c1"># Biogeo</span>
+    <span class="s2">"fleco-afl"</span><span class="p">:</span> <span class="s2">"ctd_fluor"</span><span class="p">,</span>  <span class="c1"># WET Labs ECO-AFL/FL fluorometer</span>
+    <span class="s2">"turbwetntu0"</span><span class="p">:</span> <span class="s2">"ctd_turbidity"</span><span class="p">,</span>  <span class="c1"># WET Labs ECO NTU turbidity sensor</span>
+    <span class="s2">"obs"</span><span class="p">:</span> <span class="s2">"ctd_turbidity"</span><span class="p">,</span>  <span class="c1"># OBS turbidity (alternative sensor type)</span>
+    <span class="c1"># Navigation (sometimes embedded in CNV)</span>
+    <span class="s2">"latitude"</span><span class="p">:</span> <span class="s2">"latitude"</span><span class="p">,</span>
+    <span class="s2">"longitude"</span><span class="p">:</span> <span class="s2">"longitude"</span><span class="p">,</span>
+    <span class="c1"># Altimeter</span>
+    <span class="c1"># -------------------------------------------------------------------</span>
+    <span class="c1"># seasenselib-sanitized names — seasenselib applies its own mapping</span>
+    <span class="c1"># before returning the Dataset, so _normalise() sees these names, not</span>
+    <span class="c1"># the raw CNV column names above.  Both sets must be present so that</span>
+    <span class="c1"># _normalise() is backend-agnostic.</span>
+    <span class="c1"># -------------------------------------------------------------------</span>
+    <span class="s2">"temperature_1"</span><span class="p">:</span> <span class="s2">"ctd_temperature_1"</span><span class="p">,</span>
+    <span class="s2">"temperature_2"</span><span class="p">:</span> <span class="s2">"ctd_temperature_2"</span><span class="p">,</span>
+    <span class="s2">"salinity_1"</span><span class="p">:</span> <span class="s2">"ctd_salinity_1"</span><span class="p">,</span>
+    <span class="s2">"salinity_2"</span><span class="p">:</span> <span class="s2">"ctd_salinity_2"</span><span class="p">,</span>
+    <span class="c1"># Note: seasenselib's oxygen_1/oxygen_2 are % saturation (from sbeox0PS),</span>
+    <span class="c1"># not µmol/kg.  They are dropped in _normalise(); the µmol/kg value comes</span>
+    <span class="c1"># from sbox0Mm/Kg → ctd_oxygen_1 via the raw CNV alias above.</span>
+    <span class="s2">"fluorescence"</span><span class="p">:</span> <span class="s2">"ctd_fluor"</span><span class="p">,</span>
+    <span class="s2">"turbidity"</span><span class="p">:</span> <span class="s2">"ctd_turbidity"</span><span class="p">,</span>
+    <span class="s2">"altimeter"</span><span class="p">:</span> <span class="s2">"ctd_altimeter"</span><span class="p">,</span>
+    <span class="c1"># Raw CNV altimeter column name</span>
+    <span class="s2">"altm"</span><span class="p">:</span> <span class="s2">"ctd_altimeter"</span><span class="p">,</span>  <span class="c1"># sea-floor distance, metres</span>
+<span class="p">}</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CCHDO output convention  [Contract — wrong WHP name = non-conformant file]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Source: 740H20200119_ctd.nc (James Cook JC191, A05 24N Atlantic, 2020-01-19)</span>
+<span class="c1">#   Conventions: CF-1.8 CCHDO-1.0 / cchdo_parameters_version: params 0.1.21</span>
+<span class="c1"># WHP parameter reference: https://exchange-format.readthedocs.io/en/latest/parameters.html</span>
+
+<span class="c1"># Dimension names and order — mirror CCHDO exactly.</span>
+<span class="c1"># N_PROF = one element per cast/profile; N_LEVELS = pressure levels per cast.</span>
+<span class="n">CCHDO_DIMS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"N_PROF"</span><span class="p">,</span> <span class="s2">"N_LEVELS"</span><span class="p">)</span>
+
+<span class="c1"># Best-sensor composite: maps the plain (unsuffixed) ctdcast name to the CCHDO</span>
+<span class="c1"># nc_var name. The plain name exists only when preferred_sensor is configured in</span>
+<span class="c1"># config.yaml and stage3 has promoted one of the suffixed channels. If not set,</span>
+<span class="c1"># the CCHDO writer falls back to the _1 sensor.</span>
+<span class="c1"># Under the CCHDO naming scheme these are identity mappings — the names already match.</span>
+<span class="n">CCHDO_COMPOSITE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"ctd_temperature"</span><span class="p">:</span> <span class="s2">"ctd_temperature"</span><span class="p">,</span>
+    <span class="s2">"ctd_salinity"</span><span class="p">:</span> <span class="s2">"ctd_salinity"</span><span class="p">,</span>
+    <span class="s2">"ctd_oxygen"</span><span class="p">:</span> <span class="s2">"ctd_oxygen"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Variables NOT written to CCHDO output.</span>
+<span class="n">CCHDO_EXCLUDE</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">"timeJ"</span><span class="p">,</span>  <span class="c1"># Julian-day timestamp; CCHDO uses ISO 8601 time coordinate</span>
+        <span class="s2">"timeS"</span><span class="p">,</span>  <span class="c1"># elapsed seconds; not a scientific variable</span>
+        <span class="s2">"speed_of_sound"</span><span class="p">,</span>  <span class="c1"># SeaBird bookkeeping</span>
+        <span class="s2">"density"</span><span class="p">,</span>  <span class="c1"># in-situ density; ctdcast writes sigma0 — no density WHP param</span>
+        <span class="s2">"flag"</span><span class="p">,</span>  <span class="c1"># SeaBird processing flag, not a QC flag</span>
+        <span class="s2">"oxygen_raw_1"</span><span class="p">,</span>  <span class="c1"># raw SBE 43 voltage</span>
+        <span class="c1"># oxygen_saturation is not stored (derived on demand) — no entry needed here</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Station/cast identifiers written as coordinates (not data variables).</span>
+<span class="n">CCHDO_IDENTIFIERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"expocode"</span><span class="p">:</span> <span class="s2">"EXPOCODE"</span><span class="p">,</span>
+    <span class="s2">"station"</span><span class="p">:</span> <span class="s2">"STNNBR"</span><span class="p">,</span>
+    <span class="s2">"cast"</span><span class="p">:</span> <span class="s2">"CASTNO"</span><span class="p">,</span>
+    <span class="s2">"sample"</span><span class="p">:</span> <span class="s2">"SAMPNO"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># QARTOD → WOCE CTD QC flag translation.  [Contract — do not edit without a version bump]</span>
+<span class="c1"># CRITICAL: WOCE 2 = acceptable (good), WOCE 1 = not_calibrated (NOT good).</span>
+<span class="c1"># A naive 1→1 pass-through silently labels every good measurement as uncalibrated.</span>
+<span class="n">CCHDO_QC</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>  <span class="c1"># pass          → acceptable_measurement</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># not_evaluated → not_calibrated</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>  <span class="c1"># suspect       → questionable_measurement</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># fail          → bad_measurement</span>
+    <span class="mi">9</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>  <span class="c1"># missing       → not_sampled</span>
+    <span class="c1"># WOCE 5 (not_reported), 6 (interpolated), 7 (despiked) have no QARTOD equivalent;</span>
+    <span class="c1"># derive from processing history at write time.</span>
+<span class="p">}</span>
+
+<span class="c1"># ctdcast internal name → CCHDO attributes the writer must set on output.</span>
+<span class="n">CCHDO_VARIABLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"pressure"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"CTDPRS"</span><span class="p">,</span>
+        <span class="s2">"whp_unit"</span><span class="p">:</span> <span class="s2">"DBAR"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.1f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># ctd_temperature: written directly (names already match CCHDO nc_var).</span>
+    <span class="c1"># Prefer the plain name (preferred sensor); fall back to ctd_temperature_1.</span>
+    <span class="s2">"ctd_temperature"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"CTDTMP"</span><span class="p">,</span>
+        <span class="s2">"whp_unit"</span><span class="p">:</span> <span class="s2">"ITS-90"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degC"</span><span class="p">,</span>  <span class="c1"># CCHDO uses degC, not degree_Celsius</span>
+        <span class="s2">"reference_scale"</span><span class="p">:</span> <span class="s2">"ITS-90"</span><span class="p">,</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.4f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_salinity"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"CTDSAL"</span><span class="p">,</span>
+        <span class="s2">"whp_unit"</span><span class="p">:</span> <span class="s2">"PSS-78"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span>  <span class="c1"># PSS-78 is dimensionless per CF</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.4f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"ctd_oxygen"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"CTDOXY"</span><span class="p">,</span>
+        <span class="s2">"whp_unit"</span><span class="p">:</span> <span class="s2">"UMOL/KG"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol/kg"</span><span class="p">,</span>  <span class="c1"># CCHDO uses umol/kg, not umol kg-1</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.1f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"latitude"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"LATITUDE"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_north"</span><span class="p">,</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.5f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">"longitude"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"LONGITUDE"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_east"</span><span class="p">,</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.5f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># btm_depth: not yet stored in ctdcast netCDF — stub for Phase 4.</span>
+    <span class="s2">"btm_depth"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"whp_name"</span><span class="p">:</span> <span class="s2">"DEPTH"</span><span class="p">,</span>
+        <span class="s2">"whp_unit"</span><span class="p">:</span> <span class="s2">"METERS"</span><span class="p">,</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"meters"</span><span class="p">,</span>
+        <span class="s2">"C_format"</span><span class="p">:</span> <span class="s2">"</span><span class="si">%.0f</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="c1"># fluorescence and turbidity: no WHP names confirmed from reference file.</span>
+    <span class="c1"># Omit from CCHDO output until verified from a biogeo-sensor CCHDO file.</span>
+<span class="p">}</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

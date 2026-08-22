@@ -1,0 +1,573 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.stage1 &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.stage1</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.stage1</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Stage 1 — CNV-to-netCDF conversion.</span>
+
+<span class="sd">Defines the CtdBackend Protocol, concrete backend implementations, and</span>
+<span class="sd">``stage1()``, the public function that converts a directory of CNV files</span>
+<span class="sd">to per-cast netCDF.  To add a new backend implement CtdBackend and add a</span>
+<span class="sd">branch in ``get_ctd_backend()`` — nothing else changes.</span>
+
+<span class="sd">The ``converters`` module re-exports these names for backward compatibility.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">contextlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">CAST_TAG_WIDTH</span><span class="p">,</span> <span class="n">CNV_ALIASES</span><span class="p">,</span> <span class="n">VARIABLES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors._warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">summarise_warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">stage_dir</span><span class="p">,</span> <span class="n">stage_path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.netcdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">write</span> <span class="k">as</span> <span class="n">write_nc</span>
+
+
+<span class="c1"># Variables that the reader may produce but that ctdcast does not store.</span>
+<span class="c1"># Dropped in _normalise() rather than reaching any downstream stage.</span>
+<span class="n">_DROP_VARS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">"timeJ"</span><span class="p">,</span>  <span class="c1"># Julian-day; time coordinate is sufficient</span>
+        <span class="s2">"timeS"</span><span class="p">,</span>  <span class="c1"># elapsed seconds</span>
+        <span class="s2">"speed_of_sound"</span><span class="p">,</span>
+        <span class="s2">"density"</span><span class="p">,</span>  <span class="c1"># SeaBird computed; ctdcast uses sigma0 via TEOS-10</span>
+        <span class="s2">"depth"</span><span class="p">,</span>  <span class="c1"># derived from pressure; not stored</span>
+        <span class="s2">"flag"</span><span class="p">,</span>  <span class="c1"># SeaBird processing flag; QARTOD _qc variables replace it</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Variables with no CCHDO equivalent that ctdcast does not store (derived on demand).</span>
+<span class="c1"># Also includes seasenselib's oxygen_1/oxygen_2, which are % saturation (from</span>
+<span class="c1"># sbeox0PS/sbeox1PS), not µmol/kg.  The µmol/kg value (sbox0Mm/Kg) is kept and</span>
+<span class="c1"># aliased to ctd_oxygen_1 via CNV_ALIASES.</span>
+<span class="n">_DERIVE_ON_DEMAND</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">"oxsat_1"</span><span class="p">,</span> <span class="s2">"sbeox0PS"</span><span class="p">,</span> <span class="s2">"sbeox0ps"</span><span class="p">,</span> <span class="s2">"oxygen_1"</span><span class="p">,</span> <span class="s2">"oxygen_2"</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Variables to keep even if absent from VARIABLES: raw sensor channels useful</span>
+<span class="c1"># for QC / sensor drift analysis but not plotted directly.  Listed in</span>
+<span class="c1"># CCHDO_EXCLUDE so they are never written to CCHDO exchange output.</span>
+<span class="n">_KEEP_VARS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"oxygen_raw_1"</span><span class="p">,</span> <span class="s2">"oxygen_raw_2"</span><span class="p">})</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalise</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Rename variables to ctdcast canonical names and drop non-standard columns.</span>
+
+<span class="sd">    Applied between the reader (seasenselib or future hex reader) and the</span>
+<span class="sd">    ctdcast netCDF writer.  Both readers must produce a Dataset that this</span>
+<span class="sd">    function can normalise into the same output shape.</span>
+
+<span class="sd">    Steps, in order:</span>
+
+<span class="sd">    1. Rename variables using :data:`~ctdcast.config.parameters.CNV_ALIASES`</span>
+<span class="sd">       (keys are lower-cased before lookup), handle the oxygen unit variants,</span>
+<span class="sd">       and convert conductivity from S/m to mS/cm (the CCHDO convention).</span>
+<span class="sd">    2. Drop variables in ``_DROP_VARS`` (SeaBird bookkeeping) and</span>
+<span class="sd">       ``_DERIVE_ON_DEMAND`` (quantities computed on demand, not stored).</span>
+<span class="sd">    3. Drop any remaining variables not in</span>
+<span class="sd">       :data:`~ctdcast.config.parameters.VARIABLES` and not a recognised</span>
+<span class="sd">       coordinate (``latitude``, ``longitude``, ``time``).</span>
+<span class="sd">    4. Apply the single-sensor naming rule: when only one sensor of a measured</span>
+<span class="sd">       type is present, strip the ``_1`` suffix so the variable is plain</span>
+<span class="sd">       (e.g. ``ctd_temperature_1`` → ``ctd_temperature`` when there is no</span>
+<span class="sd">       ``ctd_temperature_2``).</span>
+<span class="sd">    5. Append a ``history`` line recording the ctdcast version and stage.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Dataset as returned by the reader (seasenselib or hex reader).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        Normalised Dataset ready for :func:`ctdcast.writers.netcdf.write`.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Step 1: rename via CNV_ALIASES (lowercase key lookup).  The reader</span>
+    <span class="c1"># (seasenselib) records the raw column name per variable as</span>
+    <span class="c1"># ``cnv_original_name``, so the source→canonical provenance survives these</span>
+    <span class="c1"># renames without any extra bookkeeping here.</span>
+    <span class="n">rename_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">):</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">CNV_ALIASES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">target</span> <span class="ow">and</span> <span class="n">target</span> <span class="o">!=</span> <span class="n">var</span><span class="p">:</span>
+            <span class="n">rename_map</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span>
+    <span class="k">if</span> <span class="n">rename_map</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">rename_map</span><span class="p">)</span>
+
+    <span class="c1"># Step 1b: handle seasenselib's oxygen_N vars, which may be % saturation,</span>
+    <span class="c1"># volts, µmol/L, or µmol/kg depending on the CNV column the sensor was on.</span>
+    <span class="c1"># % saturation and volts are derived-on-demand / discarded.</span>
+    <span class="c1"># µmol/kg → rename to ctd_oxygen_N (step 4 will strip _1 if single-sensor).</span>
+    <span class="c1"># µmol/L → convert to µmol/kg using density from the dataset, then rename.</span>
+    <span class="c1"># Density is available here from seasenselib and is dropped in step 2.</span>
+    <span class="c1"># Also handles the seasenselib hex-reader names ('oxygen', 'oxygen2') which</span>
+    <span class="c1"># omit the _N suffix.  Suffix "1" = primary sensor, "2" = secondary.</span>
+    <span class="k">for</span> <span class="n">_v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"oxygen_1"</span><span class="p">,</span> <span class="s2">"oxygen_2"</span><span class="p">,</span> <span class="s2">"oxygen"</span><span class="p">,</span> <span class="s2">"oxygen2"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">_v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">_suffix</span> <span class="o">=</span> <span class="s2">"1"</span> <span class="k">if</span> <span class="n">_v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"oxygen_1"</span><span class="p">,</span> <span class="s2">"oxygen"</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"2"</span>
+        <span class="n">_target</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"ctd_oxygen_</span><span class="si">{</span><span class="n">_suffix</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">_units</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">"umol/kg"</span> <span class="ow">in</span> <span class="n">_units</span> <span class="ow">or</span> <span class="s2">"µmol/kg"</span> <span class="ow">in</span> <span class="n">_units</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">_v</span><span class="p">:</span> <span class="n">_target</span><span class="p">})</span>
+        <span class="k">elif</span> <span class="s2">"umol/l"</span> <span class="ow">in</span> <span class="n">_units</span> <span class="ow">or</span> <span class="s2">"µmol/l"</span> <span class="ow">in</span> <span class="n">_units</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">"density"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="c1"># density from seasenselib is in kg/m³; divide by 1000 to get kg/L,</span>
+                <span class="c1"># then µmol/L / (kg/L) = µmol/kg.</span>
+                <span class="n">rho</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"density"</span><span class="p">]</span> <span class="o">/</span> <span class="mf">1000.0</span>
+                <span class="n">converted</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span> <span class="o">/</span> <span class="n">rho</span>
+                <span class="n">new_attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+                <span class="n">new_attrs</span><span class="p">[</span><span class="s2">"units"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"umol/kg"</span>
+                <span class="n">new_attrs</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">"converted from umol/l to umol/kg using seasenselib density"</span>
+                <span class="p">)</span>
+                <span class="n">converted</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">new_attrs</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">([</span><span class="n">_v</span><span class="p">])</span><span class="o">.</span><span class="n">assign</span><span class="p">({</span><span class="n">_target</span><span class="p">:</span> <span class="n">converted</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Oxygen variable </span><span class="si">{</span><span class="n">_v</span><span class="si">!r}</span><span class="s2"> is in µmol/L but no density is available "</span>
+                    <span class="s2">"for conversion.  Variable dropped; reprocess with density present."</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">([</span><span class="n">_v</span><span class="p">])</span>
+        <span class="c1"># else: % saturation, volts, or unknown — falls through to _DERIVE_ON_DEMAND drop</span>
+
+    <span class="c1"># Step 1c: convert conductivity from S/m to mS/cm — the CCHDO/oceanographic</span>
+    <span class="c1"># convention and what gsw.SP_from_C expects.  1 S/m = 10 mS/cm.  Guarded on</span>
+    <span class="c1"># the source units so a file already in mS/cm is not double-converted.  The</span>
+    <span class="c1"># seasenselib reader now emits mS/cm directly, so on those files this guard</span>
+    <span class="c1"># is a no-op; the conversion body remains for any reader that hands us S/m</span>
+    <span class="c1"># (a future hex reader, or a differently-configured CNV) and is marked</span>
+    <span class="c1"># no-cover because no real fixture can exercise it while seasenselib is the</span>
+    <span class="c1"># only reader.</span>
+    <span class="k">for</span> <span class="n">_c</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">_c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">_u</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_c</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">" "</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"^"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_u</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"s/m"</span><span class="p">,</span> <span class="s2">"sm-1"</span><span class="p">,</span> <span class="s2">"sm⁻1"</span><span class="p">,</span> <span class="s2">"siemens/m"</span><span class="p">,</span> <span class="s2">"siemenspermetre"</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+            <span class="n">converted</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_c</span><span class="p">]</span> <span class="o">*</span> <span class="mf">10.0</span>
+            <span class="n">_attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_c</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">_attrs</span><span class="p">[</span><span class="s2">"units"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"mS cm-1"</span>
+            <span class="n">_attrs</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"converted from S m-1 to mS cm-1 (factor 10)"</span>
+            <span class="n">converted</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">_attrs</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">({</span><span class="n">_c</span><span class="p">:</span> <span class="n">converted</span><span class="p">})</span>
+
+    <span class="c1"># Step 2: drop bookkeeping and derive-on-demand variables</span>
+    <span class="n">to_drop</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_DROP_VARS</span> <span class="ow">or</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_DERIVE_ON_DEMAND</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">to_drop</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="n">to_drop</span><span class="p">)</span>
+
+    <span class="c1"># Step 3: drop anything not in VARIABLES, not a coordinate, and not in _KEEP_VARS</span>
+    <span class="n">_KEEP_COORDS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"longitude"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">}</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">v</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">VARIABLES</span> <span class="ow">and</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_KEEP_COORDS</span> <span class="ow">and</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_KEEP_VARS</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span>
+
+    <span class="c1"># Step 4: single-sensor naming — strip _1 when no _2 sibling exists.</span>
+    <span class="c1"># Only applies to scientific end-product variables (T/S/O); conductivity</span>
+    <span class="c1"># is an intermediate quantity and keeps its _1 suffix regardless.</span>
+    <span class="n">_SUFFIXED_PAIRS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">"ctd_temperature_1"</span><span class="p">,</span> <span class="s2">"ctd_temperature_2"</span><span class="p">,</span> <span class="s2">"ctd_temperature"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"ctd_salinity_1"</span><span class="p">,</span> <span class="s2">"ctd_salinity_2"</span><span class="p">,</span> <span class="s2">"ctd_salinity"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"ctd_oxygen_1"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_2"</span><span class="p">,</span> <span class="s2">"ctd_oxygen"</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">plain</span> <span class="ow">in</span> <span class="n">_SUFFIXED_PAIRS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v1</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span> <span class="ow">and</span> <span class="n">v2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">v1</span><span class="p">:</span> <span class="n">plain</span><span class="p">})</span>
+
+    <span class="c1"># Step 5: append history</span>
+    <span class="n">stamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span><span class="p">)</span>
+    <span class="n">entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stamp</span><span class="si">}</span><span class="s2"> ctdcast </span><span class="si">{</span><span class="n">__version__</span><span class="si">}</span><span class="s2"> stage1: normalise (CNV → canonical names)"</span>
+    <span class="n">prev</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"history"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">entry</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ds</span>
+
+
+<div class="viewcode-block" id="CtdBackend">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage1.CtdBackend">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CtdBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Protocol for per-cast CNV-to-netCDF converters."""</span>
+
+<div class="viewcode-block" id="CtdBackend.convert_cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage1.CtdBackend.convert_cast">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_cast</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cnv_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Convert one CNV file to netCDF.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cnv_path:</span>
+<span class="sd">            Path to the raw SBE CNV input file.</span>
+<span class="sd">        nc_path:</span>
+<span class="sd">            Desired output netCDF path.</span>
+<span class="sd">        force:</span>
+<span class="sd">            If True, overwrite an existing nc_path.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the file was written; False if skipped.</span>
+<span class="sd">        """</span>
+        <span class="o">...</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_SeasenselibBackend</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""CTD backend that delegates to the seasenselib package."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Initialise; raises ImportError if seasenselib is not installed."""</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">seasenselib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_sl</span>
+        <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">"seasenselib backend requested but the package is not installed. "</span>
+                <span class="s2">"Install it with: pip install seasenselib"</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sl</span> <span class="o">=</span> <span class="n">_sl</span>
+        <span class="c1"># Suppress verbose output from pycnv/seasenselib at the logger level.</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"pycnv"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"seasenselib"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_cast</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cnv_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Convert one CNV file using seasenselib.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cnv_path:</span>
+<span class="sd">            Path to the raw SBE CNV input file.</span>
+<span class="sd">        nc_path:</span>
+<span class="sd">            Desired output netCDF path.</span>
+<span class="sd">        force:</span>
+<span class="sd">            If True, overwrite an existing nc_path.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the file was written; False if skipped (already exists).</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">redirect_stdout</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()):</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sl</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">cnv_path</span><span class="p">))</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">_normalise</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">write_nc</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">nc_path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="n">_BACKENDS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"seasenselib"</span><span class="p">:</span> <span class="n">_SeasenselibBackend</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_ctd_backend">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage1.get_ctd_backend">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ctd_backend</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CtdBackend</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a CtdBackend instance for the given backend name.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name:</span>
+<span class="sd">        Currently only ``"seasenselib"``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If name is not a recognised backend.</span>
+<span class="sd">    ImportError</span>
+<span class="sd">        If the requested backend's package is not installed.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_BACKENDS</span><span class="p">:</span>
+        <span class="n">known</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">'"</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_BACKENDS</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown CTD backend: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">. Known backends: </span><span class="si">{</span><span class="n">known</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_BACKENDS</span><span class="p">[</span><span class="n">name</span><span class="p">]()</span></div>
+
+
+
+<div class="viewcode-block" id="stage1">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage1.stage1">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stage1</span><span class="p">(</span>
+    <span class="n">cnv_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"seasenselib"</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_filter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"*.cnv"</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert per-cast CNV files to netCDF using the specified backend.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cnv_dir:</span>
+<span class="sd">        Directory containing raw SBE CNV files.</span>
+<span class="sd">    nc_dir:</span>
+<span class="sd">        The CTD stage root; stage 1 writes ``stage1/&lt;stem&gt;_stage1.nc`` under it</span>
+<span class="sd">        (the stage1 directory is created if absent).</span>
+<span class="sd">    backend:</span>
+<span class="sd">        Backend name (currently only ``"seasenselib"``).</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite existing netCDF files.</span>
+<span class="sd">    cast_filter:</span>
+<span class="sd">        If given, convert only files whose stem contains the zero-padded cast number.</span>
+<span class="sd">        Accepts a single int or a list of ints for multi-cast filtering.</span>
+<span class="sd">    pattern:</span>
+<span class="sd">        Filename glob pattern applied within ``cnv_dir`` (default: ``"*.cnv"``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Number of files written (skipped files not counted).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ImportError</span>
+<span class="sd">        If the chosen backend's package is not installed.</span>
+<span class="sd">    """</span>
+    <span class="n">stage_dir</span><span class="p">(</span><span class="n">nc_dir</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># nc_dir is the stage root; write to stage1/</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">get_ctd_backend</span><span class="p">(</span><span class="n">backend</span><span class="p">)</span>
+
+    <span class="n">cnv_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cnv_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">cast_filter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">{</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cast_filter</span><span class="si">:</span><span class="s2">0</span><span class="si">{</span><span class="n">CAST_TAG_WIDTH</span><span class="si">}</span><span class="s2">d</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cast_filter</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+            <span class="k">else</span> <span class="p">{</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">c</span><span class="si">:</span><span class="s2">0</span><span class="si">{</span><span class="n">CAST_TAG_WIDTH</span><span class="si">}</span><span class="s2">d</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cast_filter</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">cnv_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">cnv_files</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">t</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">stem</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">)]</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Capture per-cast backend warnings (e.g. seasenselib's 'db' vs 'dbar' unit</span>
+    <span class="c1"># notice) across the whole batch and print one counted summary line each,</span>
+    <span class="c1"># instead of the same warning once per cast.</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"always"</span><span class="p">)</span>
+        <span class="c1"># GSW Nsquared() warns on dp=0 (stationary CTD between 1-second samples).</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cnv_path</span> <span class="ow">in</span> <span class="n">cnv_files</span><span class="p">:</span>
+            <span class="n">nc_path</span> <span class="o">=</span> <span class="n">stage_path</span><span class="p">(</span><span class="n">nc_dir</span><span class="p">,</span> <span class="n">cnv_path</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">written</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">convert_cast</span><span class="p">(</span><span class="n">cnv_path</span><span class="p">,</span> <span class="n">nc_path</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"  FAILED: </span><span class="si">{</span><span class="n">cnv_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                    <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">written</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ok: </span><span class="si">{</span><span class="n">cnv_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">nc_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  skip: </span><span class="si">{</span><span class="n">nc_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">summarise_warnings</span><span class="p">(</span><span class="n">caught</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n</span></div>
+
+
+
+<div class="viewcode-block" id="run">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage1.run">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>
+    <span class="n">cnv_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Run stage1 (CNV → netCDF) for explicit input and output directories.</span>
+
+<span class="sd">    Called by :func:`ctdcast.processors.process` with ``stage=1`` or</span>
+<span class="sd">    ``stage="stage1"``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cnv_dir:</span>
+<span class="sd">        Directory containing raw SBE CNV files.</span>
+<span class="sd">    nc_dir:</span>
+<span class="sd">        The CTD stage root; stage 1 writes ``stage1/&lt;stem&gt;_stage1.nc`` under it</span>
+<span class="sd">        (the stage1 directory is created if absent).</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite existing NC files.</span>
+<span class="sd">    dry_run:</span>
+<span class="sd">        Print what would be converted without writing any files.</span>
+<span class="sd">    cast_tags:</span>
+<span class="sd">        If given, process only files whose stem contains one of the zero-padded</span>
+<span class="sd">        3-digit cast numbers (e.g. ``{"042", "043"}``).</span>
+<span class="sd">    **kw:</span>
+<span class="sd">        Passed to :func:`stage1` (e.g. ``backend``, ``pattern``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Number of files written (0 for dry_run).</span>
+<span class="sd">    """</span>
+    <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"pattern"</span><span class="p">,</span> <span class="s2">"*.cnv"</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+    <span class="n">cnv_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cnv_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">cast_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cnv_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">cnv_files</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">t</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">stem</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">cast_tags</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[dry-run] stage 1: </span><span class="si">{</span><span class="n">cnv_dir</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">nc_dir</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cnv_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> file(s))"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">cnv_files</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  [dry-run] would convert: </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="n">cast_filter</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cast_tags</span><span class="p">)]</span> <span class="k">if</span> <span class="n">cast_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">stage1</span><span class="p">(</span><span class="n">cnv_dir</span><span class="p">,</span> <span class="n">nc_dir</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span> <span class="n">cast_filter</span><span class="o">=</span><span class="n">cast_filter</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"stage 1: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> file(s) written."</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

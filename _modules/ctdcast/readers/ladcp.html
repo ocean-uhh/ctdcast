@@ -1,0 +1,558 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.readers.ladcp &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.readers.ladcp</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.readers.ladcp</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Reader for LDEO IXv14 LADCP ``.mat`` files.</span>
+
+<span class="sd">Locates the ``.mat`` file for a cast (:func:`find_ladcp_file`), loads it with a</span>
+<span class="sd">single set of ``scipy.io.loadmat`` options (:func:`read_ladcp`), and maps the</span>
+<span class="sd">result struct to a single-cast :class:`xarray.Dataset` on the native 10 m depth</span>
+<span class="sd">grid (:func:`read_ladcp_cast`).  The ``.mat`` is the LDEO IX velocity *solution*;</span>
+<span class="sd">its ~50 fields are mapped to the compiled-dataset schema in</span>
+<span class="sd">``.claude/notes/2026-08-17-ladcp-compiled-dataset.md``.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+
+<span class="c1">#: Canonical variable name → source field in the LDEO ``.mat`` ``dr`` struct.</span>
+<span class="c1">#: Written onto each variable as ``source_variable`` so the .mat→canonical</span>
+<span class="c1">#: mapping is reconstructable from the output file alone (the LADCP parallel of</span>
+<span class="c1">#: the CTD ``cnv_original_name``; feeds the netCDF-inventory renaming table).</span>
+<span class="n">_SOURCE_MAP</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"u"</span><span class="p">:</span> <span class="s2">"dr.u"</span><span class="p">,</span>
+    <span class="s2">"v"</span><span class="p">:</span> <span class="s2">"dr.v"</span><span class="p">,</span>
+    <span class="s2">"u_shear"</span><span class="p">:</span> <span class="s2">"dr.u_shear_method"</span><span class="p">,</span>
+    <span class="s2">"v_shear"</span><span class="p">:</span> <span class="s2">"dr.v_shear_method"</span><span class="p">,</span>
+    <span class="s2">"w_shear"</span><span class="p">:</span> <span class="s2">"dr.w_shear_method"</span><span class="p">,</span>
+    <span class="s2">"u_error"</span><span class="p">:</span> <span class="s2">"dr.uerr"</span><span class="p">,</span>
+    <span class="s2">"ensemble_vel_err"</span><span class="p">:</span> <span class="s2">"dr.ensemble_vel_err"</span><span class="p">,</span>
+    <span class="s2">"nvel"</span><span class="p">:</span> <span class="s2">"dr.nvel"</span><span class="p">,</span>
+    <span class="s2">"profiling_range"</span><span class="p">:</span> <span class="s2">"dr.range"</span><span class="p">,</span>
+    <span class="s2">"u_downlooker"</span><span class="p">:</span> <span class="s2">"dr.u_do"</span><span class="p">,</span>
+    <span class="s2">"v_downlooker"</span><span class="p">:</span> <span class="s2">"dr.v_do"</span><span class="p">,</span>
+    <span class="s2">"u_uplooker"</span><span class="p">:</span> <span class="s2">"dr.u_up"</span><span class="p">,</span>
+    <span class="s2">"v_uplooker"</span><span class="p">:</span> <span class="s2">"dr.v_up"</span><span class="p">,</span>
+    <span class="s2">"target_strength"</span><span class="p">:</span> <span class="s2">"dr.ts"</span><span class="p">,</span>
+    <span class="s2">"target_strength_out"</span><span class="p">:</span> <span class="s2">"dr.ts_out"</span><span class="p">,</span>
+    <span class="s2">"u_bottom"</span><span class="p">:</span> <span class="s2">"dr.ubot"</span><span class="p">,</span>
+    <span class="s2">"v_bottom"</span><span class="p">:</span> <span class="s2">"dr.vbot"</span><span class="p">,</span>
+    <span class="s2">"z_bottom"</span><span class="p">:</span> <span class="s2">"dr.zbot"</span><span class="p">,</span>
+    <span class="s2">"latitude"</span><span class="p">:</span> <span class="s2">"dr.lat"</span><span class="p">,</span>
+    <span class="s2">"longitude"</span><span class="p">:</span> <span class="s2">"dr.lon"</span><span class="p">,</span>
+    <span class="s2">"u_barotropic"</span><span class="p">:</span> <span class="s2">"dr.ubar"</span><span class="p">,</span>
+    <span class="s2">"v_barotropic"</span><span class="p">:</span> <span class="s2">"dr.vbar"</span><span class="p">,</span>
+    <span class="s2">"depth"</span><span class="p">:</span> <span class="s2">"dr.z"</span><span class="p">,</span>
+    <span class="s2">"pressure"</span><span class="p">:</span> <span class="s2">"dr.p"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="read_ladcp">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.ladcp.read_ladcp">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_ladcp</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Load an LDEO IXv14 LADCP ``.mat`` file.</span>
+
+<span class="sd">    Uses ``squeeze_me=True`` and ``struct_as_record=False`` so the LADCP result</span>
+<span class="sd">    struct is reachable as ``read_ladcp(path)["dr"]`` with attribute access.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.io</span>
+
+    <span class="k">return</span> <span class="n">scipy</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">loadmat</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">squeeze_me</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">struct_as_record</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_field</span><span class="p">(</span><span class="n">struct</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``struct.name`` if present, else *default* (structs vary by cruise)."""</span>
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">struct</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_profile</span><span class="p">(</span><span class="n">struct</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``struct.name`` as a length-*n* float array, or all-NaN when absent."""</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">struct</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n</span><span class="p">,):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">arr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_instrument_config</span><span class="p">(</span><span class="n">dr</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ps</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return which ADCP(s) provided valid data for this cast.</span>
+
+<span class="sd">    On OdB both were always installed but one was sometimes corrupted, so this is</span>
+<span class="sd">    per-cast data *validity*, not fixed hardware.  Derived from the finiteness of</span>
+<span class="sd">    the downlooker/uplooker-only solutions (a corrupted instrument's profile is</span>
+<span class="sd">    all-NaN), which is robust to the empty ``f.ladcpup`` path seen on some casts.</span>
+<span class="sd">    ``ps.down_up`` is used only as a fallback when neither profile is present.</span>
+<span class="sd">    """</span>
+    <span class="n">has_do</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u_do"</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+    <span class="n">has_up</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u_up"</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">has_do</span> <span class="ow">and</span> <span class="n">has_up</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"both"</span>
+    <span class="k">if</span> <span class="n">has_do</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"downlooker"</span>
+    <span class="k">if</span> <span class="n">has_up</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"uplooker"</span>
+    <span class="k">return</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">"downlooker"</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">"uplooker"</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="s2">"both"</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="s2">"down_up"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">"unknown"</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="read_ladcp_cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.ladcp.read_ladcp_cast">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_ladcp_cast</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cast_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Map an LDEO LADCP ``.mat`` to a single-cast Dataset on the native 10 m grid.</span>
+
+<span class="sd">    Returns a Dataset with dimension ``depth`` (uniform 10 m, positive down), an</span>
+<span class="sd">    auxiliary ``pressure(depth)`` coordinate (dbar, the bridge to ``profiles.nc``),</span>
+<span class="sd">    the inverse (``u``/``v``) and shear (``u_shear``/``v_shear``/``w_shear``)</span>
+<span class="sd">    velocity solutions, per-instrument down/up-looker profiles, per-cast scalars</span>
+<span class="sd">    (barotropic, bottom-track, position, ``instrument_config``), and the LADCP</span>
+<span class="sd">    processing provenance as global attributes.  Velocity carries the CF</span>
+<span class="sd">    ``eastward``/``northward``/``error_sea_water_velocity`` standard names.</span>
+<span class="sd">    """</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">read_ladcp</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">dr</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">da</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="s2">"dr"</span><span class="p">],</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ps"</span><span class="p">),</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"da"</span><span class="p">)</span>
+
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">depth</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="n">data_vars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"u"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"u_shear"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u_shear_method"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v_shear"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"v_shear_method"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"w_shear"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"w_shear_method"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"upward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"u_error"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"uerr"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"error_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"ensemble_vel_err"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"ensemble_vel_err"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"ensemble velocity error"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"nvel"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"nvel"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"number of velocity samples per bin"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"profiling_range"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"range"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"effective acoustic profiling range at each depth bin"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"u_downlooker"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u_do"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v_downlooker"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"v_do"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"u_uplooker"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"u_up"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v_uplooker"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"v_up"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"target_strength"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"ts"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"target strength, 2nd downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dB"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"target_strength_out"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="s2">"depth"</span><span class="p">,</span>
+            <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"ts_out"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"target strength, last downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dB"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">_dim</span><span class="p">,</span> <span class="n">_arr</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span> <span class="ow">in</span> <span class="n">data_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"u"</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">))</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"nvel"</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">"m s-1"</span><span class="p">)</span>
+
+    <span class="c1"># Bottom-track: both bottom bins kept (Eleanor 2026-08-18), on a small</span>
+    <span class="c1"># ``bottom_track`` dimension rather than collapsed to a per-cast mean.</span>
+    <span class="n">ubot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"ubot"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">vbot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"vbot"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">zbot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"zbot"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">bt_vars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"u_bottom"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,),</span>
+            <span class="n">ubot</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"bottom-track eastward velocity per bottom bin"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+                <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"eastward_sea_water_velocity"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v_bottom"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,),</span>
+            <span class="n">vbot</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"bottom-track northward velocity per bottom bin"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+                <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"northward_sea_water_velocity"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"z_bottom"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,),</span>
+            <span class="n">zbot</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"bottom-track bin depth"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span> <span class="s2">"positive"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">},</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scalar</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="nb">type</span> <span class="o">=</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dtype</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">else</span> <span class="n">dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+    <span class="n">scalars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"cast_number"</span><span class="p">:</span> <span class="p">((),</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">cast_num</span><span class="p">),</span> <span class="p">{}),</span>
+        <span class="s2">"cast_suffix"</span><span class="p">:</span> <span class="p">((),</span> <span class="n">cast_suffix</span><span class="p">,</span> <span class="p">{}),</span>
+        <span class="s2">"latitude"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(),</span>
+            <span class="n">_scalar</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"lat"</span><span class="p">)),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_north"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"longitude"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(),</span>
+            <span class="n">_scalar</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"lon"</span><span class="p">)),</span>
+            <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"longitude"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_east"</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"u_barotropic"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(),</span>
+            <span class="n">_scalar</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"ubar"</span><span class="p">)),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"barotropic (depth-mean) eastward velocity"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"v_barotropic"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(),</span>
+            <span class="n">_scalar</span><span class="p">(</span><span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"vbar"</span><span class="p">)),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"barotropic (depth-mean) northward velocity"</span><span class="p">,</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m s-1"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="s2">"instrument_config"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">(),</span>
+            <span class="n">_instrument_config</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"ADCP instrument(s) with valid data for this cast"</span><span class="p">,</span>
+                <span class="s2">"flag_values"</span><span class="p">:</span> <span class="s2">"both downlooker uplooker unknown"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">da</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">attrs</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">"GEN_Ocean_depth_m"</span><span class="p">,</span>
+                <span class="s2">"ocean_depth"</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"ocean depth"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span> <span class="s2">"positive"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">"GEN_Magnetic_deviation_deg"</span><span class="p">,</span>
+                <span class="s2">"magnetic_deviation_deg"</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"magnetic deviation"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree"</span><span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">da</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                <span class="n">scalars</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span> <span class="o">=</span> <span class="p">((),</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">),</span> <span class="n">attrs</span><span class="p">)</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="n">data_vars</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="n">data_vars</span><span class="p">,</span> <span class="o">**</span><span class="n">bt_vars</span><span class="p">,</span> <span class="o">**</span><span class="n">scalars</span><span class="p">},</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"depth"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"depth"</span><span class="p">,</span>
+                <span class="n">depth</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"depth"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span> <span class="s2">"positive"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"pressure"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"depth"</span><span class="p">,</span>
+                <span class="n">_profile</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+                <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"sea_water_pressure"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="c1"># Integer index so the compiler can pad the (per-cast-varying) count.</span>
+            <span class="s2">"bottom_track"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ubot</span><span class="o">.</span><span class="n">size</span><span class="p">)),</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span> <span class="o">=</span> <span class="p">((),</span> <span class="n">_ladcp_time</span><span class="p">(</span><span class="n">dr</span><span class="p">))</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">set_coords</span><span class="p">([</span><span class="s2">"cast_number"</span><span class="p">,</span> <span class="s2">"cast_suffix"</span><span class="p">,</span> <span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"longitude"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">])</span>
+    <span class="c1"># Record the .mat source field on each variable (provenance-in-file).</span>
+    <span class="k">for</span> <span class="n">_name</span><span class="p">,</span> <span class="n">_src</span> <span class="ow">in</span> <span class="n">_SOURCE_MAP</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">_name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">_name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"source_variable"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_src</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_provenance_attrs</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">da</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ladcp_time</span><span class="p">(</span><span class="n">dr</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cast time from ``dr.date`` ([Y, M, D, h, m, s]), or NaT."""</span>
+    <span class="n">date</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"date"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="s2">"NaT"</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">mo</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">mi</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[:</span><span class="mi">6</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">y</span><span class="si">:</span><span class="s2">04d</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">mo</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">T</span><span class="si">{</span><span class="n">h</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">mi</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="s2">"NaT"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_provenance_attrs</span><span class="p">(</span><span class="n">dr</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ps</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">da</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Collect LADCP processing provenance from the structs into global attrs."""</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"source"</span><span class="p">:</span> <span class="s2">"LDEO IXv14 LADCP .mat solution"</span><span class="p">}</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">dr</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"ladcp_cast_name"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">da</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"GEN_Processing_date"</span><span class="p">,</span> <span class="s2">"ladcp_processing_date"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Processing_personnel"</span><span class="p">,</span> <span class="s2">"ladcp_processing_personnel"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Proc_methodology"</span><span class="p">,</span> <span class="s2">"ladcp_processing_methodology"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Velocity_Units"</span><span class="p">,</span> <span class="s2">"ladcp_velocity_units"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Depth_source"</span><span class="p">,</span> <span class="s2">"ladcp_depth_source"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Percent_3beam"</span><span class="p">,</span> <span class="s2">"ladcp_percent_3beam"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Inverse_weight_bottom"</span><span class="p">,</span> <span class="s2">"ladcp_inverse_weight_bottom"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Inverse_weight_navigation"</span><span class="p">,</span> <span class="s2">"ladcp_inverse_weight_navigation"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"GEN_Inverse_weight_smooth"</span><span class="p">,</span> <span class="s2">"ladcp_inverse_weight_smooth"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"LADCP_dn_hard_freq_kHz"</span><span class="p">,</span> <span class="s2">"ladcp_downlooker_freq_khz"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"LADCP_dn_hard_beam_ang_deg"</span><span class="p">,</span> <span class="s2">"ladcp_downlooker_beam_angle_deg"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"LADCP_up_hard_freq_kHz"</span><span class="p">,</span> <span class="s2">"ladcp_uplooker_freq_khz"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"LADCP_up_hard_beam_ang_deg"</span><span class="p">,</span> <span class="s2">"ladcp_uplooker_beam_angle_deg"</span><span class="p">),</span>
+        <span class="p">):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">da</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                <span class="p">)</span>
+        <span class="c1"># Hardware serials are flagged explicitly: a present-but-blank (nan)</span>
+        <span class="c1"># serial is recorded as "UNK" and warned about rather than written as a</span>
+        <span class="c1"># silent nan, so a data reviewer sees the gap.  An entirely absent field</span>
+        <span class="c1"># means that instrument is not in this .mat and is skipped.</span>
+        <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">looker</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"LADCP_dn_hard_SN"</span><span class="p">,</span> <span class="s2">"ladcp_downlooker_serial"</span><span class="p">,</span> <span class="s2">"downlooker"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"LADCP_up_hard_SN"</span><span class="p">,</span> <span class="s2">"ladcp_uplooker_serial"</span><span class="p">,</span> <span class="s2">"uplooker"</span><span class="p">),</span>
+        <span class="p">):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">da</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"UNK"</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"LADCP </span><span class="si">{</span><span class="n">looker</span><span class="si">}</span><span class="s2"> serial number is blank in the .mat; "</span>
+                    <span class="s2">"recorded as 'UNK'."</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="n">_field</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="s2">"dz"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dz</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">dz</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"ladcp_grid_step_m"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dz</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">attrs</span>
+
+
+<div class="viewcode-block" id="find_ladcp_file">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.ladcp.find_ladcp_file">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_ladcp_file</span><span class="p">(</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">cast_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">cast_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">ladcp_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the .mat file for *cast_num* in *ladcp_dir*, or ``None`` if absent.</span>
+
+<span class="sd">    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*``</span>
+<span class="sd">    wildcard is replaced with the zero-padded cast number (and optional suffix)</span>
+<span class="sd">    and that name is tried first.  Falls back to standard names (``NNN.mat``,</span>
+<span class="sd">    ``NNNb.mat``) then a ``*_NNN.mat`` glob for cruise-prefixed filenames.</span>
+<span class="sd">    The first glob match (lexicographic) is returned when multiple files match.</span>
+<span class="sd">    """</span>
+    <span class="n">_id</span><span class="p">,</span> <span class="n">_id_plain</span> <span class="o">=</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">),</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ladcp_pattern</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">cast_str</span> <span class="ow">in</span> <span class="p">(</span><span class="n">_id</span><span class="p">,</span> <span class="n">_id_plain</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">ladcp_dir</span> <span class="o">/</span> <span class="n">ladcp_pattern</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"*"</span><span class="p">,</span> <span class="n">cast_str</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">p</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_id</span><span class="si">}</span><span class="s2">.mat"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_id_plain</span><span class="si">}</span><span class="s2">.mat"</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">ladcp_dir</span> <span class="o">/</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">p</span>
+    <span class="k">for</span> <span class="n">glob_pat</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"*_</span><span class="si">{</span><span class="n">_id</span><span class="si">}</span><span class="s2">.mat"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"*_</span><span class="si">{</span><span class="n">_id_plain</span><span class="si">}</span><span class="s2">.mat"</span><span class="p">):</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ladcp_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">glob_pat</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">found</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

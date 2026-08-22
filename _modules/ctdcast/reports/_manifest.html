@@ -1,0 +1,602 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._manifest &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._manifest</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._manifest</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Section-manifest model and resolver for report pages.</span>
+
+<span class="sd">A report page is described by a :class:`Profile`: an ordered sequence of</span>
+<span class="sd">:class:`Section` (and :class:`Expand`) entries, each naming :class:`Panel` ids</span>
+<span class="sd">that render figures or tables.  :func:`resolve` walks a profile once against a</span>
+<span class="sd">render context and returns a :class:`ResolvedReport` whose sections are numbered</span>
+<span class="sd">over the *rendered subset* — absent sections leave no gap, and identity is the</span>
+<span class="sd">section id (a stable slug), not the integer.</span>
+
+<span class="sd">This module holds only the model and the resolution algorithm — it is</span>
+<span class="sd">package-neutral (names no variable, page, or science) and is vendored</span>
+<span class="sd">byte-identical to the sister repos.  Each page's concrete registry (its</span>
+<span class="sd">``Ctx`` builder, panels, sections, and profiles) lives in that page's own</span>
+<span class="sd">module — grid's in ``reports/_grid.py``, and so on — never in a plural</span>
+<span class="sd">``_manifests.py`` companion.  The design rationale is in</span>
+<span class="sd">``.claude/notes/2026-08-15-report-section-manifest-design.md``.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="c1">#: Panel content kinds.  ``"figure"`` renders a base64 PNG (escaped as an image</span>
+<span class="c1">#: ``src``); ``"html"`` and ``"table"`` render pre-built markup that the template</span>
+<span class="c1">#: macro emits with ``|safe``.  The discriminator keeps the ``autoescape=True``</span>
+<span class="c1">#: boundary to one auditable branch — a figure payload is never ``|safe``-d.</span>
+<span class="n">PanelKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"figure"</span><span class="p">,</span> <span class="s2">"html"</span><span class="p">,</span> <span class="s2">"table"</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_always</span><span class="p">(</span><span class="n">_ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True for any context (the default ``applies_to`` predicate)."""</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_unavailable_never</span><span class="p">(</span><span class="n">_ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return None for any context (the default ``unavailable_if`` predicate)."""</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Authored model — what a profile is built from</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="Panel">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.Panel">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Panel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One figure or table, addressable by id.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : str</span>
+<span class="sd">        Unique panel identifier, e.g. ``"temperature_field"``.  Also the anchor</span>
+<span class="sd">        a caption or cross-reference can point at.</span>
+<span class="sd">    render : Callable</span>
+<span class="sd">        Adapter that returns the panel's payload — a base64 PNG string for a</span>
+<span class="sd">        ``"figure"``, or ready-to-emit markup for ``"html"``/``"table"`` — or</span>
+<span class="sd">        ``None`` when the panel applies but no output could be produced (a plot</span>
+<span class="sd">        raised, or the variable is absent), which the resolver turns into a</span>
+<span class="sd">        ``.warn`` stub.  Figure adapters wrap the existing ``_make_*_b64``</span>
+<span class="sd">        functions unchanged.</span>
+<span class="sd">    kind : {"figure", "html", "table"}, optional</span>
+<span class="sd">        Content discriminator.  The template macro branches on it so that only</span>
+<span class="sd">        ``"html"``/``"table"`` payloads are emitted ``|safe``; a ``"figure"``</span>
+<span class="sd">        payload is always escaped into an image ``src``.</span>
+<span class="sd">    slot : str or Callable or None, optional</span>
+<span class="sd">        ``SLOTS`` key giving the panel's display width, or a callable</span>
+<span class="sd">        ``ctx -&gt; slot`` that computes it (e.g. from a section's aspect ratio).</span>
+<span class="sd">        Belongs to the panel, not the section, so a panel is the same width</span>
+<span class="sd">        wherever it is placed.  The resolver calls it when callable.  ``None``</span>
+<span class="sd">        marks a figure that is not rendered through the slot system: it is</span>
+<span class="sd">        emitted as a bare ``.fig`` that fills the content column (no</span>
+<span class="sd">        ``slot-*`` class, so no rendered-width contract).</span>
+<span class="sd">    caption : str, optional</span>
+<span class="sd">        Caption text rendered beneath the panel.</span>
+<span class="sd">    applies_to : Callable, optional</span>
+<span class="sd">        Predicate deciding whether the panel is attempted at all.  ``False``</span>
+<span class="sd">        omits the panel silently (it is excluded, not merely unavailable).</span>
+<span class="sd">    unavailable_if : Callable, optional</span>
+<span class="sd">        Precondition checked *before* ``render``: given the context, return a</span>
+<span class="sd">        reason string when the panel applies but cannot be produced (e.g. a</span>
+<span class="sd">        required metadata field is missing), or ``None`` to proceed.  A returned</span>
+<span class="sd">        reason becomes a ``.warn`` stub *with that reason* and ``render`` is not</span>
+<span class="sd">        called.  This is the channel for defects knowable from context; a</span>
+<span class="sd">        ``render`` that still returns ``None`` gets the generic stub reason,</span>
+<span class="sd">        because that is the "should have worked and didn't" case.</span>
+
+<span class="sd">    """</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">render</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">kind</span><span class="p">:</span> <span class="n">PanelKind</span> <span class="o">=</span> <span class="s2">"figure"</span>
+    <span class="n">slot</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"full"</span>
+    <span class="n">caption</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">applies_to</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">_always</span>
+    <span class="n">unavailable_if</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">_unavailable_never</span></div>
+
+
+
+<div class="viewcode-block" id="PanelGroup">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.PanelGroup">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PanelGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A :attr:`Section.panels` entry that expands to N panels at resolution time.</span>
+
+<span class="sd">    Places a data-driven run of panels — one per item — under a single heading</span>
+<span class="sd">    without inflating the section count.  Use this (not :class:`Expand`) when the</span>
+<span class="sd">    run is over a *numeric or unbounded* set, e.g. one panel per isopycnal;</span>
+<span class="sd">    reserve :class:`Expand`'s section-level expansion for a *closed editorial</span>
+<span class="sd">    vocabulary*.  Numbering reflects editorial structure, not data cardinality.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    over : Callable</span>
+<span class="sd">        Returns the sequence of items to expand over, in display order.</span>
+<span class="sd">    panel : Callable</span>
+<span class="sd">        Builds one :class:`Panel` per item yielded by ``over``.</span>
+
+<span class="sd">    """</span>
+
+    <span class="n">over</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span>
+    <span class="n">panel</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Panel</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="Section">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.Section">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Section</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A numbered heading and the panels beneath it.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : str</span>
+<span class="sd">        Unique section identifier, e.g. ``"hydrography"``.  Doubles as the anchor</span>
+<span class="sd">        and the cross-reference key.</span>
+<span class="sd">    title : str</span>
+<span class="sd">        Human-readable heading text (without a number — the number is computed).</span>
+<span class="sd">    panels : tuple of (str or PanelGroup)</span>
+<span class="sd">        Panel ids, in display order.  An entry may instead be a</span>
+<span class="sd">        :class:`PanelGroup`, which expands to a data-driven run of panels under</span>
+<span class="sd">        this one heading.</span>
+<span class="sd">    level : int, optional</span>
+<span class="sd">        Heading level (``2`` for ``&lt;h2&gt;``).</span>
+<span class="sd">    intro : str, optional</span>
+<span class="sd">        Introductory prose rendered under the heading, before the panels.</span>
+<span class="sd">    applies_to : Callable, optional</span>
+<span class="sd">        Predicate deciding whether the section is included.  When ``None``</span>
+<span class="sd">        (default), the section applies if *any* of its panels apply.  A section</span>
+<span class="sd">        dropped here is named in the report's "not applicable" footer line.</span>
+<span class="sd">    role : str, optional</span>
+<span class="sd">        ``"content"`` (numbered ``1..N``) or ``"appendix"`` (numbered ``A..``),</span>
+<span class="sd">        so appendix material such as a NetCDF-variable table does not pad the</span>
+<span class="sd">        science numbering.</span>
+<span class="sd">    layout : str, optional</span>
+<span class="sd">        Within-section panel arrangement.  ``None`` (default) stacks panels</span>
+<span class="sd">        vertically; ``"row"`` lays them out in a wrapping flex row, each panel in</span>
+<span class="sd">        a cell sized by its ``slot`` (so two ``slot="half"`` figures sit</span>
+<span class="sd">        side-by-side and a ``slot="full"`` one wraps to its own line).</span>
+
+<span class="sd">    """</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">panels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="n">PanelGroup</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">intro</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">applies_to</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"content"</span>
+    <span class="n">layout</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="Expand">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.Expand">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Expand</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A single manifest entry that becomes N sections at resolution time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    over : Callable</span>
+<span class="sd">        Returns the sequence of items to expand over (e.g. the variables present</span>
+<span class="sd">        on the page, in display order).</span>
+<span class="sd">    section : Callable</span>
+<span class="sd">        Builds one :class:`Section` per item yielded by ``over``.</span>
+
+<span class="sd">    """</span>
+
+    <span class="n">over</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span>
+    <span class="n">section</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Section</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="Profile">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.Profile">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Profile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""An ordered page description plus a numbering policy.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    numbering : str</span>
+<span class="sd">        ``"flat"`` (content ``1..N``, appendices ``A..``), ``"none"`` (no</span>
+<span class="sd">        numbers), or ``"grouped"`` (reserved — not yet implemented).</span>
+<span class="sd">    entries : tuple of (Section or Expand)</span>
+<span class="sd">        The page's sections, in order.</span>
+
+<span class="sd">    """</span>
+
+    <span class="n">numbering</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"flat"</span>
+    <span class="n">entries</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Section</span> <span class="o">|</span> <span class="n">Expand</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">tuple</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Resolved model — what the template renders</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ResolvedPanel">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.ResolvedPanel">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResolvedPanel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A panel after rendering: a payload (figure b64 or markup) or a ``.warn`` stub."""</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">kind</span><span class="p">:</span> <span class="n">PanelKind</span>
+    <span class="n">slot</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">payload</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">caption</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">stub_reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_stub</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""True when the panel applied but produced no output."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="ResolvedSection">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.ResolvedSection">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResolvedSection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A section after resolution: numbered heading plus resolved panels."""</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">number</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">level</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">intro</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">panels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedPanel</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">layout</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="ResolvedReport">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.ResolvedReport">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResolvedReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The full resolved page: numbered sections plus the not-applicable list."""</span>
+
+    <span class="n">sections</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedSection</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">not_applicable</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ResolvedReport.anchor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.ResolvedReport.anchor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">anchor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the display number for *section_id*, or None if not rendered."""</span>
+        <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sec</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">section_id</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">sec</span><span class="o">.</span><span class="n">number</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Resolution algorithm</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">_STUB_REASON</span> <span class="o">=</span> <span class="s2">"applicable but unavailable"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_letter</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the appendix letter for a zero-based index (0 -&gt; 'A', 25 -&gt; 'Z', 26 -&gt; 'AA')."""</span>
+    <span class="n">letters</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">n</span><span class="p">,</span> <span class="n">rem</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">26</span><span class="p">)</span>
+        <span class="n">letters</span> <span class="o">=</span> <span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="s2">"A"</span><span class="p">)</span> <span class="o">+</span> <span class="n">rem</span><span class="p">)</span> <span class="o">+</span> <span class="n">letters</span>
+    <span class="k">return</span> <span class="n">letters</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_expand</span><span class="p">(</span><span class="n">entries</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Section</span> <span class="o">|</span> <span class="n">Expand</span><span class="p">],</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Section</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Splice every :class:`Expand` into the concrete sections it yields."""</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Section</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">Expand</span><span class="p">):</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">section</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">over</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_section_panels</span><span class="p">(</span><span class="n">sec</span><span class="p">:</span> <span class="n">Section</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">panels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Panel</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Flatten a section's entries to concrete panels: ids looked up, groups expanded.</span>
+
+<span class="sd">    A :class:`PanelGroup` entry is expanded by calling ``over(ctx)`` and building</span>
+<span class="sd">    one panel per item, spliced in place; a string entry is looked up in the</span>
+<span class="sd">    registry.</span>
+<span class="sd">    """</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Panel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">sec</span><span class="o">.</span><span class="n">panels</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">PanelGroup</span><span class="p">):</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">panel</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">over</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">panels</span><span class="p">[</span><span class="n">entry</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_section_applies</span><span class="p">(</span><span class="n">sec</span><span class="p">:</span> <span class="n">Section</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">panels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Decide whether *sec* is included: explicit predicate, else any panel applies."""</span>
+    <span class="k">if</span> <span class="n">sec</span><span class="o">.</span><span class="n">applies_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">sec</span><span class="o">.</span><span class="n">applies_to</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">applies_to</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">_section_panels</span><span class="p">(</span><span class="n">sec</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">panels</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_slot</span><span class="p">(</span><span class="n">panel</span><span class="p">:</span> <span class="n">Panel</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the panel's slot, calling it with *ctx* when it is a callable."""</span>
+    <span class="k">return</span> <span class="n">panel</span><span class="o">.</span><span class="n">slot</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">panel</span><span class="o">.</span><span class="n">slot</span><span class="p">)</span> <span class="k">else</span> <span class="n">panel</span><span class="o">.</span><span class="n">slot</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_panels</span><span class="p">(</span>
+    <span class="n">sec</span><span class="p">:</span> <span class="n">Section</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">panels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedPanel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Render each applicable panel of a kept section; None output becomes a stub.</span>
+
+<span class="sd">    A kept section whose panels all drop out (none apply, or all render None)</span>
+<span class="sd">    keeps one stub so the heading is never empty.</span>
+<span class="sd">    """</span>
+    <span class="n">concrete</span> <span class="o">=</span> <span class="n">_section_panels</span><span class="p">(</span><span class="n">sec</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">panels</span><span class="p">)</span>
+    <span class="n">resolved</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ResolvedPanel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">panel</span> <span class="ow">in</span> <span class="n">concrete</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">panel</span><span class="o">.</span><span class="n">applies_to</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="n">panel</span><span class="o">.</span><span class="n">unavailable_if</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Precondition failed: stub with the specific reason, do not render.</span>
+            <span class="n">payload</span><span class="p">,</span> <span class="n">stub_reason</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">reason</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">panel</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+            <span class="n">stub_reason</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_STUB_REASON</span>
+        <span class="n">resolved</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ResolvedPanel</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">panel</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">kind</span><span class="o">=</span><span class="n">panel</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span>
+                <span class="n">slot</span><span class="o">=</span><span class="n">_resolve_slot</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">ctx</span><span class="p">),</span>
+                <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+                <span class="n">caption</span><span class="o">=</span><span class="n">panel</span><span class="o">.</span><span class="n">caption</span><span class="p">,</span>
+                <span class="n">stub_reason</span><span class="o">=</span><span class="n">stub_reason</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">resolved</span><span class="p">:</span>
+        <span class="c1"># Kept but empty (case 2): keep the heading with a single stub.</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="n">concrete</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">concrete</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">resolved</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ResolvedPanel</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">first</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="n">first</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">sec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_stub"</span><span class="p">,</span>
+                <span class="n">kind</span><span class="o">=</span><span class="n">first</span><span class="o">.</span><span class="n">kind</span> <span class="k">if</span> <span class="n">first</span> <span class="k">else</span> <span class="s2">"figure"</span><span class="p">,</span>
+                <span class="n">slot</span><span class="o">=</span><span class="n">_resolve_slot</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span> <span class="k">if</span> <span class="n">first</span> <span class="k">else</span> <span class="s2">"full"</span><span class="p">,</span>
+                <span class="n">payload</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">caption</span><span class="o">=</span><span class="n">first</span><span class="o">.</span><span class="n">caption</span> <span class="k">if</span> <span class="n">first</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">stub_reason</span><span class="o">=</span><span class="n">_STUB_REASON</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="resolve">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._manifest.resolve">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
+    <span class="n">profile</span><span class="p">:</span> <span class="n">Profile</span><span class="p">,</span>
+    <span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">panels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">drop_stub</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolve *profile* against *ctx* into a numbered :class:`ResolvedReport`.</span>
+
+<span class="sd">    One pass: expand :class:`Expand` entries, drop sections whose ``applies_to``</span>
+<span class="sd">    is false (collecting them for the not-applicable footer), resolve each kept</span>
+<span class="sd">    section's panels (``None`` render → ``.warn`` stub), then number the</span>
+<span class="sd">    survivors — ``content`` sections ``1..N`` and ``appendix`` sections ``A..``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : Profile</span>
+<span class="sd">        The page's ordered section description and numbering policy.</span>
+<span class="sd">    ctx : Any</span>
+<span class="sd">        The render context passed to every predicate and render callable</span>
+<span class="sd">        (dataset, config, paths — whatever the page's panels need).</span>
+<span class="sd">    panels : dict of str to Panel</span>
+<span class="sd">        The panel registry; section ``panels`` entries are ids into this map.</span>
+<span class="sd">    drop_stub : bool, optional</span>
+<span class="sd">        When True, a section that *applies* but whose panels are *all* stubs</span>
+<span class="sd">        (applicable-but-entirely-unavailable) is dropped and the survivors</span>
+<span class="sd">        renumber over it, so the page closes cleanly.  Default False keeps the</span>
+<span class="sd">        heading with its stub, which surfaces the failure rather than hiding it.</span>
+<span class="sd">        A section dropped this way is **not** added to ``not_applicable`` — that</span>
+<span class="sd">        list stays reserved for genuinely-not-applicable-to-this-deployment</span>
+<span class="sd">        sections, so a plot failure never reads as "not applicable".  A section</span>
+<span class="sd">        with any non-stub panel is never dropped.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ResolvedReport</span>
+<span class="sd">        Numbered, rendered sections plus the titles of any omitted sections.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    NotImplementedError</span>
+<span class="sd">        If ``profile.numbering == "grouped"`` (reserved for a later branch).</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If a section references a panel id absent from *panels*.</span>
+
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">profile</span><span class="o">.</span><span class="n">numbering</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"flat"</span><span class="p">,</span> <span class="s2">"none"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"numbering=</span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">numbering</span><span class="si">!r}</span><span class="s2"> is not implemented; use 'flat' or 'none'"</span>
+        <span class="p">)</span>
+
+    <span class="n">sections</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">entries</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+
+    <span class="n">kept</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Section</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedPanel</span><span class="p">,</span> <span class="o">...</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">not_applicable</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">sections</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_section_applies</span><span class="p">(</span><span class="n">sec</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">panels</span><span class="p">):</span>
+            <span class="n">not_applicable</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sec</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">rpanels</span> <span class="o">=</span> <span class="n">_resolve_panels</span><span class="p">(</span><span class="n">sec</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">panels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">drop_stub</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">is_stub</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">rpanels</span><span class="p">):</span>
+            <span class="c1"># Applicable but entirely unavailable: drop silently, renumber over</span>
+            <span class="c1"># it.  Not added to not_applicable — that is case-1 only.</span>
+            <span class="k">continue</span>
+        <span class="n">kept</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sec</span><span class="p">,</span> <span class="n">rpanels</span><span class="p">))</span>
+
+    <span class="n">resolved</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ResolvedSection</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">content_n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">appendix_n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">sec</span><span class="p">,</span> <span class="n">rpanels</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">profile</span><span class="o">.</span><span class="n">numbering</span> <span class="o">==</span> <span class="s2">"none"</span><span class="p">:</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">elif</span> <span class="n">sec</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="s2">"appendix"</span><span class="p">:</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="n">_letter</span><span class="p">(</span><span class="n">appendix_n</span><span class="p">)</span>
+            <span class="n">appendix_n</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">content_n</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">content_n</span><span class="p">)</span>
+        <span class="n">resolved</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ResolvedSection</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">number</span><span class="o">=</span><span class="n">number</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
+                <span class="n">level</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">level</span><span class="p">,</span>
+                <span class="n">intro</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">intro</span><span class="p">,</span>
+                <span class="n">panels</span><span class="o">=</span><span class="n">rpanels</span><span class="p">,</span>
+                <span class="n">role</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">role</span><span class="p">,</span>
+                <span class="n">layout</span><span class="o">=</span><span class="n">sec</span><span class="o">.</span><span class="n">layout</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ResolvedReport</span><span class="p">(</span>
+        <span class="n">sections</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">resolved</span><span class="p">),</span> <span class="n">not_applicable</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">not_applicable</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

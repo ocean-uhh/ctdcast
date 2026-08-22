@@ -1,0 +1,285 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>config.yaml &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Cruise metadata (cruise_info)" href="cruise_metadata.html" />
+    <link rel="prev" title="ctdcast processing framework" href="processing_framework.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">config.yaml</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#data-block"><code class="docutils literal notranslate"><span class="pre">data</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output-block"><code class="docutils literal notranslate"><span class="pre">output</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generate-block"><code class="docutils literal notranslate"><span class="pre">generate</span></code> block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensors-block-optional"><code class="docutils literal notranslate"><span class="pre">sensors</span></code> block (optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">config.yaml</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/config_yaml.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="config-yaml">
+<span id="id1"></span><h1>config.yaml<a class="headerlink" href="#config-yaml" title="Link to this heading"></a></h1>
+<section id="data-block">
+<h2><code class="docutils literal notranslate"><span class="pre">data</span></code> block<a class="headerlink" href="#data-block" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 10.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Required</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">nc_dir</span></code></p></td>
+<td><p>yes</p></td>
+<td><p>Path to a directory of per-cast netCDF files (one <code class="docutils literal notranslate"><span class="pre">.nc</span></code> per cast).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code></p></td>
+<td><p>no</p></td>
+<td><p>Path to the compiled <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> file on a 1 dbar grid.  Required for
+section and time series pages.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">section_yaml</span></code></p></td>
+<td><p>no</p></td>
+<td><p>Path to the <code class="docutils literal notranslate"><span class="pre">ctd_sections.yaml</span></code> file defining transect groups.  Required
+for section pages.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gebco_nc</span></code></p></td>
+<td><p>no</p></td>
+<td><p>Path to a GEBCO NetCDF bathymetry file.  Maps render without bathymetry if
+this is omitted or the file is not found — not an error.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="output-block">
+<h2><code class="docutils literal notranslate"><span class="pre">output</span></code> block<a class="headerlink" href="#output-block" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 10.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Required</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dir</span></code></p></td>
+<td><p>yes</p></td>
+<td><p>Directory where all HTML output is written.  Created if it does not exist.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="generate-block">
+<h2><code class="docutils literal notranslate"><span class="pre">generate</span></code> block<a class="headerlink" href="#generate-block" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 10.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">stations</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Generate per-cast station pages.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sections</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Generate transect section pages.  Requires <code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code> and
+<code class="docutils literal notranslate"><span class="pre">section_yaml</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timeseries</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Generate the cruise-wide time series page.  Requires <code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">force</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>If <code class="docutils literal notranslate"><span class="pre">true</span></code>, regenerate all pages even if they already exist.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sensors-block-optional">
+<h2><code class="docutils literal notranslate"><span class="pre">sensors</span></code> block (optional)<a class="headerlink" href="#sensors-block-optional" title="Link to this heading"></a></h2>
+<p>Per-cruise sensor provenance that the CNV header cannot supply: sensors it cannot
+identify (the altimeter and user-polynomial channels carry no make/model) and
+model refinements (a combined FLNTU(RT)D reads as a generic fluorometer plus
+turbidity from its SensorID alone).  The universal SensorID → model table ships
+in <code class="docutils literal notranslate"><span class="pre">ctdcast/config/sbe_sensors.yaml</span></code>; this block adds only what is
+cruise-specific.  Overrides are keyed by <strong>role</strong> (not SensorID, which the newer
+Sea-Bird XML drops); use <code class="docutils literal notranslate"><span class="pre">role:serial</span></code> only to disambiguate two different-model
+devices in one role.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sensors</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">overrides</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">altimeter</span><span class="p">:</span><span class="w">                       </span><span class="c1"># SensorID 0 records no make/model</span>
+<span class="w">      </span><span class="nt">sensor_model</span><span class="p">:</span><span class="w"> </span><span class="s">"Benthos</span><span class="nv"> </span><span class="s">PSA-916T"</span>
+<span class="w">      </span><span class="nt">sensor_model_vocabulary</span><span class="p">:</span><span class="w"> </span><span class="s">"https://vocab.nerc.ac.uk/collection/L22/current/TOOL0134/"</span>
+<span class="w">      </span><span class="nt">sensor_maker</span><span class="p">:</span><span class="w"> </span><span class="s">"Teledyne</span><span class="nv"> </span><span class="s">Benthos"</span>
+<span class="w">      </span><span class="nt">model_source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">operator</span>
+<span class="w">    </span><span class="nt">fluorometer</span><span class="p">:</span><span class="w">                     </span><span class="c1"># sharpen the generic default to the combined unit</span>
+<span class="w">      </span><span class="nt">sensor_model</span><span class="p">:</span><span class="w"> </span><span class="s">"WET</span><span class="nv"> </span><span class="s">Labs</span><span class="nv"> </span><span class="s">ECO</span><span class="nv"> </span><span class="s">FLNTU(RT)D"</span>
+<span class="w">      </span><span class="nt">sensor_model_vocabulary</span><span class="p">:</span><span class="w"> </span><span class="s">"https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"</span>
+<span class="w">    </span><span class="nt">turbidity</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">sensor_model</span><span class="p">:</span><span class="w"> </span><span class="s">"WET</span><span class="nv"> </span><span class="s">Labs</span><span class="nv"> </span><span class="s">ECO</span><span class="nv"> </span><span class="s">FLNTU(RT)D"</span>
+<span class="w">      </span><span class="nt">sensor_model_vocabulary</span><span class="p">:</span><span class="w"> </span><span class="s">"https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"</span>
+<span class="w">  </span><span class="nt">aliases</span><span class="p">:</span>
+<span class="w">    </span><span class="s">"3508"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"FLNTURTD-3508"</span><span class="w">          </span><span class="c1"># one device recorded under two serial spellings</span>
+</pre></div>
+</div>
+<p>Roles: <code class="docutils literal notranslate"><span class="pre">temperature_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">conductivity_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">oxygen_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">fluorometer</span></code>, <code class="docutils literal notranslate"><span class="pre">turbidity</span></code>, <code class="docutils literal notranslate"><span class="pre">transmissometer</span></code>, <code class="docutils literal notranslate"><span class="pre">ph</span></code>,
+<code class="docutils literal notranslate"><span class="pre">altimeter</span></code>.  A sensor left unresolved (no override, and the SensorID gives no
+model) is recorded with <code class="docutils literal notranslate"><span class="pre">sensor_model:</span> <span class="pre">&quot;UNK&quot;</span></code> and a build-time warning —
+ctdcast never guesses a model.</p>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ctd_root</span><span class="p">:</span><span class="w">     </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/CTD/ctd_nc</span><span class="w">     </span><span class="c1"># stage1/…stage3/ + profiles.nc</span>
+<span class="w">  </span><span class="nt">ladcp_root</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/LADCP/ladcp_nc</span>
+<span class="w">  </span><span class="nt">cnv_dir</span><span class="p">:</span><span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/CTD/cnv_cal</span><span class="w">    </span><span class="c1"># external input</span>
+<span class="w">  </span><span class="nt">section_yaml</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/config/ctd_sections.yaml</span>
+<span class="w">  </span><span class="nt">gebco_nc</span><span class="p">:</span><span class="w">     </span><span class="l l-Scalar l-Scalar-Plain">/data/GEBCO_2025.nc</span>
+
+<span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/report</span>
+
+<span class="nt">generate</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">stations</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">sections</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">timeseries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">force</span><span class="p">:</span><span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="processing_framework.html" class="btn btn-neutral float-left" title="ctdcast processing framework" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cruise_metadata.html" class="btn btn-neutral float-right" title="Cruise metadata (cruise_info)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

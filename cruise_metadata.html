@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cruise metadata (cruise_info) &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ctd_sections.yaml" href="ctd_sections.html" />
+    <link rel="prev" title="config.yaml" href="config_yaml.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#shared-registries">Shared registries</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/cruise_metadata.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cruise-metadata-cruise-info">
+<span id="cruise-metadata"></span><h1>Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)<a class="headerlink" href="#cruise-metadata-cruise-info" title="Link to this heading"></a></h1>
+<p>The optional top-level <code class="docutils literal notranslate"><span class="pre">cruise_info:</span></code> block in <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> supplies the
+cruise-level metadata written into the <strong>compiled files</strong> (<code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ladcp_profiles.nc</span></code>) as ACDD-1.3 global attributes — discovery fields, people,
+platform, access policy — plus the EXPOCODE. The same block also feeds the report
+page headers. Everything in it is optional: a config without it still builds, just
+without the extra metadata.</p>
+<p>Coverage bounds (<code class="docutils literal notranslate"><span class="pre">geospatial_*</span></code>, <code class="docutils literal notranslate"><span class="pre">time_coverage_*</span></code>) and <code class="docutils literal notranslate"><span class="pre">date_created</span></code> are
+<strong>computed from the data</strong> at write time and are never authored here.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>YAML is indentation-sensitive and this block is easy to get wrong by hand
+(mismatched indent, a missing <code class="docutils literal notranslate"><span class="pre">-</span></code> on a list item, a stray second
+<code class="docutils literal notranslate"><span class="pre">cruise_info:</span></code>). <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">init</span> <span class="pre">--interactive</span></code> can build the block for you,
+including offering the controlled list of contributor roles, and <code class="docutils literal notranslate"><span class="pre">ctdcast</span>
+<span class="pre">validate</span> <span class="pre">config.yaml</span></code> checks it (delimiters, roles, ORCIDs, duplicate keys)
+before you process anything.</p>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">cruise_info</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cruise_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ab2026</span><span class="w">               </span><span class="c1"># page headers + the file's `cruise` attribute</span>
+<span class="w">  </span><span class="nt">ship</span><span class="p">:</span><span class="w"> </span><span class="s">"RV</span><span class="nv"> </span><span class="s">Example"</span><span class="w">              </span><span class="c1"># free-text display name in the report masthead</span>
+<span class="w">  </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">odb</span><span class="w">                   </span><span class="c1"># platforms.yaml slug -&gt; ICES code for the EXPOCODE</span>
+<span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="s">"Example</span><span class="nv"> </span><span class="s">Project"</span>
+
+<span class="w">  </span><span class="nt">start_date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-07-09</span><span class="w">          </span><span class="c1"># DEPARTURE from port (feeds the EXPOCODE), not first cast</span>
+<span class="w">  </span><span class="nt">end_date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-07-31</span><span class="w">            </span><span class="c1"># drives the default embargo release date</span>
+
+<span class="w">  </span><span class="c1"># Who produced the file (singular; ACDD creator_*). Not a PI list.</span>
+<span class="w">  </span><span class="nt">creator</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Jane</span><span class="nv"> </span><span class="s">Doe"</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">person</span><span class="w">                  </span><span class="c1"># person | group | institution | position</span>
+<span class="w">    </span><span class="nt">orcid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                   </span><span class="c1"># bare id or orcid.org URL</span>
+
+<span class="w">  </span><span class="c1"># Everyone with a named role. Each person appears ONCE; a role may apply to</span>
+<span class="w">  </span><span class="c1"># every file or to one product. Written as semicolon-separated parallel</span>
+<span class="w">  </span><span class="c1"># strings, so no value may contain ';' or ','.</span>
+<span class="w">  </span><span class="nt">contributors</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Jane</span><span class="nv"> </span><span class="s">Doe"</span>
+<span class="w">      </span><span class="nt">orcid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">      </span><span class="nt">roles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">PS</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">PI</span><span class="p p-Indicator">]</span><span class="w">             </span><span class="c1"># both roles, on every compiled file</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"John</span><span class="nv"> </span><span class="s">Smith"</span>
+<span class="w">      </span><span class="nt">orcid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PI</span><span class="w">                    </span><span class="c1"># shorthand for roles: [PI]</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Sam</span><span class="nv"> </span><span class="s">Rivera"</span>
+<span class="w">      </span><span class="nt">orcid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">      </span><span class="nt">roles</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">all</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">PI</span><span class="p p-Indicator">]</span><span class="w">                 </span><span class="c1"># every compiled file</span>
+<span class="w">        </span><span class="nt">ctd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">MC</span><span class="p p-Indicator">]</span><span class="w">                 </span><span class="c1"># profiles.nc only</span>
+<span class="w">        </span><span class="nt">ladcp</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">DI</span><span class="p p-Indicator">]</span><span class="w">               </span><span class="c1"># ladcp_profiles.nc only</span>
+
+<span class="w">  </span><span class="nt">acknowledgement</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;</span>
+<span class="w">    </span><span class="no">Funding text, written verbatim into the `acknowledgement` attribute.</span>
+
+<span class="w">  </span><span class="c1"># An embargo is NOT a licence. CC BY is irrevocable, so it is named only as</span>
+<span class="w">  </span><span class="c1"># the licence that applies ON RELEASE; during the embargo `license` is a</span>
+<span class="w">  </span><span class="c1"># self-describing moratorium statement.</span>
+<span class="w">  </span><span class="nt">embargo</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="s">"SDN:L08::MO"</span><span class="w">         </span><span class="c1"># NERC L08 moratorium</span>
+<span class="w">    </span><span class="nt">until</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2028-07-31</span><span class="w">             </span><span class="c1"># null -&gt; derived as end_date + 2 years</span>
+<span class="w">    </span><span class="nt">contact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                 </span><span class="c1"># PI email for access requests</span>
+<span class="w">  </span><span class="nt">license_after_embargo</span><span class="p">:</span><span class="w"> </span><span class="s">"CC-BY-4.0"</span>
+</pre></div>
+</div>
+<p>Contributors follow the two compiled products, but the scoping lives on the
+<strong>role</strong>, not on a separate list. A role under <code class="docutils literal notranslate"><span class="pre">all:</span></code> (or a bare <code class="docutils literal notranslate"><span class="pre">role:</span></code> /
+<code class="docutils literal notranslate"><span class="pre">roles:</span> <span class="pre">[...]</span></code>) is written to both <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> and <code class="docutils literal notranslate"><span class="pre">ladcp_profiles.nc</span></code>;
+a role under <code class="docutils literal notranslate"><span class="pre">ctd:</span></code> or <code class="docutils literal notranslate"><span class="pre">ladcp:</span></code> is written only to that product’s file. So
+whoever processed the CTD never appears on the LADCP file and vice versa, while
+someone who worked on both is listed once with a role under each key.</p>
+<p>A person with no role in a given scope is absent from that file entirely. An
+unrecognised scope key is a validation error, since a typo would otherwise drop
+someone silently.</p>
+<p>Field reference:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 24.0%" />
+<col style="width: 76.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cruise_id</span></code></p></td>
+<td><p>Cruise identifier. Written to the file as <code class="docutils literal notranslate"><span class="pre">cruise</span></code> — the key name is
+not itself an attribute — and used in the page headers. Falls back to the
+per-cast netCDF <code class="docutils literal notranslate"><span class="pre">cruise</span></code> attribute, then <code class="docutils literal notranslate"><span class="pre">&quot;UNK&quot;</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ship</span></code></p></td>
+<td><p>Free-text display name shown in the report masthead.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">platform</span></code> (or <code class="docutils literal notranslate"><span class="pre">ship_slug</span></code>)</p></td>
+<td><p>The vessel, resolved to the ICES code for the EXPOCODE and the
+<code class="docutils literal notranslate"><span class="pre">platform_*</span></code> attributes. Either a slug in <code class="docutils literal notranslate"><span class="pre">platforms.yaml</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">odb</span></code>, <code class="docutils literal notranslate"><span class="pre">msm</span></code>), <strong>or</strong> — for a vessel not in the registry — an inline
+mapping with at least <code class="docutils literal notranslate"><span class="pre">ices_code</span></code> (look up your ship at
+<a class="reference external" href="https://ocean.ices.dk/codes/ShipCodes.aspx">https://ocean.ices.dk/codes/ShipCodes.aspx</a> , or the NVS mirror
+<a class="reference external" href="https://vocab.nerc.ac.uk/collection/C17/current/">https://vocab.nerc.ac.uk/collection/C17/current/</a>) and <code class="docutils literal notranslate"><span class="pre">name</span></code>, plus
+optional <code class="docutils literal notranslate"><span class="pre">platform_vocabulary</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">platform</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="s2">"RV Example"</span>
+  <span class="n">ices_code</span><span class="p">:</span> <span class="s2">"XXXX"</span>
+  <span class="n">platform_vocabulary</span><span class="p">:</span> <span class="s2">"https://vocab.nerc.ac.uk/collection/L06/current/31/"</span>
+</pre></div>
+</div>
+<p>Never the free-text <code class="docutils literal notranslate"><span class="pre">ship</span></code> name — name lookup is ambiguous.</p>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start_date</span></code> / <code class="docutils literal notranslate"><span class="pre">end_date</span></code></p></td>
+<td><p>Cruise dates. <code class="docutils literal notranslate"><span class="pre">start_date</span></code> is the <strong>departure from port</strong> (feeds the
+EXPOCODE <code class="docutils literal notranslate"><span class="pre">&lt;ICES</span> <span class="pre">code&gt;&lt;YYYYMMDD&gt;</span></code>), which may precede the first cast.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">creator</span></code></p></td>
+<td><p>Mapping describing who produced the file (ACDD <code class="docutils literal notranslate"><span class="pre">creator_*</span></code>). Singular:
+<code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code>, <code class="docutils literal notranslate"><span class="pre">orcid</span></code>. No <code class="docutils literal notranslate"><span class="pre">institution</span></code> — institutions
+are named only in <code class="docutils literal notranslate"><span class="pre">institutions</span></code>, and the creator’s ORCID already
+resolves to their affiliation. Setting it warns.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">contributors</span></code></p></td>
+<td><p>Ordered list of people, each appearing <strong>once</strong>, with <code class="docutils literal notranslate"><span class="pre">name</span></code> and either
+<code class="docutils literal notranslate"><span class="pre">role</span></code> (one role), <code class="docutils literal notranslate"><span class="pre">roles:</span> <span class="pre">[...]</span></code> (several) or <code class="docutils literal notranslate"><span class="pre">roles:</span> <span class="pre">{all,</span> <span class="pre">ctd,</span>
+<span class="pre">ladcp}</span></code> (scoped per product); optional <code class="docutils literal notranslate"><span class="pre">email</span></code> and <code class="docutils literal notranslate"><span class="pre">orcid</span></code> (bare or
+URL). Each <code class="docutils literal notranslate"><span class="pre">(person,</span> <span class="pre">role)</span></code> pair becomes one position in the parallel
+strings. <code class="docutils literal notranslate"><span class="pre">institution</span></code> is <strong>not</strong> accepted here — see <code class="docutils literal notranslate"><span class="pre">institutions</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">institution</span></code></p></td>
+<td><p><strong>Not a config key</strong> — setting it is a validation error. The CF
+<code class="docutils literal notranslate"><span class="pre">institution</span></code> attribute (“where the original data was produced”) is
+<em>derived</em> from the entries of <code class="docutils literal notranslate"><span class="pre">institutions</span></code> holding the lead role
+(<code class="docutils literal notranslate"><span class="pre">CONLEAD</span></code>), joined with <code class="docutils literal notranslate"><span class="pre">&quot;;</span> <span class="pre">&quot;</span></code>. It is a lossy view of
+<code class="docutils literal notranslate"><span class="pre">contributing_institutions</span></code>, kept for CF-only consumers (ERDDAP,
+THREDDS, NCEI) that never read the structured form; the list stays the
+single source of truth, so the two cannot disagree. It is deliberately
+<strong>not</strong> reduced to one organisation: a cruise really does have several
+contributing institutions, and only the authorship of a particular file
+resolves to one — and that one is not written as an attribute at all,
+because the creator’s ORCID (<code class="docutils literal notranslate"><span class="pre">creator_id</span></code>) already resolves to their
+current affiliation. Nothing holding <code class="docutils literal notranslate"><span class="pre">CONLEAD</span></code> means the attribute is
+omitted, with a warning from <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">validate</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">institutions</span></code></p></td>
+<td><p>Ordered list of contributing institutions, written to
+<code class="docutils literal notranslate"><span class="pre">contributing_institutions</span></code>. Each entry is either an
+<code class="docutils literal notranslate"><span class="pre">institutions.yaml</span></code> slug (optionally <code class="docutils literal notranslate"><span class="pre">{slug:</span> <span class="pre">uhh,</span> <span class="pre">role:</span> <span class="pre">CONLEAD}</span></code>),
+<strong>or</strong> — for one not in the registry — an inline
+<code class="docutils literal notranslate"><span class="pre">{name,</span> <span class="pre">id,</span> <span class="pre">role}</span></code> (look up the EDMO code at
+<a class="reference external" href="https://edmo.seadatanet.org/">https://edmo.seadatanet.org/</a> , or use a ROR id). Roles: <code class="docutils literal notranslate"><span class="pre">CONLEAD</span></code>
+(leads), <code class="docutils literal notranslate"><span class="pre">CONMEM</span></code> (takes part), <code class="docutils literal notranslate"><span class="pre">FUND</span></code> (funder). Independent of
+<code class="docutils literal notranslate"><span class="pre">contributors</span></code>: one person may sit at several institutions and one
+institution may send several people, so the two lists are <strong>not</strong>
+positionally aligned.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">role_vocabulary</span></code></p></td>
+<td><p>Which vocabulary the roles are drawn from — <code class="docutils literal notranslate"><span class="pre">C89</span></code> (default, BODC
+dataset roles) or <code class="docutils literal notranslate"><span class="pre">G04</span></code> (ISO 19115 <code class="docutils literal notranslate"><span class="pre">CI_RoleCode</span></code>). ctdcast validates
+and writes in the declared vocabulary and never converts between them.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">acknowledgement</span></code></p></td>
+<td><p>Free text written to the <code class="docutils literal notranslate"><span class="pre">acknowledgement</span></code> global attribute.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">embargo</span></code></p></td>
+<td><p>Mapping (<code class="docutils literal notranslate"><span class="pre">policy</span></code>, <code class="docutils literal notranslate"><span class="pre">until</span></code>, <code class="docutils literal notranslate"><span class="pre">contact</span></code>). Produces a moratorium
+<code class="docutils literal notranslate"><span class="pre">license</span></code>; <code class="docutils literal notranslate"><span class="pre">until</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">end_date</span> <span class="pre">+</span> <span class="pre">2</span> <span class="pre">years</span></code> when null.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">license_after_embargo</span></code></p></td>
+<td><p>The licence that applies on release (e.g. <code class="docutils literal notranslate"><span class="pre">CC-BY-4.0</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+<p>Contributor roles come from <strong>NERC C89</strong> (BODC dataset roles), given as the
+concept code or the full prefLabel. The cruise-scoped terms are <code class="docutils literal notranslate"><span class="pre">PS</span></code> (Cruise
+principal scientist — the chief scientist, and the definition allows the role to
+be shared), <code class="docutils literal notranslate"><span class="pre">DI</span></code> (Cruise dataset principal investigator — responsible for one
+subset of the cruise data), <code class="docutils literal notranslate"><span class="pre">MC</span></code> (Cruise data manager), <code class="docutils literal notranslate"><span class="pre">TC</span></code> (Cruise
+technical contact), <code class="docutils literal notranslate"><span class="pre">TS</span></code> (Cruise technician) and <code class="docutils literal notranslate"><span class="pre">CP</span></code> (Cruise participant).
+The project-scoped terms are <code class="docutils literal notranslate"><span class="pre">PI</span></code>, <code class="docutils literal notranslate"><span class="pre">CI</span></code>, <code class="docutils literal notranslate"><span class="pre">CO</span></code>, <code class="docutils literal notranslate"><span class="pre">DP</span></code>, <code class="docutils literal notranslate"><span class="pre">MP</span></code>, <code class="docutils literal notranslate"><span class="pre">PM</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PA</span></code>, <code class="docutils literal notranslate"><span class="pre">PD</span></code>, <code class="docutils literal notranslate"><span class="pre">PG</span></code> and <code class="docutils literal notranslate"><span class="pre">RA</span></code>; <code class="docutils literal notranslate"><span class="pre">DM</span></code> and <code class="docutils literal notranslate"><span class="pre">DC</span></code> are unscoped. Any other
+value is a validation error.</p>
+<p>A contributor may hold several roles, and a role may be scoped to one product:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">contributors</span><span class="p">:</span>
+  <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s2">"Jane Doe"</span>
+    <span class="n">orcid</span><span class="p">:</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">orcid</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="mi">0000</span><span class="o">-</span><span class="mi">0000</span><span class="o">-</span><span class="mi">0000</span><span class="o">-</span><span class="mi">0000</span>
+    <span class="n">roles</span><span class="p">:</span> <span class="p">[</span><span class="n">PS</span><span class="p">,</span> <span class="n">PI</span><span class="p">]</span>            <span class="c1"># both roles, on every compiled file</span>
+
+  <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s2">"Sam Rivera"</span>
+    <span class="n">orcid</span><span class="p">:</span> <span class="n">null</span>
+    <span class="n">roles</span><span class="p">:</span>
+      <span class="nb">all</span><span class="p">:</span> <span class="p">[</span><span class="n">PI</span><span class="p">]</span>                <span class="c1"># every file</span>
+      <span class="n">ctd</span><span class="p">:</span> <span class="p">[</span><span class="n">DC</span><span class="p">]</span>                <span class="c1"># profiles.nc only</span>
+      <span class="n">ladcp</span><span class="p">:</span> <span class="p">[</span><span class="n">DI</span><span class="p">]</span>              <span class="c1"># ladcp_profiles.nc only</span>
+</pre></div>
+</div>
+<p>Each <code class="docutils literal notranslate"><span class="pre">(person,</span> <span class="pre">role)</span></code> pair occupies one position in the parallel attribute
+strings, so a two-role person appears twice in the netCDF with their name and
+ORCID repeated. Stating them once in config is what guarantees the repeats
+agree. A person with no role in a given scope is absent from that file.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cruise_info.role_vocabulary</span></code> selects the vocabulary: <code class="docutils literal notranslate"><span class="pre">C89</span></code> (default) or
+<code class="docutils literal notranslate"><span class="pre">G04</span></code> (ISO 19115 <code class="docutils literal notranslate"><span class="pre">CI_RoleCode</span></code>, for a file that must satisfy an IOOS or ISO
+checker). ctdcast never converts between them — any mapping is lossy, and the
+file could not record that the detail was dropped.</p>
+<section id="shared-registries">
+<h2>Shared registries<a class="headerlink" href="#shared-registries" title="Link to this heading"></a></h2>
+<p>Two package files back the slugs above, in the same spirit as
+<code class="docutils literal notranslate"><span class="pre">sbe_sensors.yaml</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ctdcast/config/platforms.yaml</span></code> — vessels keyed by slug, each with its ICES
+code, L06 platform category, and identity fields. It also carries
+<code class="docutils literal notranslate"><span class="pre">forbidden_codes</span></code> and <code class="docutils literal notranslate"><span class="pre">ambiguous_slugs</span></code> guards, so a deprecated or
+ambiguous code (e.g. bare <code class="docutils literal notranslate"><span class="pre">meteor</span></code>) raises rather than silently producing a
+wrong EXPOCODE.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ctdcast/config/institutions.yaml</span></code> — institution slugs (e.g. <code class="docutils literal notranslate"><span class="pre">uhh</span></code>) mapping
+to the EDMO name written to <code class="docutils literal notranslate"><span class="pre">contributing_institutions</span></code> and the EDMO/ROR
+record URI written to <code class="docutils literal notranslate"><span class="pre">contributing_institutions_id</span></code>.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="config_yaml.html" class="btn btn-neutral float-left" title="config.yaml" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ctd_sections.html" class="btn btn-neutral float-right" title="ctd_sections.yaml" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

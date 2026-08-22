@@ -1,0 +1,396 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast processing framework &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="config.yaml" href="config_yaml.html" />
+    <link rel="prev" title="CLI reference" href="cli_reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ctdcast processing framework</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-stage-ladder">The stage ladder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cast-level-processing">Cast-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cruise-level-processing">Cruise-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-table">Summary table</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ctdcast processing framework</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/processing_framework.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ctdcast-processing-framework">
+<span id="processing-framework"></span><h1>ctdcast processing framework<a class="headerlink" href="#ctdcast-processing-framework" title="Link to this heading"></a></h1>
+<p>This page describes <strong>what each processing stage does and why</strong>, as distinct from
+<a class="reference internal" href="cli_reference.html"><span class="doc">CLI reference</span></a>, which describes how to invoke them. It is the ctdcast
+counterpart to oceanarray’s processing framework: where oceanarray moves
+instrument → mooring → array, ctdcast moves <strong>cast → cruise</strong>.</p>
+<p>Those two levels are not an informal grouping — they are the <code class="docutils literal notranslate"><span class="pre">scope</span></code> field on
+every row of the stage registry (<code class="docutils literal notranslate"><span class="pre">ctdcast.processors.STAGES</span></code>), which is the
+single source of truth for execution order, the <code class="docutils literal notranslate"><span class="pre">--stage</span></code> choices, and the
+re-run rule. A <code class="docutils literal notranslate"><span class="pre">&quot;cast&quot;</span></code> stage runs once per cast; a <code class="docutils literal notranslate"><span class="pre">&quot;cruise&quot;</span></code> stage runs once
+per compiled product.</p>
+<p><strong>Principles</strong></p>
+<ul class="simple">
+<li><p><strong>Modular</strong> — each stage has defined inputs and outputs, and one job.</p></li>
+<li><p><strong>Cruise-ready</strong> — usable for quick-look processing at sea, with enough
+structure to carry into scientific analysis afterwards.</p></li>
+<li><p><strong>Reproducible</strong> — every transformation records itself in <code class="docutils literal notranslate"><span class="pre">history</span></code> with the
+parameters it used, not merely its name.</p></li>
+<li><p><strong>Incremental</strong> — a stage’s output is storable and reloadable, so processing can
+stop and resume rather than being one long run.</p></li>
+</ul>
+<p>Output files use CF-netCDF conventions with ACDD discovery metadata; the compiled
+products additionally carry an <code class="docutils literal notranslate"><span class="pre">expocode</span></code> coordinate in the CCHDO manner.</p>
+<hr class="docutils" />
+<section id="the-stage-ladder">
+<h2>The stage ladder<a class="headerlink" href="#the-stage-ladder" title="Link to this heading"></a></h2>
+<p>Two rules govern what may be a <em>stage</em> rather than a <em>product</em>:</p>
+<p><strong>Monotone in corrections.</strong> Each stage adds information — flags, calibrations,
+derived variables — and removes none. Stage 2 marks the soak; it does not delete
+those scans. This is why a later stage can always be re-run from an earlier one,
+and why the lineage on disk is meaningful rather than lossy.</p>
+<p>A sharper form of the same rule is worth stating, because it says exactly where
+in the ladder numbers start moving: <strong>stages 1 and 2 change no measured value.</strong>
+Stage 1 renames and normalises units; stage 2 selects and flags. Neither alters a
+temperature, a conductivity or a pressure. <strong>Stage 3 is the first rung where a
+measured value changes</strong> — calibration adjusts conductivity, and salinity is
+re-derived from it. (Trimming a moored record does shift the <code class="docutils literal notranslate"><span class="pre">time</span></code> <em>coordinate</em>
+under a clock correction, which is why the rule is about measured values rather
+than about all numbers.) So a disagreement between two people’s stage-2 output is
+a disagreement about <em>selection</em>; a disagreement at stage 3 is a disagreement
+about <em>calibration</em>, and the two are diagnosed differently.</p>
+<p><strong>Constant in representation.</strong> A stage leaves the sampling representation
+untouched: same scans, same vertical axis. Anything that <em>changes</em> the
+representation — binning to a pressure grid, splitting into downcast and upcast
+halves, stacking casts into one array — is a <strong>terminal product</strong>, not a rung.</p>
+<p><strong>Parameters are found outside the ladder and applied inside it.</strong> A stage never
+derives its own correction coefficients. For ctdcast they come from two places:</p>
+<ul class="simple">
+<li><p>the <strong>conductivity slope</strong>, from comparing CTD conductivity against <strong>bottle
+salinities</strong> analysed from the rosette samples;</p></li>
+<li><p>the <strong>align lags</strong> and <strong>cell-thermal-mass coefficients</strong>, from finder tools
+that use nothing but the CTD data itself.</p></li>
+</ul>
+<p>Both are recorded in config and <em>applied</em> at stage 3. oceanarray does the same
+thing one rung earlier: a clock offset is <em>found</em> by comparing the computer and
+instrument clocks at recovery, recorded in YAML as
+<code class="docutils literal notranslate"><span class="pre">computer_clock_at_recovery</span></code> / <code class="docutils literal notranslate"><span class="pre">instrument_clock_at_recovery</span></code>, and <em>applied</em>
+at its stage 2. (Calibration-dip processing —
+<a class="reference external" href="https://github.com/ocean-uhh/caldip">caldip</a> — is oceanarray’s route for moored
+instruments, and is not part of the CTD workflow.)</p>
+<p>The align and cell-thermal-mass finders are the interesting case, because they
+read the very data the stage is processing — so why not derive them inside the
+stage? Three reasons the separation is structural rather than incidental:</p>
+<ul class="simple">
+<li><p><strong>the scopes differ.</strong> A finder examines <em>many casts</em> to settle one coefficient
+for the cruise; the applier then uses it on <em>one cast</em>. A cast-scope stage
+cannot see what a cruise-scope determination needs;</p></li>
+<li><p><strong>judgement.</strong> The result is inspected and chosen, once, not re-decided
+silently on every run;</p></li>
+<li><p><strong>reproducibility.</strong> A stage that re-derived its own parameters could give a
+different answer from the same input as the surrounding casts change, which is
+exactly what the ladder exists to prevent.</p></li>
+</ul>
+<p>The slope has a fourth, simpler reason: bottle salinities are analysed data the
+stage has never seen.</p>
+<p>That second rule is what makes <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> a product rather than “stage 4”.
+It grids to 1 dbar and splits each cast into two profiles, so it cannot be an
+input to further per-cast processing. Terminal products sit beside the stage
+directories, not inside them.</p>
+</section>
+<hr class="docutils" />
+<section id="cast-level-processing">
+<h2>Cast-level processing<a class="headerlink" href="#cast-level-processing" title="Link to this heading"></a></h2>
+<p>One cast in, one cast out, once per cast.</p>
+<ul>
+<li><p><strong>Stage 0 (planned):</strong> acquire and convert raw instrument files — hex → CNV for
+Sea-Bird CTDs. Not implemented in ctdcast; today ctdcast starts from calibrated
+CNV. <strong>This is what</strong> <a class="reference external" href="https://github.com/ocean-uhh/ctdam">ctdam</a> <strong>does</strong>: it
+drives the Sea-Bird processing chain (<code class="docutils literal notranslate"><span class="pre">wildedit</span></code>, <code class="docutils literal notranslate"><span class="pre">wfilter</span></code>, <code class="docutils literal notranslate"><span class="pre">alignctd</span></code>,
+<code class="docutils literal notranslate"><span class="pre">celltm</span></code>, bottle-file creation, gsw derivations) from a <code class="docutils literal notranslate"><span class="pre">proc_template.toml</span></code>
+and writes CNV. Stage 0 is therefore a <em>boundary</em> with a sibling package rather
+than a module to be written here.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>What arrives at stage 1 is not raw.</strong> ctdam’s chain does two different
+kinds of work. <code class="docutils literal notranslate"><span class="pre">datcnv</span></code> is conversion — hex to engineering units — which is
+stage-0/1 work. But <code class="docutils literal notranslate"><span class="pre">wildedit</span></code> (despike), <code class="docutils literal notranslate"><span class="pre">wfilter</span></code> (median filter),
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> (low-pass), <code class="docutils literal notranslate"><span class="pre">alignctd</span></code> (sensor time alignment) and <code class="docutils literal notranslate"><span class="pre">celltm</span></code>
+(cell thermal mass) all <strong>change measured values</strong>, which by the ladder’s
+second invariant makes them <strong>stage-3-class corrections applied upstream</strong>,
+with per-variable parameters recorded only in the CNV header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># wfilter_action t090C = median, 10</span>
+<span class="c1"># filter_low_pass_tc_A = 0.030</span>
+<span class="c1"># filter_low_pass_A_vars = altM flECO-AFL turbWETntu0 …</span>
+</pre></div>
+</div>
+<p>Two consequences follow, and both matter more than the provenance:</p>
+<ul class="simple">
+<li><p><strong>Re-run scope is asymmetric.</strong> Changing a ctdcast stage-3 parameter
+invalidates stage 3. Changing a <em>ctdam</em> parameter regenerates the CNV and
+invalidates the ctdcast ladder <strong>from stage 1</strong>, because the corrections
+sit below it. That is the practical cost of these steps living outside the
+framework.</p></li>
+<li><p><strong>Stage 3 must know what was already done.</strong> Applying a cell-thermal-mass
+correction or a time alignment twice is a silent error that produces
+plausible numbers. Stage 3 reading the upstream chain is a safety check,
+not only a record.</p></li>
+</ul>
+<p>The longer-term shape is to express these as ctdcast stage-3 modules with
+their parameters in ctdcast’s config, ingesting unfiltered <code class="docutils literal notranslate"><span class="pre">datcnv</span></code> output
+— one place for the parameters, and re-runnable within the ladder.
+Importantly this needs <strong>no file round-trip</strong>: ctdam is a Python library
+whose appliers (<code class="docutils literal notranslate"><span class="pre">AlignCTD</span></code>, <code class="docutils literal notranslate"><span class="pre">WFilter</span></code>, <code class="docutils literal notranslate"><span class="pre">CellTM</span></code>, <code class="docutils literal notranslate"><span class="pre">LoopRemoval</span></code>)
+accept and return an in-memory <code class="docutils literal notranslate"><span class="pre">CTDData</span></code>, so ctdcast would call them
+directly rather than exporting CNV, invoking a tool, and re-reading. The
+cost is an xarray ↔ <code class="docutils literal notranslate"><span class="pre">CTDData</span></code> adapter, not an export/import cycle. Not a
+near-term change; noted so the current arrangement is understood as a
+boundary compromise rather than the design.</p>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>The boundary contract: ctdam runs without ``binavg`` and without
+``downcast_only``.</strong> Both are legitimate in ctdam’s own terms, but a CNV
+produced with either is <strong>already a terminal product</strong> by this framework’s
+second rule — ctdcast would be splitting downcast from upcast on a file that
+has neither, or re-binning binned data. Those two jobs belong to stage 2 and
+to the <code class="docutils literal notranslate"><span class="pre">profiles</span></code> compile, where they are reversible and recorded. A CNV
+arriving at stage 1 carries every scan of the full cast.</p>
+</div>
+</li>
+<li><p><strong>Stage 1 — standardisation.</strong> Convert raw CNV to CF-netCDF, faithfully: no
+trimming and no QC. Canonical variable names, unit normalisation (conductivity
+to mS/cm, pressure to dbar), and single-sensor renaming — <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code>
+becomes <code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> when there is no second sensor to distinguish it
+from. The backend is pluggable (<code class="docutils literal notranslate"><span class="pre">CtdBackend</span></code>); <code class="docutils literal notranslate"><span class="pre">seasenselib</span></code> is the current
+implementation.</p></li>
+<li><p><strong>Stage 2 — trim.</strong> Decide which scans belong to the real cast: downcast/upcast
+splitting, soak detection at the start, back-on-deck detection at the end. This
+is the profile analogue of trimming a moored record to its deployment window —
+same rung, same question, different domain (see the note below).
+QARTOD flag 4 is set on soak and post-recovery records — <strong>marked, not deleted</strong>,
+per the monotonicity rule — and the detection parameters are recorded in
+<code class="docutils literal notranslate"><span class="pre">history</span></code>.</p></li>
+<li><p><strong>Stage 3 — QC and calibration.</strong> Gross-range QC, then any conductivity
+calibration named in the cruise config, then salinity re-derived from the
+calibrated conductivity. Deliberately <strong>iterative</strong>: re-run it as calibration
+improves, which is why it must not consume its own output.</p></li>
+</ul>
+<p>LADCP has a single cast-level stage: the LDEO <code class="docutils literal notranslate"><span class="pre">.mat</span></code> solution is converted to
+per-cast netCDF. Its upstream processing happens outside ctdcast.</p>
+</section>
+<hr class="docutils" />
+<section id="cruise-level-processing">
+<h2>Cruise-level processing<a class="headerlink" href="#cruise-level-processing" title="Link to this heading"></a></h2>
+<p>Many casts in, one file out, once per product.</p>
+<ul class="simple">
+<li><p><strong>profiles</strong> — compile the per-cast files into <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code>: each cast split
+into downcast and upcast, binned to a common pressure grid, and stacked on an
+<code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> dimension. The pressure coordinate is the <strong>bin centre</strong>, so a binned
+value sits at the mean depth of the samples it averages.</p></li>
+<li><p><strong>ladcp_profiles</strong> — the LADCP equivalent, gridded on depth in metres rather
+than pressure.</p></li>
+</ul>
+<p>Both carry the cruise-level metadata: ACDD discovery fields, contributors and
+institutions with their controlled-vocabulary roles, licence and embargo, derived
+spatiotemporal coverage, and the <code class="docutils literal notranslate"><span class="pre">expocode</span></code> coordinate.</p>
+</section>
+<hr class="docutils" />
+<section id="summary-table">
+<h2>Summary table<a class="headerlink" href="#summary-table" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Step</p></th>
+<th class="head"><p>Scope</p></th>
+<th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>cast</p></td>
+<td><p>Acquisition (planned)</p></td>
+<td><p>Raw instrument files to CNV</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>cast</p></td>
+<td><p>Standardisation</p></td>
+<td><p>CNV to CF-netCDF; canonical names and units; values preserved as-is</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>cast</p></td>
+<td><p>Trim</p></td>
+<td><p>Downcast/upcast split; soak and back-on-deck flagged (not removed)</p></td>
+</tr>
+<tr class="row-odd"><td><p>3</p></td>
+<td><p>cast</p></td>
+<td><p>QC and calibration</p></td>
+<td><p>Gross-range QC; conductivity calibration; salinity re-derived</p></td>
+</tr>
+<tr class="row-even"><td><p>profiles</p></td>
+<td><p>cruise</p></td>
+<td><p>Compile (CTD)</p></td>
+<td><p>Bin to a pressure grid, stack on <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code>, attach cruise metadata</p></td>
+</tr>
+<tr class="row-odd"><td><p>profiles</p></td>
+<td><p>cruise</p></td>
+<td><p>Compile (LADCP)</p></td>
+<td><p>As above, gridded on depth</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>The rungs line up with oceanarray’s</strong>, which processes moored time series
+rather than profiles:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Stage</p></th>
+<th class="head"><p>Both packages</p></th>
+<th class="head"><p>ctdcast (a profile)</p></th>
+<th class="head"><p>oceanarray (a moored record)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Standardisation — raw to CF-netCDF, values preserved</p></td>
+<td><p>CNV to netCDF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.cnv</span></code>/<code class="docutils literal notranslate"><span class="pre">.rsk</span></code>/<code class="docutils literal notranslate"><span class="pre">.aqd</span></code> to netCDF</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><strong>Trim</strong> — decide which records belong to the real measurement</p></td>
+<td><p>soak and back-on-deck</p></td>
+<td><p>deployment window, plus clock offset/drift</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>QC and derived variables</p></td>
+<td><p>gross-range QC, conductivity calibration, salinity</p></td>
+<td><p>QARTOD QC, pressure interpolation, salinity, velocity rotation</p></td>
+</tr>
+</tbody>
+</table>
+<p>The alignment is not a coincidence of numbering: each rung is a <em>kind</em> of
+transformation, so the same three appear whether the thing being processed is
+a cast or a mooring record. What differs is the domain — a cast’s “real
+measurement” begins after the soak, a mooring’s after deployment — and
+therefore the specific operations, not the intent of the rung.</p>
+<p>What genuinely does not transfer is the level above: oceanarray continues to
+mooring- and array-level steps (stack, grid, concatenate, boundary merge)
+where ctdcast has a single cruise level.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cli_reference.html" class="btn btn-neutral float-left" title="CLI reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="config_yaml.html" class="btn btn-neutral float-right" title="config.yaml" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,749 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._section &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._section</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._section</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Tier-2: generate a per-section HTML report page."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.global_attrs</span><span class="w"> </span><span class="kn">import</span> <span class="n">cruise_name</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.bathymetry</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">dense_bathy_along_track</span><span class="p">,</span>
+    <span class="n">interpolate_bathy_at_casts</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.derive</span><span class="w"> </span><span class="kn">import</span> <span class="n">derive_AOU</span> <span class="k">as</span> <span class="n">add_aou</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.derive</span><span class="w"> </span><span class="kn">import</span> <span class="n">derive_teos10_profiles</span> <span class="k">as</span> <span class="n">add_teos10_profiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">along_track_km</span><span class="p">,</span>
+    <span class="n">distance_from_km</span><span class="p">,</span>
+    <span class="n">section_orientation</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SECTION_BIOGEO_VARS</span><span class="p">,</span>
+    <span class="n">SECTION_PHYSICS_VARS</span><span class="p">,</span>
+    <span class="n">UNKNOWN_CRUISE_ID</span><span class="p">,</span>
+    <span class="n">resolve_sensor_var</span><span class="p">,</span>
+    <span class="n">vlabel</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span> <span class="n">ReportConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROLE_ACCENT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">compact_cast_list</span><span class="p">,</span> <span class="n">expand_cast_ids</span><span class="p">,</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.plotters.plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">section_figsize_and_slot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Panel</span><span class="p">,</span>
+    <span class="n">PanelGroup</span><span class="p">,</span>
+    <span class="n">Profile</span><span class="p">,</span>
+    <span class="n">ResolvedReport</span><span class="p">,</span>
+    <span class="n">Section</span><span class="p">,</span>
+    <span class="n">resolve</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._report_css</span><span class="w"> </span><span class="kn">import</span> <span class="n">_JS_TOP_LINKS</span><span class="p">,</span> <span class="n">SHARED_CSS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._format</span><span class="w"> </span><span class="kn">import</span> <span class="n">_fmt_utc</span><span class="p">,</span> <span class="n">profile_cast_suffixes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._plots</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">RenderedPanel</span><span class="p">,</span>
+    <span class="n">_make_ladcp_section_b64</span><span class="p">,</span>
+    <span class="n">_make_section_b64</span><span class="p">,</span>
+    <span class="n">_make_section_map_b64</span><span class="p">,</span>
+    <span class="n">_make_section_ts_histogram_b64</span><span class="p">,</span>
+    <span class="n">_make_section_ts_o2_b64</span><span class="p">,</span>
+    <span class="n">_make_section_ts_profiles_b64</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Panel variables are defined in ctdcast.config.parameters:</span>
+<span class="c1">#   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _timeseries.py)</span>
+<span class="c1"># Labels come from vlabel() so they stay in sync with VARIABLES.</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># HTML template</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Public function</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="generate_section_page">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._section.generate_section_page">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_section_page</span><span class="p">(</span>
+    <span class="n">section_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">section_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">profiles_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">section_style</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"pcolormesh"</span><span class="p">,</span>
+    <span class="n">vmin_override</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vmax_override</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dbar_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">prev_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">next_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Generate a section HTML report page.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    section_name:</span>
+<span class="sd">        Key from ``ctd_sections.yaml``, e.g. ``"KTout"``.</span>
+<span class="sd">    section_cfg:</span>
+<span class="sd">        Dict with keys ``description``, ``cast_numbers``, ``color``.</span>
+<span class="sd">    profiles_path:</span>
+<span class="sd">        Path to ``profiles.nc`` (built by ``cnv_build_profiles.py``).</span>
+<span class="sd">    out_dir:</span>
+<span class="sd">        Root output directory.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite existing file if True.</span>
+<span class="sd">    section_style:</span>
+<span class="sd">        ``"pcolormesh"`` or ``"contourf"`` — passed through to each section figure.</span>
+<span class="sd">    vmin_override, vmax_override:</span>
+<span class="sd">        Per-variable colormap limit overrides (e.g. ``{"SA": 34.5}``).</span>
+<span class="sd">    ladcp_dir:</span>
+<span class="sd">        Directory containing processed LADCP ``.mat`` files.</span>
+<span class="sd">        If None, the LADCP velocity section panel is omitted.</span>
+<span class="sd">    ladcp_pattern:</span>
+<span class="sd">        Filename pattern for LADCP files, e.g. ``"msm_142_1_*.mat"``.</span>
+<span class="sd">        The ``*`` is replaced with the zero-padded cast number.</span>
+<span class="sd">        Falls back to ``NNN.mat`` if not given.</span>
+<span class="sd">    dbar_step:</span>
+<span class="sd">        Subsample the pressure axis by this step before plotting (default 1,</span>
+<span class="sd">        no subsampling).  ``build_profiles()`` always stores 1-dbar data;</span>
+<span class="sd">        this controls plot-time resolution only.</span>
+<span class="sd">    prev_name:</span>
+<span class="sd">        Name of the preceding section (for the ← nav button).  None omits the button.</span>
+<span class="sd">    next_name:</span>
+<span class="sd">        Name of the following section (for the → nav button).  None omits the button.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path to the written HTML file, or None on failure.</span>
+<span class="sd">    """</span>
+    <span class="n">out_file</span> <span class="o">=</span> <span class="n">out_dir</span> <span class="o">/</span> <span class="s2">"sections"</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"section_</span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">.html"</span>
+    <span class="k">if</span> <span class="n">out_file</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out_file</span>
+    <span class="n">out_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">cast_ids</span> <span class="o">=</span> <span class="n">expand_cast_ids</span><span class="p">(</span><span class="n">section_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cast_numbers"</span><span class="p">,</span> <span class="p">[]))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cast_ids</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">profiles_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ds_all</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span>
+            <span class="n">profiles_path</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Index profiles by (cast_number, cast_suffix). Identity is the pair, so a</span>
+    <span class="c1"># plain cast and its lettered sibling are independent. down_idx_by_id drives</span>
+    <span class="c1"># selection (downcasts only); pos_by_id gives a cast's position from any</span>
+    <span class="c1"># profile so a key_cast without a downcast still resolves its origin.</span>
+    <span class="n">all_cast_nums</span> <span class="o">=</span> <span class="n">ds_all</span><span class="p">[</span><span class="s2">"cast_number"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">all_suffix</span> <span class="o">=</span> <span class="n">profile_cast_suffixes</span><span class="p">(</span><span class="n">ds_all</span><span class="p">)</span>
+    <span class="n">all_lats</span> <span class="o">=</span> <span class="n">ds_all</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">all_lons</span> <span class="o">=</span> <span class="n">ds_all</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">is_down</span> <span class="o">=</span> <span class="n">ds_all</span><span class="p">[</span><span class="s2">"cast_type"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">==</span> <span class="s2">"down"</span>
+    <span class="n">down_idx_by_id</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">pos_by_id</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">all_cast_nums</span><span class="p">,</span> <span class="n">all_suffix</span><span class="p">,</span> <span class="n">is_down</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+        <span class="n">cid</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+        <span class="n">pos_by_id</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">all_lats</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">all_lons</span><span class="p">[</span><span class="n">i</span><span class="p">])))</span>
+        <span class="k">if</span> <span class="n">d</span><span class="p">:</span>
+            <span class="n">down_idx_by_id</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+
+    <span class="c1"># Select casts in the order written in the config (mode 1). A cast with no</span>
+    <span class="c1"># matching downcast profile is skipped; a cast listed twice is picked twice.</span>
+    <span class="n">picked</span> <span class="o">=</span> <span class="p">[</span><span class="n">down_idx_by_id</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="n">cast_ids</span> <span class="k">if</span> <span class="n">cid</span> <span class="ow">in</span> <span class="n">down_idx_by_id</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">picked</span><span class="p">:</span>
+        <span class="n">ds_all</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Optional key_cast (mode 2): order casts by geographic distance from that</span>
+    <span class="c1"># cast and use that distance as the x-axis. key_cast must be a single cast in</span>
+    <span class="c1"># the section; otherwise fall back to mode 1 (validate reports the error).</span>
+    <span class="n">key_cfg</span> <span class="o">=</span> <span class="n">section_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"key_cast"</span><span class="p">)</span>
+    <span class="n">key_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">key_cfg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">_key_ids</span> <span class="o">=</span> <span class="n">expand_cast_ids</span><span class="p">([</span><span class="n">key_cfg</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">_key_ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_key_ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">key_id</span> <span class="o">=</span> <span class="n">_key_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">cast_ids_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">cast_ids</span><span class="p">)</span>
+    <span class="n">use_key</span> <span class="o">=</span> <span class="n">key_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key_id</span> <span class="ow">in</span> <span class="n">cast_ids_set</span> <span class="ow">and</span> <span class="n">key_id</span> <span class="ow">in</span> <span class="n">pos_by_id</span>
+
+    <span class="n">ds_sec</span> <span class="o">=</span> <span class="n">ds_all</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">N_PROF</span><span class="o">=</span><span class="n">picked</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dbar_step</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">p_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds_sec</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">],</span> <span class="n">dbar_step</span><span class="p">)</span>
+        <span class="n">ds_sec</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">pressure</span><span class="o">=</span><span class="n">p_idx</span><span class="p">)</span>
+
+    <span class="n">x_vals_key</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">use_key</span><span class="p">:</span>
+        <span class="n">key_lat</span><span class="p">,</span> <span class="n">key_lon</span> <span class="o">=</span> <span class="n">pos_by_id</span><span class="p">[</span><span class="n">key_id</span><span class="p">]</span>
+        <span class="n">_d</span> <span class="o">=</span> <span class="n">distance_from_km</span><span class="p">(</span>
+            <span class="n">key_lat</span><span class="p">,</span>
+            <span class="n">key_lon</span><span class="p">,</span>
+            <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+            <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="p">)</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">_d</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"stable"</span><span class="p">)</span>
+        <span class="n">ds_sec</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">N_PROF</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+        <span class="c1"># add_teos10/add_aou below don't reorder N_PROF, so the sorted distances</span>
+        <span class="c1"># are the final x-axis — no need to recompute after.</span>
+        <span class="n">x_vals_key</span> <span class="o">=</span> <span class="n">_d</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+    <span class="n">ds_sec</span> <span class="o">=</span> <span class="n">add_teos10_profiles</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">)</span>
+    <span class="n">ds_sec</span> <span class="o">=</span> <span class="n">add_aou</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">)</span>
+
+    <span class="n">lats</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">lons</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">sec_cast_nums</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"cast_number"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">sec_cast_suffix</span> <span class="o">=</span> <span class="n">profile_cast_suffixes</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">use_key</span><span class="p">:</span>
+        <span class="n">x_vals</span> <span class="o">=</span> <span class="n">x_vals_key</span>
+        <span class="n">x_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Distance from cast </span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="o">*</span><span class="n">key_id</span><span class="p">)</span><span class="si">}</span><span class="s2"> (km)"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Cumulative along-track distance from the first cast in config order.</span>
+        <span class="n">x_vals</span><span class="p">,</span> <span class="n">x_label</span> <span class="o">=</span> <span class="n">along_track_km</span><span class="p">(</span><span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">)</span>
+
+    <span class="n">bathy</span> <span class="o">=</span> <span class="n">interpolate_bathy_at_casts</span><span class="p">(</span><span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">gebco_path</span><span class="p">)</span>
+    <span class="n">dense_bathy_x</span><span class="p">,</span> <span class="n">dense_bathy_d</span> <span class="o">=</span> <span class="n">dense_bathy_along_track</span><span class="p">(</span>
+        <span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">,</span> <span class="n">x_vals</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">gebco_path</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Flip to geographic convention (west-left / north-left) only in mode 1;</span>
+    <span class="c1"># key_cast fixes the origin at x=0, so its axis is not flipped. Mirror about</span>
+    <span class="c1"># the maximum (not x_vals[-1], which is only the max when casts are listed in</span>
+    <span class="c1"># monotonic geographic order).</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">use_key</span> <span class="ow">and</span> <span class="n">section_orientation</span><span class="p">(</span><span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">):</span>
+        <span class="n">x_total</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="n">x_vals</span> <span class="o">=</span> <span class="n">x_total</span> <span class="o">-</span> <span class="n">x_vals</span>
+        <span class="k">if</span> <span class="n">dense_bathy_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dense_bathy_x</span> <span class="o">=</span> <span class="n">x_total</span> <span class="o">-</span> <span class="n">dense_bathy_x</span>
+
+    <span class="n">_ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">cruise</span> <span class="o">=</span> <span class="n">cruise_name</span><span class="p">(</span><span class="n">_ci</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ds_all</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">UNKNOWN_CRUISE_ID</span>
+    <span class="n">ship</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds_all</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds_all</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds_all</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"vessel"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="s2">"UNK"</span>
+    <span class="p">)</span>
+    <span class="n">dist_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">x_vals</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> km"</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_vals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"—"</span>
+    <span class="n">cast_nums_int</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">sec_cast_nums</span><span class="p">]</span>
+    <span class="c1"># Suffixed ids ("010", "010b") for links/pills so a sibling event points at</span>
+    <span class="c1"># its own cast page.</span>
+    <span class="n">cast_id_strs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">format_cast_id</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">s</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sec_cast_nums</span><span class="p">,</span> <span class="n">sec_cast_suffix</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">vmin</span> <span class="o">=</span> <span class="n">vmin_override</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">vmax</span> <span class="o">=</span> <span class="n">vmax_override</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="c1"># Compute section figsize and CSS slot from section extent.</span>
+    <span class="c1"># Use valid-data extent, not pressure coordinate max — the coordinate spans the full</span>
+    <span class="c1"># cruise depth (e.g. 2200 dbar) even for shallow sections like KO (450 dbar).</span>
+    <span class="n">_dist_km</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">x_vals</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_vals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">1.0</span>
+    <span class="n">_ref_var</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conservative_temperature"</span><span class="p">,</span> <span class="s2">"absolute_salinity"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds_sec</span><span class="p">),</span>
+        <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">_ref_var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_ref_data</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="n">_ref_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">_valid_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">_ref_data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_p_max_sec</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">_valid_p</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_valid_p</span><span class="p">)</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_p_max_sec</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">section_figsize</span><span class="p">,</span> <span class="n">section_slot</span> <span class="o">=</span> <span class="n">section_figsize_and_slot</span><span class="p">(</span><span class="n">_p_max_sec</span><span class="p">,</span> <span class="n">_dist_km</span><span class="p">)</span>
+
+    <span class="c1"># Start/end position and time from first/last downcast</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_latlon_str</span><span class="p">(</span><span class="n">lat</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">lat_h</span> <span class="o">=</span> <span class="s2">"N"</span> <span class="k">if</span> <span class="n">lat</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"S"</span>
+        <span class="n">lon_h</span> <span class="o">=</span> <span class="s2">"E"</span> <span class="k">if</span> <span class="n">lon</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"W"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">°</span><span class="si">{</span><span class="n">lat_h</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">°</span><span class="si">{</span><span class="n">lon_h</span><span class="si">}</span><span class="s2">"</span>
+
+    <span class="n">_lat0</span><span class="p">,</span> <span class="n">_lon0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lats</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">lons</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">_lat1</span><span class="p">,</span> <span class="n">_lon1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lats</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">lons</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">_ts_vals</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"time_start"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"time_start"</span> <span class="ow">in</span> <span class="n">ds_sec</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">_te_vals</span> <span class="o">=</span> <span class="n">ds_sec</span><span class="p">[</span><span class="s2">"time_end"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"time_end"</span> <span class="ow">in</span> <span class="n">ds_sec</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">start_pos</span> <span class="o">=</span> <span class="n">_latlon_str</span><span class="p">(</span><span class="n">_lat0</span><span class="p">,</span> <span class="n">_lon0</span><span class="p">)</span>
+    <span class="n">end_pos</span> <span class="o">=</span> <span class="n">_latlon_str</span><span class="p">(</span><span class="n">_lat1</span><span class="p">,</span> <span class="n">_lon1</span><span class="p">)</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_fmt_utc</span><span class="p">(</span><span class="n">_ts_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">_ts_vals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">_ts_vals</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"—"</span>
+    <span class="p">)</span>
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">_fmt_utc</span><span class="p">(</span><span class="n">_te_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">_te_vals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">_te_vals</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"—"</span>
+
+    <span class="c1"># T–S diagram panels are auxiliary (optional=True renderers): a None means the</span>
+    <span class="c1"># plot is genuinely empty for this section's data, not a defect, so they are</span>
+    <span class="c1"># rendered here and only the non-None ones fed to the T–S section — preserving</span>
+    <span class="c1"># the previous page's silent omission rather than showing an "unavailable" stub.</span>
+    <span class="n">ts_panels</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="n">p</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="n">RenderedPanel</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">"Profiles coloured by distance"</span><span class="p">,</span>
+                <span class="n">short</span><span class="o">=</span><span class="s2">"Profiles"</span><span class="p">,</span>
+                <span class="n">b64</span><span class="o">=</span><span class="n">_make_section_ts_profiles_b64</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">,</span> <span class="n">x_vals</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">RenderedPanel</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">"2-D histogram (log count)"</span><span class="p">,</span>
+                <span class="n">short</span><span class="o">=</span><span class="s2">"Histogram"</span><span class="p">,</span>
+                <span class="n">b64</span><span class="o">=</span><span class="n">_make_section_ts_histogram_b64</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">RenderedPanel</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">"Median O₂ saturation"</span><span class="p">,</span>
+                <span class="n">short</span><span class="o">=</span><span class="s2">"O₂"</span><span class="p">,</span>
+                <span class="n">b64</span><span class="o">=</span><span class="n">_make_section_ts_o2_b64</span><span class="p">(</span><span class="n">ds_sec</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">b64</span>
+    <span class="p">)</span>
+
+    <span class="c1"># LADCP U/V panels are a batch render (one .mat read yields both), so they are</span>
+    <span class="c1"># produced here and fed to the Velocity section as a PanelGroup, rather than</span>
+    <span class="c1"># rendered lazily per panel like the rest.</span>
+    <span class="n">ladcp_panels</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">p</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">_make_ladcp_section_b64</span><span class="p">(</span>
+                <span class="n">cast_nums_int</span><span class="p">,</span>
+                <span class="n">x_vals</span><span class="p">,</span>
+                <span class="n">x_label</span><span class="p">,</span>
+                <span class="n">ladcp_dir</span><span class="p">,</span>
+                <span class="n">lats</span><span class="o">=</span><span class="n">lats</span><span class="p">,</span>
+                <span class="n">lons</span><span class="o">=</span><span class="n">lons</span><span class="p">,</span>
+                <span class="n">ladcp_pattern</span><span class="o">=</span><span class="n">ladcp_pattern</span><span class="p">,</span>
+                <span class="n">style</span><span class="o">=</span><span class="n">section_style</span><span class="p">,</span>
+                <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">b64</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">ladcp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Pre-render the section map so its panel gates on the result (None → omitted</span>
+    <span class="c1"># and renumbered, like the index and timeseries location maps), rather than</span>
+    <span class="c1"># rendering live inside resolve() where a None would surface as a stub.</span>
+    <span class="n">map_b64</span> <span class="o">=</span> <span class="n">_make_section_map_b64</span><span class="p">(</span>
+        <span class="n">lats</span><span class="p">,</span> <span class="n">lons</span><span class="p">,</span> <span class="n">cast_nums_int</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">section_name</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span>
+    <span class="p">)</span>
+
+    <span class="n">page_ctx</span> <span class="o">=</span> <span class="n">SectionPageCtx</span><span class="p">(</span>
+        <span class="n">ds_sec</span><span class="o">=</span><span class="n">ds_sec</span><span class="p">,</span>
+        <span class="n">x_vals</span><span class="o">=</span><span class="n">x_vals</span><span class="p">,</span>
+        <span class="n">x_label</span><span class="o">=</span><span class="n">x_label</span><span class="p">,</span>
+        <span class="n">section_style</span><span class="o">=</span><span class="n">section_style</span><span class="p">,</span>
+        <span class="n">bathy_depths</span><span class="o">=</span><span class="n">dense_bathy_d</span> <span class="k">if</span> <span class="n">dense_bathy_d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">bathy</span><span class="p">,</span>
+        <span class="n">bathy_x</span><span class="o">=</span><span class="n">dense_bathy_x</span><span class="p">,</span>
+        <span class="n">cast_labels</span><span class="o">=</span><span class="n">cast_nums_int</span><span class="p">,</span>
+        <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+        <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
+        <span class="n">section_figsize</span><span class="o">=</span><span class="n">section_figsize</span><span class="p">,</span>
+        <span class="n">section_slot_key</span><span class="o">=</span><span class="n">section_slot</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"slot-"</span><span class="p">),</span>
+        <span class="n">section_name</span><span class="o">=</span><span class="n">section_name</span><span class="p">,</span>
+        <span class="n">lats</span><span class="o">=</span><span class="n">lats</span><span class="p">,</span>
+        <span class="n">lons</span><span class="o">=</span><span class="n">lons</span><span class="p">,</span>
+        <span class="n">map_b64</span><span class="o">=</span><span class="n">map_b64</span><span class="p">,</span>
+        <span class="n">ts_panels</span><span class="o">=</span><span class="n">ts_panels</span><span class="p">,</span>
+        <span class="n">ladcp_panels</span><span class="o">=</span><span class="n">ladcp_panels</span><span class="p">,</span>
+        <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">resolve_section</span><span class="p">(</span><span class="n">page_ctx</span><span class="p">)</span>
+
+    <span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"section_name"</span><span class="p">:</span> <span class="n">section_name</span><span class="p">,</span>
+        <span class="s2">"section_description"</span><span class="p">:</span> <span class="n">section_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"description"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="s2">"cruise"</span><span class="p">:</span> <span class="n">cruise</span><span class="p">,</span>
+        <span class="s2">"n_casts"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">sec_cast_nums</span><span class="p">),</span>
+        <span class="s2">"dist_str"</span><span class="p">:</span> <span class="n">dist_str</span><span class="p">,</span>
+        <span class="s2">"cast_list_str"</span><span class="p">:</span> <span class="n">compact_cast_list</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">sec_cast_nums</span><span class="p">]),</span>
+        <span class="s2">"ship"</span><span class="p">:</span> <span class="n">ship</span><span class="p">,</span>
+        <span class="s2">"p_max_str"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_p_max_sec</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> dbar"</span><span class="p">,</span>
+        <span class="s2">"start_pos"</span><span class="p">:</span> <span class="n">start_pos</span><span class="p">,</span>
+        <span class="s2">"end_pos"</span><span class="p">:</span> <span class="n">end_pos</span><span class="p">,</span>
+        <span class="s2">"start_time"</span><span class="p">:</span> <span class="n">start_time</span><span class="p">,</span>
+        <span class="s2">"end_time"</span><span class="p">:</span> <span class="n">end_time</span><span class="p">,</span>
+        <span class="s2">"cast_nums"</span><span class="p">:</span> <span class="n">cast_id_strs</span><span class="p">,</span>
+        <span class="s2">"report"</span><span class="p">:</span> <span class="n">report</span><span class="p">,</span>
+        <span class="s2">"prev_name"</span><span class="p">:</span> <span class="n">prev_name</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"next_name"</span><span class="p">:</span> <span class="n">next_name</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"version"</span><span class="p">:</span> <span class="n">_VERSION</span><span class="p">,</span>
+        <span class="s2">"generated_at"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M UTC"</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="n">get_template</span><span class="p">(</span><span class="s2">"section.html"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="o">**</span><span class="n">ctx</span><span class="p">,</span>
+        <span class="n">css</span><span class="o">=</span><span class="n">SHARED_CSS</span><span class="p">,</span>
+        <span class="n">js_top_links</span><span class="o">=</span><span class="n">_JS_TOP_LINKS</span><span class="p">,</span>
+        <span class="n">nav_prefix</span><span class="o">=</span><span class="s2">"../"</span><span class="p">,</span>
+        <span class="n">nav_current</span><span class="o">=</span><span class="s2">"sections"</span><span class="p">,</span>
+        <span class="n">masthead_bg</span><span class="o">=</span><span class="n">ROLE_ACCENT</span><span class="p">[</span><span class="s2">"aggregate-a"</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">out_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="n">ds_all</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Section manifest — the section page as data (see rep-section-manifest-plan.md)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="SectionPageCtx">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._section.SectionPageCtx">[docs]</a>
+<span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SectionPageCtx</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Per-section render context: the frozen inputs every section panel reads.</span>
+
+<span class="sd">    Holds the values derived once per section (selected profiles, x-axis, bathy,</span>
+<span class="sd">    colour limits, the computed figure geometry) so a panel's ``render`` depends</span>
+<span class="sd">    only on this object.</span>
+<span class="sd">    """</span>
+
+    <span class="n">ds_sec</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">x_vals</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">x_label</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">section_style</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">bathy_depths</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">bathy_x</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">cast_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">vmin</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">vmax</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">section_figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">section_slot_key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">section_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">lats</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">lons</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">map_b64</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">ts_panels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">RenderedPanel</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">ladcp_panels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">RenderedPanel</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_section_slot</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">SectionPageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the computed CSS slot key shared by every full-width field panel.</span>
+
+<span class="sd">    Exercises ``Panel.slot``'s callable path: a section field's width is a property</span>
+<span class="sd">    of the section geometry (``section_figsize_and_slot``), identical across the</span>
+<span class="sd">    fields, so it is read from the context rather than fixed on each panel.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">c</span><span class="o">.</span><span class="n">section_slot_key</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_field_render</span><span class="p">(</span>
+    <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canonical</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">optional</span><span class="p">:</span> <span class="nb">bool</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">SectionPageCtx</span><span class="p">],</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Build the render closure for one section pcolormesh field.</span>
+
+<span class="sd">    *var* is resolved at render time for biogeo fields (single-sensor casts promote</span>
+<span class="sd">    the suffixed name), so the closure — not the profile — owns the ds lookup and</span>
+<span class="sd">    the colour-limit fallback from resolved name to canonical name.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_render</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">SectionPageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_sensor_var</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds_sec</span><span class="p">,</span> <span class="n">var</span><span class="p">)</span> <span class="k">if</span> <span class="n">optional</span> <span class="k">else</span> <span class="n">var</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">canonical</span> <span class="ow">or</span> <span class="n">var</span>
+        <span class="n">_vmin</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">vmin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">vmin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">c</span><span class="o">.</span><span class="n">vmin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">_vmax</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">vmax</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">vmax</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">c</span><span class="o">.</span><span class="n">vmax</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_make_section_b64</span><span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">ds_sec</span><span class="p">,</span>
+            <span class="n">resolved</span><span class="p">,</span>
+            <span class="n">vlabel</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">x_vals</span><span class="p">,</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">x_label</span><span class="p">,</span>
+            <span class="n">style</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">section_style</span><span class="p">,</span>
+            <span class="n">bathy_depths</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">bathy_depths</span><span class="p">,</span>
+            <span class="n">bathy_x</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">bathy_x</span><span class="p">,</span>
+            <span class="n">cast_labels</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cast_labels</span><span class="p">,</span>
+            <span class="n">vmin</span><span class="o">=</span><span class="n">_vmin</span><span class="p">,</span>
+            <span class="n">vmax</span><span class="o">=</span><span class="n">_vmax</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">section_figsize</span><span class="p">,</span>
+            <span class="n">optional</span><span class="o">=</span><span class="n">optional</span><span class="p">,</span>
+            <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_render</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_field_panel</span><span class="p">(</span>
+    <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canonical</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">optional</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Panel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Build a section field :class:`Panel` for *var* at the computed section slot."""</span>
+    <span class="k">return</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="sa">f</span><span class="s2">"section_</span><span class="si">{</span><span class="n">canonical</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">var</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="n">_section_slot</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="n">_field_render</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">canonical</span><span class="o">=</span><span class="n">canonical</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="n">optional</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ladcp_panel</span><span class="p">(</span><span class="n">rp</span><span class="p">:</span> <span class="n">RenderedPanel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Panel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Wrap a pre-rendered LADCP U/V panel as a manifest :class:`Panel`."""</span>
+    <span class="k">return</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="sa">f</span><span class="s2">"velocity_</span><span class="si">{</span><span class="n">rp</span><span class="o">.</span><span class="n">short</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="n">_section_slot</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_b64</span><span class="o">=</span><span class="n">rp</span><span class="o">.</span><span class="n">b64</span><span class="p">:</span> <span class="n">_b64</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ts_panel</span><span class="p">(</span><span class="n">rp</span><span class="p">:</span> <span class="n">RenderedPanel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Panel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Wrap a pre-rendered T–S diagram panel as a third-width manifest :class:`Panel`."""</span>
+    <span class="k">return</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="sa">f</span><span class="s2">"ts_</span><span class="si">{</span><span class="n">rp</span><span class="o">.</span><span class="n">short</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"third"</span><span class="p">,</span>
+        <span class="n">caption</span><span class="o">=</span><span class="n">rp</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_b64</span><span class="o">=</span><span class="n">rp</span><span class="o">.</span><span class="n">b64</span><span class="p">:</span> <span class="n">_b64</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_biogeo_present</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">SectionPageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the biogeo vars structurally present on this section, in canonical order.</span>
+
+<span class="sd">    Drops vars whose variable is *absent* from the dataset, so the Biogeochemistry</span>
+<span class="sd">    PanelGroup never yields a panel for a channel this section lacks.  A var that is</span>
+<span class="sd">    present but whose plot returns ``None`` (e.g. all-NaN) is *not* dropped here — it</span>
+<span class="sd">    surfaces as an "unavailable" stub, since a present-but-unplottable channel is a</span>
+<span class="sd">    defect worth showing rather than hiding.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">SECTION_BIOGEO_VARS</span> <span class="k">if</span> <span class="n">resolve_sensor_var</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds_sec</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds_sec</span>
+    <span class="p">]</span>
+
+
+<span class="c1">#: String-addressable section panels.  Only the Map is fixed; field panels</span>
+<span class="c1">#: (physics/biogeo), LADCP and T–S panels are all data-driven PanelGroups.</span>
+<span class="n">SECTION_PANELS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"section_map"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"section_map"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"half"</span><span class="p">,</span>
+        <span class="n">applies_to</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">map_b64</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">map_b64</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+
+
+<span class="c1">#: The section page profile.  Same order as the previous hand-authored page — Map,</span>
+<span class="c1">#: Hydrography, Biogeochemistry, then the former "extra cards" Velocity and T–S —</span>
+<span class="c1">#: now numbered and anchored by the resolver.  Physics/biogeo are PanelGroups over</span>
+<span class="c1">#: their variables; Velocity is a PanelGroup over the pre-rendered LADCP panels.</span>
+<span class="n">SECTION_DEFAULT</span><span class="p">:</span> <span class="n">Profile</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span>
+    <span class="n">numbering</span><span class="o">=</span><span class="s2">"flat"</span><span class="p">,</span>
+    <span class="n">entries</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"map"</span><span class="p">,</span>
+            <span class="s2">"Map"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"section_map"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"The section track and the CTD stations it comprises."</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"hydrography"</span><span class="p">,</span>
+            <span class="s2">"Hydrography"</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">PanelGroup</span><span class="p">(</span>
+                    <span class="n">over</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_c</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">SECTION_PHYSICS_VARS</span><span class="p">),</span> <span class="n">panel</span><span class="o">=</span><span class="n">_field_panel</span>
+                <span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="p">(</span>
+                <span class="s2">"Sections of conservative temperature (CT), absolute salinity (SA) "</span>
+                <span class="s2">"and potential density (σ₀) against distance along the section. The "</span>
+                <span class="s2">"σ₀ panel carries the 27.7 and 27.8 kg m⁻³ isopycnals (black, "</span>
+                <span class="s2">"labelled). Open triangles along the top of each panel mark the "</span>
+                <span class="s2">"profiles; station numbers are labelled at intervals."</span>
+            <span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"biogeochemistry"</span><span class="p">,</span>
+            <span class="s2">"Biogeochemistry"</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">PanelGroup</span><span class="p">(</span>
+                    <span class="n">over</span><span class="o">=</span><span class="n">_biogeo_present</span><span class="p">,</span>
+                    <span class="n">panel</span><span class="o">=</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">_field_panel</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">canonical</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="p">(</span>
+                <span class="s2">"Sections of the biogeochemical sensors present on this section — "</span>
+                <span class="s2">"oxygen, fluorescence and turbidity where available — against "</span>
+                <span class="s2">"distance along the section."</span>
+            <span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"velocity"</span><span class="p">,</span>
+            <span class="s2">"Velocity (U east, V north)"</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">PanelGroup</span><span class="p">(</span><span class="n">over</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">ladcp_panels</span><span class="p">,</span> <span class="n">panel</span><span class="o">=</span><span class="n">_ladcp_panel</span><span class="p">),),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="p">(</span>
+                <span class="s2">"Eastward (U) and northward (V) velocity from the LADCP, against "</span>
+                <span class="s2">"distance along the section."</span>
+            <span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"ts_diagram"</span><span class="p">,</span>
+            <span class="s2">"T–S diagrams"</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">PanelGroup</span><span class="p">(</span><span class="n">over</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">ts_panels</span><span class="p">,</span> <span class="n">panel</span><span class="o">=</span><span class="n">_ts_panel</span><span class="p">),),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"Water-mass structure of the section in temperature–salinity space."</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="resolve_section">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._section.resolve_section">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_section</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">SectionPageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolve the section profile against *ctx* into numbered, rendered sections."""</span>
+    <span class="k">return</span> <span class="n">resolve</span><span class="p">(</span><span class="n">SECTION_DEFAULT</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">SECTION_PANELS</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Helpers</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,296 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctd_sections.yaml &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Data files (netCDF)" href="data_files.html" />
+    <link rel="prev" title="Cruise metadata (cruise_info)" href="cruise_metadata.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ctd_sections.yaml</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#section-ordering-the-two-modes">Section ordering: the two modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#repeat-stations-the-timeseries-block">Repeat stations (the <code class="docutils literal notranslate"><span class="pre">timeseries</span></code> block)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ctd_sections.yaml</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ctd_sections.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ctd-sections-yaml">
+<span id="ctd-sections"></span><h1>ctd_sections.yaml<a class="headerlink" href="#ctd-sections-yaml" title="Link to this heading"></a></h1>
+<p>This file defines two kinds of cast group under two top-level keys: <code class="docutils literal notranslate"><span class="pre">sections</span></code>
+(named transects plotted as a vertical section against distance) and
+<code class="docutils literal notranslate"><span class="pre">timeseries</span></code> (repeat stations plotted against time — see below).</p>
+<p>An optional <code class="docutils literal notranslate"><span class="pre">cruise_info:</span></code> block at the top level provides cruise and ship
+metadata that appears in page headers and footers.  Values here take precedence
+over any cruise metadata found in the netCDF file attributes:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">cruise_info</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cruise_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">msm142</span><span class="w">          </span><span class="c1"># shown in every page header and footer</span>
+<span class="w">  </span><span class="nt">ship</span><span class="p">:</span><span class="w"> </span><span class="s">"Maria</span><span class="nv"> </span><span class="s">S.</span><span class="nv"> </span><span class="s">Merian"</span><span class="w">    </span><span class="c1"># shown in page masthead</span>
+</pre></div>
+</div>
+<p>Both keys are optional.  If absent, the report falls back to the <code class="docutils literal notranslate"><span class="pre">cruise</span></code>
+attribute of the first netCDF file (defaulting to <code class="docutils literal notranslate"><span class="pre">&quot;odb2026&quot;</span></code> if that
+attribute is not set), and ship shows as <code class="docutils literal notranslate"><span class="pre">&quot;UNK&quot;</span></code>.</p>
+<p>Top-level key: <code class="docutils literal notranslate"><span class="pre">sections</span></code></p>
+<p>Each entry under <code class="docutils literal notranslate"><span class="pre">sections</span></code> is a named transect with the following fields:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 10.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Required</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">description</span></code></p></td>
+<td><p>no</p></td>
+<td><p>Human-readable label shown in the section card and page header.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">color</span></code></p></td>
+<td><p>no</p></td>
+<td><p>Hex colour used for the transect line on the cruise-track map (e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;#e41a1c&quot;</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code></p></td>
+<td><p>yes</p></td>
+<td><p>List of casts belonging to this section.  Each item is either an integer
+(single cast), a two-element list <code class="docutils literal notranslate"><span class="pre">[first,</span> <span class="pre">last]</span></code> (inclusive range), or
+a quoted string such as <code class="docutils literal notranslate"><span class="pre">&quot;10b&quot;</span></code> naming a lettered sibling cast.  An
+integer or range selects the plain casts only; a lettered sibling (a
+second event occupied at the same station number, from a <code class="docutils literal notranslate"><span class="pre">NNNb</span></code> or
+<code class="docutils literal notranslate"><span class="pre">NNN_b</span></code> file) must be named explicitly as a string.  Order is preserved
+as written, so casts may be listed in geographic order.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key_cast</span></code></p></td>
+<td><p>no</p></td>
+<td><p>A single cast (integer, or a <code class="docutils literal notranslate"><span class="pre">&quot;NNNb&quot;</span></code> string) that anchors the section
+x-axis.  When set, casts are ordered by geographic distance from this cast
+and the x-axis is distance-from-key (<code class="docutils literal notranslate"><span class="pre">0</span></code> at the key cast).  When unset
+(the default), casts keep the order written in <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code> and the
+x-axis is cumulative along-track distance from the first listed cast.  Use
+<code class="docutils literal notranslate"><span class="pre">key_cast</span></code> set to a <strong>geographic endpoint</strong> of the transect when the
+station was occupied out of cast-number order, so the section does not
+fold back on itself.  Must be one of the section’s <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<section id="section-ordering-the-two-modes">
+<h2>Section ordering: the two modes<a class="headerlink" href="#section-ordering-the-two-modes" title="Link to this heading"></a></h2>
+<p>A section plot places each cast at an x-position along the transect and fills the
+space between casts.  How that x-position is computed is what the two modes
+control.  The pitfall both modes navigate is <strong>folding</strong>: if consecutive
+x-positions do not increase monotonically along the real geographic line, the
+section doubles back on itself and the pcolour panels smear across the reversal.</p>
+<p><strong>Mode 1 — config order (default, no ``key_cast``).</strong>
+The x-axis is <em>cumulative along-track distance</em>: the first cast in <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code>
+sits at <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">0</span></code>, and each subsequent cast is placed at the running sum of the
+great-circle distance from the previous cast <em>in the written order</em>.  So the plot
+faithfully walks the casts in the order you list them.</p>
+<ul class="simple">
+<li><p>This is exact when you list the casts in geographic order along the transect
+(which is the natural way to write them).</p></li>
+<li><p>It <strong>folds</strong> if you list them out of geographic order — e.g. jumping to a
+mid-line cast and back — because the cumulative path zig-zags.  The casts are
+numbered in the order they were <em>occupied</em>, which is not always the order along
+the line, so a section occupied out-and-back or from the middle can fold under
+cast-number order.  The fix is either to reorder <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code> geographically
+or to switch to mode 2.</p></li>
+</ul>
+<p><strong>Mode 2 — distance from a key cast (``key_cast`` set).</strong>
+The written order is ignored.  Each cast’s x-position is its <em>straight-line
+great-circle distance from the key cast</em>, and the casts are sorted by that
+distance (<code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">0</span></code> at the key cast).  Because every cast is measured from one
+fixed origin, the ordering no longer depends on how <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code> was written.</p>
+<ul class="simple">
+<li><p>This is <strong>fold-free only when the key cast is a geographic endpoint</strong> of the
+transect.  From an endpoint, distance increases monotonically along the line.</p></li>
+<li><p>If the key cast sits in the <strong>middle</strong>, casts on opposite sides land at the same
+distance and collapse onto each other — a different kind of fold.  So choose an
+end of the section as <code class="docutils literal notranslate"><span class="pre">key_cast</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">key_cast</span></code> also fixes the axis origin and overrides the automatic
+west-left / north-left flip that mode 1 applies; the direction is whichever end
+you anchor to.</p></li>
+</ul>
+<p>When <code class="docutils literal notranslate"><span class="pre">init</span></code> auto-detects sections it writes <code class="docutils literal notranslate"><span class="pre">key_cast</span></code> as the lowest cast
+number in the group — a reasonable draft only if the section was occupied
+end-to-end.  Treat the generated file as a starting point: point <code class="docutils literal notranslate"><span class="pre">key_cast</span></code> at a
+true endpoint, or reorder <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code>, for any section that was occupied out
+of order.</p>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sections</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">KTout</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Kögur</span><span class="nv"> </span><span class="s">Transect</span><span class="nv"> </span><span class="s">outflow"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#e41a1c"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="nv">15</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="nt">FARDWO</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"FARDWO</span><span class="nv"> </span><span class="s">mooring</span><span class="nv"> </span><span class="s">array"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#377eb8"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">20</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">35</span><span class="p p-Indicator">]]</span>
+<span class="w">    </span><span class="nt">key_cast</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span><span class="w">               </span><span class="c1"># x-axis = distance from cast 20 (a transect end)</span>
+
+<span class="w">  </span><span class="nt">SingleStation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Test</span><span class="nv"> </span><span class="s">cast</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">mooring</span><span class="nv"> </span><span class="s">site"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#4daf4a"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">42</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="nt">WithSibling</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Line</span><span class="nv"> </span><span class="s">including</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">repeat</span><span class="nv"> </span><span class="s">occupation</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">station</span><span class="nv"> </span><span class="s">10"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#984ea3"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">9</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="s">"10b"</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># plain 9-12 plus the 10b sibling event</span>
+</pre></div>
+</div>
+</section>
+<section id="repeat-stations-the-timeseries-block">
+<h2>Repeat stations (the <code class="docutils literal notranslate"><span class="pre">timeseries</span></code> block)<a class="headerlink" href="#repeat-stations-the-timeseries-block" title="Link to this heading"></a></h2>
+<p>The same file also defines <strong>repeat stations</strong> — yoyo occupations where a station
+is profiled repeatedly at one location — under a second top-level key,
+<code class="docutils literal notranslate"><span class="pre">timeseries</span></code>.  A repeat-station page stacks its profiles against <strong>time</strong>, not
+along-track distance.</p>
+<p>Each entry takes the same fields as a section — <code class="docutils literal notranslate"><span class="pre">description</span></code>, <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code>,
+<code class="docutils literal notranslate"><span class="pre">color</span></code> — with the same <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code> syntax (ints, <code class="docutils literal notranslate"><span class="pre">[first,</span> <span class="pre">last]</span></code> ranges,
+and <code class="docutils literal notranslate"><span class="pre">&quot;NNNb&quot;</span></code> sibling strings).</p>
+<p><strong>Repeat stations have a single ordering mode.</strong>  Unlike sections (which have the
+two distance-based modes above), a repeat station is always ordered one way:
+profiles are sorted by acquisition time (<code class="docutils literal notranslate"><span class="pre">time_start</span></code>), regardless of the order
+casts are written in <code class="docutils literal notranslate"><span class="pre">cast_numbers</span></code>.  There is therefore no ordering knob and no
+<code class="docutils literal notranslate"><span class="pre">key_cast</span></code> — a fixed occupation is one place through time, so there is no
+geographic origin to anchor to.</p>
+<p>Whether these groups are rendered is controlled by <code class="docutils literal notranslate"><span class="pre">generate.timeseries</span></code> in
+<code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">timeseries</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">FDYY</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Fardwo</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">32-cast</span><span class="nv"> </span><span class="s">repeat</span><span class="nv"> </span><span class="s">station"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">50</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">81</span><span class="p p-Indicator">]]</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#d62728"</span>
+
+<span class="w">  </span><span class="nt">TR700</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Triangle</span><span class="nv"> </span><span class="s">~700</span><span class="nv"> </span><span class="s">m</span><span class="nv"> </span><span class="s">isobath"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">128</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">129</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">130</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">132</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">135</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">137</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#bcbd22"</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cruise_metadata.html" class="btn btn-neutral float-left" title="Cruise metadata (cruise_info)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="data_files.html" class="btn btn-neutral float-right" title="Data files (netCDF)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

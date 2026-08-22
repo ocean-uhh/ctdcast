@@ -1,0 +1,181 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._anchors &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._anchors</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._anchors</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Legacy anchor aliases for report pages — a transition shim for the D3 fix.</span>
+
+<span class="sd">Section ids became page anchors, so the old hand-authored ``#s-*`` anchors change</span>
+<span class="sd">(``#s-profiles``/``#s-physics``/``#s-hydro`` all collapse onto ``#hydrography``).</span>
+<span class="sd">The committed demo pages under ``docs/source/_static/demo/`` deep-link the old</span>
+<span class="sd">ids, and external links (papers, issues, cruise reports) may too.  For one</span>
+<span class="sd">release each page emits an empty ``&lt;span id="old"&gt;`` for every old anchor whose</span>
+<span class="sd">new section is rendered on it, so those links keep resolving.</span>
+
+<span class="sd">Remove this module and the one template call that uses it once the old links are</span>
+<span class="sd">gone.  The set was audited complete against the templates and the demo pages.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="c1">#: Old ``#s-*`` anchor -&gt; new section id (which is the new anchor).  Multiple old</span>
+<span class="c1">#: anchors mapping to one new id is the D3 defect being retired: Hydrography was</span>
+<span class="c1">#: ``s-profiles`` (cast), ``s-physics`` (section/timeseries) and ``s-hydro``</span>
+<span class="c1">#: (index); Biogeochemistry was ``s-aux`` (cast) and ``s-biogeo`` (elsewhere).</span>
+<span class="n">LEGACY_ANCHORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"s-overview"</span><span class="p">:</span> <span class="s2">"overview"</span><span class="p">,</span>
+    <span class="s2">"s-profiles"</span><span class="p">:</span> <span class="s2">"hydrography"</span><span class="p">,</span>
+    <span class="s2">"s-physics"</span><span class="p">:</span> <span class="s2">"hydrography"</span><span class="p">,</span>
+    <span class="s2">"s-hydro"</span><span class="p">:</span> <span class="s2">"hydrography"</span><span class="p">,</span>
+    <span class="s2">"s-aux"</span><span class="p">:</span> <span class="s2">"biogeochemistry"</span><span class="p">,</span>
+    <span class="s2">"s-biogeo"</span><span class="p">:</span> <span class="s2">"biogeochemistry"</span><span class="p">,</span>
+    <span class="s2">"s-ts"</span><span class="p">:</span> <span class="s2">"ts_diagram"</span><span class="p">,</span>
+    <span class="s2">"s-stability"</span><span class="p">:</span> <span class="s2">"stability"</span><span class="p">,</span>
+    <span class="s2">"s-ladcp"</span><span class="p">:</span> <span class="s2">"velocity"</span><span class="p">,</span>
+    <span class="s2">"s-map"</span><span class="p">:</span> <span class="s2">"map"</span><span class="p">,</span>
+    <span class="s2">"s-diagnostics"</span><span class="p">:</span> <span class="s2">"diagnostics"</span><span class="p">,</span>
+    <span class="s2">"s-sensors"</span><span class="p">:</span> <span class="s2">"sensors"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="legacy_anchor_spans">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._anchors.legacy_anchor_spans">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">legacy_anchor_spans</span><span class="p">(</span><span class="n">rendered_ids</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return empty ``&lt;span id="old"&gt;`` aliases for rendered sections' old anchors.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    rendered_ids:</span>
+<span class="sd">        The set of section ids actually rendered on the page.  A legacy anchor is</span>
+<span class="sd">        aliased only when its new section is present, so no alias dangles at a</span>
+<span class="sd">        section the page does not have.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Concatenated empty spans, one per matching legacy anchor (possibly empty).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;span id="</span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s1">"&gt;&lt;/span&gt;'</span>
+        <span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">LEGACY_ANCHORS</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">rendered_ids</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

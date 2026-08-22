@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.readers.metadata &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.readers.metadata</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.readers.metadata</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Reader for per-cast sensor metadata written by seasenselib.</span>
+
+<span class="sd">Parses the ``raw_metadata`` global attribute (a JSON blob) into a list of sensor</span>
+<span class="sd">descriptors for the cast page.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.sensors</span><span class="w"> </span><span class="kn">import</span> <span class="n">INDEXED_ROLES</span><span class="p">,</span> <span class="n">ROLE_QUANTITY</span>
+
+
+<span class="c1"># Calibration-date formats seen across real SBE config files (XMLCON, CON, CNV).</span>
+<span class="c1"># Day-first is the SeaBird convention; month-first is deliberately NOT included,</span>
+<span class="c1"># to avoid mis-reading an ambiguous "13/02/24".  A year-only string ("2013") has</span>
+<span class="c1"># no format here, so it is left raw rather than invented into 2013-01-01.</span>
+<span class="n">_CAL_DATE_FORMATS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">-%b-%y"</span><span class="p">,</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">-%b-%Y"</span><span class="p">,</span>  <span class="c1"># 11-Apr-17 / 30-sep-2004</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2"> %b %y"</span><span class="p">,</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2"> %b %Y"</span><span class="p">,</span>  <span class="c1"># 20 Nov 92 / 15 Jan 2016</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">/%m/%y"</span><span class="p">,</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">/%m/%Y"</span><span class="p">,</span>  <span class="c1"># 13/02/24 / 18/06/2013</span>
+    <span class="s2">"%Y/%m/</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span>  <span class="c1"># 2016/04/12</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">.%m.%y"</span><span class="p">,</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">.%m.%Y"</span><span class="p">,</span>  <span class="c1"># 20.12.11 / 15.06.2010</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">-%m-%y"</span><span class="p">,</span>
+    <span class="s2">"</span><span class="si">%d</span><span class="s2">-%m-%Y"</span><span class="p">,</span>  <span class="c1"># 27-03-2009</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalise_calibration_date</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *raw* reformatted as ``YYYY-Mon-DD``, or *raw* unchanged on failure.</span>
+
+<span class="sd">    Tries the SeaBird calibration-date formats in :data:`_CAL_DATE_FORMATS`.  A</span>
+<span class="sd">    parse is accepted only if the resulting year is plausible (1980–2035), which</span>
+<span class="sd">    rejects a bad match such as ``%d/%m/%Y`` reading ``"13/02/24"`` as year 24.</span>
+<span class="sd">    Anything unrecognised (e.g. a bare year, or ``"090726"``) is returned raw</span>
+<span class="sd">    rather than guessed.</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="n">raw</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="n">_CAL_DATE_FORMATS</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="mi">1980</span> <span class="o">&lt;=</span> <span class="n">d</span><span class="o">.</span><span class="n">year</span> <span class="o">&lt;=</span> <span class="mi">2035</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%b-</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">raw</span>
+
+
+<span class="c1"># Human-readable display names for SBE sensor type strings.</span>
+<span class="n">_SENSOR_LABELS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"TemperatureSensor"</span><span class="p">:</span> <span class="s2">"Temperature"</span><span class="p">,</span>
+    <span class="s2">"ConductivitySensor"</span><span class="p">:</span> <span class="s2">"Conductivity"</span><span class="p">,</span>
+    <span class="s2">"PressureSensor"</span><span class="p">:</span> <span class="s2">"Pressure"</span><span class="p">,</span>
+    <span class="s2">"OxygenSensor"</span><span class="p">:</span> <span class="s2">"Oxygen (SBE43)"</span><span class="p">,</span>
+    <span class="s2">"FluoroWetlabECO_AFL_FL_Sensor"</span><span class="p">:</span> <span class="s2">"Fluorometer"</span><span class="p">,</span>
+    <span class="s2">"TurbidityMeter"</span><span class="p">:</span> <span class="s2">"Turbidity"</span><span class="p">,</span>
+    <span class="s2">"pH_Sensor"</span><span class="p">:</span> <span class="s2">"pH"</span><span class="p">,</span>
+    <span class="s2">"AltimeterSensor"</span><span class="p">:</span> <span class="s2">"Altimeter"</span><span class="p">,</span>
+    <span class="s2">"UserPolynomialSensor"</span><span class="p">:</span> <span class="s2">"Aux"</span><span class="p">,</span>
+    <span class="s2">"WET_LabsCStar"</span><span class="p">:</span> <span class="s2">"Transmissometer"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="parse_sensor_info">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.metadata.parse_sensor_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_sensor_info</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Extract sensor serial numbers and calibration dates from *ds*.</span>
+
+<span class="sd">    Parses the ``raw_metadata`` global attribute (a JSON string written by</span>
+<span class="sd">    seasenselib) and returns one entry per sensor channel that has both a</span>
+<span class="sd">    ``sensor_type`` and a ``serial_number``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset as opened from a netCDF file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list[dict[str, str]]</span>
+<span class="sd">        Each dict has keys ``sensor_type`` (human-readable label),</span>
+<span class="sd">        ``serial_number``, and ``calibration_date``.  Returns ``[]`` if</span>
+<span class="sd">        ``raw_metadata`` is absent, unparseable, or contains no usable sensors.</span>
+
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+        <span class="n">ga</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">"blocks"</span><span class="p">][</span><span class="s2">"other"</span><span class="p">][</span><span class="s2">"global_attributes"</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="n">ga</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"cnv_sensor_"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span>
+            <span class="k">else</span> <span class="mi">9999</span>
+        <span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"cnv_sensor_"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">ga</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">sensor_type_raw</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensor_type"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="n">serial</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"serial_number"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sensor_type_raw</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">serial</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">_SENSOR_LABELS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sensor_type_raw</span><span class="p">,</span> <span class="n">sensor_type_raw</span><span class="p">)</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"sensor_type"</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+                <span class="s2">"serial_number"</span><span class="p">:</span> <span class="n">serial</span><span class="p">,</span>
+                <span class="s2">"calibration_date"</span><span class="p">:</span> <span class="n">_normalise_calibration_date</span><span class="p">(</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"calibration_date"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<span class="n">_COMMENT_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">"&lt;!--\s*(?:Frequency|A/D voltage)\s+\d+,\s*(?P&lt;rest&gt;.*?)\s*--&gt;"</span>
+<span class="p">)</span>
+
+<span class="c1"># Parse the raw CNV &lt;Sensors&gt; block directly: seasenselib's per-channel</span>
+<span class="c1"># cnv_sensor_N dicts are lossy (e.g. MSM142's turbidity channel keeps only the</span>
+<span class="c1"># channel number), whereas the header block carries every field.</span>
+<span class="n">_SENSORS_BLOCK_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"&lt;Sensors count.*?&lt;/Sensors&gt;"</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
+<span class="n">_SENSOR_ENTRY_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">'&lt;sensor Channel="(\d+)"\s*&gt;(.*?)&lt;/sensor&gt;'</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
+<span class="n">_ELEM_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">'&lt;([A-Za-z_]\w*)\s+SensorID="(\d+)"'</span><span class="p">)</span>
+<span class="n">_SERIAL_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"&lt;SerialNumber&gt;\s*([^&lt;\s]*)\s*&lt;/SerialNumber&gt;"</span><span class="p">)</span>
+<span class="n">_CAL_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"&lt;CalibrationDate&gt;\s*([^&lt;]*?)\s*&lt;/CalibrationDate&gt;"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_role_from_comment</span><span class="p">(</span><span class="n">rest</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the canonical role for a CNV sensor-block comment body, or None.</span>
+
+<span class="sd">    *rest* is the text after the ``Frequency N,`` / ``A/D voltage N,`` prefix,</span>
+<span class="sd">    e.g. ``"Temperature, 2"``, ``"Oxygen, SBE 43, 2"``,</span>
+<span class="sd">    ``"Turbidity Meter, WET Labs, ECO-NTU"`` or ``"Free"``.  The first</span>
+<span class="sd">    comma-part is the measured quantity; a trailing bare integer is the</span>
+<span class="sd">    secondary index.  Returns None for a ``Free`` (unused) channel.</span>
+<span class="sd">    """</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">rest</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">)]</span>
+    <span class="n">quantity</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">quantity</span> <span class="o">==</span> <span class="s2">"Free"</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">quantity</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">ROLE_QUANTITY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">quantity</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">base</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[^a-z0-9]+"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">,</span> <span class="n">quantity</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">INDEXED_ROLES</span> <span class="k">else</span> <span class="n">base</span>
+
+
+<div class="viewcode-block" id="parse_sensor_channels">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.metadata.parse_sensor_channels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_sensor_channels</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return one full descriptor per sensor channel in *ds*, from the raw header.</span>
+
+<span class="sd">    Parses the CNV ``&lt;Sensors&gt;`` block embedded in ``raw_metadata``'s</span>
+<span class="sd">    ``blocks.header`` — the authoritative source, since seasenselib's per-channel</span>
+<span class="sd">    ``cnv_sensor_N`` dicts are lossy for some channels.  For each</span>
+<span class="sd">    ``&lt;sensor Channel="N"&gt;`` entry it reads the block comment (role), the type</span>
+<span class="sd">    element and its ``SensorID``, the ``SerialNumber`` and the</span>
+<span class="sd">    ``CalibrationDate``.  ``Free`` (unused) channels get ``role = None`` and an</span>
+<span class="sd">    empty serial.</span>
+
+<span class="sd">    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent.</span>
+<span class="sd">    Each dict has keys ``channel``, ``element``, ``sensor_id``, ``serial``,</span>
+<span class="sd">    ``calibration_date`` (normalised) and ``role`` (canonical role or ``None``).</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)[</span><span class="s2">"blocks"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"header"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"(?m)^#\s?"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">header</span><span class="p">)</span>  <span class="c1"># drop CNV comment prefixes</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">_SENSORS_BLOCK_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">block</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_SENSOR_ENTRY_RE</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)):</span>
+        <span class="n">channel</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">comment</span> <span class="o">=</span> <span class="n">_COMMENT_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">elem</span> <span class="o">=</span> <span class="n">_ELEM_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">serial</span> <span class="o">=</span> <span class="n">_SERIAL_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">cal</span> <span class="o">=</span> <span class="n">_CAL_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"channel"</span><span class="p">:</span> <span class="n">channel</span><span class="p">,</span>
+                <span class="s2">"element"</span><span class="p">:</span> <span class="n">elem</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">elem</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="s2">"sensor_id"</span><span class="p">:</span> <span class="n">elem</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="k">if</span> <span class="n">elem</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="s2">"serial"</span><span class="p">:</span> <span class="n">serial</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">serial</span> <span class="ow">and</span> <span class="n">serial</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="s2">"calibration_date"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="n">_normalise_calibration_date</span><span class="p">(</span><span class="n">cal</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="n">cal</span> <span class="k">else</span> <span class="s2">""</span>
+                <span class="p">),</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="n">_role_from_comment</span><span class="p">(</span><span class="n">comment</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"rest"</span><span class="p">))</span> <span class="k">if</span> <span class="n">comment</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="n">records</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"channel"</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">records</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

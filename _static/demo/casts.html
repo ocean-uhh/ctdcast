@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Station index — odb26</title>
+<style>
+:root {
+  --ocean: #1a3a5c;
+  --seafoam: #e8f4f8;
+  --muted: #95a5a6;
+  --text: #2c3e50;
+  --rule: #dfe6e9;
+  --bg: #ffffff;
+  --bg-sunken: #f7f9fa;
+  --warn: #e67e22;
+  --warn-bg: #fdf3e7;
+  --error: #c0392b;
+  --gray-1: #f5f7fa;
+  --gray-2: #e0e0e0;
+  --gray-3: #aaaaaa;
+  --gray-4: #888888;
+  --gray-5: #555555;
+  --gray-6: #333333;
+  --gray-7: #111111;
+  --ok: #2c6e49;
+  --role-landing: #2980b9;
+  --role-entity: #1a3a5c;
+  --role-collection: #1a3a5c;
+  --role-component: #1a3a5c;
+  --role-aggregate-a: #8e44ad;
+  --role-aggregate-b: #27ae60;
+  --role-map: #ee3377;
+  --package-accent: var(--ocean);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs-root: 14px;
+  --fs-h1: 1.75rem;
+  --fs-type: 1.35rem;
+  --fs-h2: 1rem;
+  --fs-meta: 0.84rem;
+  --fs-note: 0.82rem;
+  --fs-nav: 0.8rem;
+  --fs-cap: 0.76rem;
+  --fs-xs: 0.75rem;
+  --fs-top: 0.72rem;
+  --fs-dt: 0.7rem;
+  --lh-root: 1.5;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-root); color: var(--text);
+  max-width: 1150px; margin: 0 auto;
+  padding: 1.5rem 2rem 4rem; line-height: var(--lh-root);
+}
+p, li { max-width: 78ch; }
+.masthead {
+  background: var(--ocean); color: #fff; position: relative;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
+}
+.masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
+.wordmark {
+  position: absolute; right: 2rem; bottom: 1.2rem;
+  font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;
+  color: var(--package-accent); background: #fff; opacity: 0.85;
+  padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); text-decoration: none;
+}
+.wordmark:hover { opacity: 1; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem 2rem; font-size: var(--fs-meta); margin-top: 0.9rem;
+}
+.meta-grid dt {
+  opacity: 0.7; text-transform: uppercase; font-size: var(--fs-dt);
+  letter-spacing: 0.06em; margin-bottom: 0.1rem;
+}
+.meta-grid dd { margin: 0; font-weight: 600; }
+h2 {
+  color: var(--ocean); font-size: var(--fs-h2);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 0.3rem; margin: 2.5rem 0 1rem;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.top-link {
+  font-size: var(--fs-top); font-weight: 400; color: var(--muted);
+  text-decoration: none; margin-left: auto;
+}
+.top-link:hover { color: var(--ocean); text-decoration: underline; }
+.caption {
+  color: var(--gray-5); font-size: var(--fs-note);
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
+}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption { margin-top: -0.5rem; max-width: none; }
+.explainer {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}
+.warn {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}
+.warn::before { content: "⚠ "; }
+.warn.error { border-left-color: var(--error); }
+.jump-nav {
+  background: var(--seafoam); padding: 0.55rem 1rem;
+  border-radius: 6px; margin-bottom: 1.5rem;
+  font-size: var(--fs-nav); line-height: 2.2;
+}
+.jump-nav::before { content: "Jump to: "; opacity: 0.55; font-size: var(--fs-xs); margin-right: 0.25rem; }
+.jump-nav a {
+  color: var(--ocean); text-decoration: none;
+  font-weight: 600; margin: 0 0.5rem 0 0;
+}
+.jump-nav a::before { content: "▸ "; font-size: var(--fs-dt); }
+.fig-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+.fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.fig-row.center { justify-content: center; }
+figure { margin: 0; }
+figure img {
+  border: 1px solid var(--rule); border-radius: var(--radius-btn);
+  display: block; width: 100%; height: auto;
+}
+figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn { max-width: none; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}
+th {
+  background: var(--package-accent); color: #fff; text-align: left;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}
+th.num { text-align: right; }
+td {
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg-sunken); }
+td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.slot-full         { width: 100%; }
+.slot-twothirds     { width: calc(66.67% - 0.33rem); }
+.slot-three-fifths  { width: calc(60% - 0.40rem); }
+.slot-half          { width: calc(50% - 0.50rem); }
+.slot-two-fifths    { width: calc(40% - 0.60rem); }
+.slot-third         { width: calc(33.33% - 0.67rem); }
+.slot-quarter       { width: calc(25% - 0.75rem); }
+.masthead-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+.masthead-header h1 { margin: 0 0 0.1rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead-type {
+  font-size: var(--fs-type); font-weight: 700; opacity: 0.88; line-height: 1.35;
+  padding-top: 0.25rem;
+}
+.nav-btns { display: flex; gap: 0.5rem; }
+.btn-nav {
+  background: var(--ocean); color: #fff; padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
+}
+.btn-nav:hover { opacity: 0.85; }
+footer {
+  text-align: center; padding: 1rem;
+  border-top: 1px solid var(--package-accent);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+footer a { color: var(--muted); }
+@media print {
+  body { max-width: 100%; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+  h2 { page-break-after: avoid; }
+  .fig-row, figure, table { break-inside: avoid; }
+  .jump-nav { display: none; }
+}
+
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
+</style>
+
+<style>
+/* Stations index — interactive, scrollable cast list. Base table/th/td colours come
+   from the canonical stylesheet; only the scroll + sticky + hover specials live here. */
+table { white-space: nowrap; overflow-x: auto; display: block; }
+th { position: sticky; top: 0; z-index: 1; }
+td { vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--seafoam); }
+  .cast-link { color: var(--ocean); font-weight: 600; text-decoration: none; }
+  .cast-link:hover { text-decoration: underline; }
+  .depth-pill {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: var(--fs-nav); font-weight: 600; white-space: nowrap;
+  }
+  .pill-btn {
+    display: inline-block; padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: var(--fs-xs); text-decoration: none; white-space: nowrap; margin: 0.1rem 0.05rem;
+  }
+  .pill-profile { background: var(--ocean); color: #fff; }
+  .pill-section { background: var(--ok); color: #fff; }
+  .pill-btn:hover { opacity: 0.85; }
+  .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--ok); color:#fff; }
+  .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--error); color:#fff; }
+</style>
+
+</head>
+<body>
+<div id="top"></div>
+
+
+
+<div class="masthead" style="background:var(--role-collection);">
+  <div class="masthead-header">
+    <h1>odb26</h1>
+    <span class="masthead-type">Station index</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-21 18:55 UTC</p>
+  
+  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
+    <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
+    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-landing)">Summary</a>
+    <a href="casts.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-collection);opacity:0.55">Casts</a>
+    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-a)">Sections</a>
+    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-b)">Timeseries</a>
+    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-map)">Interactive</a>
+  </div>
+  
+  
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>odb26</dd></div>
+    <div><dt>Ship</dt><dd>Odon de Buen</dd></div>
+    <div><dt>Departure</dt><dd>2026-07-12</dd></div>
+    <div><dt>Arrival</dt><dd>2026-07-22</dd></div>
+    <div><dt>Duration</dt><dd>11 d</dd></div>
+    <div><dt>CTD casts</dt><dd>4</dd></div>
+    <div><dt>Max depth</dt><dd>718 dbar</dd></div>
+  </dl>
+
+  <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
+</div>
+
+
+
+<h2 id="s-map">(1) Map</h2>
+<div class="fig-row center">
+  <figure class="slot-half">
+    <img src="data:image/png;base64,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" alt="All cast positions">
+  </figure>
+</div>
+
+
+<h2 id="s-table">(2) Casts</h2>
+<table>
+    <thead>
+      <tr>
+        <th>Cast</th>
+        <th>File</th>
+        <th>Start (UTC)</th>
+        <th class="num">Latitude</th>
+        <th class="num">Longitude</th>
+        <th>Depth</th>
+        <th>LADCP</th>
+        <th>Links</th>
+      </tr>
+    </thead>
+    <tbody>
+    
+      <tr onclick="window.location='casts/cast_129.html'">
+        <td><a class="cast-link" href="casts/cast_129.html">129</a></td>
+        <td class="mono">mixsed2_129.cnv</td>
+        <td>2026-07-22 09:22</td>
+        <td class="num">65°34.998′N</td>
+        <td class="num">29°26.814′W</td>
+        <td><span class="depth-pill" style="background:#2171b5;color:#ffffff;">718 dbar</span></td>
+        
+        <td><span class="ladcp-yes">✓</span></td>
+        
+        <td>
+          <a class="pill-btn pill-profile" href="casts/cast_129.html">Profile</a>
+          
+          
+          <a class="pill-btn" style="background:#d62728;color:#fff;" href="timeseries/timeseries_Triangle.html">Triangle</a>
+          
+        </td>
+      </tr>
+    
+      <tr onclick="window.location='casts/cast_128.html'">
+        <td><a class="cast-link" href="casts/cast_128.html">128</a></td>
+        <td class="mono">mixsed2_128.cnv</td>
+        <td>2026-07-22 03:33</td>
+        <td class="num">65°35.108′N</td>
+        <td class="num">29°27.511′W</td>
+        <td><span class="depth-pill" style="background:#2171b5;color:#ffffff;">686 dbar</span></td>
+        
+        <td><span class="ladcp-yes">✓</span></td>
+        
+        <td>
+          <a class="pill-btn pill-profile" href="casts/cast_128.html">Profile</a>
+          
+          
+          <a class="pill-btn" style="background:#d62728;color:#fff;" href="timeseries/timeseries_Triangle.html">Triangle</a>
+          
+        </td>
+      </tr>
+    
+      <tr onclick="window.location='casts/cast_012.html'">
+        <td><a class="cast-link" href="casts/cast_012.html">012</a></td>
+        <td class="mono">mixsed2_012.cnv</td>
+        <td>2026-07-12 03:55</td>
+        <td class="num">65°50.719′N</td>
+        <td class="num">29°35.301′W</td>
+        <td><span class="depth-pill" style="background:#9ecae1;color:#1a1a2e;">307 dbar</span></td>
+        
+        <td><span class="ladcp-yes">✓</span></td>
+        
+        <td>
+          <a class="pill-btn pill-profile" href="casts/cast_012.html">Profile</a>
+          
+          <a class="pill-btn" style="background:#1f77b4;color:#fff;" href="sections/section_KO.html">KO</a>
+          
+          
+        </td>
+      </tr>
+    
+      <tr onclick="window.location='casts/cast_011.html'">
+        <td><a class="cast-link" href="casts/cast_011.html">011</a></td>
+        <td class="mono">mixsed2_011.cnv</td>
+        <td>2026-07-12 02:40</td>
+        <td class="num">65°51.622′N</td>
+        <td class="num">29°25.979′W</td>
+        <td><span class="depth-pill" style="background:#9ecae1;color:#1a1a2e;">318 dbar</span></td>
+        
+        <td><span class="ladcp-yes">✓</span></td>
+        
+        <td>
+          <a class="pill-btn pill-profile" href="casts/cast_011.html">Profile</a>
+          
+          <a class="pill-btn" style="background:#1f77b4;color:#fff;" href="sections/section_KO.html">KO</a>
+          
+          
+        </td>
+      </tr>
+    
+    </tbody>
+  </table>
+
+<script>
+document.querySelectorAll('h2').forEach(h => {
+  const a = document.createElement('a');
+  a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
+  h.appendChild(a);
+});
+</script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-21 18:55 UTC</footer>
+</body>
+</html>

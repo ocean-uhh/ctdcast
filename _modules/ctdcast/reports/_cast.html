@@ -1,0 +1,724 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._cast &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._cast</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._cast</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Tier-2: generate a per-cast HTML report page."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.global_attrs</span><span class="w"> </span><span class="kn">import</span> <span class="n">cruise_name</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">markupsafe</span><span class="w"> </span><span class="kn">import</span> <span class="n">escape</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.derive</span><span class="w"> </span><span class="kn">import</span> <span class="n">derive_teos10</span> <span class="k">as</span> <span class="n">add_teos10</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SECTION_BIOGEO_VARS</span><span class="p">,</span>
+    <span class="n">UNKNOWN_CRUISE_ID</span><span class="p">,</span>
+    <span class="n">resolve_sensor_var</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span> <span class="n">ReportConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROLE_ACCENT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_id_from_name</span><span class="p">,</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage2</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_cast_end</span><span class="p">,</span> <span class="n">find_soak_end</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.ladcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_ladcp_file</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_sensor_info</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_dataset_meta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">Panel</span><span class="p">,</span> <span class="n">Profile</span><span class="p">,</span> <span class="n">ResolvedReport</span><span class="p">,</span> <span class="n">Section</span><span class="p">,</span> <span class="n">resolve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._report_css</span><span class="w"> </span><span class="kn">import</span> <span class="n">_JS_TOP_LINKS</span><span class="p">,</span> <span class="n">SHARED_CSS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._format</span><span class="w"> </span><span class="kn">import</span> <span class="n">_fmt_utc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._plots</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_make_aux_profiles_b64</span><span class="p">,</span>
+    <span class="n">_make_ct_sa_sigma0_b64</span><span class="p">,</span>
+    <span class="n">_make_ladcp_bottomtrack_b64</span><span class="p">,</span>
+    <span class="n">_make_pressure_time_b64</span><span class="p">,</span>
+    <span class="n">_make_sensor_diff_b64</span><span class="p">,</span>
+    <span class="n">_make_stability_b64</span><span class="p">,</span>
+    <span class="n">_make_station_map_b64</span><span class="p">,</span>
+    <span class="n">_make_ts_density_b64</span><span class="p">,</span>
+    <span class="n">_make_ts_diagram_b64</span><span class="p">,</span>
+    <span class="n">_make_ts_updown_b64</span><span class="p">,</span>
+    <span class="n">_make_updown_diff_b64</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dec_to_ddm</span><span class="p">(</span><span class="n">deg</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert decimal degrees to degrees-decimal-minutes string.</span>
+
+<span class="sd">    Examples: 64.7415 lat → '64 44.49 N', -31.4003 lon → '031 24.02 W'.</span>
+<span class="sd">    """</span>
+    <span class="n">hemi</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"N"</span> <span class="k">if</span> <span class="n">deg</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"S"</span><span class="p">)</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="s2">"lat"</span> <span class="k">else</span> <span class="p">(</span><span class="s2">"E"</span> <span class="k">if</span> <span class="n">deg</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"W"</span><span class="p">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">deg</span><span class="p">))</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">deg</span><span class="p">)</span> <span class="o">-</span> <span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="mf">60.0</span>
+    <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="s2">"lon"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">° </span><span class="si">{</span><span class="n">m</span><span class="si">:</span><span class="s2">05.2f</span><span class="si">}</span><span class="s2">′ </span><span class="si">{</span><span class="n">hemi</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">° </span><span class="si">{</span><span class="n">m</span><span class="si">:</span><span class="s2">05.2f</span><span class="si">}</span><span class="s2">′ </span><span class="si">{</span><span class="n">hemi</span><span class="si">}</span><span class="s2">"</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># HTML template</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Public function</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="generate_station_page">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._cast.generate_station_page">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_station_page</span><span class="p">(</span>
+    <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">all_meta</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="n">prev_cast_str</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">next_cast_str</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_num_str</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">sal_range</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trim_soak</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_notes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">drop_stub</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Generate a per-cast HTML report page and write it to *out_dir/casts/*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_path:</span>
+<span class="sd">        Path to a single cast ``.nc`` file.</span>
+<span class="sd">    out_dir:</span>
+<span class="sd">        Root output directory.</span>
+<span class="sd">    all_meta:</span>
+<span class="sd">        List of dicts with keys ``lat``, ``lon`` for all casts (used for map).</span>
+<span class="sd">    prev_cast_str:</span>
+<span class="sd">        Full cast identifier string of the previous cast for nav links, e.g.</span>
+<span class="sd">        ``"010"`` or ``"004b"`` (or None for no previous link).</span>
+<span class="sd">    next_cast_str:</span>
+<span class="sd">        Full cast identifier string of the next cast for nav links (or None).</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite existing file if True.</span>
+<span class="sd">    ladcp_dir:</span>
+<span class="sd">        Directory containing processed LADCP ``.mat`` files named ``NNN.mat``</span>
+<span class="sd">        or ``NNNb.mat``.  If None or no matching file exists, LADCP panels</span>
+<span class="sd">        are omitted.</span>
+<span class="sd">    ladcp_pattern:</span>
+<span class="sd">        Optional filename glob for non-standard LADCP naming conventions,</span>
+<span class="sd">        e.g. ``"msm_142_1_*.mat"``.  The ``*`` is replaced with the</span>
+<span class="sd">        zero-padded cast number.  Falls back to glob-based discovery when omitted.</span>
+<span class="sd">    cast_num_str:</span>
+<span class="sd">        Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived</span>
+<span class="sd">        from *nc_path* if not provided.</span>
+<span class="sd">    sal_range:</span>
+<span class="sd">        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this</span>
+<span class="sd">        range are excluded from all plots (but the NC file is not modified).</span>
+<span class="sd">        The count of excluded records is shown in the page header.</span>
+<span class="sd">    trim_soak:</span>
+<span class="sd">        If True, apply pre-soak detection via :func:`~ctdcast.processors.stage2.find_soak_end`.</span>
+<span class="sd">        Finds the last record within 10 dbar of the surface before the cast</span>
+<span class="sd">        maximum depth, crawls back up to 20 seconds to the shallowest point</span>
+<span class="sd">        preceding the real descent, and trims everything up to that point.</span>
+<span class="sd">        Applied before *sal_range* trimming.  NC files are not modified.</span>
+<span class="sd">    cast_notes:</span>
+<span class="sd">        Optional list of free-text notes for this cast (e.g. "SBE43 malfunction").</span>
+<span class="sd">        Rendered as warning banners near the top of the page.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path to the written HTML file, or None on failure.</span>
+
+<span class="sd">    """</span>
+    <span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span> <span class="o">=</span> <span class="n">_cast_id_from_path</span><span class="p">(</span><span class="n">nc_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cast_num_str</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cast_num_str</span> <span class="o">=</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">)</span>
+    <span class="n">out_file</span> <span class="o">=</span> <span class="n">out_dir</span> <span class="o">/</span> <span class="s2">"casts"</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cast_</span><span class="si">{</span><span class="n">cast_num_str</span><span class="si">}</span><span class="s2">.html"</span>
+    <span class="k">if</span> <span class="n">out_file</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out_file</span>
+
+    <span class="n">out_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">nc_path</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+        <span class="n">sensor_info</span> <span class="o">=</span> <span class="n">parse_sensor_info</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">add_teos10</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Pre-soak and post-recovery trim (both applied when trim_soak is True)</span>
+    <span class="n">n_soak_trimmed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">n_deck_trimmed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">trim_soak</span> <span class="ow">and</span> <span class="s2">"pressure"</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="s2">"time"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">n_total_records</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">soak_end</span> <span class="o">=</span> <span class="n">find_soak_end</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">cast_end</span> <span class="o">=</span> <span class="n">find_cast_end</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cast_end</span> <span class="o">&lt;=</span> <span class="n">soak_end</span><span class="p">:</span>
+            <span class="n">cast_end</span> <span class="o">=</span> <span class="n">n_total_records</span>
+        <span class="n">n_soak_trimmed</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">soak_end</span><span class="p">)</span>
+        <span class="n">n_deck_trimmed</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">n_total_records</span> <span class="o">-</span> <span class="n">cast_end</span><span class="p">)</span> <span class="k">if</span> <span class="n">cast_end</span> <span class="o">&lt;</span> <span class="n">n_total_records</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_soak_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">n_deck_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                <span class="n">time</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span>
+                    <span class="n">soak_end</span> <span class="k">if</span> <span class="n">soak_end</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">cast_end</span> <span class="k">if</span> <span class="n">cast_end</span> <span class="o">&lt;</span> <span class="n">n_total_records</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Salinity range trim (applied after soak trim)</span>
+    <span class="n">n_sal_trimmed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">sal_lo</span> <span class="o">=</span> <span class="n">sal_hi</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">_sal_var</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"ctd_salinity_1"</span><span class="p">,</span> <span class="s2">"salinity_1"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">),</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">sal_range</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_sal_var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sal_lo</span><span class="p">,</span> <span class="n">sal_hi</span> <span class="o">=</span> <span class="n">sal_range</span>
+        <span class="n">sal_vals</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_sal_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">sal_vals</span> <span class="o">&gt;=</span> <span class="n">sal_lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sal_vals</span> <span class="o">&lt;=</span> <span class="n">sal_hi</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sal_vals</span><span class="p">)</span>
+        <span class="n">n_sal_trimmed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="o">~</span><span class="n">mask</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">n_sal_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+
+    <span class="c1"># Build a single human-readable trim note for the page header</span>
+    <span class="n">trim_note</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">soak_parts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">n_soak_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">soak_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_soak_trimmed</span><span class="si">}</span><span class="s2"> pre-soak"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_deck_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">soak_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_deck_trimmed</span><span class="si">}</span><span class="s2"> post-recovery"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_sal_trimmed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">soak_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_sal_trimmed</span><span class="si">}</span><span class="s2"> salinity outside [</span><span class="si">{</span><span class="n">sal_lo</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sal_hi</span><span class="si">}</span><span class="s2">]"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">soak_parts</span><span class="p">:</span>
+        <span class="n">n_total</span> <span class="o">=</span> <span class="n">n_soak_trimmed</span> <span class="o">+</span> <span class="n">n_deck_trimmed</span> <span class="o">+</span> <span class="n">n_sal_trimmed</span>
+        <span class="n">trim_note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_total</span><span class="si">}</span><span class="s2"> records excluded (</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">soak_parts</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+
+    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">max_depth</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">t_raw</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">_fmt_utc</span><span class="p">(</span><span class="n">t_raw</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">t_end</span> <span class="o">=</span> <span class="n">_fmt_utc</span><span class="p">(</span><span class="n">t_raw</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">dur_s</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">t_raw</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">t_raw</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">))</span>
+    <span class="n">dur_h</span><span class="p">,</span> <span class="n">dur_rem</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">dur_s</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)</span>
+    <span class="n">dur_m</span> <span class="o">=</span> <span class="n">dur_rem</span> <span class="o">//</span> <span class="mi">60</span>
+    <span class="n">duration_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">dur_h</span><span class="si">}</span><span class="s2">h </span><span class="si">{</span><span class="n">dur_m</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">m"</span>
+    <span class="n">_ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">cruise</span> <span class="o">=</span> <span class="n">cruise_name</span><span class="p">(</span><span class="n">_ci</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise"</span><span class="p">,</span> <span class="n">UNKNOWN_CRUISE_ID</span><span class="p">)</span>
+    <span class="n">ship</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"vessel"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="s2">"UNK"</span>
+    <span class="p">)</span>
+
+    <span class="n">ladcp_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">ladcp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">find_ladcp_file</span><span class="p">(</span><span class="n">ladcp_dir</span><span class="p">,</span> <span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">,</span> <span class="n">ladcp_pattern</span><span class="p">)</span>
+        <span class="c1"># Keep a non-None path even when no file exists so downstream callers</span>
+        <span class="c1"># that gate on ladcp_dir-is-not-None still get the LADCP plot layout.</span>
+        <span class="n">ladcp_path</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">found</span>
+            <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">ladcp_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">,</span><span class="w"> </span><span class="n">cast_suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">.mat"</span>
+        <span class="p">)</span>
+    <span class="n">ladcp_exists</span> <span class="o">=</span> <span class="n">ladcp_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ladcp_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+
+    <span class="c1"># The page body is now driven by the section manifest: build the per-cast</span>
+    <span class="c1"># context once, resolve the profile (numbers, inclusion, stubs all fall out),</span>
+    <span class="c1"># and hand the resolved report to the template's generic section loop.</span>
+    <span class="n">page_ctx</span> <span class="o">=</span> <span class="n">PageCtx</span><span class="p">(</span>
+        <span class="n">ds</span><span class="o">=</span><span class="n">ds</span><span class="p">,</span>
+        <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+        <span class="n">lat</span><span class="o">=</span><span class="n">lat</span><span class="p">,</span>
+        <span class="n">lon</span><span class="o">=</span><span class="n">lon</span><span class="p">,</span>
+        <span class="n">all_meta</span><span class="o">=</span><span class="n">all_meta</span><span class="p">,</span>
+        <span class="n">ladcp_path</span><span class="o">=</span><span class="n">ladcp_path</span><span class="p">,</span>
+        <span class="n">ladcp_configured</span><span class="o">=</span><span class="n">ladcp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ladcp_exists</span><span class="o">=</span><span class="n">ladcp_exists</span><span class="p">,</span>
+        <span class="n">sensor_info</span><span class="o">=</span><span class="n">sensor_info</span><span class="p">,</span>
+        <span class="n">nc_path</span><span class="o">=</span><span class="n">nc_path</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">resolve_cast</span><span class="p">(</span><span class="n">page_ctx</span><span class="p">,</span> <span class="n">drop_stub</span><span class="o">=</span><span class="n">drop_stub</span><span class="p">)</span>
+
+    <span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"cast_num"</span><span class="p">:</span> <span class="n">cast_num_str</span><span class="p">,</span>
+        <span class="s2">"cruise"</span><span class="p">:</span> <span class="n">cruise</span><span class="p">,</span>
+        <span class="s2">"ship"</span><span class="p">:</span> <span class="n">ship</span><span class="p">,</span>
+        <span class="s2">"datetime_str"</span><span class="p">:</span> <span class="n">t0</span><span class="p">,</span>
+        <span class="s2">"time_end_str"</span><span class="p">:</span> <span class="n">t_end</span><span class="p">,</span>
+        <span class="s2">"duration_str"</span><span class="p">:</span> <span class="n">duration_str</span><span class="p">,</span>
+        <span class="s2">"lat_str"</span><span class="p">:</span> <span class="n">_dec_to_ddm</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="s2">"lat"</span><span class="p">),</span>
+        <span class="s2">"lon_str"</span><span class="p">:</span> <span class="n">_dec_to_ddm</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="s2">"lon"</span><span class="p">),</span>
+        <span class="s2">"max_depth_str"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">max_depth</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> dbar"</span><span class="p">,</span>
+        <span class="s2">"prev_num"</span><span class="p">:</span> <span class="n">prev_cast_str</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"next_num"</span><span class="p">:</span> <span class="n">next_cast_str</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"ladcp_configured"</span><span class="p">:</span> <span class="n">ladcp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"ladcp_available"</span><span class="p">:</span> <span class="n">ladcp_exists</span><span class="p">,</span>
+        <span class="s2">"trim_note"</span><span class="p">:</span> <span class="n">trim_note</span><span class="p">,</span>
+        <span class="s2">"cast_notes"</span><span class="p">:</span> <span class="n">cast_notes</span> <span class="ow">or</span> <span class="p">[],</span>
+        <span class="s2">"generated_at"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M UTC"</span><span class="p">),</span>
+        <span class="s2">"version"</span><span class="p">:</span> <span class="n">_VERSION</span><span class="p">,</span>
+        <span class="s2">"report"</span><span class="p">:</span> <span class="n">report</span><span class="p">,</span>
+        <span class="s2">"section_columns"</span><span class="p">:</span> <span class="n">CAST_SECTION_COLUMNS</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="n">get_template</span><span class="p">(</span><span class="s2">"cast.html"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="o">**</span><span class="n">ctx</span><span class="p">,</span>
+        <span class="n">css</span><span class="o">=</span><span class="n">SHARED_CSS</span><span class="p">,</span>
+        <span class="n">js_top_links</span><span class="o">=</span><span class="n">_JS_TOP_LINKS</span><span class="p">,</span>
+        <span class="n">nav_prefix</span><span class="o">=</span><span class="s2">"../"</span><span class="p">,</span>
+        <span class="n">nav_current</span><span class="o">=</span><span class="s2">"casts"</span><span class="p">,</span>
+        <span class="n">masthead_bg</span><span class="o">=</span><span class="n">ROLE_ACCENT</span><span class="p">[</span><span class="s2">"entity"</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">out_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out_file</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cast_id_from_path</span><span class="p">(</span><span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(cast_num, cast_suffix)`` from a cast filename.</span>
+
+<span class="sd">    Thin wrapper over :func:`ctdcast.identity.cast_id_from_name` that falls back</span>
+<span class="sd">    to ``(0, "")`` when the stem contains no 3+-digit cast number.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">cast_id_from_name</span><span class="p">(</span><span class="n">nc_path</span><span class="o">.</span><span class="n">stem</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Section manifest — the cast page as data (see .claude/rep-section-manifest-plan.md)</span>
+<span class="c1">#</span>
+<span class="c1"># NOTE (2026-08-16, autonomous): this is the model layer only.  It is NOT yet</span>
+<span class="c1"># wired into generate_station_page() / cast.html — that template port is a</span>
+<span class="c1"># separate commit that needs a visual review.  These declarations + the</span>
+<span class="c1"># integrity tests (tests/test_cast_manifest.py) let the numbering/inclusion be</span>
+<span class="c1"># checked before the page is switched over.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="PageCtx">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._cast.PageCtx">[docs]</a>
+<span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PageCtx</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Per-cast render context: the frozen inputs every cast panel/predicate reads.</span>
+
+<span class="sd">    Wraps the frozen :class:`ReportConfig` (``cfg``) with the values derived once</span>
+<span class="sd">    per cast, so a panel's ``render``/``applies_to`` depends only on this object.</span>
+<span class="sd">    Keeping it frozen and section-independent is what makes "derived context must</span>
+<span class="sd">    not depend on section inclusion" enforceable rather than aspirational.</span>
+<span class="sd">    """</span>
+
+    <span class="n">ds</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span>
+    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">all_meta</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">ladcp_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">ladcp_configured</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">ladcp_exists</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">sensor_info</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_sensor_table</span><span class="p">(</span><span class="n">sensor_info</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the sensor-metadata table markup, or None when there is no info.</span>
+
+<span class="sd">    Values are escaped here because the manifest table macro emits this payload</span>
+<span class="sd">    with ``|safe`` — the escaping that Jinja does today for ``{{ s.sensor_type }}``</span>
+<span class="sd">    moves into this builder so the autoescape guarantee is preserved.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sensor_info</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"&lt;tr&gt;&lt;td&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'sensor_type'</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'serial_number'</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'calibration_date'</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">))</span><span class="si">}</span><span class="s2">&lt;/td&gt;&lt;/tr&gt;"</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sensor_info</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="s1">'&lt;table class="sensor-table"&gt;'</span>
+        <span class="s2">"&lt;tr&gt;&lt;th&gt;Sensor&lt;/th&gt;&lt;th&gt;S/N&lt;/th&gt;&lt;th&gt;Cal date&lt;/th&gt;&lt;/tr&gt;"</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">rows</span><span class="si">}</span><span class="s2">&lt;/table&gt;"</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_data_ranges_table</span><span class="p">(</span><span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the per-cast netCDF data-ranges table markup, or None when empty.</span>
+
+<span class="sd">    Lists min/max/valid for every variable in the file on disk (not the trimmed</span>
+<span class="sd">    or derived data plotted above), plus the display ``label_units`` so a reader</span>
+<span class="sd">    can see how a figure's axis label was derived.  Values are escaped here</span>
+<span class="sd">    because the manifest table macro emits this payload with ``|safe``.</span>
+<span class="sd">    """</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">read_dataset_meta</span><span class="p">(</span><span class="n">nc_path</span><span class="p">)</span>
+    <span class="n">rows_data</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"coords"</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_vars"</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows_data</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"&lt;tr&gt;&lt;td class='mono'&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'name'</span><span class="p">])</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'units'</span><span class="p">]))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'label_units'</span><span class="p">]))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td class='num'&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'v_min'</span><span class="p">]))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td class='num'&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'v_max'</span><span class="p">]))</span><span class="si">}</span><span class="s2">&lt;/td&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;td class='num'&gt;</span><span class="si">{</span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'n_valid'</span><span class="p">]))</span><span class="si">}</span><span class="s2">"</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">' / '</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">escape</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">'n'</span><span class="p">]))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="s1">'n_valid'</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="s1">'n'</span><span class="p">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">''</span><span class="si">}</span><span class="s2">&lt;/td&gt;&lt;/tr&gt;"</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rows_data</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="s1">'&lt;table class="nc data-ranges"&gt;'</span>
+        <span class="s2">"&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Variable&lt;/th&gt;&lt;th&gt;Units&lt;/th&gt;&lt;th&gt;Label units&lt;/th&gt;"</span>
+        <span class="s2">"&lt;th class='num'&gt;Min&lt;/th&gt;&lt;th class='num'&gt;Max&lt;/th&gt;"</span>
+        <span class="s2">"&lt;th class='num'&gt;Valid&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;"</span>
+        <span class="sa">f</span><span class="s2">"&lt;tbody&gt;</span><span class="si">{</span><span class="n">rows</span><span class="si">}</span><span class="s2">&lt;/tbody&gt;&lt;/table&gt;"</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># applies_to answers "could this section/panel exist for this cast?" — NOT "did it</span>
+<span class="c1"># render?".  A None render from an applicable panel is a defect, and shows as a</span>
+<span class="c1"># stub with a reason; a section that genuinely cannot exist (no such variable) is</span>
+<span class="c1"># omitted and named in the not-applicable footer.  Do not leave figure panels on</span>
+<span class="c1"># the default _always where a structural predicate applies.</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_biogeo</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">PageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True when any biogeochemistry variable is present (single- or dual-sensor)."""</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">resolve_sensor_var</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">SECTION_BIOGEO_VARS</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_ts</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">PageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True when temperature and salinity are present (CT/SA/σ₀ derivable).</span>
+
+<span class="sd">    Gates Hydrography, T–S diagram and Stability: a cast with T and S *could* have</span>
+<span class="sd">    them, so if the figure then returns None it is a defect (a stub), not a silent</span>
+<span class="sd">    omission.  A file genuinely without T/S omits these sections into the footer.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="s2">"conservative_temperature"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="ow">and</span> <span class="s2">"absolute_salinity"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_dual_sensors</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">PageCtx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True when a second temperature *or* salinity sensor is present.</span>
+
+<span class="sd">    Mirrors :func:`~ctdcast.plotters.plots.draw_sensor_diff_fig`, which draws the</span>
+<span class="sd">    T₁−T₂ and/or S₁−S₂ difference when either pair exists — so the panel must apply</span>
+<span class="sd">    whenever either is dual, not temperature alone.  (In practice a cast is dual on</span>
+<span class="sd">    both channels or neither, but gating on both keeps the predicate honest to the</span>
+<span class="sd">    figure.)  Checks canonical and legacy names, matching the figure's own resolver</span>
+<span class="sd">    so it stays correct on both pre- and post-rename datasets.</span>
+<span class="sd">    """</span>
+    <span class="n">dual_t</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd_temperature_1"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="ow">or</span> <span class="s2">"temperature_1"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+        <span class="s2">"ctd_temperature_2"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="ow">or</span> <span class="s2">"temperature_2"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span>
+    <span class="p">)</span>
+    <span class="n">dual_s</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd_salinity_1"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="ow">or</span> <span class="s2">"salinity_1"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+        <span class="s2">"ctd_salinity_2"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span> <span class="ow">or</span> <span class="s2">"salinity_2"</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">ds</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">dual_t</span> <span class="ow">or</span> <span class="n">dual_s</span>
+
+
+<span class="c1">#: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,</span>
+<span class="c1">#: reading only from :class:`PageCtx`.  Slots mirror the current cast.html layout.</span>
+<span class="n">CAST_PANELS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Panel</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"ts_density"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"ts_density"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"three-fifths"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_ts_density_b64</span><span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">ladcp_path</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">ladcp_configured</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"station_map"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"station_map"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"two-fifths"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_station_map_b64</span><span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">lon</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">all_meta</span><span class="p">,</span> <span class="n">target_h</span><span class="o">=</span><span class="mf">2.75</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"ts_updown"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"ts_updown"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"two-fifths"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_ts_updown_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"ct_sa_sigma0"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"ct_sa_sigma0"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"full"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_ct_sa_sigma0_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"aux"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"aux"</span><span class="p">,</span> <span class="n">slot</span><span class="o">=</span><span class="s2">"full"</span><span class="p">,</span> <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_aux_profiles_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">)</span>
+    <span class="p">),</span>
+    <span class="s2">"ts_diagram"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"ts_diagram"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"third"</span><span class="p">,</span>
+        <span class="n">caption</span><span class="o">=</span><span class="s2">"Contours: σ₀ (kg m⁻³) — potential density referenced to surface"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_ts_diagram_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"stability"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"stability"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"twothirds"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_stability_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"ladcp_bottomtrack"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"ladcp_bottomtrack"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"third"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="p">(</span>
+            <span class="n">_make_ladcp_bottomtrack_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ladcp_path</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">ladcp_exists</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"pressure_time"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"pressure_time"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"third"</span><span class="p">,</span>
+        <span class="n">caption</span><span class="o">=</span><span class="s2">"Cast trajectory: pressure vs elapsed time"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_pressure_time_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"sensor_diff"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"sensor_diff"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"twothirds"</span><span class="p">,</span>
+        <span class="n">applies_to</span><span class="o">=</span><span class="n">_has_dual_sensors</span><span class="p">,</span>
+        <span class="n">caption</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"T₁−T₂, S₁−S₂: primary minus secondary sensor. "</span>
+            <span class="s2">"Ideal: scatter around zero with ±0.01 spread."</span>
+        <span class="p">),</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_sensor_diff_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"updown_diff"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"updown_diff"</span><span class="p">,</span>
+        <span class="n">slot</span><span class="o">=</span><span class="s2">"full"</span><span class="p">,</span>
+        <span class="n">caption</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"ΔCT, ΔSA, Δσ₀ downcast minus upcast on 1-dbar grid — "</span>
+            <span class="s2">"measures hysteresis from pump lag or sensor response time"</span>
+        <span class="p">),</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_make_updown_diff_b64</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">cfg</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"sensors_table"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"sensors_table"</span><span class="p">,</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s2">"table"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_render_sensor_table</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">sensor_info</span><span class="p">),</span>
+    <span class="p">),</span>
+    <span class="s2">"data_ranges"</span><span class="p">:</span> <span class="n">Panel</span><span class="p">(</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s2">"data_ranges"</span><span class="p">,</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s2">"table"</span><span class="p">,</span>
+        <span class="n">render</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">_render_data_ranges_table</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">nc_path</span><span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+
+
+<span class="c1">#: The cast page profile.  Conservative port of the current page: same figures,</span>
+<span class="c1">#: same grouping — the manifest only renumbers (closing the D1 gaps), generates</span>
+<span class="c1">#: the jump-nav, and turns section ids into anchors (the D3 fix).</span>
+<span class="n">CAST_DEFAULT</span><span class="p">:</span> <span class="n">Profile</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span>
+    <span class="n">numbering</span><span class="o">=</span><span class="s2">"flat"</span><span class="p">,</span>
+    <span class="n">entries</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"overview"</span><span class="p">,</span>
+            <span class="s2">"Overview"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"ts_density"</span><span class="p">,</span> <span class="s2">"station_map"</span><span class="p">,</span> <span class="s2">"ts_updown"</span><span class="p">),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"CT · SA · σ₀ profiles, station location, and T–S down-vs-up."</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"hydrography"</span><span class="p">,</span>
+            <span class="s2">"Hydrography"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"ct_sa_sigma0"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"CT · SA · σ₀ vs pressure — downcast in colour, upcast in grey."</span><span class="p">,</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="n">_has_ts</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"biogeochemistry"</span><span class="p">,</span>
+            <span class="s2">"Biogeochemistry"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"aux"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"O₂ saturation · fluorescence · turbidity."</span><span class="p">,</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="n">_has_biogeo</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"ts_diagram"</span><span class="p">,</span>
+            <span class="s2">"T–S diagram"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"ts_diagram"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"Coloured by O₂ saturation — downcast only."</span><span class="p">,</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="n">_has_ts</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"stability"</span><span class="p">,</span>
+            <span class="s2">"Stability"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"stability"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"N² and Turner angle — downcast only."</span><span class="p">,</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="n">_has_ts</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"velocity"</span><span class="p">,</span>
+            <span class="s2">"Velocity (bottom track)"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"ladcp_bottomtrack"</span><span class="p">,),</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">ladcp_exists</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"diagnostics"</span><span class="p">,</span>
+            <span class="s2">"Diagnostics"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"pressure_time"</span><span class="p">,</span> <span class="s2">"sensor_diff"</span><span class="p">,</span> <span class="s2">"updown_diff"</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"sensors"</span><span class="p">,</span>
+            <span class="s2">"Sensors"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"sensors_table"</span><span class="p">,),</span>
+            <span class="n">role</span><span class="o">=</span><span class="s2">"appendix"</span><span class="p">,</span>
+            <span class="n">applies_to</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">sensor_info</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">Section</span><span class="p">(</span>
+            <span class="s2">"data_ranges"</span><span class="p">,</span>
+            <span class="s2">"netCDF data ranges"</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"data_ranges"</span><span class="p">,),</span>
+            <span class="n">intro</span><span class="o">=</span><span class="s2">"Min · max · valid count for every variable in the cast file on disk."</span><span class="p">,</span>
+            <span class="n">role</span><span class="o">=</span><span class="s2">"appendix"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+
+<span class="c1">#: Presentational intra-section layout, kept out of the layout-neutral manifest</span>
+<span class="c1">#: model.  Maps a section id to the panel index from which the trailing panels</span>
+<span class="c1">#: stack in a right-hand ``fig-col`` (rather than wrapping onto their own row).</span>
+<span class="c1">#: ``overview: 1`` puts the CT·SA·σ₀ profiles on the left and stacks the station</span>
+<span class="c1">#: map above the T–S down-vs-up plot in the right column.</span>
+<span class="n">CAST_SECTION_COLUMNS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"overview"</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="resolve_cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports._cast.resolve_cast">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_cast</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">PageCtx</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">drop_stub</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolve the cast profile against *ctx* into numbered, rendered sections.</span>
+
+<span class="sd">    *drop_stub* (from the ``--drop-stub`` CLI flag) drops an applicable section</span>
+<span class="sd">    whose panels all failed to render, instead of keeping its heading with a stub.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">resolve</span><span class="p">(</span><span class="n">CAST_DEFAULT</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">CAST_PANELS</span><span class="p">,</span> <span class="n">drop_stub</span><span class="o">=</span><span class="n">drop_stub</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

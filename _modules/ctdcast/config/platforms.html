@@ -1,0 +1,455 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.platforms &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.platforms</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.platforms</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Research-vessel registry: config slug → identity, ICES code, and EXPOCODE.</span>
+
+<span class="sd">A cruise's EXPOCODE is derived, not allocated::</span>
+
+<span class="sd">    EXPOCODE = &lt;4-character ICES ship code&gt; + &lt;departure date YYYYMMDD&gt;</span>
+
+<span class="sd">where the departure date is the day the ship left port (``cruise_info.start_date``),</span>
+<span class="sd">which is **not** necessarily the first cast.  The only piece that must be looked up</span>
+<span class="sd">is the ICES ship code, and looking it up by vessel *name* is unsafe: names carry</span>
+<span class="sd">accents, punctuation, and generational ambiguity (four hulls have been called</span>
+<span class="sd">*Meteor*; two live C17 entries are called *Odon de Buen*).  A wrong code yields a</span>
+<span class="sd">well-formed EXPOCODE filed against somebody else's cruise — a silent, permanent</span>
+<span class="sd">error.</span>
+
+<span class="sd">So the registry is keyed on a short ASCII **slug** (``odb``, ``msm``, ``meteor3``),</span>
+<span class="sd">and this module refuses to guess:</span>
+
+<span class="sd">* an unknown slug raises;</span>
+<span class="sd">* a slug listed in ``ambiguous_slugs`` (e.g. bare ``meteor``) raises with the</span>
+<span class="sd">  message naming the alternatives;</span>
+<span class="sd">* a slug whose ``ices_code`` is ``null`` (a vessel with no code yet) raises rather</span>
+<span class="sd">  than emitting a malformed EXPOCODE;</span>
+<span class="sd">* a derived code appearing in ``forbidden_codes`` raises — each is a real trap</span>
+<span class="sd">  (deprecated codes, same-name different-ship) that a name lookup would fall into.</span>
+
+<span class="sd">Source registry: :data:`ctdcast.config.platforms` ``platforms.yaml``.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_dt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+<span class="n">_PLATFORMS_YAML</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">"platforms.yaml"</span>
+
+
+<div class="viewcode-block" id="PlatformError">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.PlatformError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlatformError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A platform slug could not be resolved, or its ICES code is unusable.</span>
+
+<span class="sd">    Raised rather than returning a sentinel because every caller of this module</span>
+<span class="sd">    is about to write an EXPOCODE into a file, and a wrong or missing code there</span>
+<span class="sd">    is worse than a hard failure at build time.</span>
+<span class="sd">    """</span></div>
+
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_raw</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the parsed ``platforms.yaml`` (empty mapping when absent)."""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_PLATFORMS_YAML</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">_PLATFORMS_YAML</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="load_platforms">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.load_platforms">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_platforms</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return the platform registry keyed by slug.</span>
+
+<span class="sd">    Returns an empty mapping when the registry file is absent, so a config that</span>
+<span class="sd">    supplies no ``ship_slug`` still works (EXPOCODE is simply not derived).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_load_raw</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platforms"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ambiguous_slugs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the ``ambiguous_slugs`` mapping (slug → explanatory message)."""</span>
+    <span class="k">return</span> <span class="n">_load_raw</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ambiguous_slugs"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_forbidden_codes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the ``forbidden_codes`` mapping (ICES code → reason)."""</span>
+    <span class="k">return</span> <span class="n">_load_raw</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"forbidden_codes"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="resolve_platform">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.resolve_platform">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_platform</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the registry record for *slug*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    slug : str</span>
+<span class="sd">        The ``cruise_info.ship_slug`` value — a key in ``platforms.yaml``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        The platform's fields (``name``, ``ices_code``, ``platform``, …).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    PlatformError</span>
+<span class="sd">        If *slug* is listed in ``ambiguous_slugs`` (quoting its message) or is</span>
+<span class="sd">        not a key in the registry.</span>
+<span class="sd">    """</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">ambiguous</span> <span class="o">=</span> <span class="n">_ambiguous_slugs</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ambiguous</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PlatformError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ambiguous</span><span class="p">[</span><span class="n">key</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">load_platforms</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">registry</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PlatformError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"unknown platform slug </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2">; known slugs: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">registry</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">registry</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="parse_config_date">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.parse_config_date">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_config_date</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Coerce a config date value to a :class:`datetime.date`, or ``None``.</span>
+
+<span class="sd">    Accepts a ``date``/``datetime`` (YAML parses a bare ``2026-03-27`` as a</span>
+<span class="sd">    ``date``), an ISO ``"YYYY-MM-DD"`` string, or a compact ``"YYYYMMDD"`` string.</span>
+<span class="sd">    Returns ``None`` for ``None`` or any value it cannot parse, leaving the</span>
+<span class="sd">    caller to decide whether that is an error.  Shared by the EXPOCODE derivation</span>
+<span class="sd">    and the embargo-date logic so both accept exactly the same date forms.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"%Y%m</span><span class="si">%d</span><span class="s2">"</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">continue</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_departure_yyyymmdd</span><span class="p">(</span><span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Normalise a departure date to a ``YYYYMMDD`` string.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    PlatformError</span>
+<span class="sd">        If the value cannot be parsed as a calendar date.</span>
+<span class="sd">    """</span>
+    <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_config_date</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">parsed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PlatformError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cannot parse departure date </span><span class="si">{</span><span class="n">start_date</span><span class="si">!r}</span><span class="s2">; expected YYYY-MM-DD"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">parsed</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y%m</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="resolve_platform_spec">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.resolve_platform_spec">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_platform_spec</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Resolve a config platform value (a registry slug **or** an inline dict).</span>
+
+<span class="sd">    A **string** is a slug looked up in ``platforms.yaml``.  A **mapping** is used</span>
+<span class="sd">    inline — for a vessel not (yet) in the shared registry — and should carry at</span>
+<span class="sd">    least ``ices_code`` (for the EXPOCODE) and ``name``, plus optional ``platform``</span>
+<span class="sd">    (L06 category) and ``platform_vocabulary``.  This mirrors the inline</span>
+<span class="sd">    institution form, so a user can name a new vessel in their own config without</span>
+<span class="sd">    first editing ``platforms.yaml``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    platform : str or dict</span>
+<span class="sd">        A ``platforms.yaml`` slug, or an inline platform record.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        The platform record (registry entry, or the inline mapping as given).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">platform</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">resolve_platform</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">platform</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="derive_expocode">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.derive_expocode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_expocode</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Derive the CCHDO/GO-SHIP EXPOCODE for a cruise.</span>
+
+<span class="sd">    ``EXPOCODE = &lt;ICES ship code&gt; + &lt;departure date YYYYMMDD&gt;``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    platform : str or dict</span>
+<span class="sd">        A ``platforms.yaml`` slug, or an inline platform record carrying at least</span>
+<span class="sd">        ``ices_code`` (see :func:`resolve_platform_spec`).</span>
+<span class="sd">    start_date : str or datetime.date</span>
+<span class="sd">        The departure date from port (``cruise_info.start_date``).  **Not** the</span>
+<span class="sd">        first cast; the two can differ (MSM142 departs 2026-03-27, first cast</span>
+<span class="sd">        2026-03-29).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        e.g. ``"29OD20260709"`` for ``odb`` departing 2026-07-09.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    PlatformError</span>
+<span class="sd">        If a slug is unknown/ambiguous, the platform has no ICES code, the</span>
+<span class="sd">        derived code is in ``forbidden_codes``, or *start_date* is unparseable.</span>
+<span class="sd">    """</span>
+    <span class="n">record</span> <span class="o">=</span> <span class="n">resolve_platform_spec</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">platform</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">platform</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"&lt;inline&gt;"</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">ices_code</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ices_code"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ices_code</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PlatformError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"platform </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> has no ices_code, so no EXPOCODE can be derived; "</span>
+            <span class="sa">f</span><span class="s2">"look up the ICES ship code at https://ocean.ices.dk/codes/ShipCodes.aspx "</span>
+            <span class="sa">f</span><span class="s2">"(or the NVS mirror https://vocab.nerc.ac.uk/collection/C17/current/), "</span>
+            <span class="sa">f</span><span class="s2">"or request a new one from ICES before publishing"</span>
+        <span class="p">)</span>
+    <span class="n">ices_code</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ices_code</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="n">forbidden</span> <span class="o">=</span> <span class="n">_forbidden_codes</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">ices_code</span> <span class="ow">in</span> <span class="n">forbidden</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">PlatformError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"ICES code </span><span class="si">{</span><span class="n">ices_code</span><span class="si">!r}</span><span class="s2"> (from platform </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2">) is in "</span>
+            <span class="sa">f</span><span class="s2">"forbidden_codes: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">forbidden</span><span class="p">[</span><span class="n">ices_code</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ices_code</span><span class="si">}{</span><span class="n">_departure_yyyymmdd</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<div class="viewcode-block" id="expocode_from_cruise_info">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.expocode_from_cruise_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">expocode_from_cruise_info</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Derive the EXPOCODE from a cruise config, or ``None`` when not derivable.</span>
+
+<span class="sd">    Returns ``None`` (rather than raising) when the config supplies no</span>
+<span class="sd">    ``ship_slug`` or no ``start_date`` — a cruise mid-processing may not have</span>
+<span class="sd">    settled its departure date, and that is not an error.  A *present* slug that</span>
+<span class="sd">    is ambiguous, unknown, or lacks an ICES code still raises via</span>
+<span class="sd">    :func:`derive_expocode`, because those are authoring mistakes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping from the cruise config.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        The EXPOCODE, or ``None`` when the slug/``start_date`` is absent.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The slug is read from ``cruise_info["platform"]``, falling back to</span>
+<span class="sd">    ``cruise_info["ship_slug"]``.  ``ship`` (the free-text display name) is never</span>
+<span class="sd">    used as a slug — name lookup is exactly the ambiguity this registry avoids.</span>
+<span class="sd">    """</span>
+    <span class="n">platform</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship_slug"</span><span class="p">)</span>
+    <span class="n">start_date</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"start_date"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">platform</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">start_date</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">derive_expocode</span><span class="p">(</span><span class="n">platform</span><span class="p">,</span> <span class="n">start_date</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="platform_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.platform_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">platform_attrs</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ACDD platform global attributes for a slug or inline platform.</span>
+
+<span class="sd">    Emits ``platform``, ``platform_vocabulary``, ``platform_name`` and</span>
+<span class="sd">    ``platform_ices_code`` from the resolved record, skipping any it omits.</span>
+<span class="sd">    Returns an empty mapping when a slug does not resolve to a usable record</span>
+<span class="sd">    (the caller decides whether that is fatal).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    platform : str or dict</span>
+<span class="sd">        A ``platforms.yaml`` slug, or an inline platform record</span>
+<span class="sd">        (see :func:`resolve_platform_spec`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        Platform attributes ready to merge into a dataset.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">resolve_platform_spec</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">PlatformError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"platform"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">"platform"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform_vocabulary"</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"platform_vocabulary"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">"platform_vocabulary"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"platform_name"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"native_name"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">record</span><span class="p">[</span><span class="s2">"name"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ices_code"</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"platform_ices_code"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">"ices_code"</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">attrs</span></div>
+
+
+
+<div class="viewcode-block" id="platform_display_name">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.platforms.platform_display_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">platform_display_name</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the registry display name for a slug or inline platform, or ``None``.</span>
+
+<span class="sd">    Uses the plain ``name`` (not ``native_name``), for the report masthead and for</span>
+<span class="sd">    defaulting the free-text ``ship`` in ``ctdcast init`` from the chosen slug —</span>
+<span class="sd">    deriving the name from the ICES code (unambiguous) rather than resolving a</span>
+<span class="sd">    typed name into a code (ambiguous).  Returns ``None`` when a slug does not</span>
+<span class="sd">    resolve.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">resolve_platform_spec</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">PlatformError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

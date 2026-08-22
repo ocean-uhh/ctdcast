@@ -1,0 +1,1058 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.global_attrs &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.global_attrs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.global_attrs</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Assemble a compiled file's global attributes from config + derived bounds.</span>
+
+<span class="sd">Three layers, kept apart on purpose (see the file-level-metadata design note):</span>
+
+<span class="sd">* **derived** — ``geospatial_*`` and ``time_coverage_*`` bounds, ``date_created``.</span>
+<span class="sd">  Computed from the data at write time, **never** authored and **never** copied</span>
+<span class="sd">  up from a per-cast file.  Copying the first cast's latitude up into the cruise</span>
+<span class="sd">  file states a bounding box containing one station; the fix is to compute.</span>
+<span class="sd">* **authored** — ``title``, ``project``, ``acknowledgement``, people, embargo.</span>
+<span class="sd">  Taken from ``cruise_info:`` in the cruise config, once, at the level it is true.</span>
+<span class="sd">* **entity** — ``platform_*`` and the ``expocode`` (the latter is emitted by the</span>
+<span class="sd">  caller as an ``N_PROF`` coordinate, not a global — CCHDO does not assume one</span>
+<span class="sd">  file is one cruise).</span>
+
+<span class="sd">The one rule that decides where a fact goes: **a global attribute must be true of</span>
+<span class="sd">the entire file.**  Anything that varies within the file (cast lat/lon, station</span>
+<span class="sd">name, sensor serial) is a variable, not an attribute.</span>
+
+<span class="sd">Conformance target is ACDD-1.3 (with CF).  We take OG1's *vocabularies* (C89</span>
+<span class="sd">roles, EDMO institutions, L06 platform, L08 access policy) without adopting OG1's</span>
+<span class="sd">glider-mission entity model.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_dt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_CTDCAST_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.platforms</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PlatformError</span><span class="p">,</span>
+    <span class="n">expocode_from_cruise_info</span><span class="p">,</span>
+    <span class="n">parse_config_date</span><span class="p">,</span>
+    <span class="n">platform_attrs</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.people</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_contributors</span><span class="p">,</span> <span class="n">contributor_attrs</span>
+
+<span class="c1">#: Canonical coordinate units, taken from the single source of truth in</span>
+<span class="c1">#: :data:`ctdcast.config.parameters.VARIABLES` so the bound units always match</span>
+<span class="c1">#: the units written on the ``latitude``/``longitude`` variables themselves.</span>
+<span class="n">_LAT_UNITS</span> <span class="o">=</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">][</span><span class="s2">"units"</span><span class="p">]</span>
+<span class="n">_LON_UNITS</span> <span class="o">=</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">][</span><span class="s2">"units"</span><span class="p">]</span>
+
+<span class="c1">#: CC BY 4.0 canonical URL, named as the licence that applies *on release*.</span>
+<span class="n">_CC_BY_4_URL</span> <span class="o">=</span> <span class="s2">"https://creativecommons.org/licenses/by/4.0/"</span>
+
+<span class="c1">#: Software provenance written into the ``history`` attribute.  URL, not a DOI —</span>
+<span class="c1">#: ctdcast has no minted DOI yet; swap in the DOI here if/when one exists.</span>
+<span class="n">_CTDCAST_URL</span> <span class="o">=</span> <span class="s2">"https://github.com/ocean-uhh/ctdcast"</span>
+
+<span class="c1">#: Canonical grouping + order of the compiled-file global attributes.  Single</span>
+<span class="c1">#: source of truth for both the on-disk write order (:func:`order_attrs`) and the</span>
+<span class="c1">#: inventory page's grouped tables (:func:`group_attrs`).  The order within each</span>
+<span class="c1">#: group is the canonical order; the group titles are the HTML section headings.</span>
+<span class="n">ATTR_GROUPS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span>
+        <span class="s2">"Identity &amp; discovery"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="c1"># Order per Eleanor's spec (2026-08-22); platform folded in here.</span>
+            <span class="s2">"title"</span><span class="p">,</span>
+            <span class="s2">"cruise"</span><span class="p">,</span>
+            <span class="s2">"platform"</span><span class="p">,</span>
+            <span class="s2">"platform_name"</span><span class="p">,</span>
+            <span class="s2">"platform_ices_code"</span><span class="p">,</span>
+            <span class="s2">"platform_vocabulary"</span><span class="p">,</span>
+            <span class="s2">"expocode"</span><span class="p">,</span>
+            <span class="s2">"id"</span><span class="p">,</span>
+            <span class="s2">"naming_authority"</span><span class="p">,</span>
+            <span class="s2">"project"</span><span class="p">,</span>
+            <span class="s2">"internal_mission_identifier"</span><span class="p">,</span>
+            <span class="c1"># emitted but unlisted / future-proof — trail the spec'd order:</span>
+            <span class="s2">"summary"</span><span class="p">,</span>
+            <span class="s2">"program"</span><span class="p">,</span>
+            <span class="s2">"references"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="p">(</span>
+        <span class="s2">"Spatiotemporal coverage"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="s2">"geospatial_lat_min"</span><span class="p">,</span>
+            <span class="s2">"geospatial_lat_max"</span><span class="p">,</span>
+            <span class="s2">"geospatial_lat_units"</span><span class="p">,</span>
+            <span class="s2">"geospatial_lon_min"</span><span class="p">,</span>
+            <span class="s2">"geospatial_lon_max"</span><span class="p">,</span>
+            <span class="s2">"geospatial_lon_units"</span><span class="p">,</span>
+            <span class="s2">"geospatial_vertical_min"</span><span class="p">,</span>
+            <span class="s2">"geospatial_vertical_max"</span><span class="p">,</span>
+            <span class="s2">"geospatial_vertical_units"</span><span class="p">,</span>
+            <span class="s2">"geospatial_vertical_positive"</span><span class="p">,</span>
+            <span class="s2">"time_coverage_start"</span><span class="p">,</span>
+            <span class="s2">"time_coverage_end"</span><span class="p">,</span>
+            <span class="s2">"time_coverage_duration"</span><span class="p">,</span>
+            <span class="s2">"time_coverage_resolution"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="p">(</span>
+        <span class="s2">"People &amp; institutions"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="c1"># The cruise contributors (the science) and the contributing</span>
+            <span class="c1"># institutions.  The file's *creator* (who produced the file) lives in</span>
+            <span class="c1"># Provenance &amp; processing, not here.</span>
+            <span class="s2">"contributor_name"</span><span class="p">,</span>
+            <span class="s2">"contributor_role"</span><span class="p">,</span>
+            <span class="s2">"contributor_role_vocabulary"</span><span class="p">,</span>
+            <span class="s2">"contributor_id"</span><span class="p">,</span>
+            <span class="s2">"contributor_email"</span><span class="p">,</span>
+            <span class="s2">"contributing_institutions"</span><span class="p">,</span>
+            <span class="c1"># `_id` (identifiers), NOT OG1's `contributing_institutions_vocabulary`</span>
+            <span class="c1"># -- see the note at the emit site in people.py.  Naming rule for this</span>
+            <span class="c1"># whole block: `*_id` identifies the thing the attribute names,</span>
+            <span class="c1"># `*_vocabulary` is the scheme URI the neighbouring codes come from.</span>
+            <span class="s2">"contributing_institutions_id"</span><span class="p">,</span>
+            <span class="s2">"contributing_institutions_role"</span><span class="p">,</span>
+            <span class="s2">"contributing_institutions_role_vocabulary"</span><span class="p">,</span>
+            <span class="c1"># CF `institution` is a lossy projection of the three attributes</span>
+            <span class="c1"># above (their lead-role entries, joined), so it groups with them.</span>
+            <span class="c1"># It is the ONLY institution attribute in the file: the creator is a</span>
+            <span class="c1"># person identified by ORCID, with no institution of their own.  See</span>
+            <span class="c1"># people._cf_institution.</span>
+            <span class="s2">"institution"</span><span class="p">,</span>
+            <span class="s2">"publisher_name"</span><span class="p">,</span>
+            <span class="s2">"publisher_email"</span><span class="p">,</span>
+            <span class="s2">"publisher_url"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="p">(</span>
+        <span class="s2">"Rights &amp; access"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="c1"># Order per Eleanor's spec (2026-08-22): acknowledgement first.</span>
+            <span class="s2">"acknowledgement"</span><span class="p">,</span>
+            <span class="s2">"license"</span><span class="p">,</span>
+            <span class="s2">"access_constraint"</span><span class="p">,</span>
+            <span class="s2">"date_available"</span><span class="p">,</span>
+            <span class="s2">"license_after_embargo"</span><span class="p">,</span>
+            <span class="s2">"citation"</span><span class="p">,</span>
+            <span class="s2">"doi"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="p">(</span>
+        <span class="s2">"Provenance &amp; processing"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="s2">"date_created"</span><span class="p">,</span>
+            <span class="s2">"date_modified"</span><span class="p">,</span>
+            <span class="s2">"history"</span><span class="p">,</span>
+            <span class="c1"># The file's creator (who produced it) — distinct from the cruise</span>
+            <span class="c1"># contributors above.  The creator is a person, identified by</span>
+            <span class="c1"># `creator_id` (ORCID); no institution is attached to them, so that</span>
+            <span class="c1"># every institution in the file comes from `institutions:` and its</span>
+            <span class="c1"># CF projection.  `source` sits here as the how of the original</span>
+            <span class="c1"># measurement, paired with the `institution` that says where.</span>
+            <span class="s2">"creator_name"</span><span class="p">,</span>
+            <span class="s2">"creator_type"</span><span class="p">,</span>
+            <span class="s2">"creator_id"</span><span class="p">,</span>
+            <span class="s2">"source"</span><span class="p">,</span>
+            <span class="s2">"processing_level"</span><span class="p">,</span>
+            <span class="s2">"data_mode"</span><span class="p">,</span>
+            <span class="s2">"data_mode_meaning"</span><span class="p">,</span>
+            <span class="s2">"Conventions"</span><span class="p">,</span>
+            <span class="s2">"featureType"</span><span class="p">,</span>
+            <span class="s2">"cdm_data_type"</span><span class="p">,</span>
+            <span class="s2">"pressure_units"</span><span class="p">,</span>
+            <span class="s2">"pressure_spacing_dbar"</span><span class="p">,</span>
+            <span class="s2">"pressure_binning"</span><span class="p">,</span>
+            <span class="s2">"cchdo_software_version"</span><span class="p">,</span>
+            <span class="s2">"cchdo_parameters_version"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1">#: Title for attributes not named in :data:`ATTR_GROUPS` (never dropped).</span>
+<span class="n">OTHER_GROUP</span> <span class="o">=</span> <span class="s2">"Other"</span>
+
+
+<div class="viewcode-block" id="canonical_attr_order">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.canonical_attr_order">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_attr_order</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the flat canonical order of all named global attributes."""</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">_title</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">ATTR_GROUPS</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="order_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.order_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">order_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return *attrs* in canonical order.</span>
+
+<span class="sd">    Named attributes come first in :func:`canonical_attr_order`; any remaining</span>
+<span class="sd">    ones keep their original relative order and follow (so nothing is dropped and</span>
+<span class="sd">    an unrecognised attribute stays visible rather than being silently reordered</span>
+<span class="sd">    away).</span>
+<span class="sd">    """</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">canonical_attr_order</span><span class="p">())}</span>
+    <span class="n">known</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">canonical_attr_order</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">]</span>
+    <span class="n">extra</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rank</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">attrs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">known</span><span class="p">,</span> <span class="o">*</span><span class="n">extra</span><span class="p">)}</span></div>
+
+
+
+<div class="viewcode-block" id="group_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.group_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">group_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Split *attrs* into the canonical groups for display.</span>
+
+<span class="sd">    Groups appear in :data:`ATTR_GROUPS` order; within each group the attributes</span>
+<span class="sd">    keep the order they appear in *attrs* (i.e. the file order), so the rendered</span>
+<span class="sd">    page can be checked visually against the canonical spec.  Unnamed attributes</span>
+<span class="sd">    fall into a trailing :data:`OTHER_GROUP`.  Empty groups are omitted.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of dict</span>
+<span class="sd">        ``[{"title": str, "rows": [(key, value), ...]}, ...]``.  The key is</span>
+<span class="sd">        ``rows`` (not ``items``) so a Jinja template's ``group.rows`` does not</span>
+<span class="sd">        collide with the dict ``.items()`` method.</span>
+<span class="sd">    """</span>
+    <span class="n">group_of</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">title</span> <span class="k">for</span> <span class="n">title</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">ATTR_GROUPS</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span>
+    <span class="p">}</span>
+    <span class="n">buckets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">title</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">title</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ATTR_GROUPS</span><span class="p">}</span>
+    <span class="n">buckets</span><span class="p">[</span><span class="n">OTHER_GROUP</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">buckets</span><span class="p">[</span><span class="n">group_of</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">OTHER_GROUP</span><span class="p">)]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="n">ordered_titles</span> <span class="o">=</span> <span class="p">[</span><span class="n">title</span> <span class="k">for</span> <span class="n">title</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ATTR_GROUPS</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">OTHER_GROUP</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span> <span class="s2">"rows"</span><span class="p">:</span> <span class="n">buckets</span><span class="p">[</span><span class="n">title</span><span class="p">]}</span>
+        <span class="k">for</span> <span class="n">title</span> <span class="ow">in</span> <span class="n">ordered_titles</span>
+        <span class="k">if</span> <span class="n">buckets</span><span class="p">[</span><span class="n">title</span><span class="p">]</span>
+    <span class="p">]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_finite</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the finite (non-NaN, non-inf) subset of *values* as a 1-D array."""</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"float64"</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span>
+
+
+<div class="viewcode-block" id="coverage_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.coverage_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">coverage_attrs</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">lats</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">lons</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">vertical_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vertical_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vertical_units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"dbar"</span><span class="p">,</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the derived ACDD coverage attributes.</span>
+
+<span class="sd">    Every value here is computed from the data, so a multi-station file states a</span>
+<span class="sd">    bounding box that brackets *all* its stations — the property the accompanying</span>
+<span class="sd">    test asserts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lats, lons : array-like</span>
+<span class="sd">        Per-profile latitudes/longitudes (NaNs ignored).</span>
+<span class="sd">    vertical_min, vertical_max : float, optional</span>
+<span class="sd">        Shallowest and deepest levels, in *vertical_units*.  Omitted when None.</span>
+<span class="sd">    vertical_units : str</span>
+<span class="sd">        Units of the vertical bounds.  ``"dbar"`` for a pressure grid (the honest</span>
+<span class="sd">        label — the profiles are gridded on pressure, not converted to metres).</span>
+<span class="sd">    times : array-like of datetime64, optional</span>
+<span class="sd">        Per-profile times; drives ``time_coverage_start/end/duration``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        ACDD ``geospatial_*`` and ``time_coverage_*`` attributes.</span>
+<span class="sd">    """</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">flat_lat</span> <span class="o">=</span> <span class="n">_finite</span><span class="p">(</span><span class="n">lats</span><span class="p">)</span>
+    <span class="n">flat_lon</span> <span class="o">=</span> <span class="n">_finite</span><span class="p">(</span><span class="n">lons</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">flat_lat</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lat_min"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flat_lat</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lat_max"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flat_lat</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lat_units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_LAT_UNITS</span>
+    <span class="k">if</span> <span class="n">flat_lon</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lon_min"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flat_lon</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lon_max"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flat_lon</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_lon_units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_LON_UNITS</span>
+
+    <span class="c1"># Guard on finiteness, not just None: an all-NaN pressure column reduces to</span>
+    <span class="c1"># NaN, and writing geospatial_vertical_max=NaN is a silently invalid bound.</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">vertical_min</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="n">vertical_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">vertical_min</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">vertical_max</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_vertical_min"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">vertical_min</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_vertical_max"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">vertical_max</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_vertical_units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">vertical_units</span>
+        <span class="c1"># Without this a min of 0 and max of 4000 is ambiguous between depth and</span>
+        <span class="c1"># height; the profiles increase downward.</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"geospatial_vertical_positive"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"down"</span>
+
+    <span class="k">if</span> <span class="n">times</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="c1"># Only a datetime64 array can carry NaT and be turned into a timestamp;</span>
+        <span class="c1"># anything else (numeric epochs, object dtype) is not a wall-clock time we</span>
+        <span class="c1"># can label safely, so it is skipped rather than mis-encoded.</span>
+        <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"M"</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnat</span><span class="p">(</span><span class="n">t</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">t0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="s2">"s"</span><span class="p">)</span>
+                <span class="n">t1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="s2">"s"</span><span class="p">)</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s2">"time_coverage_start"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"Z"</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s2">"time_coverage_end"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">t1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"Z"</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s2">"time_coverage_duration"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_iso_duration</span><span class="p">(</span><span class="n">t1</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">attrs</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_iso_duration</span><span class="p">(</span><span class="n">delta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Format a timedelta64 as an ISO-8601 duration, never truncating to ``P0D``.</span>
+
+<span class="sd">    Whole days become ``P&lt;days&gt;D``; any remainder adds a ``T&lt;h&gt;H&lt;m&gt;M&lt;s&gt;S`` time</span>
+<span class="sd">    part, down to seconds — so a six-hour survey reads ``PT6H`` and a 45-second</span>
+<span class="sd">    span reads ``PT45S`` rather than the ``P0D`` that a coarser division would</span>
+<span class="sd">    emit for a real elapsed time.  Only a genuinely zero-length span is ``P0D``.</span>
+<span class="sd">    """</span>
+    <span class="n">total_seconds</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">delta</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">))</span>
+    <span class="n">total_seconds</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">total_seconds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">days</span><span class="p">,</span> <span class="n">rem</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">total_seconds</span><span class="p">,</span> <span class="mi">86_400</span><span class="p">)</span>
+    <span class="n">hours</span><span class="p">,</span> <span class="n">rem</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">rem</span><span class="p">,</span> <span class="mi">3_600</span><span class="p">)</span>
+    <span class="n">minutes</span><span class="p">,</span> <span class="n">seconds</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">rem</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="n">date_part</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">days</span><span class="si">}</span><span class="s2">D"</span> <span class="k">if</span> <span class="n">days</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="n">time_bits</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hours</span><span class="si">}</span><span class="s2">H"</span> <span class="k">if</span> <span class="n">hours</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">minutes</span><span class="si">}</span><span class="s2">M"</span> <span class="k">if</span> <span class="n">minutes</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">seconds</span><span class="si">}</span><span class="s2">S"</span> <span class="k">if</span> <span class="n">seconds</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">time_part</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"T</span><span class="si">{</span><span class="n">time_bits</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">time_bits</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">date_part</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">time_part</span><span class="p">:</span>
+        <span class="c1"># Genuinely zero-length span.</span>
+        <span class="k">return</span> <span class="s2">"P0D"</span>
+    <span class="k">return</span> <span class="s2">"P"</span> <span class="o">+</span> <span class="n">date_part</span> <span class="o">+</span> <span class="n">time_part</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_plus_two_years</span><span class="p">(</span><span class="n">date</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *date* two calendar years later, mapping 29 Feb → 28 Feb."""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">date</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">year</span><span class="o">=</span><span class="n">date</span><span class="o">.</span><span class="n">year</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>  <span class="c1"># 29 February in a leap year</span>
+        <span class="k">return</span> <span class="n">date</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">year</span><span class="o">=</span><span class="n">date</span><span class="o">.</span><span class="n">year</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">28</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="license_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.license_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">license_attrs</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the ``license`` (and embargo companions) for a cruise.</span>
+
+<span class="sd">    An embargo is **not** a licence: a CC BY grant is irrevocable and takes effect</span>
+<span class="sd">    the instant it is written, so an embargoed file must carry a self-describing</span>
+<span class="sd">    *restriction* statement, not ``CC-BY-4.0``.  This function writes:</span>
+
+<span class="sd">    * a **moratorium** free-text ``license`` citing NERC L08 and COAR when</span>
+<span class="sd">      ``cruise_info.embargo`` is present.  The release date is</span>
+<span class="sd">      ``embargo.until`` when set, otherwise ``end_date + 2 years``.  Machine</span>
+<span class="sd">      readers also get ``date_available`` and ``access_constraint``;</span>
+<span class="sd">    * a bare CC BY statement when ``cruise_info.license`` names it and there is</span>
+<span class="sd">      no embargo;</span>
+<span class="sd">    * nothing when neither is configured — an absent ``license`` asserts nothing,</span>
+<span class="sd">      which is safer mid-cruise than a wrong claim.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        ``license`` and, under embargo, ``date_available`` / ``access_constraint``.</span>
+<span class="sd">    """</span>
+    <span class="n">embargo</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"embargo"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">embargo</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">until</span> <span class="o">=</span> <span class="n">parse_config_date</span><span class="p">(</span><span class="n">embargo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"until"</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">until</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">parse_config_date</span><span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"end_date"</span><span class="p">))</span>
+            <span class="n">until</span> <span class="o">=</span> <span class="n">_plus_two_years</span><span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="k">if</span> <span class="n">end</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">until_str</span> <span class="o">=</span> <span class="n">until</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span> <span class="k">if</span> <span class="n">until</span> <span class="k">else</span> <span class="s2">"a date to be set"</span>
+
+        <span class="n">policy</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">embargo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"policy"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"SDN:L08::MO"</span><span class="p">)</span>
+        <span class="n">policy_uri</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">embargo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"policy_uri"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="s2">"http://vocab.nerc.ac.uk/collection/L08/current/MO/"</span>
+        <span class="p">)</span>
+        <span class="n">access_rights</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">embargo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"access_rights"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"http://purl.org/coar/access_right/c_f1cf"</span>
+        <span class="p">)</span>
+        <span class="n">after</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"license_after_embargo"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"CC-BY-4.0"</span><span class="p">)</span>
+        <span class="n">contact</span> <span class="o">=</span> <span class="n">embargo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"contact"</span><span class="p">)</span>
+        <span class="n">contact_clause</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">" Contact </span><span class="si">{</span><span class="n">contact</span><span class="si">}</span><span class="s2"> for access."</span>
+            <span class="k">if</span> <span class="n">contact</span>
+            <span class="k">else</span> <span class="s2">" Contact the PI for access."</span>
+        <span class="p">)</span>
+
+        <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"license"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Embargoed until </span><span class="si">{</span><span class="n">until_str</span><span class="si">}</span><span class="s2"> (moratorium, two years after the end "</span>
+                <span class="sa">f</span><span class="s2">"of the cruise). Access restriction policy: moratorium (</span><span class="si">{</span><span class="n">policy</span><span class="si">}</span><span class="s2">, "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">policy_uri</span><span class="si">}</span><span class="s2">). Access rights: embargoed access (</span><span class="si">{</span><span class="n">access_rights</span><span class="si">}</span><span class="s2">). "</span>
+                <span class="sa">f</span><span class="s2">"Not for redistribution before that date.</span><span class="si">{</span><span class="n">contact_clause</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"On release these data will be made available under </span><span class="si">{</span><span class="n">after</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">_CC_BY_4_URL</span><span class="si">}</span><span class="s2">)."</span>
+            <span class="p">),</span>
+            <span class="s2">"access_constraint"</span><span class="p">:</span> <span class="n">policy</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">until</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"date_available"</span><span class="p">]</span> <span class="o">=</span> <span class="n">until</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">attrs</span>
+
+    <span class="n">lic</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"license"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lic</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"license"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">lic</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="p">{}</span></div>
+
+
+
+<div class="viewcode-block" id="provenance_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.provenance_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">provenance_attrs</span><span class="p">(</span><span class="n">now</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``date_created`` / ``date_modified``, a software ``history`` line,</span>
+<span class="sd">    and CF/ACDD conformance tags.</span>
+
+<span class="sd">    The ``history`` line records the software provenance — which ctdcast version</span>
+<span class="sd">    produced the file, and where to find it — so the file is traceable to its</span>
+<span class="sd">    generator (CF's audit-trail attribute).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    now : datetime, optional</span>
+<span class="sd">        Creation timestamp; defaults to the current UTC time.  Injectable so a</span>
+<span class="sd">        test can assert an exact value.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">    """</span>
+    <span class="n">stamp</span> <span class="o">=</span> <span class="p">(</span><span class="n">now</span> <span class="ow">or</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">_dt</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"date_created"</span><span class="p">:</span> <span class="n">stamp</span><span class="p">,</span>
+        <span class="s2">"date_modified"</span><span class="p">:</span> <span class="n">stamp</span><span class="p">,</span>
+        <span class="s2">"history"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stamp</span><span class="si">}</span><span class="s2">: created by ctdcast v</span><span class="si">{</span><span class="n">_CTDCAST_VERSION</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">_CTDCAST_URL</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+        <span class="s2">"Conventions"</span><span class="p">:</span> <span class="s2">"CF-1.13, ACDD-1.3"</span><span class="p">,</span>
+        <span class="s2">"featureType"</span><span class="p">:</span> <span class="s2">"profile"</span><span class="p">,</span>
+        <span class="s2">"cdm_data_type"</span><span class="p">:</span> <span class="s2">"Profile"</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="cruise_name">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.cruise_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cruise_name</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cruise identifier from config, accepting either spelling.</span>
+
+<span class="sd">    ``cruise`` is the attribute written to the file, and is the preferred config</span>
+<span class="sd">    key: for every other authored field -- ``title``, ``summary``, ``project``,</span>
+<span class="sd">    ``program`` -- the key and the attribute are the same word, and making this</span>
+<span class="sd">    one an exception is what let a ``cruise_id`` attribute leak into every file.</span>
+<span class="sd">    ``cruise_id`` stays accepted, because configs are written by hand and both</span>
+<span class="sd">    spellings are already in use.</span>
+
+<span class="sd">    One resolver rather than the precedence repeated at each of the six call</span>
+<span class="sd">    sites, so a config cannot be read one way by the compiler and another by the</span>
+<span class="sd">    report.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict or None</span>
+<span class="sd">        The ``cruise_info:`` mapping.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        The identifier, or ``None`` when neither key is set.</span>
+<span class="sd">    """</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise_id"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="cruise_global_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.cruise_global_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cruise_global_attrs</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">lats</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">lons</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vertical_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vertical_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vertical_units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"dbar"</span><span class="p">,</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">now</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Compose the full global-attribute set for a compiled cruise file.</span>
+
+<span class="sd">    Merges, in order: authored discovery fields (``title``/``summary``/``project``/</span>
+<span class="sd">    ``program``/``cruise_id``/``acknowledgement``), derived coverage bounds,</span>
+<span class="sd">    provenance/conformance tags, licence/embargo, people (creator + contributors),</span>
+<span class="sd">    and platform attributes.  The ``expocode`` is **not** here — the caller emits</span>
+<span class="sd">    it as an ``N_PROF`` coordinate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict or None</span>
+<span class="sd">        The ``cruise_info:`` mapping.  None or empty yields only derived +</span>
+<span class="sd">        provenance attributes.</span>
+<span class="sd">    lats, lons, vertical_min, vertical_max, vertical_units, times</span>
+<span class="sd">        Passed to :func:`coverage_attrs`.</span>
+<span class="sd">    source : str, optional</span>
+<span class="sd">        Product key (``"ctd"``, ``"ladcp"``).  Passed to</span>
+<span class="sd">        :func:`ctdcast.config.people.contributor_attrs`, which writes only the</span>
+<span class="sd">        roles each contributor scoped to this product (their ``roles: {all, ctd,</span>
+<span class="sd">        ladcp}`` mapping) plus their unscoped roles — so a product's own</span>
+<span class="sd">        processing personnel are credited on that file alone.</span>
+<span class="sd">    config : dict, optional</span>
+<span class="sd">        The whole cruise config.  Only used to read ``processing.profiles_dbar``</span>
+<span class="sd">        for the grid token in :func:`dataset_identity`; without it a CTD file is</span>
+<span class="sd">        identified at the 1 dbar default.</span>
+<span class="sd">    now : datetime, optional</span>
+<span class="sd">        Creation timestamp (injectable for tests).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        Ready to merge into the dataset's ``attrs``.</span>
+<span class="sd">    """</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Authored discovery fields, each written only when present.</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="s2">"summary"</span><span class="p">,</span> <span class="s2">"project"</span><span class="p">,</span> <span class="s2">"program"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ci</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+    <span class="c1"># Emitting `cruise` here, rather than only in the CTD builder, is what gives</span>
+    <span class="c1"># the LADCP product a cruise name at all: it merges per-cast attrs with</span>
+    <span class="c1"># drop_conflicts, and per-cast files carry no `cruise` attribute to survive</span>
+    <span class="c1"># that merge.</span>
+    <span class="k">if</span> <span class="n">cruise_name</span><span class="p">(</span><span class="n">ci</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cruise"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cruise_name</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"acknowledgement"</span><span class="p">):</span>
+        <span class="c1"># Collapse the YAML folded-scalar newlines into one line.</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"acknowledgement"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ci</span><span class="p">[</span><span class="s2">"acknowledgement"</span><span class="p">])</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="n">coverage_attrs</span><span class="p">(</span>
+            <span class="n">lats</span><span class="o">=</span><span class="n">lats</span><span class="p">,</span>
+            <span class="n">lons</span><span class="o">=</span><span class="n">lons</span><span class="p">,</span>
+            <span class="n">vertical_min</span><span class="o">=</span><span class="n">vertical_min</span><span class="p">,</span>
+            <span class="n">vertical_max</span><span class="o">=</span><span class="n">vertical_max</span><span class="p">,</span>
+            <span class="n">vertical_units</span><span class="o">=</span><span class="n">vertical_units</span><span class="p">,</span>
+            <span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">provenance_attrs</span><span class="p">(</span><span class="n">now</span><span class="p">))</span>
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">license_attrs</span><span class="p">(</span><span class="n">ci</span><span class="p">))</span>
+
+    <span class="c1"># Validate before writing (``ctdcast validate`` is optional, so this is the</span>
+    <span class="c1"># last line of defence).  Only a *contributor-level* error — a bad ORCID, a</span>
+    <span class="c1"># delimiter in a value, an unknown role/scope, or a bad role vocabulary — can</span>
+    <span class="c1"># corrupt the positional parallel strings, so only those omit the people</span>
+    <span class="c1"># block.  An institution or creator error does NOT: contributor_attrs skips an</span>
+    <span class="c1"># unresolved institution and still writes the contributors, so a valid PI list</span>
+    <span class="c1"># must not be dropped over an institution typo (that was the earlier bug).</span>
+    <span class="c1"># Any residual raise (e.g. a bad creator ORCID) is caught and omits, not</span>
+    <span class="c1"># crashes.  Per-product scoping is handled inside contributor_attrs via</span>
+    <span class="c1"># ``source`` (each person's ``roles: {ctd, ladcp, all}`` mapping).</span>
+    <span class="n">people_errors</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">check_contributors</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span>
+    <span class="n">contributor_fatal</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">people_errors</span> <span class="k">if</span> <span class="s2">"contributors"</span> <span class="ow">in</span> <span class="n">e</span> <span class="ow">or</span> <span class="s2">"role_vocabulary"</span> <span class="ow">in</span> <span class="n">e</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">people_errors</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">"cruise_info metadata has errors: "</span> <span class="o">+</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">people_errors</span><span class="p">),</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">contributor_fatal</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">contributor_attrs</span><span class="p">(</span><span class="n">ci</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"omitting people attributes from the compiled file: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">source</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dataset_identity</span><span class="p">(</span><span class="n">ci</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">))</span>
+
+    <span class="c1"># platform may be a slug (str) or an inline dict for a vessel not in the</span>
+    <span class="c1"># registry; platform_attrs handles both, so don't stringify it.</span>
+    <span class="n">platform</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship_slug"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">platform_attrs</span><span class="p">(</span><span class="n">platform</span><span class="p">))</span>
+
+    <span class="c1"># EXPOCODE is also emitted per-profile as an N_PROF coordinate (the composable,</span>
+    <span class="c1"># CCHDO-round-trippable form).  It is repeated here as a global for discovery:</span>
+    <span class="c1"># a ctdcast file is a single cruise, so it is constant, and both come from the</span>
+    <span class="c1"># one safe resolver below, so they cannot drift.</span>
+    <span class="n">expocode</span> <span class="o">=</span> <span class="n">cruise_expocode</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">expocode</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"expocode"</span><span class="p">]</span> <span class="o">=</span> <span class="n">expocode</span>
+
+    <span class="k">return</span> <span class="n">attrs</span></div>
+
+
+
+<span class="c1">#: OceanSITES Reference Table 4 data modes.  Single letters rather than OG1's</span>
+<span class="c1">#: spelled-out forms because OG1's own examples are inconsistent — it shows both</span>
+<span class="c1">#: ``sea008_..._delayed`` and ``sp032_..._R`` — and oceanarray already uses the</span>
+<span class="c1">#: OceanSITES letters, so one convention serves both packages.</span>
+<span class="n">DATA_MODES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"R"</span><span class="p">:</span> <span class="s2">"real-time"</span><span class="p">,</span>
+    <span class="s2">"P"</span><span class="p">:</span> <span class="s2">"provisional"</span><span class="p">,</span>
+    <span class="s2">"D"</span><span class="p">:</span> <span class="s2">"delayed-mode"</span><span class="p">,</span>
+    <span class="s2">"M"</span><span class="p">:</span> <span class="s2">"mixed"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Vertical grid of each compiled product, when it is fixed by the processing</span>
+<span class="c1">#: rather than chosen per cruise.  LADCP casts arrive on a native 10 m grid; the</span>
+<span class="c1">#: CTD bin comes from ``processing.profiles_dbar`` and so is looked up per run.</span>
+<span class="n">_FIXED_GRID</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ladcp"</span><span class="p">:</span> <span class="s2">"10m"</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="grid_token">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.grid_token">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">grid_token</span><span class="p">(</span><span class="n">product</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the vertical-grid token for a product, e.g. ``"2dbar"`` or ``"10m"``.</span>
+
+<span class="sd">    The grid belongs in the identifier because it is part of what the file *is*,</span>
+<span class="sd">    not a parameter of how it was made: regridding the same casts at 1 dbar and</span>
+<span class="sd">    at 3 dbar yields two products that a user may legitimately want to keep side</span>
+<span class="sd">    by side, and nothing else in the name would tell them apart.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    product : str</span>
+<span class="sd">        ``"ctd"`` or ``"ladcp"``.</span>
+<span class="sd">    config : dict, optional</span>
+<span class="sd">        The whole cruise config, read for ``processing.profiles_dbar``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        A token safe for an identifier field (no ``_``), or None if unknown.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">_FIXED_GRID</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_FIXED_GRID</span><span class="p">[</span><span class="n">product</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">product</span> <span class="o">==</span> <span class="s2">"ctd"</span><span class="p">:</span>
+        <span class="n">dbar</span> <span class="o">=</span> <span class="p">((</span><span class="n">config</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"processing"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"profiles_dbar"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dbar</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">dbar"</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_identity">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.dataset_identity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_identity</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">product</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Build the ACDD identity attributes for one compiled product.</span>
+
+<span class="sd">    Two identifiers, sharing a tail::</span>
+
+<span class="sd">        id                          29OD20260709_R_ctd_2dbar</span>
+<span class="sd">        internal_mission_identifier mixsed2_20260709_R_ctd_2dbar</span>
+
+<span class="sd">    ``id`` follows OG1's ``&lt;platform_serial&gt;_&lt;start_date&gt;_&lt;data_mode&gt;`` shape,</span>
+<span class="sd">    with the EXPOCODE standing in for platform-plus-date — it already *is* the</span>
+<span class="sd">    ICES ship code followed by the departure date, so repeating the date would be</span>
+<span class="sd">    redundant.  ``internal_mission_identifier`` is the institution's own name for</span>
+<span class="sd">    the cruise and carries the date explicitly, since a project short name like</span>
+<span class="sd">    ``mixsed2`` has none.  The product and grid then distinguish the files within</span>
+<span class="sd">    one cruise.</span>
+
+<span class="sd">    The leading ``&lt;expocode&gt;_ctd`` is exactly CCHDO's own file name</span>
+<span class="sd">    (``740H20200119_ctd.nc``), so a ctdcast identifier is a strict extension of</span>
+<span class="sd">    the convention ctdcast already reads.</span>
+
+<span class="sd">    ``_`` separates fields and must not occur inside one — the OceanSITES rule,</span>
+<span class="sd">    adopted so the identifier can be split back apart.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict or None</span>
+<span class="sd">        The ``cruise_info:`` mapping.  Reads ``data_mode``, ``naming_authority``</span>
+<span class="sd">        and ``internal_id``.</span>
+<span class="sd">    product : str</span>
+<span class="sd">        ``"ctd"`` or ``"ladcp"``.</span>
+<span class="sd">    config : dict, optional</span>
+<span class="sd">        The whole cruise config, for the grid lookup.</span>
+<span class="sd">    grid : str, optional</span>
+<span class="sd">        Overrides the derived grid token.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        ``id``, ``naming_authority``, ``internal_mission_identifier``,</span>
+<span class="sd">        ``data_mode`` and ``data_mode_meaning`` — only those that can be built.</span>
+<span class="sd">    """</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">mode</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_mode"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"D"</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DATA_MODES</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cruise_info.data_mode </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s2"> is not an OceanSITES data mode "</span>
+            <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">DATA_MODES</span><span class="p">)</span><span class="si">}</span><span class="s2">); using 'D'."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="s2">"D"</span>
+    <span class="n">attrs</span><span class="p">[</span><span class="s2">"data_mode"</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode</span>
+    <span class="n">attrs</span><span class="p">[</span><span class="s2">"data_mode_meaning"</span><span class="p">]</span> <span class="o">=</span> <span class="n">DATA_MODES</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span>
+
+    <span class="n">token</span> <span class="o">=</span> <span class="n">grid</span> <span class="k">if</span> <span class="n">grid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">grid_token</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+    <span class="n">tail</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode</span><span class="p">,</span> <span class="n">product</span><span class="p">]</span> <span class="o">+</span> <span class="p">([</span><span class="n">token</span><span class="p">]</span> <span class="k">if</span> <span class="n">token</span> <span class="k">else</span> <span class="p">[])</span>
+
+    <span class="c1"># A placeholder EXPOCODE is fine as an attribute -- it states what is missing</span>
+    <span class="c1"># -- but not in `id`, which ACDD ties to the file name: braces are hostile in</span>
+    <span class="c1"># a shell and an `id` that changes once the date is filled in would break the</span>
+    <span class="c1"># promise that the identifier and the file on disk do not drift.</span>
+    <span class="n">expocode</span> <span class="o">=</span> <span class="n">cruise_expocode</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">expocode</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_placeholder_expocode</span><span class="p">(</span><span class="n">expocode</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">expocode</span><span class="p">,</span> <span class="o">*</span><span class="n">tail</span><span class="p">])</span>
+
+    <span class="n">internal</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"internal_id"</span><span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"start_date"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">internal</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">internal</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_compact_date</span><span class="p">(</span><span class="n">start</span><span class="p">))</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"internal_mission_identifier"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="o">*</span><span class="n">parts</span><span class="p">,</span> <span class="o">*</span><span class="n">tail</span><span class="p">])</span>
+
+    <span class="n">authority</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"naming_authority"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">authority</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"naming_authority"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">authority</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">attrs</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_filename">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.dataset_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_filename</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">product</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``&lt;id&gt;.nc`` for a compiled product, or None when no ``id`` exists.</span>
+
+<span class="sd">    ACDD notes that the ``id`` may be the file name without its suffix, which is</span>
+<span class="sd">    what this enforces, so the file on disk and the identifier inside it cannot</span>
+<span class="sd">    drift apart.</span>
+<span class="sd">    """</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="n">dataset_identity</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">ident</span> <span class="o">=</span> <span class="n">identity</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ident</span><span class="si">}</span><span class="s2">.nc"</span> <span class="k">if</span> <span class="n">ident</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compact_date</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``YYYYMMDD`` for a date, datetime or ISO-ish string."""</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y%m</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"-"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)[:</span><span class="mi">8</span><span class="p">]</span>
+
+
+<span class="c1">#: Stand-ins for the two halves of an EXPOCODE when config cannot supply them.</span>
+<span class="c1">#: Braces are not legal in an EXPOCODE (it is ICES code + ``YYYYMMDD``, both</span>
+<span class="c1">#: alphanumeric), so a placeholder can never be mistaken for a real code by a</span>
+<span class="c1">#: reader or a regex — the same reasoning as ``UNKCRUISE`` in</span>
+<span class="c1">#: :mod:`ctdcast.config.parameters`: conspicuous beats plausible.</span>
+<span class="c1">#: [Contract — a file carrying one of these is provisional. Do not publish it.]</span>
+<span class="n">EXPOCODE_PLACEHOLDER_ICES</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{ICES}</span><span class="s2">"</span>
+<span class="n">EXPOCODE_PLACEHOLDER_DATE</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{YYYYMMDD}</span><span class="s2">"</span>
+
+
+<div class="viewcode-block" id="is_placeholder_expocode">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.is_placeholder_expocode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_placeholder_expocode</span><span class="p">(</span><span class="n">expocode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True when *expocode* carries a placeholder for a missing config value."""</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">expocode</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"{"</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">expocode</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="cruise_expocode">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.cruise_expocode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cruise_expocode</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cruise EXPOCODE, with placeholders for what config omits.</span>
+
+<span class="sd">    A *present* but unusable slug (ambiguous, no ICES code, or a forbidden code)</span>
+<span class="sd">    is a config error that :func:`ctdcast.config.platforms.derive_expocode` raises</span>
+<span class="sd">    on — but at build time a wrong EXPOCODE is worse than none and a hard crash</span>
+<span class="sd">    mid-pipeline is worse still, so here it is downgraded to a loud warning and</span>
+<span class="sd">    ``None``.  The resolver keeps its strict raising contract for direct callers;</span>
+<span class="sd">    this is the lenient wrapper the file builders use.</span>
+
+<span class="sd">    A *missing* ``platform``/``ship_slug`` or ``start_date`` is different: the</span>
+<span class="sd">    cruise is mid-processing and has simply not settled that value yet.  Returning</span>
+<span class="sd">    ``None`` there meant the compiled file carried no cruise identifier at all,</span>
+<span class="sd">    and — because the departure date appears nowhere else (see the CCHDO</span>
+<span class="sd">    exemplar, which encodes it only inside the EXPOCODE) — the fact was lost</span>
+<span class="sd">    rather than merely deferred.  So the shape is kept and the missing half is</span>
+<span class="sd">    filled with a conspicuous placeholder::</span>
+
+<span class="sd">        29OD{YYYYMMDD}      departure date not yet set</span>
+<span class="sd">        {ICES}20260709      ship not yet resolved to an ICES code</span>
+
+<span class="sd">    With *neither* half given there is nothing to defer — no cruise is being</span>
+<span class="sd">    described — so that returns ``None`` as before rather than a placeholder on</span>
+<span class="sd">    every profile.</span>
+
+<span class="sd">    The file can therefore be generated and read, and states plainly which fact</span>
+<span class="sd">    is absent.  Callers that must not see a placeholder — the filename builder</span>
+<span class="sd">    above all — test with :func:`is_placeholder_expocode`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict or None</span>
+<span class="sd">        The ``cruise_info:`` mapping.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        The EXPOCODE, possibly containing placeholders; ``None`` only when the</span>
+<span class="sd">        slug is present but unusable.</span>
+<span class="sd">    """</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">platform</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"platform"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ship_slug"</span><span class="p">)</span>
+    <span class="n">start_date</span> <span class="o">=</span> <span class="n">ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"start_date"</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">platform</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">start_date</span><span class="p">:</span>
+        <span class="c1"># Nothing to defer.  A placeholder marks a value the config has started</span>
+        <span class="c1"># to specify and not yet settled; with neither half given there is no</span>
+        <span class="c1"># cruise being described, and `{ICES}{YYYYMMDD}` would be noise on every</span>
+        <span class="c1"># profile rather than a statement about anything.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">platform</span> <span class="ow">and</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">expocode_from_cruise_info</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span>
+        <span class="c1"># One half is absent: build the shape by hand rather than asking the</span>
+        <span class="c1"># resolver, which correctly refuses an incomplete config.</span>
+        <span class="k">if</span> <span class="n">platform</span><span class="p">:</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">expocode_from_cruise_info</span><span class="p">({</span><span class="o">**</span><span class="n">ci</span><span class="p">,</span> <span class="s2">"start_date"</span><span class="p">:</span> <span class="s2">"1900-01-01"</span><span class="p">})</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">"19000101"</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">EXPOCODE_PLACEHOLDER_ICES</span>
+    <span class="k">except</span> <span class="n">PlatformError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cannot derive EXPOCODE; omitting it from the compiled file: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">tail</span> <span class="o">=</span> <span class="n">_compact_date</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span> <span class="k">if</span> <span class="n">start_date</span> <span class="k">else</span> <span class="n">EXPOCODE_PLACEHOLDER_DATE</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">n</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"platform"</span><span class="p">,</span> <span class="n">platform</span><span class="p">),</span> <span class="p">(</span><span class="s2">"start_date"</span><span class="p">,</span> <span class="n">start_date</span><span class="p">))</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span>
+    <span class="p">]</span>
+    <span class="n">placeholder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}{</span><span class="n">tail</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"cruise_info.</span><span class="si">{</span><span class="s1">' and '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> not set; writing the placeholder "</span>
+        <span class="sa">f</span><span class="s2">"EXPOCODE </span><span class="si">{</span><span class="n">placeholder</span><span class="si">!r}</span><span class="s2"> so the file can still be built. It is not a "</span>
+        <span class="sa">f</span><span class="s2">"valid EXPOCODE — do not publish this file, and the compiled product "</span>
+        <span class="sa">f</span><span class="s2">"keeps its fallback name rather than being named after it."</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">placeholder</span></div>
+
+
+
+<div class="viewcode-block" id="expocode_coordinate">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.global_attrs.expocode_coordinate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">expocode_coordinate</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n_profiles</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the ``(dims, data, attrs)`` triple for the ``expocode`` coordinate.</span>
+
+<span class="sd">    CCHDO stores the EXPOCODE per profile (a file may hold more than one cruise),</span>
+<span class="sd">    so both compiled builders emit it as an ``N_PROF`` variable.  This is the one</span>
+<span class="sd">    place that builds it, so the CTD and LADCP files describe it identically.</span>
+<span class="sd">    Returns ``None`` when no EXPOCODE can be derived.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict or None</span>
+<span class="sd">        The ``cruise_info:`` mapping.</span>
+<span class="sd">    n_profiles : int</span>
+<span class="sd">        Length of the ``N_PROF`` dimension to broadcast the constant value over.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple or None</span>
+<span class="sd">        ``(["N_PROF"], data, attrs)`` ready to assign to a variable, or ``None``.</span>
+<span class="sd">    """</span>
+    <span class="n">expocode</span> <span class="o">=</span> <span class="n">cruise_expocode</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">expocode</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">expocode</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_profiles</span><span class="p">),</span>
+        <span class="p">{</span>
+            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Expedition code (ICES ship code + departure date)"</span><span class="p">,</span>
+            <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"Derived as &lt;ICES platform code&gt;&lt;YYYYMMDD departure&gt;; "</span>
+                <span class="s2">"CCHDO/GO-SHIP EXPOCODE convention."</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,617 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.analysis.derive &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.analysis.derive</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.analysis.derive</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Derived physical quantities computed from raw CTD measurements.</span>
+
+<span class="sd">All functions use GSW — the same library oceanographers use directly.</span>
+
+<span class="sd">Per-cast (1-D, dim=time) functions</span>
+<span class="sd">------------------------------------</span>
+<span class="sd">derive_salinity   SP from conductivity/temperature/pressure</span>
+<span class="sd">derive_SA         Absolute Salinity from SP/pressure/lat/lon</span>
+<span class="sd">derive_CT         Conservative Temperature from SA/in-situ-T/pressure</span>
+<span class="sd">derive_sigma0     Potential density anomaly from SA/CT</span>
+<span class="sd">derive_AOU        Apparent Oxygen Utilization from oxygen_saturation (% sat)</span>
+<span class="sd">derive_teos10     Convenience: SA + CT + sigma0 + optional O2 unit conversion</span>
+
+<span class="sd">Profiles (2-D, dims N_PROF × pressure) functions</span>
+<span class="sd">--------------------------------------------------</span>
+<span class="sd">derive_teos10_profiles   SA + CT + sigma0 for compiled profiles datasets</span>
+
+<span class="sd">Output variable names match the VARIABLES registry in</span>
+<span class="sd">``ctdcast.config.parameters``: ``absolute_salinity``,</span>
+<span class="sd">``conservative_temperature``, ``sigma0``.</span>
+
+<span class="sd">Variable resolution</span>
+<span class="sd">-------------------</span>
+<span class="sd">Functions accept both the canonical CCHDO names (``ctd_temperature``,</span>
+<span class="sd">``ctd_salinity``, ``ctd_oxygen``) and the suffixed dual-sensor names</span>
+<span class="sd">(``ctd_temperature_1``, ``ctd_salinity_1``, ``ctd_oxygen_1``).  Old</span>
+<span class="sd">pre-rename names (``temperature_1``, ``salinity_1``, ``oxygen_1``)</span>
+<span class="sd">are accepted for backward compatibility with NC files written before</span>
+<span class="sd">the stage1-normalise rename.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gsw</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Variable-resolution helpers</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Preferred order for temperature: plain (single-sensor or stage3-promoted),</span>
+<span class="c1">#: then primary suffix, then secondary suffix, then old pre-rename name.</span>
+<span class="n">_TEMP_CANDIDATES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd_temperature"</span><span class="p">,</span> <span class="s2">"ctd_temperature_1"</span><span class="p">,</span> <span class="s2">"temperature_1"</span><span class="p">)</span>
+<span class="n">_SAL_CANDIDATES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"ctd_salinity_1"</span><span class="p">,</span> <span class="s2">"salinity_1"</span><span class="p">)</span>
+<span class="n">_OXY_CANDIDATES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd_oxygen"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_1"</span><span class="p">,</span> <span class="s2">"oxygen_1"</span><span class="p">)</span>
+<span class="n">_OXSAT_CANDIDATES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"oxygen_saturation"</span><span class="p">,</span> <span class="s2">"oxsat_1"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="n">candidates</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the first variable name in *candidates* present in *ds*, else None."""</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># SP from C/T/P</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="derive_salinity">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_salinity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_salinity</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Re-compute practical salinity from conductivity, temperature, pressure.</span>
+
+<span class="sd">    Uses ``gsw.SP_from_C``, which expects conductivity in mS/cm.  Stored</span>
+<span class="sd">    conductivity is mS/cm since stage1; a file still carrying S/m (``units``</span>
+<span class="sd">    not mS/cm) is converted by ×10.  Call this after any conductivity</span>
+<span class="sd">    calibration so that salinity reflects the calibrated conductivity.</span>
+
+<span class="sd">    Does nothing if ``conductivity_1`` or any temperature variable is absent.</span>
+
+<span class="sd">    Writes output to ``ctd_salinity_1`` / ``ctd_salinity_2`` (CCHDO canonical</span>
+<span class="sd">    names).  Records the conversion method in the variable's attrs.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time) containing at minimum ``conductivity_1``,</span>
+<span class="sd">        a temperature variable, and ``pressure`` in their expected units</span>
+<span class="sd">        (conductivity in mS/cm, temperature in °C ITS-90, pressure in dbar).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with updated ``ctd_salinity_1`` (and ``ctd_salinity_2`` when</span>
+<span class="sd">        ``conductivity_2`` is present); input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">temp_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_TEMP_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"conductivity_1"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">or</span> <span class="n">temp_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">temp_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># On single-sensor casts _normalise promotes ctd_salinity_1 → ctd_salinity;</span>
+    <span class="c1"># write to whichever name is live in ds so the promoted plain name is kept current.</span>
+    <span class="n">_sal1_out</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"ctd_salinity_1"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"ctd_salinity_1"</span>
+    <span class="n">pairs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="n">_sal1_out</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"conductivity_2"</span><span class="p">,</span> <span class="s2">"ctd_salinity_2"</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">c_var</span><span class="p">,</span> <span class="n">s_out</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">c_var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">c_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="c1"># gsw.SP_from_C wants conductivity in mS/cm.  Stored conductivity is</span>
+        <span class="c1"># mS/cm since stage1; convert only when a file still carries S/m.</span>
+        <span class="n">_cu</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">c_var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">" "</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="n">c_ms_cm</span> <span class="o">=</span> <span class="n">c</span> <span class="k">if</span> <span class="n">_cu</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"mscm-1"</span><span class="p">,</span> <span class="s2">"ms/cm"</span><span class="p">)</span> <span class="k">else</span> <span class="n">c</span> <span class="o">*</span> <span class="mf">10.0</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+            <span class="n">sp</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SP_from_C</span><span class="p">(</span><span class="n">c_ms_cm</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="n">existing_attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">s_out</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span> <span class="k">if</span> <span class="n">s_out</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="n">existing_attrs</span><span class="p">[</span><span class="s2">"derived_from"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">c_var</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">temp_var</span><span class="si">}</span><span class="s2">, pressure via gsw.SP_from_C"</span>
+        <span class="p">)</span>
+        <span class="n">existing_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">"1"</span><span class="p">)</span>
+        <span class="n">existing_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">,</span> <span class="s2">"sea_water_practical_salinity"</span><span class="p">)</span>
+        <span class="n">existing_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"reference_scale"</span><span class="p">,</span> <span class="s2">"PSS-78"</span><span class="p">)</span>
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">s_out</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">sp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+            <span class="n">attrs</span><span class="o">=</span><span class="n">existing_attrs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># TEOS-10 per-cast (1-D)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="derive_SA">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_SA">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_SA</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with Absolute Salinity (SA) added.</span>
+
+<span class="sd">    Uses ``gsw.SA_from_SP`` with the first available salinity variable</span>
+<span class="sd">    (``ctd_salinity``, ``ctd_salinity_1``, or ``salinity_1``), ``pressure``</span>
+<span class="sd">    (dbar), and the cast's median latitude/longitude.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time) with a salinity variable, ``pressure``,</span>
+<span class="sd">        ``latitude``, ``longitude``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with ``ds["absolute_salinity"]`` added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">sal_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_SAL_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sal_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">sal_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="n">sa</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SA_from_SP</span><span class="p">(</span><span class="n">sp</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Absolute Salinity"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"g kg-1"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<div class="viewcode-block" id="derive_CT">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_CT">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_CT</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with Conservative Temperature (CT) added.</span>
+
+<span class="sd">    Requires ``ds["absolute_salinity"]`` to already be present (call</span>
+<span class="sd">    :func:`derive_SA` first).  Uses ``gsw.CT_from_t`` with the first available</span>
+<span class="sd">    temperature variable (``ctd_temperature``, ``ctd_temperature_1``, or</span>
+<span class="sd">    ``temperature_1``) and ``pressure``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time) with ``absolute_salinity``, a temperature</span>
+<span class="sd">        variable, and ``pressure``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with ``ds["conservative_temperature"]`` added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">temp_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_TEMP_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">temp_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="k">if</span> <span class="s2">"absolute_salinity"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sa</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">temp_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">CT_from_t</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">ct</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Conservative Temperature"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<div class="viewcode-block" id="derive_sigma0">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_sigma0">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_sigma0</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with potential density anomaly (sigma0) added.</span>
+
+<span class="sd">    Requires ``ds["absolute_salinity"]`` and ``ds["conservative_temperature"]`` to already be present.</span>
+<span class="sd">    Uses ``gsw.sigma0``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time) with ``absolute_salinity`` and ``conservative_temperature``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with ``ds["sigma0"]`` added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sa</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">ct</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="n">sig0</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">sigma0</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">)</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"sigma0"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">sig0</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Potential density anomaly"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"kg m-3"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<div class="viewcode-block" id="derive_teos10">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_teos10">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_teos10</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with SA, CT, sigma0 added (1-D per-cast Dataset, dim=time).</span>
+
+<span class="sd">    Convenience function that calls :func:`derive_SA` → :func:`derive_CT` →</span>
+<span class="sd">    :func:`derive_sigma0` in order.  Also derives ``oxygen_saturation`` (% sat)</span>
+<span class="sd">    from the first available oxygen variable (``ctd_oxygen``, ``ctd_oxygen_1``,</span>
+<span class="sd">    or ``oxygen_1``) when that variable carries molar units.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time) with a salinity variable, a temperature</span>
+<span class="sd">        variable, ``pressure``, ``latitude``, ``longitude``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with SA, CT, sigma0 added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">derive_SA</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">derive_CT</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">derive_sigma0</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">oxy_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_OXY_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">oxy_var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxy_var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="n">u_lower</span> <span class="o">=</span> <span class="n">units</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">"umol"</span> <span class="ow">in</span> <span class="n">u_lower</span> <span class="ow">or</span> <span class="s2">"µmol"</span> <span class="ow">in</span> <span class="n">u_lower</span><span class="p">:</span>
+            <span class="n">sa</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">ct</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+            <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">_derive_oxsat_from_oxygen</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">oxy_var</span><span class="p">,</span> <span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">"%"</span> <span class="ow">in</span> <span class="n">u_lower</span> <span class="ow">or</span> <span class="s2">"sat"</span> <span class="ow">in</span> <span class="n">u_lower</span> <span class="ow">or</span> <span class="s2">"percent"</span> <span class="ow">in</span> <span class="n">u_lower</span><span class="p">:</span>
+            <span class="c1"># Pre-rename NC files stored % saturation under "oxygen_1".</span>
+            <span class="c1"># Rename to the canonical oxygen_saturation name.</span>
+            <span class="k">if</span> <span class="n">oxy_var</span> <span class="o">!=</span> <span class="s2">"oxygen_saturation"</span><span class="p">:</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">oxy_var</span><span class="p">:</span> <span class="s2">"oxygen_saturation"</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">oxy_var</span><span class="si">!r}</span><span class="s2"> has unrecognised units </span><span class="si">{</span><span class="n">units</span><span class="si">!r}</span><span class="s2">; "</span>
+                <span class="s2">"oxygen_saturation not derived. "</span>
+                <span class="s2">"Expected 'umol', 'µmol', '%', 'sat', or 'percent'."</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># TEOS-10 profiles (2-D, dims N_PROF × pressure)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="derive_teos10_profiles">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_teos10_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_teos10_profiles</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with SA, CT, sigma0 added (2-D profiles Dataset).</span>
+
+<span class="sd">    Expects ``pressure`` as a 1-D coordinate and a temperature variable,</span>
+<span class="sd">    a salinity variable, ``latitude``, ``longitude`` with dims ``(N_PROF,)``</span>
+<span class="sd">    or ``(N_PROF, pressure)``.  Returns *ds* unchanged if SA, CT, and sigma0</span>
+<span class="sd">    are already present.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Profiles Dataset (dims N_PROF × pressure).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with SA, CT, sigma0 added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="s2">"conservative_temperature"</span> <span class="ow">in</span> <span class="n">ds</span>
+        <span class="ow">and</span> <span class="s2">"absolute_salinity"</span> <span class="ow">in</span> <span class="n">ds</span>
+        <span class="ow">and</span> <span class="s2">"sigma0"</span> <span class="ow">in</span> <span class="n">ds</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">temp_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_TEMP_CANDIDATES</span><span class="p">)</span>
+    <span class="n">sal_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_SAL_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">temp_var</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sal_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (N_P,)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">temp_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">sal_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (N_PROF,)</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (N_PROF,)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="n">sa</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SA_from_SP</span><span class="p">(</span>
+            <span class="n">sp</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">lon</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">lat</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">CT_from_t</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span>
+        <span class="n">sig0</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">sigma0</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">)</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">temp_var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Absolute Salinity"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"g kg-1"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">ct</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Conservative Temperature"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"sigma0"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">sig0</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Potential density anomaly"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"kg m-3"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># AOU</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="derive_AOU">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.derive.derive_AOU">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_AOU</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *ds* with AOU added as 100 - oxygen_saturation (O₂ saturation deficit, % sat).</span>
+
+<span class="sd">    Note: this is a saturation-deficit proxy, not the traditional AOU in</span>
+<span class="sd">    µmol/kg, because it uses ``oxygen_saturation`` (% saturation) rather than</span>
+<span class="sd">    dissolved O₂ in µmol/kg.</span>
+
+<span class="sd">    Returns *ds* unchanged if no oxygen saturation variable is present or</span>
+<span class="sd">    ``AOU`` already exists.  Accepts ``oxygen_saturation`` (canonical) or</span>
+<span class="sd">    ``oxsat_1`` (pre-rename name).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Dataset (any dimensionality) with ``oxygen_saturation`` or ``oxsat_1``</span>
+<span class="sd">        in % saturation.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset with ``AOU`` added; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">oxsat_var</span> <span class="o">=</span> <span class="n">_resolve_var</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">*</span><span class="n">_OXSAT_CANDIDATES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"AOU"</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">or</span> <span class="n">oxsat_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxsat_var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"AOU"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="p">(</span><span class="mf">100.0</span> <span class="o">-</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxsat_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"O₂ saturation deficit"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"</span><span class="si">% s</span><span class="s2">at"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Private helper</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_derive_oxsat_from_oxygen</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">oxy_var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">sa</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">ct</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">p</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Derive ``oxygen_saturation`` (% sat) from an oxygen variable in molar units.</span>
+
+<span class="sd">    Adds ``oxygen_saturation`` to *ds*; leaves *oxy_var* unchanged.  Does</span>
+<span class="sd">    nothing if *oxy_var* units do not indicate a molar concentration.  Records</span>
+<span class="sd">    the conversion method in ``oxygen_saturation`` attributes for provenance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Dataset containing *oxy_var* in molar units; must already have SA/CT</span>
+<span class="sd">        computed (i.e. call after :func:`derive_SA` / :func:`derive_CT`).</span>
+<span class="sd">    oxy_var:</span>
+<span class="sd">        Name of the oxygen variable in molar units (e.g. ``"ctd_oxygen"``).</span>
+<span class="sd">    sa, ct, p:</span>
+<span class="sd">        Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar)</span>
+<span class="sd">        arrays matching the *oxy_var* dimension.</span>
+<span class="sd">    lat, lon:</span>
+<span class="sd">        Representative cast latitude and longitude for ``gsw.O2sol``.</span>
+<span class="sd">    """</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxy_var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">units</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">u_lower</span> <span class="o">=</span> <span class="n">units</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">"umol"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">u_lower</span> <span class="ow">and</span> <span class="s2">"µmol"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">u_lower</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span>
+
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+        <span class="n">o2_sat_umol_kg</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">O2sol</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+
+    <span class="n">measured</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxy_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">"/l"</span> <span class="ow">in</span> <span class="n">u_lower</span> <span class="ow">or</span> <span class="s2">"l-1"</span> <span class="ow">in</span> <span class="n">u_lower</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">"gsw"</span><span class="p">)</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">rho</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>  <span class="c1"># kg/m³</span>
+        <span class="n">o2_sat_umol_l</span> <span class="o">=</span> <span class="n">o2_sat_umol_kg</span> <span class="o">*</span> <span class="n">rho</span> <span class="o">/</span> <span class="mf">1000.0</span>
+        <span class="n">pct_sat</span> <span class="o">=</span> <span class="n">measured</span> <span class="o">/</span> <span class="n">o2_sat_umol_l</span> <span class="o">*</span> <span class="mf">100.0</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"derived from </span><span class="si">{</span><span class="n">oxy_var</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">units</span><span class="si">}</span><span class="s2">) via gsw.O2sol + gsw.rho"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pct_sat</span> <span class="o">=</span> <span class="n">measured</span> <span class="o">/</span> <span class="n">o2_sat_umol_kg</span> <span class="o">*</span> <span class="mf">100.0</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"derived from </span><span class="si">{</span><span class="n">oxy_var</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">units</span><span class="si">}</span><span class="s2">) via gsw.O2sol"</span>
+
+    <span class="n">new_attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"</span><span class="si">% s</span><span class="s2">aturation"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"O₂ saturation"</span><span class="p">,</span>
+        <span class="s2">"source_units"</span><span class="p">:</span> <span class="n">units</span><span class="p">,</span>
+        <span class="s2">"oxygen_conversion"</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">oxy_var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ds</span><span class="p">[</span><span class="s2">"oxygen_saturation"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">pct_sat</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="n">new_attrs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About the demo report &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="CLI reference" href="cli_reference.html" />
+    <link rel="prev" title="Quickstart guide" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">About the demo report</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#config-files">Config files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#regenerating-the-demo">Regenerating the demo</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">About the demo report</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/demo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="about-the-demo-report">
+<span id="demo"></span><h1>About the demo report<a class="headerlink" href="#about-the-demo-report" title="Link to this heading"></a></h1>
+<p>The pages below are generated from the four committed fixture casts (cruise <strong>odb26</strong>, ship <em>Odon de Buen</em>, North Atlantic July 2026) using the same pipeline you would run on your own data.
+They cover: two casts on a short transect (casts 011–012, section “KO”) and two casts at a repeat station (casts 128–129, timeseries “Triangle”), all with LADCP.</p>
+<p><strong>Run it yourself</strong> — after installing ctdcast, generate the same report locally:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>run<span class="w"> </span>config_demo.yaml
+</pre></div>
+</div>
+<p>Output is written to <code class="docutils literal notranslate"><span class="pre">demo_report/</span></code> in the repo root.
+To open it: find <code class="docutils literal notranslate"><span class="pre">demo_report/index.html</span></code> in your file manager and double-click it,
+or from the terminal:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">open</span> <span class="n">demo_report</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>          <span class="c1"># macOS</span>
+<span class="n">xdg</span><span class="o">-</span><span class="nb">open</span> <span class="n">demo_report</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>      <span class="c1"># Linux</span>
+<span class="n">start</span> <span class="n">demo_report</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>         <span class="c1"># Windows</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference external" href="_static/demo/index.html">Summary (index)</a></p></td>
+<td><p>Front page — cruise map, cast count, navigation to all sections</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="_static/demo/casts.html">Cast index</a></p></td>
+<td><p>Sortable table of all casts with position, depth, and time</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="_static/demo/casts/cast_011.html">Cast 011</a></p></td>
+<td><p>Station page — CT/SA/σ₀ profiles, T–S diagram, LADCP, altimeter</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="_static/demo/casts/cast_128.html">Cast 128</a></p></td>
+<td><p>Deeper cast (686 dbar)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="_static/demo/sections/section_KO.html">Section KO</a></p></td>
+<td><p>Two-cast transect section (CT, SA, σ₀, O₂)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="_static/demo/timeseries/timeseries_Triangle.html">Timeseries Triangle</a></p></td>
+<td><p>Repeat-station time series (CT, SA, σ₀, O₂, fluorescence, turbidity)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="_static/demo/leaflet.html">Interactive map</a></p></td>
+<td><p>Leaflet map with cast markers and GEBCO bathymetry contours</p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<section id="config-files">
+<h2>Config files<a class="headerlink" href="#config-files" title="Link to this heading"></a></h2>
+<p>The two YAML files used to generate this demo are available to download and adapt:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/ocean-uhh/ctdcast/blob/main/config_demo.yaml">config_demo.yaml</a> — top-level config (paths, cruise info, which pages to build); also at the repo root</p></li>
+<li><p><a class="reference external" href="_static/ctd_sections_demo.yaml">ctd_sections_demo.yaml</a> — section and timeseries definitions</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="regenerating-the-demo">
+<h2>Regenerating the demo<a class="headerlink" href="#regenerating-the-demo" title="Link to this heading"></a></h2>
+<p>To rebuild the demo HTML from scratch (e.g. after changing the templates or mplstyle):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">make_demo</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>The script reads fixture data from <code class="docutils literal notranslate"><span class="pre">tests/fixtures/</span></code>, builds a <code class="docutils literal notranslate"><span class="pre">profiles_demo.nc</span></code>,
+and writes all HTML to <code class="docutils literal notranslate"><span class="pre">docs/source/_static/demo/</span></code>.
+Commit the result so the docs work without re-running the script.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quickstart guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cli_reference.html" class="btn btn-neutral float-right" title="CLI reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,558 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.stage2 &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.stage2</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.stage2</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Stage 2 — trim.</span>
+
+<span class="sd">Downcast/upcast splitting and soak / back-on-deck detection.  This is processing,</span>
+<span class="sd">not analysis: it decides which scans belong to the real cast.</span>
+
+<span class="sd">``apply_stage2()`` is the pipeline entry point: it sets QARTOD flag 4 on soak</span>
+<span class="sd">and post-recovery deck records and records the parameters used in</span>
+<span class="sd">``ds.attrs["history"]``.  ``find_soak_end`` and ``find_cast_end`` are kept public</span>
+<span class="sd">because ``reports._cast`` calls them directly for report-time plot trimming (that</span>
+<span class="sd">coupling will be removed in a later phase when reports read flags from the files).</span>
+
+<span class="sd">The turnaround convention (last pressure within 2 dbar of the maximum) and the</span>
+<span class="sd">soak/deck algorithms are deliberate — see the individual docstrings.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">_qc_attrs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">group_by_cast</span><span class="p">,</span>
+    <span class="n">is_up_to_date</span><span class="p">,</span>
+    <span class="n">matches_tags</span><span class="p">,</span>
+    <span class="n">parse_stage</span><span class="p">,</span>
+    <span class="n">stage_path</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.netcdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">write</span> <span class="k">as</span> <span class="n">_write_nc</span>
+
+<span class="c1"># _SKIP_STAGE2_QC: variables that are coordinates or administrative — not physical</span>
+<span class="c1"># measurements, so they do not get a _qc flag from stage2.</span>
+<span class="n">_SKIP_STAGE2_QC</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">"pressure"</span><span class="p">,</span> <span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"longitude"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">,</span> <span class="s2">"timeJ"</span><span class="p">,</span> <span class="s2">"timeS"</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Keyword arguments accepted by apply_stage2(); others in **kw are dropped.</span>
+<span class="n">_STAGE2_KWARGS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">"near_surface_dbar"</span><span class="p">,</span>
+        <span class="s2">"search_seconds"</span><span class="p">,</span>
+        <span class="s2">"deck_window_seconds"</span><span class="p">,</span>
+        <span class="s2">"margin_dbar"</span><span class="p">,</span>
+        <span class="s2">"max_deck_dbar"</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="apply_stage2">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage2.apply_stage2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_stage2</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">near_surface_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">search_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+    <span class="n">deck_window_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+    <span class="n">margin_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">max_deck_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply QARTOD flag 4 to soak and post-recovery deck records.</span>
+
+<span class="sd">    Creates ``{var}_qc`` arrays (int8, flag 1=pass) for each physical data</span>
+<span class="sd">    variable, then sets flag 4 (fail) on the pre-descent soak window and</span>
+<span class="sd">    the post-recovery on-deck window.  Records the parameters used in</span>
+<span class="sd">    ``ds.attrs["history"]`` so the treatment is reproducible from the output</span>
+<span class="sd">    file alone.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Per-cast Dataset (dim=time).</span>
+<span class="sd">    near_surface_dbar:</span>
+<span class="sd">        Passed to ``find_soak_end`` — pressure threshold for last near-surface</span>
+<span class="sd">        crossing before the real descent.</span>
+<span class="sd">    search_seconds:</span>
+<span class="sd">        Passed to ``find_soak_end`` — backward-crawl window width.</span>
+<span class="sd">    deck_window_seconds:</span>
+<span class="sd">        Passed to ``find_cast_end`` — tail window for on-deck reference pressure.</span>
+<span class="sd">    margin_dbar:</span>
+<span class="sd">        Passed to ``find_cast_end`` — added to on-deck median to form the cut.</span>
+<span class="sd">    max_deck_dbar:</span>
+<span class="sd">        Passed to ``find_cast_end`` — if on-deck median exceeds this, no trim.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xr.Dataset</span>
+<span class="sd">        New Dataset; input is not mutated.</span>
+<span class="sd">    """</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span>
+
+    <span class="n">i_soak</span> <span class="o">=</span> <span class="n">find_soak_end</span><span class="p">(</span>
+        <span class="n">pressure</span><span class="p">,</span>
+        <span class="n">times</span><span class="p">,</span>
+        <span class="n">near_surface_dbar</span><span class="o">=</span><span class="n">near_surface_dbar</span><span class="p">,</span>
+        <span class="n">search_seconds</span><span class="o">=</span><span class="n">search_seconds</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">i_deck</span> <span class="o">=</span> <span class="n">find_cast_end</span><span class="p">(</span>
+        <span class="n">pressure</span><span class="p">,</span>
+        <span class="n">times</span><span class="p">,</span>
+        <span class="n">deck_window_seconds</span><span class="o">=</span><span class="n">deck_window_seconds</span><span class="p">,</span>
+        <span class="n">margin_dbar</span><span class="o">=</span><span class="n">margin_dbar</span><span class="p">,</span>
+        <span class="n">max_deck_dbar</span><span class="o">=</span><span class="n">max_deck_dbar</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">_SKIP_STAGE2_QC</span> <span class="ow">or</span> <span class="n">var</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">qc_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">_qc"</span>
+        <span class="k">if</span> <span class="n">qc_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">sname</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span>
+                <span class="n">attrs</span><span class="o">=</span><span class="n">_qc_attrs</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">sname</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="n">qc</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">i_soak</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">qc</span><span class="p">[:</span><span class="n">i_soak</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i_deck</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">qc</span><span class="p">[</span><span class="n">i_deck</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span> <span class="n">attrs</span><span class="o">=</span><span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+
+    <span class="n">stamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"near_surface_dbar=</span><span class="si">{</span><span class="n">near_surface_dbar</span><span class="si">}</span><span class="s2">, search_seconds=</span><span class="si">{</span><span class="n">search_seconds</span><span class="si">}</span><span class="s2">, "</span>
+        <span class="sa">f</span><span class="s2">"deck_window_seconds=</span><span class="si">{</span><span class="n">deck_window_seconds</span><span class="si">}</span><span class="s2">, margin_dbar=</span><span class="si">{</span><span class="n">margin_dbar</span><span class="si">}</span><span class="s2">, "</span>
+        <span class="sa">f</span><span class="s2">"max_deck_dbar=</span><span class="si">{</span><span class="n">max_deck_dbar</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+    <span class="n">entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stamp</span><span class="si">}</span><span class="s2"> ctdcast apply_stage2: soak_end_idx=</span><span class="si">{</span><span class="n">i_soak</span><span class="si">}</span><span class="s2">, deck_start_idx=</span><span class="si">{</span><span class="n">i_deck</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">prev</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"history"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">entry</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<div class="viewcode-block" id="split_cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage2.split_cast">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_cast</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Split *ds* (individual cast file, dim=time) into (downcast, upcast).</span>
+
+<span class="sd">    Uses the turnaround convention: last index where pressure is within 2 dbar</span>
+<span class="sd">    of its maximum.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">p_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+    <span class="n">near</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">p</span> <span class="o">&gt;=</span> <span class="n">p_max</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">i_turn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">near</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">near</span><span class="p">)</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i_turn</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">i_turn</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="find_soak_end">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage2.find_soak_end">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_soak_end</span><span class="p">(</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">near_surface_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">search_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the index at which the real downcast begins (exclusive end of soak).</span>
+
+<span class="sd">    Algorithm (three steps):</span>
+
+<span class="sd">    1. Find ``i_max``, the index of the global pressure maximum (deepest point</span>
+<span class="sd">       of the cast).  Searching only in ``pressure[0:i_max+1]`` keeps the</span>
+<span class="sd">       upcast recovery — when the CTD returns to the surface at the end of the</span>
+<span class="sd">       cast — from being confused with the pre-soak position.</span>
+<span class="sd">    2. Within ``pressure[0:i_max+1]``, find the **last** index where</span>
+<span class="sd">       ``pressure &lt; near_surface_dbar``.  For a typical MSM-style cast this</span>
+<span class="sd">       falls on the early real descent, just as the CTD passes</span>
+<span class="sd">       ``near_surface_dbar`` going downward.</span>
+<span class="sd">    3. Crawl **backward** from that index within ``search_seconds`` to find the</span>
+<span class="sd">       **minimum pressure** — the shallowest point (closest to the surface) just</span>
+<span class="sd">       before the real descent began.  Return the index immediately after that</span>
+<span class="sd">       minimum as the start of the real downcast.</span>
+
+<span class="sd">    In bad-weather conditions where the CTD soaks at depth and is never raised</span>
+<span class="sd">    back to the surface, step 3 finds the minimum within the soak window and</span>
+<span class="sd">    removes only the first ``search_seconds`` of the soak.  The operator-</span>
+<span class="sd">    visible effect is a truncation of the pre-soak data, not a clean removal.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure:</span>
+<span class="sd">        Pressure array in dbar (1-D, same length as *times*).</span>
+<span class="sd">    times:</span>
+<span class="sd">        Time coordinate array.  May be ``numpy.datetime64`` or numeric seconds;</span>
+<span class="sd">        elapsed time is computed relative to ``times[0]``.</span>
+<span class="sd">    near_surface_dbar:</span>
+<span class="sd">        Pressure threshold used to find the last near-surface crossing before</span>
+<span class="sd">        the main descent.  Default is 10 dbar (≈10 m), safely below the</span>
+<span class="sd">        typical soak depth of 8–10 m.</span>
+<span class="sd">    search_seconds:</span>
+<span class="sd">        Width of the backward-crawl window (seconds) used to find the</span>
+<span class="sd">        pre-descent surface minimum.  Default is 20 s.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Index of the first record to keep; slice with</span>
+<span class="sd">        ``ds.isel(time=slice(idx, None))``.  Returns 0 if the cast never</span>
+<span class="sd">        reaches below ``near_surface_dbar`` (no trim applied).</span>
+
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="n">p_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">times_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">times_arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">):</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="n">times_arr</span> <span class="o">-</span> <span class="n">times_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">times_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">times_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Step 1: deepest point (also limits search to downcast only)</span>
+    <span class="n">i_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmax</span><span class="p">(</span><span class="n">p_arr</span><span class="p">))</span>
+
+    <span class="c1"># Step 2: last near-surface crossing before the deepest point</span>
+    <span class="n">pre_max_mask</span> <span class="o">=</span> <span class="n">p_arr</span><span class="p">[:</span> <span class="n">i_max</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">near_surface_dbar</span>
+    <span class="n">near_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">pre_max_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">near_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>  <span class="c1"># cast never came within near_surface_dbar of the surface</span>
+
+    <span class="n">i_last_near</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">near_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># Step 3: within search_seconds before i_last_near, find the pressure minimum</span>
+    <span class="n">t_last</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">elapsed</span><span class="p">[</span><span class="n">i_last_near</span><span class="p">])</span>
+    <span class="n">i_win_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">t_last</span> <span class="o">-</span> <span class="n">search_seconds</span><span class="p">))</span>
+    <span class="n">i_win_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i_win_start</span><span class="p">)</span>
+    <span class="n">window_p</span> <span class="o">=</span> <span class="n">p_arr</span><span class="p">[</span><span class="n">i_win_start</span> <span class="p">:</span> <span class="n">i_last_near</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">window_p</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">i_last_near</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="n">i_min_local</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">window_p</span><span class="p">))</span>
+    <span class="n">i_min</span> <span class="o">=</span> <span class="n">i_win_start</span> <span class="o">+</span> <span class="n">i_min_local</span>
+
+    <span class="k">return</span> <span class="n">i_min</span> <span class="o">+</span> <span class="mi">1</span></div>
+
+
+
+<div class="viewcode-block" id="find_cast_end">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage2.find_cast_end">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_cast_end</span><span class="p">(</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">deck_window_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+    <span class="n">margin_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">max_deck_dbar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the exclusive end index, trimming post-recovery deck records.</span>
+
+<span class="sd">    Algorithm:</span>
+
+<span class="sd">    1. Take the median pressure of the last *deck_window_seconds* seconds as</span>
+<span class="sd">       the on-deck reference pressure.  Using a median handles sensor offset</span>
+<span class="sd">       (the pressure sensor may not read exactly 0 dbar when the CTD is in</span>
+<span class="sd">       the air) and is robust to brief oscillations on deck.</span>
+<span class="sd">    2. Find the **first** index after the pressure maximum where pressure falls</span>
+<span class="sd">       at or below ``p_deck_median + margin_dbar``.  Trim from that index</span>
+<span class="sd">       onward.</span>
+
+<span class="sd">    Returns ``len(pressure)`` (no trim) if:</span>
+
+<span class="sd">    - the record is empty or the CTD never returned near the surface</span>
+<span class="sd">      (``p_deck_median &gt; max_deck_dbar``), or</span>
+<span class="sd">    - pressure never drops to the threshold on the upcast.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure:</span>
+<span class="sd">        Pressure array in dbar.</span>
+<span class="sd">    times:</span>
+<span class="sd">        Time coordinate array (``numpy.datetime64`` or numeric seconds).</span>
+<span class="sd">    deck_window_seconds:</span>
+<span class="sd">        Duration of the tail window used to estimate on-deck pressure.</span>
+<span class="sd">    margin_dbar:</span>
+<span class="sd">        Added to the on-deck median to form the cut threshold.</span>
+<span class="sd">    max_deck_dbar:</span>
+<span class="sd">        If the on-deck median exceeds this value the CTD is considered not to</span>
+<span class="sd">        have returned to the surface and no trim is applied.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Exclusive end index; slice with ``ds.isel(time=slice(None, idx))``.</span>
+
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">n</span>
+
+    <span class="n">p_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">times_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">times_arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">):</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="n">times_arr</span> <span class="o">-</span> <span class="n">times_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">times_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">times_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">i_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmax</span><span class="p">(</span><span class="n">p_arr</span><span class="p">))</span>
+
+    <span class="c1"># On-deck reference: median of final deck_window_seconds.</span>
+    <span class="n">t_end</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">elapsed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">i_win_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">elapsed</span><span class="p">,</span> <span class="n">t_end</span> <span class="o">-</span> <span class="n">deck_window_seconds</span><span class="p">))</span>
+    <span class="n">i_win_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i_max</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i_win_start</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i_win_start</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">n</span>
+
+    <span class="n">p_deck</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">p_arr</span><span class="p">[</span><span class="n">i_win_start</span><span class="p">:]))</span>
+    <span class="k">if</span> <span class="n">p_deck</span> <span class="o">&gt;</span> <span class="n">max_deck_dbar</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">n</span>
+
+    <span class="n">threshold</span> <span class="o">=</span> <span class="n">p_deck</span> <span class="o">+</span> <span class="n">margin_dbar</span>
+
+    <span class="n">upcast</span> <span class="o">=</span> <span class="n">p_arr</span><span class="p">[</span><span class="n">i_max</span><span class="p">:]</span>
+    <span class="n">below</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">upcast</span> <span class="o">&lt;=</span> <span class="n">threshold</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">below</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">n</span>
+
+    <span class="k">return</span> <span class="n">i_max</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">below</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="run">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage2.run">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply stage 2 (soak/deck flagging) across the casts under *root*.</span>
+
+<span class="sd">    Reads each cast's **stage-1** file, applies :func:`apply_stage2`, and writes a</span>
+<span class="sd">    new ``stage2/&lt;stem&gt;_stage2.nc`` — never in place, so stage 1 stays frozen and</span>
+<span class="sd">    the run is re-runnable.  Reads are strict: a cast with no stage-1 file is</span>
+<span class="sd">    skipped with a warning, not silently promoted from a lower rung.  Called by</span>
+<span class="sd">    :func:`ctdcast.processors.process` with ``stage=2``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root:</span>
+<span class="sd">        The CTD stage root (``ctd_root``).  Stage files live under</span>
+<span class="sd">        ``root/stage1/`` … ``root/stage2/``; an old flat ``nc_dir`` is read as</span>
+<span class="sd">        stage 1 via the compatibility shim in</span>
+<span class="sd">        :mod:`ctdcast.processors.stage_layout`.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Rewrite the stage-2 file even when it already exists.  Without ``force``,</span>
+<span class="sd">        a cast whose ``stage2/&lt;stem&gt;_stage2.nc`` exists is skipped.</span>
+<span class="sd">    dry_run:</span>
+<span class="sd">        Print what would be processed without writing any output.</span>
+<span class="sd">    cast_tags:</span>
+<span class="sd">        If given, process only casts selected by these zero-padded tags</span>
+<span class="sd">        (e.g. ``{"042"}``), matched on the parsed cast identity.</span>
+<span class="sd">    **kw:</span>
+<span class="sd">        Tuning forwarded to :func:`apply_stage2` (e.g. ``near_surface_dbar``);</span>
+<span class="sd">        keys it does not accept are ignored.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Number of stage-2 files written (0 for dry_run).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    FileNotFoundError</span>
+<span class="sd">        If *root* does not exist or is not a directory.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"stage root not found: </span><span class="si">{</span><span class="n">root</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">stage2_kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_STAGE2_KWARGS</span><span class="p">}</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">n_skipped</span> <span class="o">=</span> <span class="n">n_failed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">cast_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">groups</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cast_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">matches_tags</span><span class="p">(</span><span class="n">cast_id</span><span class="p">,</span> <span class="n">cast_tags</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">input_path</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">cast_id</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># strict: stage 2 reads stage 1</span>
+        <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">num</span><span class="p">,</span> <span class="n">suffix</span> <span class="o">=</span> <span class="n">cast_id</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  skip (no stage 1): cast </span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">n_skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_stage</span><span class="p">(</span><span class="n">input_path</span><span class="p">)</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="n">parsed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">parsed</span> <span class="k">else</span> <span class="n">input_path</span><span class="o">.</span><span class="n">stem</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">stage_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">stem</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="n">is_up_to_date</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">[</span><span class="n">input_path</span><span class="p">]):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  skip (up to date): </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">n_skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  [dry-run] stage 2 would flag: </span><span class="si">{</span><span class="n">input_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+            <span class="n">ds_out</span> <span class="o">=</span> <span class="n">apply_stage2</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="o">**</span><span class="n">stage2_kw</span><span class="p">)</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># prevent double-close in finally; file released before write</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_write_nc</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ok: </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  FAILED: </span><span class="si">{</span><span class="n">input_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">n_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> written"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_skipped</span><span class="si">}</span><span class="s2"> skipped"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">n_failed</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_failed</span><span class="si">}</span><span class="s2"> FAILED"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"stage 2: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

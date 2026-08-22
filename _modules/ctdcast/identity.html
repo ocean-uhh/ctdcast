@@ -1,0 +1,279 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.identity &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.identity</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.identity</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Cast identity: cast-number parsing, expansion, and compact formatting.</span>
+
+<span class="sd">Single home for the cast-identity operations shared across the package:</span>
+<span class="sd">parse a cast number and letter suffix from a filename (:func:`cast_id_from_name`),</span>
+<span class="sd">expand a ``cast_numbers`` config spec to order-preserving pairs or ints</span>
+<span class="sd">(:func:`expand_cast_ids` / :func:`expand_cast_numbers`), format a single cast id as</span>
+<span class="sd">a zero-padded string (:func:`format_cast_id`), and format a list of cast numbers</span>
+<span class="sd">compactly with collapsed ranges (:func:`compact_cast_list`).</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">CAST_TAG_WIDTH</span>
+
+<span class="n">_CAST_ID_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_(\d{3,})([a-z]*)(?=_|$)"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_plain_int</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True for a real int, excluding bool (which subclasses int)."""</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="format_cast_id">
+<a class="viewcode-back" href="../../api.html#ctdcast.identity.format_cast_id">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Format a cast identity as a zero-padded id string, e.g. ``(10, "b") -&gt; "010b"``.</span>
+
+<span class="sd">    The single formatter for the ``NNN``/``NNNb`` convention used in output</span>
+<span class="sd">    filenames (``cast_010b.html``), page labels, and cast pills.  Changing the</span>
+<span class="sd">    pad width or suffix rule here changes it everywhere.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cast_num</span><span class="si">:</span><span class="s2">0</span><span class="si">{</span><span class="n">CAST_TAG_WIDTH</span><span class="si">}</span><span class="s2">d</span><span class="si">}{</span><span class="n">cast_suffix</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<div class="viewcode-block" id="cast_id_from_name">
+<a class="viewcode-back" href="../../api.html#ctdcast.identity.cast_id_from_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cast_id_from_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Extract ``(cast_num, cast_suffix)`` from a cast filename stem.</span>
+
+<span class="sd">    Uses the last 3+-digit group in the stem as the cast number, so cruise or</span>
+<span class="sd">    leg numbers earlier in the name (e.g. the ``142`` in</span>
+<span class="sd">    ``msm_142_1_001_1sec``) are not mistaken for the cast number.  Letter</span>
+<span class="sd">    suffixes are recognised whether directly appended (``mixsed2_004b``) or</span>
+<span class="sd">    underscore-separated (``mixsed2_004_b``).  Returns ``None`` when no 3+-digit</span>
+<span class="sd">    group is present.</span>
+
+<span class="sd">    A per-cast file may carry a stage suffix (``_stage1`` … ``_stage3``; see</span>
+<span class="sd">    :mod:`ctdcast.processors.stage_layout`).  It is stripped first, so a lettered</span>
+<span class="sd">    cast like ``mixsed2_029_b_stage1`` parses to ``(29, "b")`` — otherwise the</span>
+<span class="sd">    trailing ``_stage1`` defeats the end-anchored letter-suffix match below and</span>
+<span class="sd">    the cast collapses to ``(29, "")``, colliding with plain cast 29.</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_stage\d+$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">matches</span> <span class="o">=</span> <span class="n">_CAST_ID_RE</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">matches</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">cast_num_str</span><span class="p">,</span> <span class="n">cast_suffix</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cast_suffix</span><span class="p">:</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">rf</span><span class="s2">"_</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">cast_num_str</span><span class="p">)</span><span class="si">}</span><span class="s2">_([a-z]+)$"</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+            <span class="n">cast_suffix</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">cast_num_str</span><span class="p">),</span> <span class="n">cast_suffix</span></div>
+
+
+
+<span class="n">_CAST_TOKEN_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"(\d+)([a-z]*)"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_cast_token</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Parse one ``cast_numbers`` entry to a list of ``(number, suffix)`` pairs.</span>
+
+<span class="sd">    An int or a ``"NNN"`` string is a plain cast (empty suffix); a ``"NNNb"``</span>
+<span class="sd">    string names a lettered sibling event; a two-element ``[first, last]`` list</span>
+<span class="sd">    expands to plain casts only.  Raises ``ValueError`` on anything else.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">_is_plain_int</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="n">item</span><span class="p">,</span> <span class="s2">""</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">_CAST_TOKEN_RE</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Invalid cast_numbers entry </span><span class="si">{</span><span class="n">item</span><span class="si">!r}</span><span class="s2">: expected e.g. '10' or '10b'."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))]</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">_is_plain_int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="n">n</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"Invalid cast_numbers entry </span><span class="si">{</span><span class="n">item</span><span class="si">!r}</span><span class="s2">: expected an int, a 'NNN'/'NNNb' "</span>
+        <span class="s2">"string, or a two-element [first, last] list of ints."</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="expand_cast_ids">
+<a class="viewcode-back" href="../../api.html#ctdcast.identity.expand_cast_ids">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">expand_cast_ids</span><span class="p">(</span><span class="n">cast_numbers</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Expand a ``cast_numbers`` spec to ``(number, suffix)`` pairs, preserving order.</span>
+
+<span class="sd">    A plain cast `NNN` and its lettered sibling `NNNb` are distinct events, so</span>
+<span class="sd">    identity is the pair, not the bare number.  A bare int or range names plain</span>
+<span class="sd">    events only (suffix ``""``); a `"NNNb"` string names the lettered event.</span>
+<span class="sd">    Input order is preserved and duplicates are kept — section ordering relies on</span>
+<span class="sd">    the author's given order, so sorting and de-duplication are not applied.</span>
+
+<span class="sd">    Raises ``ValueError`` on a malformed entry, so a bad config fails loudly</span>
+<span class="sd">    rather than silently dropping or coercing casts.</span>
+<span class="sd">    """</span>
+    <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cast_numbers</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_parse_cast_token</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="expand_cast_numbers">
+<a class="viewcode-back" href="../../api.html#ctdcast.identity.expand_cast_numbers">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">expand_cast_numbers</span><span class="p">(</span><span class="n">cast_numbers</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Expand a ``cast_numbers`` spec to a flat list of station numbers, in order.</span>
+
+<span class="sd">    The integer view of :func:`expand_cast_ids` — the letter suffix is dropped,</span>
+<span class="sd">    so a `"10b"` entry contributes station ``10``.  Use this where callers key on</span>
+<span class="sd">    the integer station (LADCP files, map positions, membership); use</span>
+<span class="sd">    :func:`expand_cast_ids` where a plain cast must be distinguished from its</span>
+<span class="sd">    lettered sibling (section and timeseries profile selection).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">num</span> <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">_suffix</span> <span class="ow">in</span> <span class="n">expand_cast_ids</span><span class="p">(</span><span class="n">cast_numbers</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="compact_cast_list">
+<a class="viewcode-back" href="../../api.html#ctdcast.identity.compact_cast_list">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compact_cast_list</span><span class="p">(</span><span class="n">nums</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Format a cast number list compactly, collapsing consecutive runs into ranges.</span>
+
+<span class="sd">    Example: [131, 133, 134, 136, 163] → "131, 133–134, 136, 163".</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nums</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"—"</span>
+    <span class="n">nums</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">nums</span><span class="p">))</span>
+    <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">end</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="n">end</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">–</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">end</span> <span class="o">=</span> <span class="n">n</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="n">end</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">–</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

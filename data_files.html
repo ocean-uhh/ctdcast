@@ -1,0 +1,271 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data files (netCDF) &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Report output" href="report_output.html" />
+    <link rel="prev" title="ctd_sections.yaml" href="ctd_sections.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data files (netCDF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#per-cast-files-nc-dir">Per-cast files (<code class="docutils literal notranslate"><span class="pre">nc_dir</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#profiles-file-profiles-nc">Profiles file (<code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensor-provenance">Sensor provenance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Data files (netCDF)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/data_files.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="data-files-netcdf">
+<span id="data-files"></span><h1>Data files (netCDF)<a class="headerlink" href="#data-files-netcdf" title="Link to this heading"></a></h1>
+<section id="per-cast-files-nc-dir">
+<h2>Per-cast files (<code class="docutils literal notranslate"><span class="pre">nc_dir</span></code>)<a class="headerlink" href="#per-cast-files-nc-dir" title="Link to this heading"></a></h2>
+<p>Each file covers one CTD cast.  The required dimension and variables are:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code> (dim)</p></td>
+<td><p>Time coordinate (1-D, one value per scan).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pressure</span></code></p></td>
+<td><p>Sea pressure in dbar.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_2</span></code></p></td>
+<td><p>In-situ temperature in °C (ITS-90). Plain name for single-sensor instruments; <code class="docutils literal notranslate"><span class="pre">_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code> suffix for dual-sensor rigs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_salinity</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_2</span></code></p></td>
+<td><p>Practical salinity (PSU).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_oxygen</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_2</span></code></p></td>
+<td><p>Dissolved oxygen in µmol kg⁻¹.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_fluor</span></code></p></td>
+<td><p>Fluorescence in µg L⁻¹ (chlorophyll-a equivalent).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_turbidity</span></code></p></td>
+<td><p>Turbidity in NTU.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_altimeter</span></code></p></td>
+<td><p>Altimeter distance to seafloor in m.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">conductivity_1</span></code> / <code class="docutils literal notranslate"><span class="pre">conductivity_2</span></code></p></td>
+<td><p>Electrical conductivity in mS cm⁻¹ (no CCHDO equivalent; keeps <code class="docutils literal notranslate"><span class="pre">_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code> suffix always).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transmissometer</span></code></p></td>
+<td><p>Beam transmittance in % (WET Labs C-Star; no CCHDO equivalent).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">par</span></code></p></td>
+<td><p>Photosynthetically active radiation in µmol photons m⁻² s⁻¹ (Biospherical/Licor/Chelsea).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">spar</span></code></p></td>
+<td><p>Surface PAR in µmol photons m⁻² s⁻¹ (deck-mounted reference sensor).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">volt{N}_raw</span></code></p></td>
+<td><p>Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. <code class="docutils literal notranslate"><span class="pre">N</span></code> is the zero-based voltage channel index.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Global attributes used: <code class="docutils literal notranslate"><span class="pre">raw_filename</span></code>, <code class="docutils literal notranslate"><span class="pre">cruise</span></code>.</p>
+</section>
+<section id="profiles-file-profiles-nc">
+<h2>Profiles file (<code class="docutils literal notranslate"><span class="pre">profiles_nc</span></code>)<a class="headerlink" href="#profiles-file-profiles-nc" title="Link to this heading"></a></h2>
+<p>Compiled on a 1 dbar pressure grid, dimensions <code class="docutils literal notranslate"><span class="pre">N_PROF</span> <span class="pre">×</span> <span class="pre">pressure</span></code>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cast_number</span></code></p></td>
+<td><p>Integer cast number.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cast_direction</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;down&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;up&quot;</span></code> (<code class="docutils literal notranslate"><span class="pre">cast_type</span></code> is a deprecated alias for the same values).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">latitude</span></code></p></td>
+<td><p>Latitude in decimal degrees north.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">longitude</span></code></p></td>
+<td><p>Longitude in decimal degrees east.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time_start</span></code></p></td>
+<td><p>Start time of the cast (datetime64).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time_end</span></code></p></td>
+<td><p>End time of the cast (datetime64).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code></p></td>
+<td><p>In-situ temperature on the 1 dbar grid.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_salinity</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_1</span></code></p></td>
+<td><p>Practical salinity on the 1 dbar grid.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_oxygen</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_1</span></code></p></td>
+<td><p>Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sensor-provenance">
+<h2>Sensor provenance<a class="headerlink" href="#sensor-provenance" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> also records which physical sensor produced each measurement,
+using three families of variables. The capitalisation and the <code class="docutils literal notranslate"><span class="pre">_channel_</span></code>
+infix are meaningful — keep them distinct:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;</span></code> — upper-case, dimensionless</dt><dd><p>One variable per <strong>distinct physical device</strong> used anywhere in the cruise,
+e.g. <code class="docutils literal notranslate"><span class="pre">SENSOR_TEMPERATURE_5806</span></code> or <code class="docutils literal notranslate"><span class="pre">SENSOR_FLUOROMETER_FLNTURTD_3219</span></code>. It
+holds no data; all provenance is in its attributes (<code class="docutils literal notranslate"><span class="pre">sensor_model</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sensor_serial_number</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_calibration_date</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_maker</span></code>, the
+L05/L22/L35 vocabulary URIs, and <code class="docutils literal notranslate"><span class="pre">model_source</span></code>). The serial identifies the
+device, so a cell used as both primary and secondary of one type is a single
+entry; <code class="docutils literal notranslate"><span class="pre">sensor_shared_with</span></code> cross-links one device serving two roles (e.g. a
+combined FLNTU as both fluorometer and turbidity).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sensor_&lt;role&gt;</span></code> — lower-case, dimension <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code></dt><dd><p>Per profile, a <strong>string</strong> naming the <code class="docutils literal notranslate"><span class="pre">SENSOR_*</span></code> variable that filled each
+role — e.g. <code class="docutils literal notranslate"><span class="pre">sensor_temperature_1</span></code> may be <code class="docutils literal notranslate"><span class="pre">&quot;SENSOR_TEMPERATURE_5806&quot;</span></code> on
+early casts and <code class="docutils literal notranslate"><span class="pre">&quot;SENSOR_TEMPERATURE_4823&quot;</span></code> after a swap. This answers
+“which sensor’s calibration applies to this cast?”; diffing it down the casts
+gives the sensor-change log.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sensor_channel_&lt;role&gt;</span></code> — lower-case, dimension <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code></dt><dd><p>Per profile, the <strong>integer</strong> raw acquisition channel that role’s sensor was
+wired into (<code class="docutils literal notranslate"><span class="pre">-1</span></code> where unused). A change here while <code class="docutils literal notranslate"><span class="pre">sensor_&lt;role&gt;</span></code> holds
+constant is a re-cabling, not a hardware swap.</p>
+</dd>
+</dl>
+<p>Roles use ctdcast’s canonical names: <code class="docutils literal notranslate"><span class="pre">temperature_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">conductivity_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">oxygen_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">fluorometer</span></code>,
+<code class="docutils literal notranslate"><span class="pre">turbidity</span></code>, <code class="docutils literal notranslate"><span class="pre">transmissometer</span></code>, <code class="docutils literal notranslate"><span class="pre">ph</span></code>, <code class="docutils literal notranslate"><span class="pre">altimeter</span></code>. The universal
+SensorID → model table ships in <code class="docutils literal notranslate"><span class="pre">ctdcast/config/sbe_sensors.yaml</span></code>; per-cruise
+refinements come from the <code class="docutils literal notranslate"><span class="pre">sensors:</span></code> block in <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> (see above). The
+<code class="docutils literal notranslate"><span class="pre">SBE</span> <span class="pre">sensors</span></code> report page presents all of this as configuration, inventory and
+rewiring tables.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ctd_sections.html" class="btn btn-neutral float-left" title="ctd_sections.yaml" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="report_output.html" class="btn btn-neutral float-right" title="Report output" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

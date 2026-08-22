@@ -1,0 +1,1207 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.people &mdash; ctdcast v0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fa47ad08"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_sections.html">ctd_sections.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.people</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.people</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Contributors and institutions: config → validated records → netCDF attributes.</span>
+
+<span class="sd">The conventions store people as **parallel delimited strings aligned by</span>
+<span class="sd">position** — ``contributor_name``, ``contributor_email``, ``contributor_role``</span>
+<span class="sd">and ``contributor_id`` are separate attributes whose *n*-th elements describe the</span>
+<span class="sd">same person.  That representation has two silent failure modes, and this module</span>
+<span class="sd">exists to make both impossible:</span>
+
+<span class="sd">* **A delimiter inside a value.**  OG1 specifies comma-separated,</span>
+<span class="sd">  OceanSITES semicolon-separated.  Comma is unsafe — ``"A. Sanchez Franks, NOC"``</span>
+<span class="sd">  is a real string from a CCHDO header, and splitting it yields two people.</span>
+<span class="sd">  ctdcast writes **semicolon**-separated (per OceanSITES) and refuses any</span>
+<span class="sd">  person-level value containing ``;`` or ``,``, so the output survives a reader</span>
+<span class="sd">  that assumes either.</span>
+
+<span class="sd">  Institution names are the exception and are checked for ``;`` only: EDMO's</span>
+<span class="sd">  official names contain commas unavoidably — *"University of Hamburg,</span>
+<span class="sd">  Institute of Oceanography"* — which is itself the demonstration that comma</span>
+<span class="sd">  cannot serve as the delimiter for ``contributing_institutions``.</span>
+<span class="sd">* **Lists of unequal length.**  Four names and three emails parses cleanly and</span>
+<span class="sd">  attributes the wrong address to the wrong person.  The strings are generated</span>
+<span class="sd">  from one structured list here, so they cannot drift.</span>
+
+<span class="sd">Note the direction of travel.  ``amocatlas.contributors`` *parses* delimited</span>
+<span class="sd">strings out of other people's files and is deliberately lenient — it splits on</span>
+<span class="sd">both delimiters and warns heuristically.  ctdcast *writes* its own files and</span>
+<span class="sd">controls the delimiter, so it can be strict instead, which is the stronger</span>
+<span class="sd">guarantee.</span>
+
+<span class="sd">Roles come from **NERC C89** (BODC data/cruise roles) — the vocabulary that fits a</span>
+<span class="sd">research-cruise dataset (``Cruise principal scientist``, ``Project principal</span>
+<span class="sd">investigator``, ``Project collaborator``, …).  It is the only NVS collection</span>
+<span class="sd">with cruise-scoped terms, and so the only one able to record a chief scientist —</span>
+<span class="sd">``PS``, whose definition explicitly allows the role to be shared.  A role may be given in config as its full</span>
+<span class="sd">prefLabel or its short C89 code (``PS``, ``PI``, ``CO``); it is normalised to the</span>
+<span class="sd">prefLabel on write, and ``contributor_role_vocabulary`` names C89.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+<span class="c1">#: Separator written between entries in the parallel attribute strings.</span>
+<span class="c1">#: OceanSITES mandates ``;``; OG1 says ``,``.  Semicolon is the safe choice</span>
+<span class="c1">#: because personal names and "Name, Institution" strings contain commas.</span>
+<span class="n">SEPARATOR</span> <span class="o">=</span> <span class="s2">"; "</span>
+
+<span class="c1">#: Characters that may never appear inside a field value, because a reader</span>
+<span class="c1">#: assuming either convention's delimiter would mis-split the string.</span>
+<span class="n">FORBIDDEN_IN_VALUE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">";"</span><span class="p">,</span> <span class="s2">","</span><span class="p">)</span>
+
+<span class="c1">#: The role vocabularies ctdcast can author in, keyed by short name.  Each maps</span>
+<span class="c1">#: concept id → prefLabel, and each ``uri`` is what goes into</span>
+<span class="c1">#: ``contributor_role_vocabulary``.</span>
+<span class="c1">#:</span>
+<span class="c1">#: These are alternatives to CHOOSE BETWEEN, never things to convert between.</span>
+<span class="c1">#: A mapping from one to another is necessarily lossy — C89 distinguishes the</span>
+<span class="c1">#: chief scientist from the funded PI, G04 cannot — and a converted file</span>
+<span class="c1">#: has no way to record that the detail was dropped.  So ctdcast validates and</span>
+<span class="c1">#: writes in whichever vocabulary the config declares, and does not translate.</span>
+<span class="c1">#: A consumer needing a different vocabulary can map it themselves, knowing</span>
+<span class="c1">#: their own tolerance for the loss; that judgement is not ours to make.</span>
+<span class="n">ROLE_VOCABULARIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># BODC dataset roles.  The default: the only NVS collection with</span>
+    <span class="c1"># cruise-scoped terms, and the only one able to say "chief scientist".</span>
+    <span class="s2">"C89"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"https://vocab.nerc.ac.uk/collection/C89/current/"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"BODC dataset roles"</span><span class="p">,</span>
+        <span class="s2">"terms"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="c1"># --- cruise-scoped ---</span>
+            <span class="s2">"PS"</span><span class="p">:</span> <span class="s2">"Cruise principal scientist"</span><span class="p">,</span>  <span class="c1"># the chief scientist</span>
+            <span class="s2">"DI"</span><span class="p">:</span> <span class="s2">"Cruise dataset principal investigator"</span><span class="p">,</span>  <span class="c1"># owns one data subset</span>
+            <span class="s2">"MC"</span><span class="p">:</span> <span class="s2">"Cruise data manager"</span><span class="p">,</span>
+            <span class="s2">"TC"</span><span class="p">:</span> <span class="s2">"Cruise technical contact"</span><span class="p">,</span>
+            <span class="s2">"TS"</span><span class="p">:</span> <span class="s2">"Cruise technician"</span><span class="p">,</span>
+            <span class="s2">"CP"</span><span class="p">:</span> <span class="s2">"Cruise participant"</span><span class="p">,</span>
+            <span class="c1"># --- project-scoped ---</span>
+            <span class="s2">"PI"</span><span class="p">:</span> <span class="s2">"Project principal investigator"</span><span class="p">,</span>
+            <span class="s2">"CI"</span><span class="p">:</span> <span class="s2">"Project co-investigator"</span><span class="p">,</span>
+            <span class="s2">"CO"</span><span class="p">:</span> <span class="s2">"Project collaborator"</span><span class="p">,</span>
+            <span class="s2">"DP"</span><span class="p">:</span> <span class="s2">"Project dataset principal investigator"</span><span class="p">,</span>
+            <span class="s2">"MP"</span><span class="p">:</span> <span class="s2">"Project data manager"</span><span class="p">,</span>
+            <span class="s2">"PM"</span><span class="p">:</span> <span class="s2">"Project manager"</span><span class="p">,</span>
+            <span class="s2">"PA"</span><span class="p">:</span> <span class="s2">"Project administrator"</span><span class="p">,</span>
+            <span class="s2">"PD"</span><span class="p">:</span> <span class="s2">"Project research assistant"</span><span class="p">,</span>
+            <span class="s2">"PG"</span><span class="p">:</span> <span class="s2">"Project research student"</span><span class="p">,</span>
+            <span class="s2">"RA"</span><span class="p">:</span> <span class="s2">"Project technician"</span><span class="p">,</span>
+            <span class="c1"># --- unscoped ---</span>
+            <span class="s2">"DM"</span><span class="p">:</span> <span class="s2">"Data manager"</span><span class="p">,</span>
+            <span class="s2">"DC"</span><span class="p">:</span> <span class="s2">"Dataset supply contact"</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="c1"># ISO 19115-1 CI_RoleCode.  What the IOOS Metadata Profile expects, and what</span>
+    <span class="c1"># SeaDataNet CSR records actually carry.  Choose this when a compliance</span>
+    <span class="c1"># checker requires it, accepting that a chief scientist can only be called</span>
+    <span class="c1"># ``principalInvestigator``.</span>
+    <span class="s2">"G04"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"https://vocab.nerc.ac.uk/collection/G04/current/"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"ISO 19115 CI_RoleCode"</span><span class="p">,</span>
+        <span class="s2">"terms"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"001"</span><span class="p">:</span> <span class="s2">"resourceProvider"</span><span class="p">,</span>
+            <span class="s2">"002"</span><span class="p">:</span> <span class="s2">"custodian"</span><span class="p">,</span>
+            <span class="s2">"003"</span><span class="p">:</span> <span class="s2">"owner"</span><span class="p">,</span>
+            <span class="s2">"004"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
+            <span class="s2">"005"</span><span class="p">:</span> <span class="s2">"distributor"</span><span class="p">,</span>
+            <span class="s2">"006"</span><span class="p">:</span> <span class="s2">"originator"</span><span class="p">,</span>
+            <span class="s2">"007"</span><span class="p">:</span> <span class="s2">"pointOfContact"</span><span class="p">,</span>
+            <span class="s2">"008"</span><span class="p">:</span> <span class="s2">"principalInvestigator"</span><span class="p">,</span>
+            <span class="s2">"009"</span><span class="p">:</span> <span class="s2">"processor"</span><span class="p">,</span>
+            <span class="s2">"010"</span><span class="p">:</span> <span class="s2">"publisher"</span><span class="p">,</span>
+            <span class="s2">"011"</span><span class="p">:</span> <span class="s2">"author"</span><span class="p">,</span>
+            <span class="s2">"012"</span><span class="p">:</span> <span class="s2">"sponsor"</span><span class="p">,</span>
+            <span class="s2">"013"</span><span class="p">:</span> <span class="s2">"coAuthor"</span><span class="p">,</span>
+            <span class="s2">"014"</span><span class="p">:</span> <span class="s2">"collaborator"</span><span class="p">,</span>
+            <span class="s2">"015"</span><span class="p">:</span> <span class="s2">"editor"</span><span class="p">,</span>
+            <span class="s2">"016"</span><span class="p">:</span> <span class="s2">"mediator"</span><span class="p">,</span>
+            <span class="s2">"017"</span><span class="p">:</span> <span class="s2">"rightsHolder"</span><span class="p">,</span>
+            <span class="s2">"018"</span><span class="p">:</span> <span class="s2">"contributor"</span><span class="p">,</span>
+            <span class="s2">"019"</span><span class="p">:</span> <span class="s2">"funder"</span><span class="p">,</span>
+            <span class="s2">"020"</span><span class="p">:</span> <span class="s2">"stakeholder"</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1">#: Used when ``cruise_info.role_vocabulary`` is absent.</span>
+<span class="n">DEFAULT_ROLE_VOCABULARY</span> <span class="o">=</span> <span class="s2">"C89"</span>
+
+<span class="c1">#: Roles that denote responsibility for the science or the data, per vocabulary.</span>
+<span class="c1">#: Only used to decide whether the "nobody is leading this" warning fires.</span>
+<span class="n">_LEAD_ROLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"C89"</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"PS"</span><span class="p">,</span> <span class="s2">"DI"</span><span class="p">,</span> <span class="s2">"PI"</span><span class="p">,</span> <span class="s2">"DP"</span><span class="p">}),</span>
+    <span class="s2">"G04"</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"008"</span><span class="p">}),</span>
+<span class="p">}</span>
+
+<span class="c1">#: Convenience alias for the default vocabulary's terms (code → prefLabel).</span>
+<span class="n">C89_ROLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">ROLE_VOCABULARIES</span><span class="p">[</span><span class="s2">"C89"</span><span class="p">][</span><span class="s2">"terms"</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="role_choices">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.role_choices">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_choices</span><span class="p">(</span><span class="n">vocabulary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the prefLabels of a role vocabulary, in definition order.</span>
+
+<span class="sd">    Intended for interactive prompting, where a numbered list of human-readable</span>
+<span class="sd">    roles is wanted rather than concept codes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    vocabulary : str, optional</span>
+<span class="sd">        Short name from :data:`ROLE_VOCABULARIES`; defaults to</span>
+<span class="sd">        :data:`DEFAULT_ROLE_VOCABULARY`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of str</span>
+<span class="sd">        prefLabels, ordered as the vocabulary defines them (cruise-scoped terms</span>
+<span class="sd">        first, for C89).</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">vocabulary</span> <span class="ow">or</span> <span class="n">DEFAULT_ROLE_VOCABULARY</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">ROLE_VOCABULARIES</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">"terms"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="role_vocabulary">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.role_vocabulary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(name, spec)`` for the vocabulary this config authors in.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping; ``role_vocabulary`` selects the vocabulary</span>
+<span class="sd">        by short name and defaults to :data:`DEFAULT_ROLE_VOCABULARY`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    name : str</span>
+<span class="sd">    spec : dict</span>
+<span class="sd">        ``uri``, ``title`` and ``terms`` for the selected vocabulary.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If the named vocabulary is not one of :data:`ROLE_VOCABULARIES`.</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role_vocabulary"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">DEFAULT_ROLE_VOCABULARY</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span><span class="p">,</span> <span class="n">ROLE_VOCABULARIES</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_role_lookup</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Map both concept ids and prefLabels of *spec* to the canonical prefLabel."""</span>
+    <span class="n">terms</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">"terms"</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">terms</span><span class="p">),</span> <span class="o">**</span><span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">terms</span><span class="o">.</span><span class="n">values</span><span class="p">()}}</span>
+
+
+<span class="c1">#: Vocabularies for INSTITUTION roles — a different question from a person's</span>
+<span class="c1">#: role, and a different list.  OG1 names W08 for this</span>
+<span class="c1">#: (``contributing_institutions_role_vocabulary``), and W08's organisational</span>
+<span class="c1">#: terms (Operator, Owner, Manufacturer, Service Provider) genuinely are</span>
+<span class="c1">#: organisation roles, which is why W08 belongs here even though it was the</span>
+<span class="c1">#: wrong list for people.  C59 is the default because it is project-shaped —</span>
+<span class="c1">#: lead, member, data management, funding body — which is what an institution</span>
+<span class="c1">#: is to a funded cruise, and because it can name a funder, which W08 cannot.</span>
+<span class="n">INSTITUTION_ROLE_VOCABULARIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"C59"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"https://vocab.nerc.ac.uk/collection/C59/current/"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"BODC organisation roles within activities and projects"</span><span class="p">,</span>
+        <span class="s2">"terms"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"CONLEAD"</span><span class="p">:</span> <span class="s2">"Project Lead"</span><span class="p">,</span>
+            <span class="s2">"CONMEM"</span><span class="p">:</span> <span class="s2">"Project Member"</span><span class="p">,</span>
+            <span class="s2">"DATM"</span><span class="p">:</span> <span class="s2">"Project Data Management"</span><span class="p">,</span>
+            <span class="s2">"FUND"</span><span class="p">:</span> <span class="s2">"Project Funding body"</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="s2">"W08"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"https://vocab.nerc.ac.uk/collection/W08/current/"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"SensorML Contact Section Terms"</span><span class="p">,</span>
+        <span class="s2">"terms"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"CONT0001"</span><span class="p">:</span> <span class="s2">"Manufacturer"</span><span class="p">,</span>
+            <span class="s2">"CONT0002"</span><span class="p">:</span> <span class="s2">"Owner"</span><span class="p">,</span>
+            <span class="s2">"CONT0003"</span><span class="p">:</span> <span class="s2">"Operator"</span><span class="p">,</span>
+            <span class="s2">"CONT0004"</span><span class="p">:</span> <span class="s2">"PI"</span><span class="p">,</span>
+            <span class="s2">"CONT0005"</span><span class="p">:</span> <span class="s2">"Technical Coordinator"</span><span class="p">,</span>
+            <span class="s2">"CONT0006"</span><span class="p">:</span> <span class="s2">"Data scientist"</span><span class="p">,</span>
+            <span class="s2">"CONT0007"</span><span class="p">:</span> <span class="s2">"Service Provider"</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1">#: Used when ``cruise_info.institution_role_vocabulary`` is absent.</span>
+<span class="n">DEFAULT_INSTITUTION_ROLE_VOCABULARY</span> <span class="o">=</span> <span class="s2">"C59"</span>
+
+<span class="c1">#: Applied to an institution entry that names no role.</span>
+<span class="n">DEFAULT_INSTITUTION_ROLE</span> <span class="o">=</span> <span class="s2">"CONMEM"</span>
+
+<span class="c1">#: The term meaning "this organisation led the work", per vocabulary URI.  Used</span>
+<span class="c1">#: only to derive the CF ``institution`` attribute when exactly one institution</span>
+<span class="c1">#: holds it; W08 has no project-lead term (its roles are instrument-shaped), so</span>
+<span class="c1">#: it is absent here rather than mapped to a near-miss like Operator.</span>
+<span class="n">_INSTITUTION_LEAD_ROLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">INSTITUTION_ROLE_VOCABULARIES</span><span class="p">[</span><span class="s2">"C59"</span><span class="p">][</span><span class="s2">"uri"</span><span class="p">]:</span> <span class="s2">"CONLEAD"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="institution_role_vocabulary">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.institution_role_vocabulary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">institution_role_vocabulary</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(name, spec)`` for the institution-role vocabulary in use.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping; ``institution_role_vocabulary`` selects by</span>
+<span class="sd">        short name and defaults to</span>
+<span class="sd">        :data:`DEFAULT_INSTITUTION_ROLE_VOCABULARY`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    name : str</span>
+<span class="sd">    spec : dict</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If the named vocabulary is unknown.</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+        <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institution_role_vocabulary"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">DEFAULT_INSTITUTION_ROLE_VOCABULARY</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span><span class="p">,</span> <span class="n">INSTITUTION_ROLE_VOCABULARIES</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_institution">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.resolve_institution">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_institution</span><span class="p">(</span>
+    <span class="n">item</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">registry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolve one ``institutions:`` entry to ``{name, id, role}``.</span>
+
+<span class="sd">    An entry may be written three ways, so that a user who installed ctdcast</span>
+<span class="sd">    from PyPI — and therefore cannot edit the packaged registry — can still name</span>
+<span class="sd">    an institution the registry does not know::</span>
+
+<span class="sd">        institutions:</span>
+<span class="sd">          - uhh                                   # a registry slug</span>
+<span class="sd">          - slug: ulpgc                           # a slug, with a role</span>
+<span class="sd">            role: CONLEAD</span>
+<span class="sd">          - name: "Agencia Estatal de Investigación"   # inline, no registry</span>
+<span class="sd">            id: "https://ror.org/003x0zc53"</span>
+<span class="sd">            role: FUND</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    item : str or dict</span>
+<span class="sd">        One entry from ``cruise_info.institutions``.</span>
+<span class="sd">    registry : dict</span>
+<span class="sd">        The loaded institution registry, keyed by slug.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict or None</span>
+<span class="sd">        ``{"name": str, "id": str, "role": str}``, or ``None`` when a slug does</span>
+<span class="sd">        not resolve.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+            <span class="s2">"id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"edmo_uri"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+            <span class="s2">"role"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">DEFAULT_INSTITUTION_ROLE</span><span class="p">),</span>
+        <span class="p">}</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">slug</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"slug"</span><span class="p">)</span>
+    <span class="n">base</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">slug</span><span class="p">:</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">slug</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+            <span class="s2">"id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"edmo_uri"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"name"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="s2">"role"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">DEFAULT_INSTITUTION_ROLE</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1">#: Scope keys accepted inside a contributor's ``roles:`` mapping.  ``all`` means</span>
+<span class="c1">#: every compiled file; the others name one product, so a role listed there is</span>
+<span class="c1">#: written only when that file is built.</span>
+<span class="n">ALL_SCOPE</span> <span class="o">=</span> <span class="s2">"all"</span>
+<span class="n">PRODUCT_SCOPES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ctd"</span><span class="p">,</span> <span class="s2">"ladcp"</span><span class="p">)</span>
+<span class="n">KNOWN_SCOPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">ALL_SCOPE</span><span class="p">,</span> <span class="o">*</span><span class="n">PRODUCT_SCOPES</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="entry_roles">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.entry_roles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">entry_roles</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the roles a contributor holds on one product file, in order.</span>
+
+<span class="sd">    A contributor states their roles once, in any of three forms::</span>
+
+<span class="sd">        role: PI                      # one role, every file</span>
+<span class="sd">        roles: [PS, PI]               # several roles, every file</span>
+<span class="sd">        roles:                        # scoped: some roles only on one product</span>
+<span class="sd">          all: [PI]</span>
+<span class="sd">          ctd: [DC]</span>
+<span class="sd">          ladcp: [DI]</span>
+
+<span class="sd">    The scoped form is what lets one person be a project PI everywhere but the</span>
+<span class="sd">    supply contact for the CTD file only, without repeating their name and ORCID</span>
+<span class="sd">    and without a second contributor list.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    entry : dict</span>
+<span class="sd">        One contributor mapping.</span>
+<span class="sd">    source : str or None</span>
+<span class="sd">        Product key being written (``"ctd"``, ``"ladcp"``).  ``None`` returns</span>
+<span class="sd">        the union across every scope, which is what validation wants.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of str</span>
+<span class="sd">        Role tokens as written in config (codes or prefLabels), ``all`` first</span>
+<span class="sd">        then the product's own, with duplicates removed and order preserved.</span>
+<span class="sd">    """</span>
+    <span class="n">roles</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"roles"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">roles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">single</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">single</span><span class="p">]</span> <span class="k">if</span> <span class="n">single</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roles</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">roles</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roles</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">roles</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roles</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">wanted</span> <span class="o">=</span> <span class="p">[</span><span class="n">ALL_SCOPE</span><span class="p">,</span> <span class="o">*</span><span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">roles</span> <span class="k">if</span> <span class="n">s</span> <span class="o">!=</span> <span class="n">ALL_SCOPE</span><span class="p">]]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">wanted</span> <span class="o">=</span> <span class="p">[</span><span class="n">ALL_SCOPE</span><span class="p">,</span> <span class="n">source</span><span class="p">]</span>
+
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">scope</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">roles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">out</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">role</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="c1">#: ACDD 1.3 ``creator_type`` values.</span>
+<span class="n">CREATOR_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"person"</span><span class="p">,</span> <span class="s2">"group"</span><span class="p">,</span> <span class="s2">"institution"</span><span class="p">,</span> <span class="s2">"position"</span><span class="p">)</span>
+
+<span class="c1">#: An ORCID, bare or as a resolvable URL.  Both forms are accepted and</span>
+<span class="c1">#: normalised to the URL on write, since AMOCatlas's registry stores ``id_url``</span>
+<span class="c1">#: and people paste whichever form their browser shows.</span>
+<span class="n">_ORCID_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">"^(?:https?://(?:www\.)?orcid\.org/)?(\d</span><span class="si">{4}</span><span class="s2">-\d</span><span class="si">{4}</span><span class="s2">-\d</span><span class="si">{4}</span><span class="s2">-\d</span><span class="si">{3}</span><span class="s2">[\dX])$"</span><span class="p">,</span>
+    <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1">#: Email pattern taken from ``amocatlas.contributors.is_valid_email`` rather</span>
+<span class="c1">#: than reinvented: it requires a TLD of at least two letters, so ``user@domain``</span>
+<span class="c1">#: is correctly rejected where a looser ``.+@.+\..+`` would accept it.</span>
+<span class="n">_EMAIL_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"</span><span class="p">)</span>
+
+<span class="n">_INSTITUTIONS_YAML</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">"institutions.yaml"</span>
+
+
+<div class="viewcode-block" id="Person">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.Person">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Person</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One contributor, as resolved from config."""</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">institution</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">orcid</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_user_registry_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the per-user config directory ctdcast reads registries from.</span>
+
+<span class="sd">    ``$CTDCAST_CONFIG_DIR`` if set, else ``$XDG_CONFIG_HOME/ctdcast``, else</span>
+<span class="sd">    ``~/.config/ctdcast``.  Nothing is created; a missing directory simply means</span>
+<span class="sd">    no user registry.</span>
+<span class="sd">    """</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CTDCAST_CONFIG_DIR"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">env</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">env</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="n">xdg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"XDG_CONFIG_HOME"</span><span class="p">)</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">xdg</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span> <span class="k">if</span> <span class="n">xdg</span> <span class="k">else</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">".config"</span>
+    <span class="k">return</span> <span class="n">base</span> <span class="o">/</span> <span class="s2">"ctdcast"</span>
+
+
+<div class="viewcode-block" id="institution_registry_paths">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.institution_registry_paths">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">institution_registry_paths</span><span class="p">(</span><span class="n">extra</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the registry files to merge, lowest precedence first.</span>
+
+<span class="sd">    Institutions are looked up in three places so that **a user who installed</span>
+<span class="sd">    ctdcast from PyPI never has to edit package data** — which lives in</span>
+<span class="sd">    site-packages and is overwritten on upgrade:</span>
+
+<span class="sd">    1. the packaged ``ctdcast/config/institutions.yaml`` (the shipped defaults);</span>
+<span class="sd">    2. ``~/.config/ctdcast/institutions.yaml`` (or ``$CTDCAST_CONFIG_DIR``), for</span>
+<span class="sd">       institutions an individual or lab uses across cruises;</span>
+<span class="sd">    3. a path given by ``cruise_info.institutions_file``, for a registry kept</span>
+<span class="sd">       beside the cruise config and version-controlled with it.</span>
+
+<span class="sd">    Later files win key-by-key.  A fourth route needs no registry at all: an</span>
+<span class="sd">    entry in ``cruise_info.institutions`` may be written inline with its own</span>
+<span class="sd">    ``name`` and ``id`` — see :func:`resolve_institution`.  Inline is the most</span>
+<span class="sd">    reproducible option, since the config then carries everything the file</span>
+<span class="sd">    asserts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    extra : Path or str, optional</span>
+<span class="sd">        The ``institutions_file`` from the cruise config.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of Path</span>
+<span class="sd">        Existing files only, in merge order.</span>
+<span class="sd">    """</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_INSTITUTIONS_YAML</span><span class="p">,</span>
+        <span class="n">_user_registry_dir</span><span class="p">()</span> <span class="o">/</span> <span class="s2">"institutions.yaml"</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">())</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">candidates</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">()]</span></div>
+
+
+
+<span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_registry_file</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Load one institution registry file, keyed by slug."""</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="load_institutions">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.load_institutions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_institutions</span><span class="p">(</span><span class="n">extra</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return the merged institution registry, keyed by slug.</span>
+
+<span class="sd">    Merges every file from :func:`institution_registry_paths`, later files</span>
+<span class="sd">    overriding earlier ones slug by slug.  Returns an empty mapping when no</span>
+<span class="sd">    registry exists, so a config that defines its institutions inline still</span>
+<span class="sd">    works.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    extra : Path or str, optional</span>
+<span class="sd">        The ``institutions_file`` from the cruise config.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        Slug → institution entry.</span>
+<span class="sd">    """</span>
+    <span class="n">merged</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">institution_registry_paths</span><span class="p">(</span><span class="n">extra</span><span class="p">):</span>
+        <span class="n">merged</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_load_registry_file</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">merged</span></div>
+
+
+
+<div class="viewcode-block" id="orcid_uri">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.orcid_uri">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">orcid_uri</span><span class="p">(</span><span class="n">orcid</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the resolvable URI for an ORCID given in either accepted form.</span>
+
+<span class="sd">    Accepts a bare identifier (``0000-0001-8773-7838``) or a URL</span>
+<span class="sd">    (``https://orcid.org/0000-0001-8773-7838``) and always returns the URL, so</span>
+<span class="sd">    the value written to ``contributor_id`` is canonical regardless of how it</span>
+<span class="sd">    was typed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    orcid : str</span>
+<span class="sd">        Bare identifier or orcid.org URL.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        ``https://orcid.org/&lt;identifier&gt;``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If *orcid* matches neither form.</span>
+<span class="sd">    """</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">_ORCID_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">orcid</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"not an ORCID: </span><span class="si">{</span><span class="n">orcid</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"https://orcid.org/</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_canonical_orcid</span><span class="p">(</span><span class="n">orcid</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the canonical ORCID URL, or ``None`` when absent or malformed.</span>
+
+<span class="sd">    Comparison helper only: a malformed ORCID is reported separately by</span>
+<span class="sd">    :func:`check_contributors`, so this must not raise on one.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    orcid : any</span>
+<span class="sd">        Bare identifier, orcid.org URL, ``None``, or anything else.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        ``https://orcid.org/&lt;identifier&gt;``, or ``None``.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">orcid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">orcid_uri</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">orcid</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="check_contributors">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.check_contributors">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_contributors</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Validate the ``contributors``/``creator`` block of a cruise config.</span>
+
+<span class="sd">    Returns ``(errors, warnings)``.  Errors are conditions that would produce a</span>
+<span class="sd">    misleading file — a value containing a delimiter, an unknown role, an</span>
+<span class="sd">    unresolvable institution.  Warnings are omissions that are legitimate while</span>
+<span class="sd">    a cruise is in progress but should be settled before publication.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping from the cruise config.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    errors : list of str</span>
+<span class="sd">    warnings : list of str</span>
+<span class="sd">    """</span>
+    <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">warnings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">load_institutions</span><span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions_file"</span><span class="p">))</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">vocab_name</span><span class="p">,</span> <span class="n">vocab</span> <span class="o">=</span> <span class="n">role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cruise_info.role_vocabulary "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'role_vocabulary'</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> is unknown. "</span>
+            <span class="sa">f</span><span class="s2">"Choose one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">ROLE_VOCABULARIES</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">warnings</span>
+    <span class="n">lookup</span> <span class="o">=</span> <span class="n">_role_lookup</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+    <span class="n">lead</span> <span class="o">=</span> <span class="p">{</span><span class="n">vocab</span><span class="p">[</span><span class="s2">"terms"</span><span class="p">][</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_LEAD_ROLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vocab_name</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())}</span>
+
+    <span class="n">contributors</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"contributors"</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">contributors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"cruise_info.contributors is absent — no PI will be recorded in the "</span>
+            <span class="s2">"output files"</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">warnings</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">contributors</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cruise_info.contributors must be a list of mappings"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">warnings</span>
+
+    <span class="n">seen_names</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">n_pi</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">leads_by_scope</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">PRODUCT_SCOPES</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">contributors</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cruise_info.contributors[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]"</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2"> must be a mapping, not </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">name</span> <span class="o">=</span> <span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: name is required"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># A repeated name is how one person holds several roles: the entry</span>
+            <span class="c1"># is duplicated, once per role, because the parallel strings are</span>
+            <span class="c1"># positional and a single slot cannot carry two roles.  So this is</span>
+            <span class="c1"># not a duplicate -- but the identifiers must agree, or the file</span>
+            <span class="c1"># would assert two different ORCIDs for one name.</span>
+            <span class="c1"># Compare the CANONICAL form: the bare id and the orcid.org URL are</span>
+            <span class="c1"># the same identifier, and the docstring of `orcid_uri` promises both</span>
+            <span class="c1"># are accepted, so comparing raw strings would reject a config that</span>
+            <span class="c1"># merely typed one entry each way.</span>
+            <span class="n">orcid_here</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orcid"</span><span class="p">)</span>
+            <span class="n">canon_here</span> <span class="o">=</span> <span class="n">_canonical_orcid</span><span class="p">(</span><span class="n">orcid_here</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">seen_names</span><span class="p">:</span>
+                <span class="n">canon_seen</span> <span class="o">=</span> <span class="n">_canonical_orcid</span><span class="p">(</span><span class="n">seen_names</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">canon_here</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">canon_seen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">canon_here</span> <span class="o">!=</span> <span class="n">canon_seen</span><span class="p">:</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> appears more than once with "</span>
+                            <span class="sa">f</span><span class="s2">"different ORCIDs (</span><span class="si">{</span><span class="n">seen_names</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> and "</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">orcid_here</span><span class="si">!r}</span><span class="s2">). Repeating a person for a second "</span>
+                            <span class="sa">f</span><span class="s2">"role must repeat their identifiers unchanged."</span>
+                        <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">canon_here</span> <span class="o">!=</span> <span class="n">canon_seen</span><span class="p">:</span>
+                    <span class="c1"># One of the two carries no ORCID: the emitted</span>
+                    <span class="c1"># `contributor_id` would have a filled slot and a blank one</span>
+                    <span class="c1"># for the same person, which reads as two people.</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> appears more than once but only some "</span>
+                        <span class="sa">f</span><span class="s2">"entries carry an ORCID. Repeat the identifier on every "</span>
+                        <span class="sa">f</span><span class="s2">"entry for that person, or omit it from all of them."</span>
+                    <span class="p">)</span>
+            <span class="k">if</span> <span class="n">canon_here</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen_names</span><span class="p">:</span>
+                <span class="n">seen_names</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">orcid_here</span>
+
+        <span class="c1"># The delimiter check — the whole reason this function exists.</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"email"</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">bad</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">FORBIDDEN_IN_VALUE</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> contains </span><span class="si">{</span><span class="n">bad</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">. Entries are "</span>
+                        <span class="sa">f</span><span class="s2">"written as delimited strings, so a value containing "</span>
+                        <span class="sa">f</span><span class="s2">"a delimiter splits into two people."</span>
+                    <span class="p">)</span>
+
+        <span class="n">raw_roles</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"roles"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_roles</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">unknown</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">raw_roles</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">KNOWN_SCOPES</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.roles: unknown scope(s) </span><span class="si">{</span><span class="n">unknown</span><span class="si">}</span><span class="s2">. "</span>
+                    <span class="sa">f</span><span class="s2">"Use </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">KNOWN_SCOPES</span><span class="p">)</span><span class="si">}</span><span class="s2"> — 'all' for every compiled file, "</span>
+                    <span class="sa">f</span><span class="s2">"a product key for that file only."</span>
+                <span class="p">)</span>
+
+        <span class="n">roles_here</span> <span class="o">=</span> <span class="n">entry_roles</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">roles_here</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: at least one role is required (a </span><span class="si">{</span><span class="n">vocab_name</span><span class="si">}</span><span class="s2"> code or "</span>
+                <span class="sa">f</span><span class="s2">"prefLabel), as `role:`, `roles: [...]` or `roles: </span><span class="se">{{</span><span class="s2">all: [...]</span><span class="se">}}</span><span class="s2">`"</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">roles_here</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="c1"># YAML turns an unquoted `role: 8` into an int, and a G04 code is</span>
+                <span class="c1"># "008" -- zero-padded, so it can never match after str().  Say</span>
+                <span class="c1"># that, instead of reporting `8` as an unknown term.</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: role </span><span class="si">{</span><span class="n">role</span><span class="si">!r}</span><span class="s2"> parsed as </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">role</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, "</span>
+                    <span class="sa">f</span><span class="s1">'not text. Quote it (role: "</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s1">") — </span><span class="si">{</span><span class="n">vocab_name</span><span class="si">}</span><span class="s1"> codes '</span>
+                    <span class="sa">f</span><span class="s2">"are strings and may carry leading zeros."</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lookup</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: role </span><span class="si">{</span><span class="n">role</span><span class="si">!r}</span><span class="s2"> is not a </span><span class="si">{</span><span class="n">vocab_name</span><span class="si">}</span><span class="s2"> "</span>
+                    <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">vocab</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span><span class="si">}</span><span class="s2">) term. Codes: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">vocab</span><span class="p">[</span><span class="s1">'terms'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">lookup</span><span class="p">[</span><span class="n">role</span><span class="p">]</span> <span class="ow">in</span> <span class="n">lead</span><span class="p">:</span>
+                <span class="n">n_pi</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># Per-product too: `entry_roles(entry)` unions every scope, so a lead</span>
+        <span class="c1"># scoped to one product would otherwise vouch for the other product's</span>
+        <span class="c1"># file, which records no lead at all.</span>
+        <span class="k">for</span> <span class="n">scope</span> <span class="ow">in</span> <span class="n">PRODUCT_SCOPES</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">entry_roles</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">lookup</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">role</span><span class="p">)</span> <span class="ow">in</span> <span class="n">lead</span><span class="p">:</span>
+                    <span class="n">leads_by_scope</span><span class="p">[</span><span class="n">scope</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="s2">"institution"</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: institution does not belong on a person. The two "</span>
+                <span class="sa">f</span><span class="s2">"lists are independent -- one person may sit at several "</span>
+                <span class="sa">f</span><span class="s2">"institutions and one institution sends several people -- so "</span>
+                <span class="sa">f</span><span class="s2">"list them under cruise_info.institutions instead."</span>
+            <span class="p">)</span>
+
+        <span class="n">email</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"email"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">email</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_EMAIL_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">email</span><span class="p">)):</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: email </span><span class="si">{</span><span class="n">email</span><span class="si">!r}</span><span class="s2"> is not a valid address"</span><span class="p">)</span>
+
+        <span class="n">orcid</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orcid"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">orcid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">): no ORCID — confirm with the person before publishing"</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">_ORCID_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">orcid</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: orcid </span><span class="si">{</span><span class="n">orcid</span><span class="si">!r}</span><span class="s2"> is not of the form "</span>
+                <span class="s2">"0000-0000-0000-000X or https://orcid.org/0000-0000-0000-000X"</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">contributors</span> <span class="ow">and</span> <span class="n">n_pi</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"no contributor holds a lead role (C89 PS / DI / PI / DP) — nobody "</span>
+            <span class="s2">"is recorded as responsible for the science or the data"</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">contributors</span><span class="p">:</span>
+        <span class="n">bare</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">leads_by_scope</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bare</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"no contributor holds a lead role in the </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bare</span><span class="p">)</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"file(s): a lead scoped to one product does not vouch for the "</span>
+                <span class="sa">f</span><span class="s2">"other. Add a lead role under roles: </span><span class="se">{{</span><span class="s2">all: [...]</span><span class="se">}}</span><span class="s2"> or under "</span>
+                <span class="sa">f</span><span class="s2">"each product that needs one."</span>
+            <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">inst_vocab_name</span><span class="p">,</span> <span class="n">inst_vocab</span> <span class="o">=</span> <span class="n">institution_role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cruise_info.institution_role_vocabulary "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'institution_role_vocabulary'</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> is unknown. "</span>
+            <span class="sa">f</span><span class="s2">"Choose one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">INSTITUTION_ROLE_VOCABULARIES</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span>
+        <span class="p">)</span>
+        <span class="n">inst_vocab_name</span><span class="p">,</span> <span class="n">inst_vocab</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">DEFAULT_INSTITUTION_ROLE_VOCABULARY</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">INSTITUTION_ROLE_VOCABULARIES</span><span class="p">[</span><span class="n">DEFAULT_INSTITUTION_ROLE_VOCABULARY</span><span class="p">]),</span>
+        <span class="p">)</span>
+    <span class="n">inst_lookup</span> <span class="o">=</span> <span class="n">_role_lookup</span><span class="p">(</span><span class="n">inst_vocab</span><span class="p">)</span>
+
+    <span class="n">institutions</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">institutions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"cruise_info.institutions is absent — no contributing institutions "</span>
+            <span class="s2">"will be recorded"</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">institutions</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cruise_info.institutions must be a list"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">institutions</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_institution</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">resolved</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">slug</span> <span class="o">=</span> <span class="n">item</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"slug"</span><span class="p">)</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"cruise_info.institutions[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is not in any "</span>
+                    <span class="sa">f</span><span class="s2">"institution registry. Known: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">registry</span><span class="p">)</span><span class="si">}</span><span class="s2">. Define it "</span>
+                    <span class="sa">f</span><span class="s2">"inline with `name:` and `id:`, add it to "</span>
+                    <span class="sa">f</span><span class="s2">"~/.config/ctdcast/institutions.yaml, or point "</span>
+                    <span class="sa">f</span><span class="s2">"`institutions_file:` at your own registry."</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resolved</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cruise_info.institutions[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: name is required"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">resolved</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">inst_lookup</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"cruise_info.institutions[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: role </span><span class="si">{</span><span class="n">resolved</span><span class="p">[</span><span class="s1">'role'</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> is "</span>
+                    <span class="sa">f</span><span class="s2">"not a </span><span class="si">{</span><span class="n">inst_vocab_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">inst_vocab</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span><span class="si">}</span><span class="s2">) term. "</span>
+                    <span class="sa">f</span><span class="s2">"Codes: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">inst_vocab</span><span class="p">[</span><span class="s1">'terms'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span>
+                <span class="p">)</span>
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">,</span> <span class="s2">"role"</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">resolved</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">FORBIDDEN_IN_VALUE</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s2">";"</span><span class="p">):</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"cruise_info.institutions[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">].</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2"> contains ';': "</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">resolved</span><span class="p">[</span><span class="n">field</span><span class="p">]</span><span class="si">!r}</span><span class="s2">"</span>
+                    <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">slugs_only</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">institutions</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">str</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">slugs_only</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">slugs_only</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cruise_info.institutions contains repeated slugs"</span><span class="p">)</span>
+
+    <span class="n">creator</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"creator"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">creator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"cruise_info.creator is absent — ACDD creator_* describes whoever "</span>
+            <span class="s2">"produced the file, which is a different role from PI"</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">creator</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cruise_info.creator must be a mapping"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cruise_info.creator.name is required when creator is given"</span><span class="p">)</span>
+        <span class="n">ctype</span> <span class="o">=</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ctype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ctype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CREATOR_TYPES</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"cruise_info.creator.type </span><span class="si">{</span><span class="n">ctype</span><span class="si">!r}</span><span class="s2"> is not an ACDD creator_type. "</span>
+                <span class="sa">f</span><span class="s2">"Valid: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">CREATOR_TYPES</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institution"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">"cruise_info.creator.institution is no longer written to the "</span>
+                <span class="s2">"file: institutions come from cruise_info.institutions (with "</span>
+                <span class="s2">"roles) so there is one structured source, and the creator is "</span>
+                <span class="s2">"identified by their ORCID. Remove the key, and list the "</span>
+                <span class="s2">"institution under institutions: if it is not there already."</span>
+            <span class="p">)</span>
+
+    <span class="c1"># CF `institution` is derived from the lead entries of `institutions:`, so</span>
+    <span class="c1"># there is nothing to validate but that something carries the lead role.</span>
+    <span class="k">if</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institution"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"cruise_info.institution is not a config key: the CF `institution` "</span>
+            <span class="s2">"attribute is derived from the lead entries of "</span>
+            <span class="s2">"cruise_info.institutions. Give the responsible organisation(s) the "</span>
+            <span class="s2">"lead role there instead."</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="p">(</span>
+        <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions"</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">_cf_institution</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"no institution holds the lead role, so the CF `institution` "</span>
+            <span class="s2">"attribute (where the original data was produced) will be omitted."</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">warnings</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cf_institution</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">registry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Render the CF ``institution`` attribute from ``contributing_institutions``.</span>
+
+<span class="sd">    ``institution`` is a **CF** attribute -- "Specifies where the original data</span>
+<span class="sd">    was produced", paired with ``source`` ("the method of production of the</span>
+<span class="sd">    original data").  Both describe the *measurement*, so it belongs with the</span>
+<span class="sd">    origination of the data, not with ``creator_*`` (who produced this file).</span>
+
+<span class="sd">    Two things follow, and they are why this is derived rather than configured.</span>
+
+<span class="sd">    First, CF presumes the data has *one* producing institution.  For a research</span>
+<span class="sd">    cruise that presumption is simply false: several institutions are aboard and</span>
+<span class="sd">    contributing, and only the authorship of one particular *file* resolves to a</span>
+<span class="sd">    single organisation -- and that organisation is not recorded as an attribute</span>
+<span class="sd">    at all, because the creator's ORCID (``creator_id``) already resolves to it.</span>
+<span class="sd">    So this never reduces to one name.</span>
+
+<span class="sd">    Second, ``institutions:`` with per-entry roles is this package's structured</span>
+<span class="sd">    answer to "which organisations, doing what".  A second free-text attribute</span>
+<span class="sd">    asserting the same fact independently could drift from it, and a reader would</span>
+<span class="sd">    have no way to know which to believe.  This is therefore a lossy *projection*</span>
+<span class="sd">    of that list, kept for CF-only consumers (ERDDAP, THREDDS catalogues, NCEI</span>
+<span class="sd">    harvesters) that will never read ``contributing_institutions``.  The list</span>
+<span class="sd">    remains the single source of truth; if the two ever disagree, that is a bug</span>
+<span class="sd">    here, not a decision recorded in config.</span>
+
+<span class="sd">    The projection is the lead-role entries, joined -- leads because ACDD glosses</span>
+<span class="sd">    the same field as "principally responsible", joined because naming one of</span>
+<span class="sd">    three co-leads would be false where naming three is merely coarse.  CF gives</span>
+<span class="sd">    the field no syntax, so the join is cosmetic; nothing parses it.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping from the cruise config.</span>
+<span class="sd">    registry : dict</span>
+<span class="sd">        The loaded institution registry, keyed by slug.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        The joined institution name(s), or ``None`` when no entry holds the lead</span>
+<span class="sd">        role -- in which case the attribute is omitted rather than guessed.</span>
+<span class="sd">    """</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">inst_vocab</span> <span class="o">=</span> <span class="n">institution_role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="n">lead_code</span> <span class="o">=</span> <span class="n">_INSTITUTION_LEAD_ROLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">inst_vocab</span><span class="p">[</span><span class="s2">"uri"</span><span class="p">]))</span>
+    <span class="k">if</span> <span class="n">lead_code</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">lead_label</span> <span class="o">=</span> <span class="n">inst_vocab</span><span class="p">[</span><span class="s2">"terms"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lead_code</span><span class="p">)</span>
+    <span class="n">leads</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">r</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="n">resolve_institution</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="ow">and</span> <span class="n">r</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="ow">and</span> <span class="n">r</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="n">lead_code</span><span class="p">,</span> <span class="n">lead_label</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">leads</span><span class="p">)</span> <span class="k">if</span> <span class="n">leads</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="contributor_attrs">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.people.contributor_attrs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">contributor_attrs</span><span class="p">(</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Build the netCDF global attributes describing people and institutions.</span>
+
+<span class="sd">    Generates the parallel strings from one structured list, so they cannot fall</span>
+<span class="sd">    out of alignment.  An attribute whose every entry would be empty is **omitted</span>
+<span class="sd">    entirely** rather than written as ``"; ; ; "`` — an empty delimited string</span>
+<span class="sd">    asserts four empty values, whereas an absent attribute asserts nothing was</span>
+<span class="sd">    recorded.</span>
+
+<span class="sd">    ``contributing_institutions`` comes from ``cruise_info.institutions``, a</span>
+<span class="sd">    list independent of the people: one person may sit at several institutions</span>
+<span class="sd">    and one institution may send several people, so the two must never be</span>
+<span class="sd">    zipped together.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cruise_info : dict</span>
+<span class="sd">        The ``cruise_info:`` mapping from the cruise config.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of str to str</span>
+<span class="sd">        Global attributes, ready to merge into the dataset.</span>
+<span class="sd">    """</span>
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">load_institutions</span><span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions_file"</span><span class="p">))</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">vocab</span> <span class="o">=</span> <span class="n">role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">inst_vocab</span> <span class="o">=</span> <span class="n">institution_role_vocabulary</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">)</span>
+    <span class="n">lookup</span> <span class="o">=</span> <span class="n">_role_lookup</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">creator</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"creator"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"creator_name"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">creator</span><span class="p">[</span><span class="s2">"name"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"creator_type"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">creator</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"email"</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"creator_email"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">creator</span><span class="p">[</span><span class="s2">"email"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orcid"</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"creator_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">orcid_uri</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">creator</span><span class="p">[</span><span class="s2">"orcid"</span><span class="p">]))</span>
+        <span class="c1"># No `creator_institution` / `creator_institution_id`.  Every institution</span>
+        <span class="c1"># in the file now comes from one structured place -- `institutions:` with</span>
+        <span class="c1"># roles, projected to CF `institution` -- and a third, unstructured claim</span>
+        <span class="c1"># attached to a person could only drift from it.  The creator is already</span>
+        <span class="c1"># identified by `creator_id` (their ORCID), which resolves to a current</span>
+        <span class="c1"># affiliation maintained by them, whereas a name frozen into the file at</span>
+        <span class="c1"># write time goes stale and is never corrected.  ACDD marks</span>
+        <span class="c1"># `creator_institution` Suggested, the weakest tier it has.</span>
+
+    <span class="c1"># A view of `contributing_institutions`, never an independent claim -- hence</span>
+    <span class="c1"># no `institution_id`: the identifiers live in `contributing_institutions_id`,</span>
+    <span class="c1"># aligned with the roles that justify them.</span>
+    <span class="n">cf_institution</span> <span class="o">=</span> <span class="n">_cf_institution</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cf_institution</span><span class="p">:</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"institution"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cf_institution</span>
+
+    <span class="n">contributors</span> <span class="o">=</span> <span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"contributors"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">contributors</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">attrs</span>
+
+    <span class="c1"># One slot per (person, role): the parallel strings are positional, so a</span>
+    <span class="c1"># person holding two roles occupies two slots with their name and identifiers</span>
+    <span class="c1"># repeated.  Stating them once in config and expanding here means the repeats</span>
+    <span class="c1"># cannot disagree.  A person with no role in this scope is omitted from this</span>
+    <span class="c1"># file entirely.</span>
+    <span class="n">names</span><span class="p">,</span> <span class="n">roles</span><span class="p">,</span> <span class="n">emails</span><span class="p">,</span> <span class="n">ids</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">contributors</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">entry_roles</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">lookup</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">role</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Never emit a blank role slot: the strings are positional, so a</span>
+                <span class="c1"># "" would attribute the person a role of nothing while every</span>
+                <span class="c1"># other slot lines up, which reads as deliberate.  Raising is</span>
+                <span class="c1"># what `orcid_uri` already does for a malformed identifier, and</span>
+                <span class="c1"># `cruise_global_attrs` catches both, warns, and omits the people</span>
+                <span class="c1"># rather than writing a half-true attribution.</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"contributor </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'name'</span><span class="p">)</span><span class="si">!r}</span><span class="s2">: role </span><span class="si">{</span><span class="n">role</span><span class="si">!r}</span><span class="s2"> is not a "</span>
+                    <span class="sa">f</span><span class="s2">"term of the declared vocabulary; run `ctdcast validate` "</span>
+                    <span class="sa">f</span><span class="s2">"for the accepted codes."</span>
+                <span class="p">)</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">))</span>
+            <span class="n">roles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+            <span class="n">emails</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"email"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">))</span>
+            <span class="n">orcid</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orcid"</span><span class="p">)</span>
+            <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">orcid_uri</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">orcid</span><span class="p">))</span> <span class="k">if</span> <span class="n">orcid</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">attrs</span>
+
+    <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributor_name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributor_role"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">roles</span><span class="p">)</span>
+    <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributor_role_vocabulary"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">vocab</span><span class="p">[</span><span class="s2">"uri"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">emails</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributor_email"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">emails</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">ids</span><span class="p">):</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributor_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+
+    <span class="c1"># Institutions are their own list, in their own order, with no positional</span>
+    <span class="c1"># relationship to the contributors: one person may belong to several</span>
+    <span class="c1"># institutions and one institution may send several people, so zipping the</span>
+    <span class="c1"># two would assert a correspondence that does not exist.  The two</span>
+    <span class="c1"># ``contributing_institutions*`` attributes are aligned with each other and</span>
+    <span class="c1"># with nothing else.</span>
+    <span class="n">resolved</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">r</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="n">resolve_institution</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cruise_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"institutions"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="ow">and</span> <span class="n">r</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">resolved</span><span class="p">:</span>
+        <span class="n">inst_lookup</span> <span class="o">=</span> <span class="n">_role_lookup</span><span class="p">(</span><span class="n">inst_vocab</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributing_institutions"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">resolved</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributing_institutions_role"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="n">inst_lookup</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">"role"</span><span class="p">],</span> <span class="s2">""</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">resolved</span>
+        <span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributing_institutions_role_vocabulary"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">inst_vocab</span><span class="p">[</span><span class="s2">"uri"</span><span class="p">])</span>
+        <span class="c1"># `_id`, not OG1's `contributing_institutions_vocabulary`.  The content is</span>
+        <span class="c1"># per-institution EDMO/ROR *record* URIs -- identifiers -- and OG1 itself</span>
+        <span class="c1"># documents the field that way ("url to the repository of the id").  Its</span>
+        <span class="c1"># name is a misnomer we are not obliged to inherit: ctdcast declares</span>
+        <span class="c1"># CF + ACDD, not OG1, and ACDD defines no institution-id attribute at all,</span>
+        <span class="c1"># so the name is ours to choose.  Choosing `_id` makes one rule hold</span>
+        <span class="c1"># across every attribute here: `*_id` is an identifier for the thing named</span>
+        <span class="c1"># by the attribute it suffixes (creator_id, contributor_id,</span>
+        <span class="c1"># contributing_institutions_id), and `*_vocabulary` is the scheme URI the</span>
+        <span class="c1"># neighbouring codes are drawn from (contributor_role_vocabulary,</span>
+        <span class="c1"># contributing_institutions_role_vocabulary).</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">resolved</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">ids</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"contributing_institutions_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">SEPARATOR</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">attrs</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
