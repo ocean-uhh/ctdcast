@@ -407,9 +407,12 @@ def test_missing_platform_placeholders_the_other_half():
         assert cruise_expocode(ci) == "{ICES}20260709"
 
 
-def test_both_missing_placeholders_both():
-    with pytest.warns(UserWarning):
-        assert cruise_expocode({"data_mode": "R"}) == "{ICES}{YYYYMMDD}"
+def test_neither_half_given_is_not_a_placeholder():
+    """A placeholder marks a *deferred* value, and deferral implies you started.
+    An empty cruise_info describes no cruise, so `{ICES}{YYYYMMDD}` on every
+    profile would be noise rather than a statement."""
+    assert cruise_expocode({"data_mode": "R"}) is None
+    assert cruise_expocode({}) is None
 
 
 def test_placeholder_can_never_be_mistaken_for_a_real_expocode():

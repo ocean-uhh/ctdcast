@@ -767,7 +767,10 @@ def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
 
         29OD{YYYYMMDD}      departure date not yet set
         {ICES}20260709      ship not yet resolved to an ICES code
-        {ICES}{YYYYMMDD}    neither
+
+    With *neither* half given there is nothing to defer — no cruise is being
+    described — so that returns ``None`` as before rather than a placeholder on
+    every profile.
 
     The file can therefore be generated and read, and states plainly which fact
     is absent.  Callers that must not see a placeholder — the filename builder
@@ -788,11 +791,18 @@ def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
     platform = ci.get("platform") or ci.get("ship_slug")
     start_date = ci.get("start_date")
 
+    if not platform and not start_date:
+        # Nothing to defer.  A placeholder marks a value the config has started
+        # to specify and not yet settled; with neither half given there is no
+        # cruise being described, and `{ICES}{YYYYMMDD}` would be noise on every
+        # profile rather than a statement about anything.
+        return None
+
     try:
         if platform and start_date:
             return expocode_from_cruise_info(ci)
-        # One or both halves are absent: build the shape by hand rather than
-        # asking the resolver, which correctly refuses an incomplete config.
+        # One half is absent: build the shape by hand rather than asking the
+        # resolver, which correctly refuses an incomplete config.
         if platform:
             head = expocode_from_cruise_info({**ci, "start_date": "1900-01-01"})
             head = head[: -len("19000101")]
