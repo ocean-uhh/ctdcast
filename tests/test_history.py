@@ -9,7 +9,8 @@ from ctdcast.processors.history import append_history
 
 def _load(path):
     """Load a fixture cast as an in-memory Dataset."""
-    return xr.open_dataset(path, engine="netcdf4").load()
+    with xr.open_dataset(path, engine="netcdf4") as ds:
+        return ds.load()
 
 
 class TestAppendHistory:

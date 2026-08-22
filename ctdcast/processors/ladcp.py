@@ -21,7 +21,6 @@ from ctdcast.config.global_attrs import (
     CREATION_NOTE,
     aggregate_identity,
     cruise_global_attrs,
-    expocode_profile_var,
     identity_attrs,
 )
 from ctdcast.identity import cast_id_from_name, format_cast_id
@@ -241,12 +240,7 @@ def build_ladcp_profiles(
     # one directory); absent → cruise_info fallback with a warning.  This replaces
     # the old drop_conflicts merge as the authority for identity at compile.
     ci = cruise_info or {}
-    n_profiles = ds_out.sizes["N_PROF"]
     identity = aggregate_identity(per_cast_attrs, ci)
-    # EXPOCODE as an N_PROF variable: a CCHDO projection of the lifted global.
-    _expocode_coord = expocode_profile_var(identity.get("expocode", ""), n_profiles)
-    if _expocode_coord is not None:
-        ds_out["expocode"] = _expocode_coord
 
     # Derived coverage + authored/provenance/people/platform globals.  The LADCP
     # product is gridded on a depth axis (metres, positive down), not pressure;

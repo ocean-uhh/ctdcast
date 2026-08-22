@@ -9,10 +9,10 @@ Three layers, kept apart on purpose (see the file-level-metadata design note):
 * **authored** — ``title``, ``project``, ``acknowledgement``, people, embargo.
   Taken from ``cruise_info:`` in the cruise config, once, at the level it is true.
 * **identity** — ``cruise``, ``platform_*`` and ``expocode``.  Constant for a
-  ctdcast file, so all three are globals.  ``expocode`` is *additionally* emitted
-  on the compiled products as an ``N_PROF`` data variable — a CCHDO round-trip
-  projection of the global, built from it and never authored separately, because
-  CCHDO does not assume one file is one cruise.
+  ctdcast file, so all three are globals.  (CCHDO's exchange format stores
+  ``expocode`` per profile, because a file there may span cruises; a ctdcast file
+  never does, so that per-profile projection belongs with a CCHDO exporter, not
+  here.)
 
 The one rule that decides where a fact goes: **a global attribute must be true of
 the entire file.**  Anything that varies within the file (cast lat/lon, station
@@ -526,9 +526,8 @@ def identity_attrs(
         The ``cruise_info:`` mapping.  ``None`` or empty returns ``{}``, which is
         what keeps a call path supplying no config unchanged.
     include_expocode : bool, default True
-        Emit ``expocode``.  The compiled products also carry it as an ``N_PROF``
-        variable via :func:`expocode_profile_var`; this switch exists for a
-        caller that wants only the rest.
+        Emit ``expocode``.  This switch exists for a caller that wants the rest of
+        the identity without it.
 
     Returns
     -------
@@ -662,43 +661,6 @@ def aggregate_identity(
             stacklevel=2,
         )
     return lifted
-
-
-def expocode_profile_var(
-    expocode: str, n_profiles: int
-) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
-    """Return the ``(dims, data, attrs)`` triple for the ``expocode`` variable.
-
-    A **projection** of the ``expocode`` global, broadcast over ``N_PROF``
-    because CCHDO stores it per profile — a file may hold more than one cruise in
-    their world, though not in ctdcast's.  It takes the value rather than
-    ``cruise_info`` precisely so it cannot be authored independently of the
-    global it projects.
-
-    Parameters
-    ----------
-    expocode : str
-        The lifted value. Empty returns ``None``.
-    n_profiles : int
-        Length of ``N_PROF``.
-
-    Returns
-    -------
-    tuple or None
-    """
-    if not expocode:
-        return None
-    return (
-        ["N_PROF"],
-        np.array([expocode] * n_profiles),
-        {
-            "long_name": "Expedition code (ICES ship code + departure date)",
-            "comment": (
-                "Derived as <ICES platform code><YYYYMMDD departure>; "
-                "CCHDO/GO-SHIP EXPOCODE convention."
-            ),
-        },
-    )
 
 
 def cruise_global_attrs(

@@ -263,11 +263,12 @@ def run(args: argparse.Namespace) -> int:
                 f"{n_inst} institution(s) resolved"
             )
 
-    # groupings_yaml (sections + timeseries)
-    need_sections = gen_cfg.get("sections", True)
+    # groupings_yaml (sections + timeseries) — both page types read this file, so
+    # mirror need_profiles above and require it when either is enabled.
+    need_groupings = gen_cfg.get("sections", True) or gen_cfg.get("timeseries", True)
     groupings_yaml = groupings_path(data)
     sections_cfg: dict = {}
-    if need_sections and not groupings_yaml:
+    if need_groupings and not groupings_yaml:
         warnings.append(
             "data.groupings_yaml not set; section and timeseries pages will be skipped"
         )

@@ -20,7 +20,6 @@ from ctdcast.config.global_attrs import (
     aggregate_identity,
     cruise_global_attrs,
     cruise_name,
-    expocode_profile_var,
 )
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
@@ -608,12 +607,6 @@ def build_profiles(
             stacklevel=2,
         )
     cruise = str(_lifted_cruise or _cfg_cruise or "UNK")
-    # EXPOCODE as an N_PROF variable: a CCHDO projection (one file may hold more
-    # than one cruise in their world, though not in ctdcast's) of the lifted
-    # global.  Omitted when neither the casts nor config supply one.
-    _expocode_coord = expocode_profile_var(identity.get("expocode", ""), n_profiles)
-    if _expocode_coord is not None:
-        data_vars["expocode"] = _expocode_coord
 
     # Base provenance attrs, then the ACDD/derived/authored layer on top (which
     # upgrades Conventions to include ACDD-1.3 and adds coverage bounds, people,

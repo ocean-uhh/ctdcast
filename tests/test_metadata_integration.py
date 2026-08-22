@@ -57,9 +57,10 @@ def test_ctd_profiles_carries_acdd_metadata(tmp_path):
         assert "time_coverage_start" in ds.attrs
         # embargo, not a bare CC-BY grant
         assert "Embargoed" in ds.attrs["license"]
-        # expocode both as coordinate and global, and they agree
-        assert str(ds["expocode"].values[0]) == "29OD20260709"
+        # expocode is a global attribute (one cruise per file); it is not carried
+        # as a per-profile variable — that projection belongs with CCHDO export.
         assert ds.attrs["expocode"] == "29OD20260709"
+        assert "expocode" not in ds.variables
         # CTD file does NOT credit the LADCP processors
         assert "Angel" not in ds.attrs.get("contributor_name", "")
 
@@ -75,7 +76,8 @@ def test_ladcp_profiles_carries_metadata_and_ladcp_only_people(tmp_path):
         assert ds.attrs["Conventions"] == "CF-1.13, ACDD-1.3"
         # vertical axis is depth in metres, not pressure
         assert ds.attrs["geospatial_vertical_units"] == "m"
-        assert str(ds["expocode"].values[0]) == "29OD20260709"
+        assert ds.attrs["expocode"] == "29OD20260709"
+        assert "expocode" not in ds.variables
         # LADCP file credits its processors, after the cruise PI, with the C89
         # prefLabels for their scoped roles (DI, MC).
         names = ds.attrs["contributor_name"]

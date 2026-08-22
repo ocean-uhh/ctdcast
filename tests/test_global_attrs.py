@@ -24,7 +24,6 @@ from ctdcast.config.global_attrs import (
     cruise_global_attrs,
     dataset_filename,
     dataset_identity,
-    expocode_profile_var,
     group_attrs,
     identity_attrs,
     is_placeholder_expocode,
@@ -291,16 +290,6 @@ def test_ambiguous_platform_warns_and_omits_expocode_not_crash():
         a = cruise_global_attrs(ci, lats=[1.0], lons=[2.0])
     assert "expocode" not in a
     assert "date_created" in a
-
-
-def test_expocode_profile_var_is_a_projection_of_a_value():
-    """It takes the lifted value, not cruise_info, so the N_PROF variable cannot
-    be authored independently of the global attribute it projects."""
-    dims, data, meta = expocode_profile_var("29OD20260709", 4)
-    assert dims == ["N_PROF"]
-    assert list(data) == ["29OD20260709"] * 4
-    assert "long_name" in meta
-    assert expocode_profile_var("", 4) is None
 
 
 # --- identity: one source of truth, lifted from the per-cast files -----------
