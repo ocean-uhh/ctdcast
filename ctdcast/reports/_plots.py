@@ -36,6 +36,7 @@ from ctdcast.plotters.plots import (
     draw_ladcp_bottomtrack_fig,
     draw_overview_panel_fig,
     draw_pressure_time_fig,
+    draw_qc_histogram_fig,
     draw_section_fig,
     draw_section_map_fig,
     draw_section_ts_histogram_fig,
@@ -109,6 +110,13 @@ def _make_stability_b64(
 ) -> str | None:
     """Return a base64 PNG of N² and Turner angle (2-panel)."""
     return render_b64(draw_stability_fig, ds, cfg=cfg)
+
+
+def _make_qc_histogram_b64(
+    nc_path: Path, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> str | None:
+    """Return a base64 PNG of per-variable data-value distributions with QC thresholds."""
+    return render_b64(draw_qc_histogram_fig, nc_path, optional=True, cfg=cfg)
 
 
 def _make_aux_profiles_b64(

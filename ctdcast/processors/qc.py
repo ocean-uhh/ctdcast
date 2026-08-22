@@ -28,8 +28,10 @@ GROSS_RANGE_DEFAULTS: dict[str, tuple[float, float]] = {
     "ctd_temperature": (-2.5, 40.0),
     "ctd_temperature_1": (-2.5, 40.0),
     "ctd_temperature_2": (-2.5, 40.0),
-    "conductivity_1": (0.0, 7.0),
-    "conductivity_2": (0.0, 7.0),
+    # Conductivity is stored in mS/cm (stage 1 converts from S/m); seawater runs
+    # ~30-60 mS/cm, so the range is in mS/cm, not S/m.
+    "conductivity_1": (0.0, 70.0),
+    "conductivity_2": (0.0, 70.0),
     "ctd_salinity": (2.0, 42.0),
     "ctd_salinity_1": (2.0, 42.0),
     "ctd_salinity_2": (2.0, 42.0),
@@ -97,14 +99,18 @@ def apply_gross_range(
             )
         vals = ds[var].values
         out_of_range = ~np.isnan(vals) & ((vals < vmin) | (vals > vmax))
+        qc = ds[qc_name].values.copy()
         if out_of_range.any():
-            qc = ds[qc_name].values.copy()
             qc[out_of_range] = QARTOD_SUSPECT
-            ds[qc_name] = xr.DataArray(
-                qc,
-                dims=ds[qc_name].dims,
-                attrs=ds[qc_name].attrs,
-            )
+        # Store the applied range on the qc companion so the report's thresholds
+        # table reads it back without parsing the history prose.  Recorded whether
+        # or not any sample fell outside it — the test was applied either way.
+        new_attrs = {
+            **ds[qc_name].attrs,
+            "qc_gross_range_suspect_min": float(vmin),
+            "qc_gross_range_suspect_max": float(vmax),
+        }
+        ds[qc_name] = xr.DataArray(qc, dims=ds[qc_name].dims, attrs=new_attrs)
         applied.append(f"{var}:[{vmin},{vmax}]")
 
     if applied:

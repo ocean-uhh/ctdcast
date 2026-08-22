@@ -91,6 +91,40 @@ config.yaml
      - ``false``
      - If ``true``, regenerate all pages even if they already exist.
 
+``processing`` block (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Per-cruise overrides for the pipeline stages.  Every key is optional and falls
+back to a built-in default.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 74
+
+   * - Key
+     - Description
+   * - ``profiles_dbar``
+     - Vertical bin size (dbar) for the compiled ``profiles.nc`` grid.  Default ``1``.
+   * - ``trim.near_surface_dbar``
+     - Pressure threshold for stage-2 soak detection (dbar).  Default ``10``.
+   * - ``qc.gross_range.<var>``
+     - Stage-3 gross-range bounds ``[min, max]`` for a variable; values outside
+       the range are flagged suspect (QARTOD flag 3).  Anything not listed keeps
+       its built-in default, and the cast page's QC panel shows the range
+       actually applied.  Bounds are in the variable's **stored units** —
+       conductivity mS/cm, salinity PSU, temperature deg C, oxygen umol/kg.
+   * - ``calibration.conductivity_slope``
+     - Multiplicative conductivity calibration applied at stage 3; salinity is
+       re-derived from the calibrated conductivity.
+
+.. code-block:: yaml
+
+   processing:
+     qc:
+       gross_range:
+         conductivity_1: [0.0, 70.0]   # mS/cm, not S/m
+         ctd_salinity_1: [30.0, 38.0]  # tighten for a specific cruise
+
 ``sensors`` block (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

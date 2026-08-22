@@ -84,6 +84,20 @@ class TestApplyGrossRange:
         ds_out = apply_gross_range(ds, thresholds={"ctd_salinity_1": (33.0, 36.0)})
         assert "ctd_salinity_1:[33.0,36.0]" in ds_out.attrs["history"]
 
+    def test_threshold_recorded_on_qc_var(self):
+        """The applied range is stored on the {var}_qc companion, machine-readable.
+
+        The report's thresholds table reads these back rather than parsing the
+        history prose; they are recorded whether or not any sample fell outside.
+        """
+        from ctdcast.processors.qc import apply_gross_range
+
+        ds = _load(CAST_011)
+        ds_out = apply_gross_range(ds, thresholds={"ctd_salinity_1": (33.0, 36.0)})
+        qc_attrs = ds_out["ctd_salinity_1_qc"].attrs
+        assert qc_attrs["qc_gross_range_suspect_min"] == 33.0
+        assert qc_attrs["qc_gross_range_suspect_max"] == 36.0
+
     def test_skips_variables_not_in_dataset(self):
         """Thresholds for absent variables should not raise."""
         from ctdcast.processors.qc import apply_gross_range

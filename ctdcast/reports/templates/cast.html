@@ -56,6 +56,12 @@ table.data-ranges { font-size: var(--fs-nav); }
     {% if ladcp_configured and not ladcp_available %}
     <div><dt>LADCP</dt><dd style="color:var(--warn);">⚠ not processed</dd></div>
     {% endif %}
+    {% if source_str %}
+    <div><dt>Source</dt><dd class="mono">{{ source_str }}</dd></div>
+    {% endif %}
+    {% if processed_str %}
+    <div><dt>Processed</dt><dd>{{ processed_str }}</dd></div>
+    {% endif %}
   </dl>
 {% endblock %}
 

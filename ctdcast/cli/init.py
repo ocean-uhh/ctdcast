@@ -136,6 +136,30 @@ display:
   #   CT: 0
   # vmax:
   #   CT: 30
+
+# Pipeline processing options.  All optional — sensible defaults are used unless
+# you set these to override per cruise.
+processing:
+  # profiles_dbar: 1        # vertical bin size for the compiled profiles.nc grid
+
+  # Stage 2 (trim): soak / back-on-deck detection.  Records are flagged
+  # (QARTOD flag 4), not deleted, and excluded from the compiled product.
+  # trim:
+  #   near_surface_dbar: 10.0
+
+  # Stage 3 gross-range QC — bounds by variable.  Values outside the range are
+  # flagged suspect (QARTOD flag 3).  Anything you do not list keeps its built-in
+  # default, and the report's QC panel shows the range actually applied.  Bounds
+  # are in each variable's stored units: conductivity mS/cm, salinity PSU,
+  # temperature deg C, oxygen umol/kg.
+  # qc:
+  #   gross_range:
+  #     conductivity_1: [0.0, 70.0]
+  #     ctd_salinity_1: [30.0, 38.0]
+
+  # Stage 3 calibration.
+  # calibration:
+  #   conductivity_slope: 1.0002
 """
 
 _SECTIONS_TEMPLATE = """\

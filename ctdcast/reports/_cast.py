@@ -28,6 +28,7 @@ from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
 from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
+from ctdcast.reports._qc import qc_summary, qc_thresholds
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
@@ -36,6 +37,7 @@ from ctdcast.reports._plots import (
     _make_ct_sa_sigma0_b64,
     _make_ladcp_bottomtrack_b64,
     _make_pressure_time_b64,
+    _make_qc_histogram_b64,
     _make_sensor_diff_b64,
     _make_stability_b64,
     _make_station_map_b64,
@@ -247,6 +249,14 @@ def generate_station_page(
     )
     report = resolve_cast(page_ctx, drop_stub=drop_stub)
 
+    # Source provenance: which file on disk this page was built from (the stage
+    # is encoded in the filename) and when that file was written — so a report
+    # always says what data produced it, and a stale/wrong-source page is obvious.
+    source_str = nc_path.name
+    processed_str = datetime.fromtimestamp(
+        nc_path.stat().st_mtime, tz=timezone.utc
+    ).strftime("%Y-%m-%d %H:%M UTC")
+
     ctx: dict[str, Any] = {
         "cast_num": cast_num_str,
         "cruise": cruise,
@@ -265,6 +275,8 @@ def generate_station_page(
         "cast_notes": cast_notes or [],
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "version": _VERSION,
+        "source_str": source_str,
+        "processed_str": processed_str,
         "report": report,
         "section_columns": CAST_SECTION_COLUMNS,
     }
@@ -377,6 +389,96 @@ def _render_data_ranges_table(nc_path: Path) -> str | None:
     )
 
 
+def _render_qc_table(nc_path: Path) -> str | None:
+    """Return the per-cast QC panel markup, or None when the file has no flags.
+
+    Two tables: the gross-range thresholds recorded on each ``{var}_qc`` companion
+    and, per variable, the QARTOD flag-count breakdown with a coloured
+    distribution bar.  Reads the file on disk — the flags the pipeline recorded —
+    not the trimmed, derived dataset plotted above.  Columns cover only the flag
+    values actually present (plus pass), read from each file's own
+    ``flag_values``/``flag_meanings``.  Values escaped here (emitted ``|safe``).
+    """
+    summary = qc_summary(nc_path)
+    if not summary:
+        return None
+
+    # Columns: the flag values present in any variable, plus pass (1), in order.
+    present: dict[int, dict[str, Any]] = {}
+    for row in summary:
+        for f in row["flags"]:
+            if f["n"] > 0:
+                present.setdefault(f["flag"], f)
+    present.setdefault(1, next(f for f in summary[0]["flags"] if f["flag"] == 1))
+    cols = [present[k] for k in sorted(present)]
+
+    legend = "".join(
+        f'<span style="background:{f["color"]}"></span>'
+        f"{escape(f['label'])}&nbsp;({f['flag']}) "
+        for f in cols
+    )
+    header = "".join(f"<th class='num'>{escape(f['label'])}&nbsp;%</th>" for f in cols)
+
+    body = []
+    for row in summary:
+        by_flag = {f["flag"]: f for f in row["flags"]}
+        cells = ""
+        for col in cols:
+            f = by_flag.get(col["flag"])
+            if f and f["n"] > 0:
+                txt = f"{f['pct']}" if f["pct"] > 0 else f"&lt;0.1&nbsp;({f['n']})"
+                cells += f"<td class='num'>{txt}</td>"
+            else:
+                cells += "<td class='num'>&ndash;</td>"
+        bar = "".join(
+            f'<div style="width:{f["pct"]}%;background:{f["color"]};" '
+            f'title="{escape(f["label"])}: {f["pct"]}%"></div>'
+            for f in row["flags"]
+            if f["pct"] > 0
+        )
+        body.append(
+            f"<tr><td class='mono'>{escape(row['var'])}</td>"
+            f"<td class='num'>{row['total']:,}</td>{cells}"
+            f"<td><div class='qc-bar'>{bar}</div></td></tr>"
+        )
+
+    thresholds = qc_thresholds(nc_path)
+    thr_html = ""
+    if thresholds:
+        trows = "".join(
+            f"<tr><td class='mono'>{escape(r['var'])}</td>"
+            f"<td>{escape(r['test'])}</td>"
+            f"<td class='num'>{escape(r['suspect'])}</td></tr>"
+            for r in thresholds
+        )
+        thr_html = (
+            "<table class='nc qc-thresholds'><thead><tr><th>Variable</th>"
+            "<th>Test</th><th class='num'>Suspect range</th></tr></thead>"
+            f"<tbody>{trows}</tbody></table>"
+        )
+
+    # Self-contained layout CSS for the distribution bar and legend; the flag
+    # colours are inline hex (from QC_FLAG_COLORS), so this needs no CSS vars.
+    style = (
+        "<style>"
+        ".qc-bar{display:flex;width:200px;height:13px;border-radius:3px;"
+        "overflow:hidden;gap:1px;background:#ecf0f1}"
+        ".qc-bar div{height:100%}"
+        ".qc-legend{display:flex;flex-wrap:wrap;gap:0.3rem 0.9rem;"
+        "font-size:0.75rem;margin:0.2rem 0 0.6rem}"
+        ".qc-legend span{display:inline-block;width:10px;height:10px;"
+        "border-radius:2px;vertical-align:middle;margin-right:3px}"
+        "</style>"
+    )
+    return (
+        f"{style}<div class='qc-legend'>{legend}</div>"
+        "<table class='nc qc-counts'><thead><tr><th>Variable</th>"
+        f"<th class='num'>N</th>{header}<th>Distribution</th></tr></thead>"
+        f"<tbody>{''.join(body)}</tbody></table>"
+        f"{thr_html}"
+    )
+
+
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
 # render?".  A None render from an applicable panel is a defect, and shows as a
 # stub with a reason; a section that genuinely cannot exist (no such variable) is
@@ -416,6 +518,17 @@ def _has_dual_sensors(c: PageCtx) -> bool:
         "ctd_salinity_2" in c.ds or "salinity_2" in c.ds
     )
     return dual_t or dual_s
+
+
+def _has_qc(c: PageCtx) -> bool:
+    """True when the cast file carries QARTOD ``{var}_qc`` companions.
+
+    Stage-2/3 files have them; a stage-1-only cast does not, so the QC section is
+    omitted (into the not-applicable footer) rather than stubbed.  Presence is
+    read from the dataset — trimming changes flag *counts*, not their existence —
+    while the counts themselves are read from the file on disk in the render.
+    """
+    return any(str(v).endswith("_qc") for v in c.ds.data_vars)
 
 
 #: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
@@ -503,6 +616,21 @@ CAST_PANELS: dict[str, Panel] = {
         kind="table",
         render=lambda c: _render_data_ranges_table(c.nc_path),
     ),
+    "qc_histogram": Panel(
+        id="qc_histogram",
+        slot="full",
+        caption=(
+            "Data-value distributions: grey = all data, colour = kept "
+            "(soak/deck and missing excluded); orange dashed = gross-range "
+            "suspect threshold. A threshold outside the data flags a mis-set bound."
+        ),
+        render=lambda c: _make_qc_histogram_b64(c.nc_path, cfg=c.cfg),
+    ),
+    "qc_flags": Panel(
+        id="qc_flags",
+        kind="table",
+        render=lambda c: _render_qc_table(c.nc_path),
+    ),
 }
 
 
@@ -556,6 +684,17 @@ CAST_DEFAULT: Profile = Profile(
             "diagnostics",
             "Diagnostics",
             ("pressure_time", "sensor_diff", "updown_diff"),
+        ),
+        Section(
+            "qc_flags",
+            "QC flags",
+            ("qc_histogram", "qc_flags"),
+            intro=(
+                "QARTOD flags recorded by the pipeline, read back from the cast "
+                "file: gross-range thresholds applied and the flag-count breakdown "
+                "per variable."
+            ),
+            applies_to=_has_qc,
         ),
         Section(
             "sensors",

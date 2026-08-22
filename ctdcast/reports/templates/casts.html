@@ -68,6 +68,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <th class="num">Latitude</th>
         <th class="num">Longitude</th>
         <th>Depth</th>
+        <th class="num" title="Percent of samples flagged suspect or fail (QARTOD 3+4), across all QC'd variables">QC flagged</th>
         {% if ladcp_configured %}<th>LADCP</th>{% endif %}
         <th>Links</th>
       </tr>
@@ -81,6 +82,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td class="num">{{ s.lat_str }}</td>
         <td class="num">{{ s.lon_str }}</td>
         <td><span class="depth-pill" style="background:{{ s.depth_bg }};color:{{ s.depth_fg }};">{{ s.max_depth_str }} dbar</span></td>
+        <td class="num">{% if s.qc_pct is not none %}{{ s.qc_pct }}%{% else %}–{% endif %}</td>
         {% if ladcp_configured %}
         <td>{% if s.ladcp_has %}<span class="ladcp-yes">✓</span>{% else %}<span class="ladcp-no">–</span>{% endif %}</td>
         {% endif %}

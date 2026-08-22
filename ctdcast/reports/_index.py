@@ -47,6 +47,7 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
+from ctdcast.reports._qc import qc_summary
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
@@ -1118,6 +1119,7 @@ def _write_stations_list(
                     for tn in cast_to_timeseries.get(cast_num_int, [])
                 ],
                 "ladcp_has": cast_num_int in ladcp_cast_nums,
+                "qc_pct": _cast_qc_pct(m.get("path")),
             }
         )
 
@@ -1497,6 +1499,24 @@ def _select_cast_files(nc_dir: Path) -> list[Path]:
     Sort order is cast number then suffix (plain before ``b``).
     """
     return [path for _cast_id, path, _stage in select_best_available(nc_dir)]
+
+
+def _cast_qc_pct(nc_path: Path | None) -> float | None:
+    """Return the percent of samples flagged suspect or fail for a cast, or None.
+
+    Aggregates the QARTOD flag counts across every QC'd variable in the cast's
+    file into one figure for the casts index — flags 3 (suspect) and 4 (fail);
+    pass, not-evaluated and missing do not count. Returns ``None`` when the file
+    carries no ``_qc`` companions (e.g. a stage-1 cast), rendered as ``–``.
+    """
+    if nc_path is None:
+        return None
+    rows = qc_summary(nc_path)
+    if not rows:
+        return None
+    total = sum(r["total"] for r in rows)
+    flagged = sum(f["n"] for r in rows for f in r["flags"] if f["flag"] in (3, 4))
+    return round(100.0 * flagged / total, 1) if total else None
 
 
 def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
