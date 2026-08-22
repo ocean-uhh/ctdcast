@@ -16,7 +16,11 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
-from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
+from ctdcast.config.global_attrs import (
+    cruise_global_attrs,
+    cruise_name,
+    expocode_coordinate,
+)
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
     SensorOverrides,
@@ -316,7 +320,7 @@ def build_profiles(
         v for v in ds0.data_vars if v not in _SKIP_VARS and not v.endswith("_qc")
     ]
     _ci = cruise_info or {}
-    _cfg_cruise = _ci.get("cruise_id")
+    _cfg_cruise = cruise_name(_ci)
     _file_cruise = ds0.attrs.get("cruise")
     if _cfg_cruise and _file_cruise and str(_cfg_cruise) != str(_file_cruise):
         warnings.warn(

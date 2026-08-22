@@ -884,7 +884,12 @@ def _run_interactive(args: argparse.Namespace) -> int:
                 # re-running against a config it generated must pre-fill from it.
                 # `name` is the pre-2026-08-21 spelling, kept so an old config
                 # still pre-fills rather than silently blanking.
-                "cruise_name": str(_ci.get("cruise_id") or _ci.get("name", "") or ""),
+                "cruise_name": str(
+                    _ci.get("cruise")
+                    or _ci.get("cruise_id")
+                    or _ci.get("name", "")
+                    or ""
+                ),
                 "ship": str(_ci.get("ship", "") or ""),
                 "start_date": str(_ci.get("start_date", "") or ""),
                 "end_date": str(_ci.get("end_date", "") or ""),

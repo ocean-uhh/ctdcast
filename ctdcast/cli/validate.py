@@ -10,6 +10,7 @@ import yaml
 from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 
 from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.processors import StagePaths
 
@@ -145,7 +146,31 @@ def run(args: argparse.Namespace) -> int:
                     f"or directly: {nc_dir}. Run `ctdcast process --stage 1` first."
                 )
             else:
-                print(f"  ctd_root: {len(nc_files)} cast file(s) found")
+                # Report casts and stage files separately: with a stage ladder the
+                # file count is casts x stages, so a bare "364 cast file(s)" for a
+                # 182-cast cruise reads as twice as many casts as exist.  The
+                # per-stage breakdown is also the answer to "how far has this
+                # cruise been processed".
+                _casts = {
+                    parsed[0]
+                    for f in nc_files
+                    if (parsed := cast_id_from_name(f.stem)) is not None
+                }
+                _by_stage: dict[str, int] = {}
+                for f in nc_files:
+                    _by_stage[f.parent.name if f.parent != nc_dir else "flat"] = (
+                        _by_stage.get(
+                            f.parent.name if f.parent != nc_dir else "flat", 0
+                        )
+                        + 1
+                    )
+                _detail = ", ".join(
+                    f"{name} {count}" for name, count in sorted(_by_stage.items())
+                )
+                print(
+                    f"  ctd_root: {len(_casts)} cast(s), "
+                    f"{len(nc_files)} stage file(s) — {_detail}"
+                )
                 # Try opening the first cast
                 try:
                     import xarray as xr
@@ -186,6 +211,23 @@ def run(args: argparse.Namespace) -> int:
 
     # cruise_info: contributors, creator, institutions
     cruise_info = cfg.get("cruise_info") or {}
+
+    # Nothing names the cruise -> every page header and the compiled file read
+    # UNKCRUISE.  Worth a warning rather than a silent default: the failure is
+    # cosmetic-looking but it reaches the published file, and the usual cause is
+    # a config written with `name:` or `cruise_id:` alone.
+    if not cruise_name(cruise_info):
+        _present = [k for k in ("name", "cruise_id") if cruise_info.get(k)]
+        _hint = (
+            f" (found cruise_info.{_present[0]}, which is not read — rename it "
+            f"to `cruise`)"
+            if _present
+            else ""
+        )
+        warnings.append(
+            f"cruise_info.cruise is not set{_hint}: page headers and the "
+            f"compiled file will say UNKCRUISE."
+        )
 
     # EXPOCODE: a missing half is not an error (the cruise may not have settled
     # its departure date) but it does mean the compiled file carries a

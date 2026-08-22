@@ -441,6 +441,35 @@ def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
     }
 
 
+def cruise_name(cruise_info: dict[str, Any] | None) -> str | None:
+    """Return the cruise identifier from config, accepting either spelling.
+
+    ``cruise`` is the attribute written to the file, and is the preferred config
+    key: for every other authored field -- ``title``, ``summary``, ``project``,
+    ``program`` -- the key and the attribute are the same word, and making this
+    one an exception is what let a ``cruise_id`` attribute leak into every file.
+    ``cruise_id`` stays accepted, because configs are written by hand and both
+    spellings are already in use.
+
+    One resolver rather than the precedence repeated at each of the six call
+    sites, so a config cannot be read one way by the compiler and another by the
+    report.
+
+    Parameters
+    ----------
+    cruise_info : dict or None
+        The ``cruise_info:`` mapping.
+
+    Returns
+    -------
+    str or None
+        The identifier, or ``None`` when neither key is set.
+    """
+    ci = cruise_info or {}
+    value = ci.get("cruise") or ci.get("cruise_id")
+    return str(value) if value else None
+
+
 def cruise_global_attrs(
     cruise_info: dict[str, Any] | None,
     *,
@@ -495,16 +524,12 @@ def cruise_global_attrs(
         if ci.get(key):
             attrs[key] = str(ci[key])
 
-    # `cruise` is the attribute; `cruise_id` is only the config KEY that feeds it.
-    # It used to sit in the loop above, which writes each key out under its own
-    # name -- correct for title/summary/project/program, where key and attribute
-    # coincide, and an accident for this one, which emitted a `cruise_id`
-    # attribute duplicating `cruise` in every file.  Emitting `cruise` here (not
-    # only in the CTD builder) is also what gives the LADCP product a cruise
-    # name at all: it merges per-cast attrs with drop_conflicts, and the OdB
-    # per-cast files carry no `cruise` attribute to survive that merge.
-    if ci.get("cruise_id"):
-        attrs["cruise"] = str(ci["cruise_id"])
+    # Emitting `cruise` here, rather than only in the CTD builder, is what gives
+    # the LADCP product a cruise name at all: it merges per-cast attrs with
+    # drop_conflicts, and per-cast files carry no `cruise` attribute to survive
+    # that merge.
+    if cruise_name(ci):
+        attrs["cruise"] = cruise_name(ci) or ""
     if ci.get("acknowledgement"):
         # Collapse the YAML folded-scalar newlines into one line.
         attrs["acknowledgement"] = " ".join(str(ci["acknowledgement"]).split())
