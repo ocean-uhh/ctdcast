@@ -140,3 +140,41 @@ def test_ctd_profiles_errors_when_casts_disagree_on_cruise(tmp_path):
     out = root / "profiles.nc"
     with pytest.raises(ValueError, match="disagree about 'cruise'"):
         build_profiles(root, out, force=True, cruise_info=_CRUISE_INFO)
+
+
+def test_ctd_profiles_title_and_cruise_agree_when_config_is_stale(tmp_path):
+    """A config edited after stage 1 must not split the file's own story.
+
+    The per-cast files win — they record the cruise the cast was actually taken
+    on — so the title has to be built from the lifted value too.  Building the
+    title from config while `attrs.update(identity)` set `cruise` from the files
+    produced a file titled for one cruise and attributed to another, behind a
+    warning that announced the opposite resolution.
+    """
+    root = tmp_path / "CTD"
+    _stage1_fixtures_with_cruise(root, lambda _stem: "onthefiles")
+    out = root / "profiles.nc"
+    with pytest.warns(UserWarning, match="using the files' value"):
+        build_profiles(root, out, force=True, cruise_info=_CRUISE_INFO)
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        assert ds.attrs["cruise"] == "onthefiles"
+        assert ds.attrs["title"].startswith("onthefiles")
+
+
+def test_ctd_profiles_history_survives_the_global_attr_merge(tmp_path):
+    """`history` is appended by every writer, so no layer may *return* one.
+
+    `cruise_global_attrs` is merged with `.update()`; a `history` key in its
+    result silently replaced whatever the builder had already recorded, making
+    the merge order load-bearing.  Both the creation note and the compile note
+    must survive.
+    """
+    root = tmp_path / "CTD"
+    _stage1_fixtures_with_cruise(root, lambda _stem: "odb2026")
+    out = root / "profiles.nc"
+    build_profiles(root, out, force=True, cruise_info=_CRUISE_INFO)
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        history = ds.attrs["history"]
+    assert "create: file created by ctdcast" in history
+    assert "profiles: compiled" in history
+    assert history.index("create:") < history.index("profiles:"), "creation first"

@@ -57,7 +57,7 @@ maximum pressure.  Each row links to the corresponding station page.
 sections.html
 -------------
 
-A card grid showing each named section from ``ctd_sections.yaml``.  Each card shows the
+A card grid showing each named section from ``ctd_groupings.yaml``.  Each card shows the
 section name, description, cast count, and a thumbnail map.  Clicking a card opens the
 section page.
 

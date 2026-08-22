@@ -30,7 +30,6 @@ import warnings
 from typing import Any
 
 import numpy as np
-from ctdcast._version import __version__ as _CTDCAST_VERSION
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.platforms import (
     PlatformError,
@@ -165,8 +164,10 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "featureType",
             "cdm_data_type",
             "pressure_units",
+            # `pressure_spacing_dbar` stays: it is the machine-readable
+            # parameter.  The prose that described the operation moved into
+            # `history`, where a record of what was done belongs.
             "pressure_spacing_dbar",
-            "pressure_binning",
             "cchdo_software_version",
             "cchdo_parameters_version",
         ),
@@ -415,12 +416,14 @@ def license_attrs(cruise_info: dict[str, Any]) -> dict[str, str]:
 
 
 def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
-    """Return ``date_created`` / ``date_modified``, a software ``history`` line,
-    and CF/ACDD conformance tags.
+    """Return ``date_created`` / ``date_modified`` and CF/ACDD conformance tags.
 
-    The ``history`` line records the software provenance — which ctdcast version
-    produced the file, and where to find it — so the file is traceable to its
-    generator (CF's audit-trail attribute).
+    Deliberately **not** ``history``.  Every other writer *appends* to that
+    attribute through :func:`ctdcast.processors.history.append_history`, so a
+    layer that returns it in a dict merged with ``.update()`` silently replaces
+    whatever the caller had already recorded -- the ordering of the merge becomes
+    load-bearing.  The software-provenance note lives in :data:`CREATION_NOTE`
+    and is appended, like every other line.
 
     Parameters
     ----------
@@ -436,11 +439,17 @@ def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
     return {
         "date_created": stamp,
         "date_modified": stamp,
-        "history": f"{stamp}: created by ctdcast v{_CTDCAST_VERSION} ({_CTDCAST_URL})",
         "Conventions": "CF-1.13, ACDD-1.3",
         "featureType": "profile",
         "cdm_data_type": "Profile",
     }
+
+
+#: The note recording *what wrote this file*, appended by each builder through
+#: :func:`ctdcast.processors.history.append_history` -- which already stamps the
+#: time and the ctdcast version, so this carries only the part that helper does
+#: not: where to find the software.
+CREATION_NOTE = f"file created by ctdcast ({_CTDCAST_URL})"
 
 
 def cruise_name(cruise_info: dict[str, Any] | None) -> str | None:
@@ -472,10 +481,14 @@ def cruise_name(cruise_info: dict[str, Any] | None) -> str | None:
     return str(value) if value else None
 
 
-#: Every attribute `identity_attrs` can emit.  Used only so `aggregate_identity`
-#: can recognise an identity attribute present on a per-cast file but absent from
-#: config -- the strict set it enforces still comes from `identity_attrs` itself,
-#: so adding one there protects it without touching this.
+#: Every attribute the identity layer may carry.  The **single** source of truth:
+#: :func:`identity_attrs` filters its own output through this set, so the set and
+#: the emitted attributes cannot drift apart.  The alternative -- deriving the set
+#: from what `identity_attrs` happened to return -- makes the two independently
+#: maintained, and adding a `platform_*` field to one and not the other silently
+#: exempts it from the disagreement check :func:`aggregate_identity` exists to
+#: enforce.  Adding a field here is the one edit needed; forgetting it fails
+#: loudly (the attribute never appears) rather than quietly.
 _IDENTITY_KEYS: frozenset[str] = frozenset(
     {
         "cruise",
@@ -486,6 +499,14 @@ _IDENTITY_KEYS: frozenset[str] = frozenset(
         "platform_vocabulary",
     }
 )
+
+#: The identity attributes that define *which cruise this is*.  Only these
+#: hard-fail :func:`aggregate_identity`: two values means two cruises, which is a
+#: mistake to catch rather than merge.  The rest of the identity layer describes
+#: the *ship*, where disagreement between casts is ordinary registry drift (a
+#: vocabulary URI that changed, a vessel renamed mid-programme) -- real, worth
+#: reporting, but not a reason to refuse to compile a cruise.
+_CRUISE_DEFINING_KEYS: frozenset[str] = frozenset({"cruise", "expocode"})
 
 
 def identity_attrs(
@@ -532,7 +553,11 @@ def identity_attrs(
         if expocode:
             attrs["expocode"] = expocode
 
-    return attrs
+    # Filtered through `_IDENTITY_KEYS` so that set is the single source of truth
+    # for what "identity" means -- `aggregate_identity` enforces disagreement on
+    # exactly the keys this can emit, and neither side can gain a key the other
+    # does not know about.
+    return {k: v for k, v in attrs.items() if k in _IDENTITY_KEYS}
 
 
 def aggregate_identity(
@@ -545,16 +570,24 @@ def aggregate_identity(
     inputs are compared:
 
     * constant across every cast that states it → lifted;
-    * **varying → :class:`ValueError`.** Two cruises in one directory is a
-      mistake, not a merge.  The previous behaviour
-      (``combine_attrs="drop_conflicts"``) silently discarded the attribute, so a
-      stray cast from another cruise made ``cruise`` *vanish* rather than fail;
+    * a **cruise-defining** attribute (``cruise``, ``expocode``) varying →
+      :class:`ValueError`.  Two cruises in one directory is a mistake, not a
+      merge.  The previous behaviour (``combine_attrs="drop_conflicts"``)
+      silently discarded the attribute, so a stray cast from another cruise made
+      ``cruise`` *vanish* rather than fail;
+    * a **ship-describing** attribute (the ``platform_*`` block) varying → warn,
+      and take *cruise_info*'s value if it has one, else omit the attribute.
+      Disagreement here is usually registry drift — a ``platform_vocabulary`` URI
+      edited between two stage-1 runs, a vessel renamed — which says nothing
+      about whether these casts are one cruise.  Failing the whole compile over
+      it, with a message about legs sharing a root, misdirects the reader towards
+      a problem they do not have;
     * absent from every cast → fall back to *cruise_info* and warn, which is the
       pre-stage-2 path and the case for files written before identity was
       recorded at stage 1.
 
-    The strict key set is ``identity_attrs(cruise_info)``' own keys, so an
-    attribute added there is protected automatically.
+    The key set is :data:`_IDENTITY_KEYS`, which :func:`identity_attrs` filters
+    its own output through, so the two cannot drift apart.
 
     Parameters
     ----------
@@ -570,15 +603,20 @@ def aggregate_identity(
     Raises
     ------
     ValueError
-        If any identity attribute takes more than one value across the inputs.
+        If a cruise-defining attribute (``cruise``, ``expocode``) takes more than
+        one value across the inputs.
     """
     from_config = identity_attrs(cruise_info)
-    keys = set(from_config) | {k for attrs in per_cast for k in attrs if k in _IDENTITY_KEYS}
+    keys = set(from_config) | {
+        k for attrs in per_cast for k in attrs if k in _IDENTITY_KEYS
+    }
 
     lifted: dict[str, str] = {}
+    fell_back: list[str] = []
+    disputed: list[str] = []
     for key in sorted(keys):
         seen = {str(a[key]) for a in per_cast if a.get(key)}
-        if len(seen) > 1:
+        if len(seen) > 1 and key in _CRUISE_DEFINING_KEYS:
             raise ValueError(
                 f"per-cast files disagree about {key!r}: {sorted(seen)}. "
                 f"A compiled product describes one cruise, so this is either a "
@@ -586,15 +624,43 @@ def aggregate_identity(
                 f"one root -- legs have their own departure date and so their own "
                 f"EXPOCODE. Compile each into its own root."
             )
+        if len(seen) > 1:
+            # Ship-describing, not cruise-defining: report it, then resolve it
+            # the way the rest of the layer resolves an unknown -- config if it
+            # states one, otherwise omit rather than pick a per-cast value
+            # arbitrarily and assert something no input agrees on.
+            disputed.append(f"{key} ({', '.join(sorted(seen))})")
+            if key in from_config:
+                lifted[key] = from_config[key]
+            continue
         if seen:
             lifted[key] = seen.pop()
         elif key in from_config:
-            warnings.warn(
-                f"no per-cast file states {key!r}; taking it from cruise_info. "
-                f"Re-run stage 1, or `ctdcast enrich`, to record it on the files.",
-                stacklevel=2,
-            )
+            fell_back.append(key)
             lifted[key] = from_config[key]
+
+    if disputed:
+        warnings.warn(
+            f"per-cast files disagree about the ship: {'; '.join(disputed)}. "
+            f"These describe the platform, not which cruise this is, so the "
+            f"compile continues -- taking cruise_info's value where it states "
+            f"one and omitting the attribute where it does not. Re-run stage 1, "
+            f"or `ctdcast enrich`, to make the per-cast files agree.",
+            stacklevel=2,
+        )
+
+    # One warning, not one per attribute.  Files written before identity was
+    # recorded at stage 1 are missing *all* of it, so warning per key reports a
+    # single fact six times per builder and twelve times per run -- noise that
+    # trains the reader to ignore it.
+    if fell_back:
+        warnings.warn(
+            f"per-cast files state no cruise identity ({', '.join(fell_back)}); "
+            f"taking it from cruise_info. These files predate identity being "
+            f"recorded at stage 1 — re-run stage 1, or `ctdcast enrich`, to "
+            f"stamp it on them.",
+            stacklevel=2,
+        )
     return lifted
 
 
@@ -689,12 +755,10 @@ def cruise_global_attrs(
         if ci.get(key):
             attrs[key] = str(ci[key])
 
-    # Emitting `cruise` here, rather than only in the CTD builder, is what gives
-    # the LADCP product a cruise name at all: it merges per-cast attrs with
-    # drop_conflicts, and per-cast files carry no `cruise` attribute to survive
-    # that merge.
-    if cruise_name(ci):
-        attrs["cruise"] = cruise_name(ci) or ""
+    # `cruise` is not emitted here: it is identity, so it comes from
+    # `identity_attrs` below (and, in the builders, from the per-cast files via
+    # `aggregate_identity`).  It used to be written here as well, which was
+    # harmless only because the same resolver produced both values.
     if ci.get("acknowledgement"):
         # Collapse the YAML folded-scalar newlines into one line.
         attrs["acknowledgement"] = " ".join(str(ci["acknowledgement"]).split())

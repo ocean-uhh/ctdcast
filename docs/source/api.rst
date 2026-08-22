@@ -173,6 +173,10 @@ Cast processing
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.processors.history
+   :members:
+   :undoc-members:
+
 ----
 
 Readers

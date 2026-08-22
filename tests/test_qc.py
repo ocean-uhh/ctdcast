@@ -75,7 +75,7 @@ class TestApplyGrossRange:
         ds = _load(CAST_011)
         ds_out = apply_gross_range(ds)
         assert "history" in ds_out.attrs
-        assert "apply_gross_range" in ds_out.attrs["history"]
+        assert "stage3: gross_range" in ds_out.attrs["history"]
 
     def test_history_contains_threshold(self):
         from ctdcast.processors.qc import apply_gross_range

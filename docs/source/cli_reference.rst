@@ -56,11 +56,11 @@ sections/timeseries groups from ``profiles.nc``) in the target directory.
      dest                  Destination directory or explicit .yaml path (default: .)
 
    options:
-     --sections            Also write a template ctd_sections.yaml
+     --sections            Also write a template ctd_groupings.yaml
      --interactive         Prompt for all data paths and cruise metadata,
                            then offer to auto-detect sections/timeseries
      --auto-section        Re-run section/timeseries detection from an existing
-                           config and overwrite ctd_sections_draft.yaml.
+                           config and overwrite ctd_groupings_draft.yaml.
                            Reads profiles_nc from the config; does not touch config.yaml.
      --force               Overwrite existing files
 
@@ -84,14 +84,15 @@ sections/timeseries groups from ``profiles.nc``) in the target directory.
    diameter clusters → timeseries.
 5. Runs > ``--max-section-casts`` are split into consecutive chunks.
 
-Output is ``ctd_sections_draft.yaml`` (alongside ``section_yaml`` from the config,
-or in the config's directory).  Review and rename to ``ctd_sections.yaml`` before use.
+Output is ``ctd_groupings_draft.yaml`` (alongside ``groupings_yaml`` from the
+config, or in the config's directory).  Review and rename to
+``ctd_groupings.yaml`` before use.
 
 **Examples**::
 
    ctdcast init                          # write config.yaml in current directory
    ctdcast init /data/cruise/
-   ctdcast init --sections               # also write a template ctd_sections.yaml
+   ctdcast init --sections               # also write a template ctd_groupings.yaml
    ctdcast init --interactive config.yaml --force   # guided setup with auto-detection
    ctdcast init --auto-section config.yaml --force  # re-detect sections only
 
@@ -111,7 +112,7 @@ Validate config paths and data before the first run.  Does not write any files.
 
    options:
      --strict         Also check that all cast numbers referenced in
-                      ctd_sections.yaml are present in nc_dir
+                      ctd_groupings.yaml are present in ctd_root
 
 **Examples**::
 
@@ -215,8 +216,8 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
 
    page selection (default: all page types enabled in config):
      --casts          Generate per-cast pages
-     --sections       Generate section pages (requires profiles.nc and section_yaml)
-     --timeseries     Generate timeseries pages (requires profiles.nc and section_yaml)
+     --sections       Generate section pages (requires profiles.nc and groupings_yaml)
+     --timeseries     Generate timeseries pages (requires profiles.nc and groupings_yaml)
      --index          Generate index.html and casts.html
      --map            Generate leaflet.html interactive map
      --all            Generate every page type

@@ -274,3 +274,68 @@ class TestBuildProfilesCruise:
         # and the two casts stay distinct in identity, not collapsed to one
         assert {str(s) for s in ds["cast_suffix"].values} == {"", "b"}
         ds.close()
+
+    def test_excludes_qartod_flag4_records(self, tmp_path):
+        """build_profiles NaN-masks flag-4 (soak/deck) samples before binning."""
+        import numpy as np
+
+        from ctdcast.processors.profiles import build_profiles
+        from ctdcast.processors.stage_layout import stage_path
+
+        src = sorted(FIXTURES_NC.glob("*.nc"))[0]
+        with xr.open_dataset(src, engine="netcdf4") as ds:
+            ds = ds.load()
+        dim = ds["pressure"].dims[0]
+        n = ds.sizes[dim]
+        var = next(
+            v for v in ds.data_vars if v.endswith("_1") and not v.endswith("_qc")
+        )
+        # Flag the shallowest third of samples as QARTOD fail (soak-like): those
+        # bins are then entirely flagged, so they must drop out of the product.
+        order = np.argsort(ds["pressure"].values)
+        qc = np.ones(n, dtype=np.int8)
+        qc[order[: max(1, n // 3)]] = 4
+
+        # Baseline: a stage-1 file with no _qc — nothing is excluded.
+        root_base = tmp_path / "base"
+        pb = stage_path(root_base, src.stem, 1)
+        pb.parent.mkdir(parents=True, exist_ok=True)
+        ds.to_netcdf(pb)
+        out_base = root_base / "profiles.nc"
+        build_profiles(root_base, out_base, force=True)
+
+        # Flagged: the same cast at stage 2, carrying flag 4 on the shallow samples.
+        root_flag = tmp_path / "flag"
+        ds_flag = ds.copy()
+        ds_flag[f"{var}_qc"] = xr.DataArray(qc, dims=[dim])
+        pf = stage_path(root_flag, src.stem, 2)
+        pf.parent.mkdir(parents=True, exist_ok=True)
+        ds_flag.to_netcdf(pf)
+        out_flag = root_flag / "profiles.nc"
+        build_profiles(root_flag, out_flag, force=True)
+
+        with (
+            xr.open_dataset(out_base, engine="netcdf4") as d0,
+            xr.open_dataset(out_flag, engine="netcdf4") as d1,
+        ):
+            n0 = int(np.isfinite(d0[var].values).sum())
+            n1 = int(np.isfinite(d1[var].values).sum())
+            # The exclusion is claimed in history only for the file where it
+            # actually happened, not the stage-1-only baseline.
+            assert "excluded QARTOD flag 4" not in d0.attrs["history"]
+            assert "excluded QARTOD flag 4" in d1.attrs["history"]
+        assert n1 < n0, f"flag-4 masking did not reduce finite {var} ({n1} vs {n0})"
+
+    def test_binning_recorded_in_history_not_a_standalone_attr(self, tmp_path):
+        """The binning prose lives in `history`; the scalar spacing stays an attr."""
+        from ctdcast.processors.profiles import build_profiles
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(FIXTURES_NC, out, force=True)
+        with xr.open_dataset(out, engine="netcdf4") as ds:
+            # The prose description of the operation is a history line, not an attr.
+            assert "pressure_binning" not in ds.attrs
+            assert "bin centre" in ds.attrs["history"]
+            assert "profiles:" in ds.attrs["history"]
+            # The machine-readable spacing is still a scalar attribute.
+            assert float(ds.attrs["pressure_spacing_dbar"]) == 1.0

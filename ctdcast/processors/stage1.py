@@ -11,7 +11,6 @@ The ``converters`` module re-exports these names for backward compatibility.
 from __future__ import annotations
 
 import contextlib
-import datetime
 import io
 import logging
 import sys
@@ -24,6 +23,7 @@ import xarray as xr
 from ctdcast.config.global_attrs import identity_attrs
 from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.writers.netcdf import write as write_nc
 
@@ -94,8 +94,6 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     xr.Dataset
         Normalised Dataset ready for :func:`ctdcast.writers.netcdf.write`.
     """
-    from ctdcast._version import __version__
-
     ds = ds.copy()
 
     # Step 1: rename via CNV_ALIASES (lowercase key lookup).  The reader
@@ -162,7 +160,13 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
         if _c not in ds.data_vars:
             continue
         _u = ds[_c].attrs.get("units", "").lower().replace(" ", "").replace("^", "")
-        if _u in ("s/m", "sm-1", "sm⁻1", "siemens/m", "siemenspermetre"):  # pragma: no cover
+        if _u in (
+            "s/m",
+            "sm-1",
+            "sm⁻1",
+            "siemens/m",
+            "siemenspermetre",
+        ):  # pragma: no cover
             converted = ds[_c] * 10.0
             _attrs = dict(ds[_c].attrs)
             _attrs["units"] = "mS cm-1"
@@ -198,10 +202,7 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
             ds = ds.rename({v1: plain})
 
     # Step 5: append history
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    entry = f"{stamp} ctdcast {__version__} stage1: normalise (CNV → canonical names)"
-    prev = ds.attrs.get("history", "")
-    ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
+    append_history(ds.attrs, "normalise (CNV → canonical names)", stage="stage1")
 
     # Step 6: stamp the immutable cruise identity.  identity_attrs returns {} when
     # cruise_info is None/empty, so this is a no-op for callers that pass no config

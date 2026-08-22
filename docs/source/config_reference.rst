@@ -15,6 +15,6 @@ pages it points to are listed in the sidebar directly.
   sensors, display.
 - :doc:`cruise_metadata` — the ``cruise_info`` block: identity, platform, people,
   institutions, embargo.
-- :doc:`ctd_sections` — every ``ctd_sections.yaml`` field: sections and
+- :doc:`ctd_groupings` — every ``ctd_groupings.yaml`` field: sections and
   timeseries.
 - :doc:`data_files` — the netCDF files ctdcast reads and writes.

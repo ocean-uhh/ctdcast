@@ -94,7 +94,7 @@ the current directory), then adjust the paths:
    data:
      ctd_root:     /data/cruise/CTD/ctd_nc     # profiles.nc derives from this
      cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
-     section_yaml: /data/cruise/config/ctd_sections.yaml
+     groupings_yaml: /data/cruise/config/ctd_groupings.yaml
      gebco_nc:     /data/GEBCO_2025.nc         # optional
 
    output:
@@ -102,7 +102,7 @@ the current directory), then adjust the paths:
 
    generate:
      stations:   true
-     sections:   true    # requires profiles.nc and section_yaml
+     sections:   true    # requires profiles.nc and groupings_yaml
      timeseries: true    # requires profiles.nc
 
 Leave ``gebco_nc`` blank or omit it entirely if you do not have a GEBCO file — maps will
@@ -113,7 +113,7 @@ render without bathymetry.
 Define your sections
 --------------------
 
-If ``generate.sections`` is ``true``, create a ``ctd_sections.yaml`` file that groups
+If ``generate.sections`` is ``true``, create a ``ctd_groupings.yaml`` file that groups
 casts into named transects:
 
 .. code-block:: yaml
@@ -128,7 +128,7 @@ casts into named transects:
        color: "#377eb8"
        cast_numbers: [[20, 35]]
 
-See :doc:`ctd_sections` for the full section YAML specification.
+See :doc:`ctd_groupings` for the full groupings YAML specification.
 
 ----
 
@@ -192,7 +192,7 @@ Where to go next
 
 - :doc:`config_yaml` — every ``config.yaml`` field.
 - :doc:`cruise_metadata` — the ``cruise_info`` block: identity, platform, people, embargo.
-- :doc:`ctd_sections` — every ``ctd_sections.yaml`` field.
+- :doc:`ctd_groupings` — every ``ctd_groupings.yaml`` field.
 - :doc:`data_files` — the netCDF files ctdcast reads and writes.
 - :doc:`report_output` — what each report page contains.
 - :doc:`api` — Python API for calling ctdcast from your own scripts.

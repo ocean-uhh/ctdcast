@@ -16,11 +16,12 @@ import pytest
 from ctdcast.config.global_attrs import (
     ATTR_GROUPS,
     OTHER_GROUP,
+    _IDENTITY_KEYS,
+    aggregate_identity,
     canonical_attr_order,
     coverage_attrs,
     cruise_expocode,
     cruise_global_attrs,
-    aggregate_identity,
     dataset_filename,
     dataset_identity,
     expocode_profile_var,
@@ -149,6 +150,18 @@ def test_leap_day_end_date_maps_to_feb_28():
 
 
 # --- provenance ------------------------------------------------------------
+
+
+def test_no_attr_layer_returns_history():
+    """`history` is appended, never returned.
+
+    Both of these results are merged into a builder's attrs with `.update()`, so
+    a `history` key in either replaces what the builder already recorded and makes
+    the merge order load-bearing.  The software-provenance note is `CREATION_NOTE`,
+    appended through the shared helper like every other line.
+    """
+    assert "history" not in provenance_attrs()
+    assert "history" not in cruise_global_attrs({"cruise": "MSM142"}, source="ctd")
 
 
 def test_provenance_is_injectable_and_acdd():
@@ -317,20 +330,63 @@ def test_aggregate_errors_when_casts_disagree():
         aggregate_identity([dict(one), {**one, "cruise": "ODB2026"}], _ID_CI)
 
 
-def test_aggregate_falls_back_to_config_with_a_warning():
-    """Per-cast files written before identity was recorded at stage 1."""
-    with pytest.warns(UserWarning, match="no per-cast file states"):
+def test_aggregate_falls_back_to_config_with_one_warning():
+    """Per-cast files written before identity was recorded at stage 1.
+
+    One warning, not one per attribute: such a file is missing *all* of the
+    identity, so per-key warnings report a single fact six times per builder.
+    """
+    with pytest.warns(UserWarning, match="state no cruise identity") as record:
         got = aggregate_identity([{}, {}], _ID_CI)
+    assert len(record) == 1
     assert got == identity_attrs(_ID_CI)
+    message = str(record[0].message)
+    for key in identity_attrs(_ID_CI):
+        assert key in message, "the warning must name every attribute it filled in"
 
 
-def test_aggregate_strict_keys_come_from_identity_attrs():
-    """Adding an attribute to identity_attrs must protect it automatically; a
-    second hardcoded list would silently stop guarding the new one."""
+def test_identity_attrs_cannot_emit_a_key_the_strict_set_does_not_know():
+    """One source of truth for what "identity" means.
+
+    `identity_attrs` filters its output through `_IDENTITY_KEYS`, and
+    `aggregate_identity` enforces disagreement on that same set, so the two
+    cannot drift apart — which is what would silently exempt a newly added
+    `platform_*` field from the check.
+    """
+    assert set(identity_attrs(_ID_CI)) <= _IDENTITY_KEYS
+
+
+def test_aggregate_hard_fails_only_on_the_cruise_defining_keys():
+    """Two cruises in one directory is a mistake; a renamed ship is not.
+
+    `cruise` and `expocode` answer "which cruise is this", so two values means
+    two cruises and the compile must stop.  The `platform_*` block describes the
+    ship, where disagreement is ordinary registry drift — failing the whole
+    compile over a vocabulary URI that changed between two stage-1 runs, with a
+    message about legs sharing a root, sends the reader after a problem they do
+    not have.
+    """
     one = identity_attrs(_ID_CI)
-    for key in one:
+    for key in ("cruise", "expocode"):
         with pytest.raises(ValueError, match="disagree"):
             aggregate_identity([dict(one), {**one, key: "different"}], _ID_CI)
+
+    for key in set(one) - {"cruise", "expocode"}:
+        with pytest.warns(UserWarning, match="disagree about the ship"):
+            got = aggregate_identity([dict(one), {**one, key: "different"}], _ID_CI)
+        assert got[key] == one[key], "config resolves what the casts dispute"
+
+
+def test_aggregate_omits_a_disputed_ship_attribute_config_cannot_resolve():
+    """No authoritative value anywhere, so assert nothing rather than pick one."""
+    per_cast = [
+        {"cruise": "MSM142", "platform_name": "Maria S. Merian"},
+        {"cruise": "MSM142", "platform_name": "MARIA S MERIAN"},
+    ]
+    with pytest.warns(UserWarning, match="disagree about the ship"):
+        got = aggregate_identity(per_cast, {"cruise": "MSM142"})
+    assert got["cruise"] == "MSM142"
+    assert "platform_name" not in got
 
 
 # --- canonical order + grouping --------------------------------------------

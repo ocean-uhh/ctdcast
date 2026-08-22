@@ -8,15 +8,15 @@ upcast halves, bins to a common 1-dbar grid, and writes a single
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import warnings
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.config.global_attrs import (
+    CREATION_NOTE,
     aggregate_identity,
     cruise_global_attrs,
     cruise_name,
@@ -30,6 +30,8 @@ from ctdcast.config.sensors import (
     resolve_sensor,
 )
 from ctdcast.identity import format_cast_id
+from ctdcast.processors.history import append_history
+from ctdcast.processors.qc import QARTOD_FAIL
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
@@ -316,20 +318,17 @@ def build_profiles(
     # Exclude QARTOD _qc flags: they are per-cast integer flags, not griddable
     # science, so binning would average them into meaningless floats.  profiles.nc
     # carries no _qc today; this keeps that true now that best-available can pick a
-    # stage-3 file.  (Honouring flag 4 in the product is a separate, later change.)
+    # stage-3 file.  Flag 4 (soak/deck) is honoured per cast in the binning loop
+    # below, where the flagged samples are NaN-masked before the bin means.
     var_names = [
         v for v in ds0.data_vars if v not in _SKIP_VARS and not v.endswith("_qc")
     ]
     _ci = cruise_info or {}
+    # The cruise name is resolved later, from the aggregated identity — not here
+    # from the first file, and not from config.  `attrs.update(identity)` is what
+    # decides the `cruise` attribute, so anything derived from a different source
+    # (the title) would disagree with it.
     _cfg_cruise = cruise_name(_ci)
-    _file_cruise = ds0.attrs.get("cruise")
-    if _cfg_cruise and _file_cruise and str(_cfg_cruise) != str(_file_cruise):
-        warnings.warn(
-            f"cruise_info.cruise_id {str(_cfg_cruise)!r} differs from the per-cast "
-            f"file's cruise attribute {str(_file_cruise)!r}; using the config value.",
-            stacklevel=2,
-        )
-    cruise = str(_cfg_cruise or _file_cruise or "UNK")
     ds0.close()
 
     n_casts = len(cast_list)
@@ -368,10 +367,23 @@ def build_profiles(
     per_cast_attrs: list[dict[str, str]] = []
 
     # Pass 2: split and bin each cast
+    flag4_masked = False  # did any input actually carry flag-4 records to exclude?
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
         cast_sensor_records.append(parse_sensor_channels(ds))
+        # Honour QARTOD flag 4 (soak/deck) from stage 2: NaN the flagged samples
+        # so they do not enter the bin means.  pressure is in _SKIP_VARS and
+        # carries no _qc, so the binning coordinate is untouched; stage-1-only
+        # files have no _qc and are unaffected — flag4_masked stays False and the
+        # history line does not claim an exclusion that never happened.
+        for _v in var_names:
+            _qc = f"{_v}_qc"
+            if _qc in ds and _v in ds:
+                _is_fail = ds[_qc] == QARTOD_FAIL
+                if bool(_is_fail.any()):
+                    flag4_masked = True
+                ds[_v] = ds[_v].where(~_is_fail)
         source_stages[rank] = source_stage
         source_files[rank] = path.name
         pressure = ds["pressure"].values
@@ -581,6 +593,21 @@ def build_profiles(
     # one directory); absent → cruise_info fallback with a warning.  This is the
     # authority for identity at compile — config is no longer re-derived here.
     identity = aggregate_identity(per_cast_attrs, _ci)
+    # `identity` is authoritative — it is what lands in `attrs` below — so the
+    # title is built from it, not from config.  Deriving the two separately is how
+    # a file ended up titled for one cruise and attributed to another, behind a
+    # warning that announced the opposite resolution.
+    _lifted_cruise = identity.get("cruise")
+    if _cfg_cruise and _lifted_cruise and str(_cfg_cruise) != str(_lifted_cruise):
+        warnings.warn(
+            f"the per-cast files say this is cruise {str(_lifted_cruise)!r}, but "
+            f"cruise_info says {str(_cfg_cruise)!r}; using the files' value, "
+            f"because a stage file records the cruise the cast was actually taken "
+            f"on. If the config is the correct one, re-run stage 1, or "
+            f"`ctdcast enrich`, to restamp the per-cast files.",
+            stacklevel=2,
+        )
+    cruise = str(_lifted_cruise or _cfg_cruise or "UNK")
     # EXPOCODE as an N_PROF variable: a CCHDO projection (one file may hold more
     # than one cruise in their world, though not in ctdcast's) of the lifted
     # global.  Omitted when neither the casts nor config supply one.
@@ -601,10 +628,6 @@ def build_profiles(
         ),
         "pressure_units": "dbar",
         "pressure_spacing_dbar": dbar,
-        "pressure_binning": (
-            f"mean of raw samples per {dbar}-dbar bin; pressure coordinate is the "
-            "bin centre"
-        ),
         "Conventions": "CF-1.13",
     }
     # Guard the reductions: an empty grid or all-NaN max-pressure would make
@@ -641,6 +664,23 @@ def build_profiles(
     # file states the cruise its casts actually came from (and errors if they
     # disagree).
     attrs.update(identity)
+
+    # Provenance: what wrote the file, then what it did.  Both go through
+    # `append_history`, so neither can be clobbered by a layer that returns a
+    # `history` key of its own — `cruise_global_attrs` no longer emits one.
+    append_history(attrs, CREATION_NOTE, stage="create")
+
+    # Record the binning operation in history (pressure_spacing_dbar
+    # keeps the machine-readable scalar), so the treatment is reconstructable from
+    # the compiled file alone.  Only claim the soak/deck exclusion when it actually
+    # removed something — stage-1-only inputs carry no flags to exclude.
+    _note = (
+        f"compiled {len(cast_list)} casts; mean of raw samples per {dbar}-dbar "
+        "bin, pressure coordinate is the bin centre"
+    )
+    if flag4_masked:
+        _note += "; excluded QARTOD flag 4 (soak/deck) records before binning"
+    append_history(attrs, _note, stage="profiles")
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     ds_out["pressure"].attrs = {

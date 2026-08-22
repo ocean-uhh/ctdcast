@@ -18,6 +18,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.config.global_attrs import (
+    CREATION_NOTE,
     aggregate_identity,
     cruise_global_attrs,
     expocode_profile_var,
@@ -25,6 +26,7 @@ from ctdcast.config.global_attrs import (
 )
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import (
     is_up_to_date,
     select_best_available,
@@ -268,6 +270,19 @@ def build_ladcp_profiles(
     # cruise_global_attrs still emits, so a compiled file states the cruise its
     # casts actually came from (and errors if they disagree).
     ds_out.attrs.update(identity)
+
+    # Provenance: what wrote the file, then what it did.  Both go through
+    # `append_history`; `cruise_global_attrs` no longer returns a `history` key,
+    # so this no longer depends on being called after it.
+    append_history(ds_out.attrs, CREATION_NOTE, stage="create")
+    append_history(
+        ds_out.attrs,
+        (
+            f"compiled {len(files)} LADCP casts; aligned onto the deepest cast's "
+            "depth axis (common-axis reindex, not a regrid)"
+        ),
+        stage="ladcp_profiles",
+    )
 
     write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)
     print(f"ladcp-profiles: wrote {ladcp_profiles_path}")

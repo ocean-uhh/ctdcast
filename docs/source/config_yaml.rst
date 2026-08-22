@@ -14,21 +14,43 @@ config.yaml
    * - Key
      - Required
      - Description
-   * - ``nc_dir``
+   * - ``ctd_root``
      - yes
-     - Path to a directory of per-cast netCDF files (one ``.nc`` per cast).
+     - The CTD root ctdcast owns.  It holds ``stage1/`` … ``stage3/`` (one file
+       per cast per stage) and the compiled ``profiles.nc`` at its top, so a
+       product cannot drift away from the stage files it was built from.
+       Created for you.
+   * - ``ladcp_root``
+     - no
+     - The same for LADCP: ``stage1/`` and ``ladcp_profiles.nc``.  Required only
+       when ``ladcp_dir`` is set.
+   * - ``cnv_dir``
+     - no
+     - Directory of calibrated CNV files, one per cast — an input ctdcast only
+       reads.  Required to run stage 1.
+   * - ``ladcp_dir``
+     - no
+     - Directory of processed LADCP ``.mat`` files, one per cast — an input
+       ctdcast only reads.
+   * - ``groupings_yaml``
+     - no
+     - Path to the cast-groupings file (conventionally ``ctd_groupings.yaml``)
+       defining ``sections:`` and ``timeseries:``.  Required for section pages.
+       Superseded spelling: ``section_yaml``, still accepted.
    * - ``profiles_nc``
      - no
-     - Path to the compiled ``profiles.nc`` file on a 1 dbar grid.  Required for
-       section and time series pages.
-   * - ``section_yaml``
-     - no
-     - Path to the ``ctd_sections.yaml`` file defining transect groups.  Required
-       for section pages.
+     - Override for the compiled profiles path.  Derived as
+       ``<ctd_root>/profiles.nc``; set this only to read a product that lives
+       elsewhere.
    * - ``gebco_nc``
      - no
      - Path to a GEBCO NetCDF bathymetry file.  Maps render without bathymetry if
        this is omitted or the file is not found — not an error.
+   * - ``nc_dir``
+     - no
+     - Superseded spelling of ``ctd_root``, still accepted.  A directory written
+       before the stage layout holds unsuffixed per-cast files; those are read as
+       stage 1.
 
 ``output`` block
 ~~~~~~~~~~~~~~~~
@@ -59,11 +81,12 @@ config.yaml
      - Generate per-cast station pages.
    * - ``sections``
      - ``true``
-     - Generate transect section pages.  Requires ``profiles_nc`` and
-       ``section_yaml``.
+     - Generate transect section pages.  Requires a compiled ``profiles.nc``
+       and ``groupings_yaml``.
    * - ``timeseries``
      - ``true``
-     - Generate the cruise-wide time series page.  Requires ``profiles_nc``.
+     - Generate the cruise-wide time series page.  Requires a compiled
+       ``profiles.nc``.
    * - ``force``
      - ``false``
      - If ``true``, regenerate all pages even if they already exist.
@@ -113,7 +136,7 @@ Example
      ctd_root:     /data/cruise/CTD/ctd_nc     # stage1/…stage3/ + profiles.nc
      ladcp_root:   /data/cruise/LADCP/ladcp_nc
      cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
-     section_yaml: /data/cruise/config/ctd_sections.yaml
+     groupings_yaml: /data/cruise/config/ctd_groupings.yaml
      gebco_nc:     /data/GEBCO_2025.nc
 
    output:

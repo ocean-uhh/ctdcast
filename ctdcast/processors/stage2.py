@@ -15,7 +15,6 @@ soak/deck algorithms are deliberate — see the individual docstrings.
 
 from __future__ import annotations
 
-import datetime
 import sys
 from pathlib import Path
 
@@ -23,7 +22,8 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.identity import format_cast_id
-from ctdcast.processors.qc import _qc_attrs
+from ctdcast.processors.history import append_history
+from ctdcast.processors.qc import QARTOD_FAIL, _qc_attrs
 from ctdcast.processors.stage_layout import (
     group_by_cast,
     is_up_to_date,
@@ -122,20 +122,23 @@ def apply_stage2(
             )
         qc = ds[qc_name].values.copy()
         if i_soak > 0:
-            qc[:i_soak] = np.int8(4)
+            qc[:i_soak] = QARTOD_FAIL
         if i_deck < n:
-            qc[i_deck:] = np.int8(4)
+            qc[i_deck:] = QARTOD_FAIL
         ds[qc_name] = xr.DataArray(qc, dims=[dim], attrs=ds[qc_name].attrs)
 
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    n_soak = i_soak if i_soak > 0 else 0
+    n_deck = n - i_deck if i_deck < n else 0
     params = (
         f"near_surface_dbar={near_surface_dbar}, search_seconds={search_seconds}, "
         f"deck_window_seconds={deck_window_seconds}, margin_dbar={margin_dbar}, "
         f"max_deck_dbar={max_deck_dbar}"
     )
-    entry = f"{stamp} ctdcast apply_stage2: soak_end_idx={i_soak}, deck_start_idx={i_deck}; {params}"
-    prev = ds.attrs.get("history", "")
-    ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
+    note = (
+        f"soak/deck QARTOD flag 4: soak_end_idx={i_soak} ({n_soak} flagged), "
+        f"deck_start_idx={i_deck} ({n_deck} flagged); {params}"
+    )
+    append_history(ds.attrs, note, stage="stage2")
 
     return ds
 

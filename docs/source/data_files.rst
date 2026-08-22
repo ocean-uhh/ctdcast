@@ -148,6 +148,80 @@ rather than by index.
 The pressure coordinate is the **bin centre**, so a binned value sits at the mean
 depth of the samples it averages rather than at the bin's shallow edge.
 
+Where each attribute is written
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A fact is attached as early in the processing ladder as it is *true*, so a
+per-cast stage file is self-describing and the compiled product mostly
+**inherits** rather than **originates**. The test is not "is it knowable at stage
+1" but "can it still change after the ship docks" — a value written into 200
+frozen stage files and then edited in config is a stale copy in 200 places.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 30 48
+
+   * - Class
+     - Examples
+     - Where, and why
+
+   * - **Identity**
+     - ``cruise``, ``platform_*``, ``expocode``
+     - Written at **stage 1** on every per-cast file, and lifted unchanged into
+       the compiled products. Fixed the moment a cast is taken, and a file copied
+       out of its directory must still say which cruise and which ship.
+
+   * - **Derived from data**
+     - ``geospatial_*``, ``time_coverage_*``, vertical bounds
+     - **Computed at every level.** Not moved early: per-cast bounds describe
+       that cast, compiled bounds describe the cruise. Same function, different
+       scope.
+
+   * - **Authored, and revisable**
+     - contributors, ``license``, ``embargo``, ``acknowledgement``, ``title``
+     - **Compile time only.** ORCIDs get corrected and embargo dates shift for
+       years afterwards; per-cast copies would be plausible and wrong.
+
+   * - **About the product**
+     - ``pressure_spacing_dbar``, ``source``, ``id``
+     - **Compile time only.** They describe the gridded artefact, not the
+       measurement, so there is nothing earlier to originate them.
+
+   * - **Stage-local**
+     - ``history``
+     - **Each stage appends.** The model the rest of this table follows.
+
+Lifting is strict
+^^^^^^^^^^^^^^^^^
+
+When the compiled product takes identity from the per-cast files, disagreement on
+a **cruise-defining** attribute is an **error**, not a merge: a compiled product
+describes one cruise, so two values of ``cruise`` or ``expocode`` mean either a
+cast from another cruise in the directory or two legs sharing one root. (Legs
+depart on different dates, so they have different EXPOCODEs — compile each into
+its own root.)
+
+The rest of the identity layer — the ``platform_*`` block — describes the *ship*,
+and casts disagreeing there is ordinary registry drift: a ``platform_vocabulary``
+URI edited between two stage-1 runs, a vessel renamed mid-programme. That says
+nothing about whether these casts are one cruise, so it **warns** rather than
+failing: ``cruise_info``'s value is used where it states one, and the attribute
+is omitted where it does not, rather than picking one cast's answer arbitrarily.
+
+An attribute no per-cast file states falls back to ``cruise_info`` with a
+warning, which is the path for files written before identity was recorded at
+stage 1.
+
+Where the two sources disagree about identity, **the files win** — a stage file
+records the cruise the cast was actually taken on, and a config can be edited
+years later. The compiled product's ``title`` is built from the same lifted value,
+so a file cannot be titled for one cruise and attributed to another. Re-run stage
+1, or ``ctdcast enrich``, if it is the per-cast files that are wrong.
+
+For everything outside identity, config remains the source of truth: writing
+identity at stage 1 makes the per-cast file *portable*, not the authority on what
+the cruise is called in the report.
+
 Sensor provenance
 ~~~~~~~~~~~~~~~~~
 
