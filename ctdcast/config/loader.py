@@ -10,6 +10,30 @@ from typing import Any
 import yaml
 
 
+def groupings_path(data: dict[str, Any] | None) -> Path | None:
+    """Return the groupings YAML named by a config ``data:`` block.
+
+    The file defines two kinds of cast group -- ``sections:`` (transects plotted
+    against distance) and ``timeseries:`` (repeat stations plotted against time)
+    -- so ``groupings_yaml`` is the key, and ``ctd_groupings.yaml`` the
+    conventional filename. ``section_yaml`` named only half of what the file
+    does; it stays accepted so existing configs keep working.
+
+    Parameters
+    ----------
+    data : dict or None
+        The config's ``data:`` mapping.
+
+    Returns
+    -------
+    Path or None
+        The path, or ``None`` when neither key is set.
+    """
+    d = data or {}
+    value = d.get("groupings_yaml") or d.get("section_yaml")
+    return Path(str(value)) if value else None
+
+
 @dataclass
 class SectionsConfig:
     """Parsed contents of a ``ctd_sections.yaml`` file.

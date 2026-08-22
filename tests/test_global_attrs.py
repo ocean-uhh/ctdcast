@@ -20,10 +20,12 @@ from ctdcast.config.global_attrs import (
     coverage_attrs,
     cruise_expocode,
     cruise_global_attrs,
+    aggregate_identity,
     dataset_filename,
     dataset_identity,
-    expocode_coordinate,
+    expocode_profile_var,
     group_attrs,
+    identity_attrs,
     is_placeholder_expocode,
     license_attrs,
     order_attrs,
@@ -278,13 +280,57 @@ def test_ambiguous_platform_warns_and_omits_expocode_not_crash():
     assert "date_created" in a
 
 
-def test_expocode_coordinate_shape_and_none():
-    ci = {"platform": "odb", "start_date": "2026-07-09"}
-    dims, data, meta = expocode_coordinate(ci, 4)
+def test_expocode_profile_var_is_a_projection_of_a_value():
+    """It takes the lifted value, not cruise_info, so the N_PROF variable cannot
+    be authored independently of the global attribute it projects."""
+    dims, data, meta = expocode_profile_var("29OD20260709", 4)
     assert dims == ["N_PROF"]
     assert list(data) == ["29OD20260709"] * 4
     assert "long_name" in meta
-    assert expocode_coordinate({}, 4) is None
+    assert expocode_profile_var("", 4) is None
+
+
+# --- identity: one source of truth, lifted from the per-cast files -----------
+
+_ID_CI = {"cruise": "MSM142", "platform": "msm", "start_date": "2026-03-27"}
+
+
+def test_identity_attrs_is_cruise_platform_and_expocode():
+    a = identity_attrs(_ID_CI)
+    assert a["cruise"] == "MSM142"
+    assert a["platform_ices_code"] == "06M2"
+    assert a["expocode"] == "06M220260327"
+    assert identity_attrs(None) == {}, "no config must write nothing"
+    assert "expocode" not in identity_attrs(_ID_CI, include_expocode=False)
+
+
+def test_aggregate_lifts_a_constant_identity():
+    one = identity_attrs(_ID_CI)
+    assert aggregate_identity([dict(one), dict(one)], _ID_CI) == one
+
+
+def test_aggregate_errors_when_casts_disagree():
+    """Two cruises in one directory is a mistake, not a merge — the previous
+    drop_conflicts behaviour made the attribute vanish instead."""
+    one = identity_attrs(_ID_CI)
+    with pytest.raises(ValueError, match="disagree"):
+        aggregate_identity([dict(one), {**one, "cruise": "ODB2026"}], _ID_CI)
+
+
+def test_aggregate_falls_back_to_config_with_a_warning():
+    """Per-cast files written before identity was recorded at stage 1."""
+    with pytest.warns(UserWarning, match="no per-cast file states"):
+        got = aggregate_identity([{}, {}], _ID_CI)
+    assert got == identity_attrs(_ID_CI)
+
+
+def test_aggregate_strict_keys_come_from_identity_attrs():
+    """Adding an attribute to identity_attrs must protect it automatically; a
+    second hardcoded list would silently stop guarding the new one."""
+    one = identity_attrs(_ID_CI)
+    for key in one:
+        with pytest.raises(ValueError, match="disagree"):
+            aggregate_identity([dict(one), {**one, key: "different"}], _ID_CI)
 
 
 # --- canonical order + grouping --------------------------------------------

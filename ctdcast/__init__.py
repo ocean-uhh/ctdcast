@@ -10,7 +10,7 @@ writers:      output writers (CF-compliant netCDF).
 
 Public API
 ----------
-report(nc_dir, profiles_path, section_yaml, out_dir, force=False)
+report(nc_dir, profiles_path, groupings_yaml, out_dir, force=False)
 stage1(cnv_dir, nc_dir, ...)
 profiles(nc_dir, profiles_path, ...)
 process(stage=None, *, cnv_dir, nc_dir, profiles_path, force=False, dry_run=False, **kw)

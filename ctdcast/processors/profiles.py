@@ -17,9 +17,10 @@ import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.config.global_attrs import (
+    aggregate_identity,
     cruise_global_attrs,
     cruise_name,
-    expocode_coordinate,
+    expocode_profile_var,
 )
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
@@ -363,9 +364,13 @@ def build_profiles(
     # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
     cast_sensor_records: list[list[dict[str, str]]] = []
 
+    # Per-cast global attrs, for lifting cruise identity strictly (§4d).
+    per_cast_attrs: list[dict[str, str]] = []
+
     # Pass 2: split and bin each cast
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
+        per_cast_attrs.append(dict(ds.attrs))
         cast_sensor_records.append(parse_sensor_channels(ds))
         source_stages[rank] = source_stage
         source_files[rank] = path.name
@@ -571,10 +576,15 @@ def build_profiles(
     data_vars.update(catalog_vars)
     data_vars.update(linkage_vars)
 
-    # EXPOCODE as an N_PROF coordinate (per CCHDO — one file may hold more than
-    # one cruise, so this is per-profile, not a global attribute).  Omitted when
-    # the config supplies no ship/start_date to derive it from.
-    _expocode_coord = expocode_coordinate(_ci, n_profiles)
+    # Identity (cruise, platform_*, expocode) lifted from the per-cast files,
+    # strictly: constant across casts → lifted; varying → error (two cruises in
+    # one directory); absent → cruise_info fallback with a warning.  This is the
+    # authority for identity at compile — config is no longer re-derived here.
+    identity = aggregate_identity(per_cast_attrs, _ci)
+    # EXPOCODE as an N_PROF variable: a CCHDO projection (one file may hold more
+    # than one cruise in their world, though not in ctdcast's) of the lifted
+    # global.  Omitted when neither the casts nor config supply one.
+    _expocode_coord = expocode_profile_var(identity.get("expocode", ""), n_profiles)
     if _expocode_coord is not None:
         data_vars["expocode"] = _expocode_coord
 
@@ -626,6 +636,11 @@ def build_profiles(
             config={"processing": {"profiles_dbar": dbar}},
         )
     )
+    # Per-cast-sourced identity is authoritative over the config `cruise` set
+    # above and over the identity cruise_global_attrs still emits, so a compiled
+    # file states the cruise its casts actually came from (and errors if they
+    # disagree).
+    attrs.update(identity)
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     ds_out["pressure"].attrs = {

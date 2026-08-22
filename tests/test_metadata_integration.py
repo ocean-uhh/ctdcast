@@ -10,10 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from ctdcast.processors.ladcp import build_ladcp_profiles, convert_ladcp_cast
 from ctdcast.processors.profiles import build_profiles
+from ctdcast.processors.stage_layout import stage_path
 
 _NC = Path(__file__).resolve().parent / "fixtures" / "nc"
 _LADCP = Path(__file__).resolve().parent / "fixtures" / "ladcp"
@@ -96,3 +98,45 @@ def test_no_cruise_info_still_builds_without_metadata(tmp_path):
         # derived + provenance still present
         assert "geospatial_lat_min" in ds.attrs
         assert ds.attrs["Conventions"] == "CF-1.13, ACDD-1.3"
+
+
+def _stage1_fixtures_with_cruise(root: Path, cruise_for) -> None:
+    """Copy the real NC fixtures into a stage-1 layout, stamping a ``cruise`` attr.
+
+    Not fabricated data: the arrays are the committed instrument fixtures; only
+    the ``cruise`` global attribute — the one stage 1 writes from cruise_info — is
+    set, so the strict identity aggregation (§4d) can be exercised at the builder
+    level without re-running the seasenselib conversion.
+    """
+    for src in sorted(_NC.glob("*.nc")):
+        with xr.open_dataset(src, engine="netcdf4") as ds:
+            ds = ds.load()
+        ds.attrs["cruise"] = cruise_for(src.stem)
+        out = stage_path(root, src.stem, 1)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        ds.to_netcdf(out, engine="netcdf4")
+
+
+def test_ctd_profiles_lifts_identity_from_per_cast(tmp_path, recwarn):
+    """When the per-cast files state ``cruise``, the builder lifts it — no fallback."""
+    root = tmp_path / "CTD"
+    _stage1_fixtures_with_cruise(root, lambda _stem: "odb2026")
+    out = root / "profiles.nc"
+    build_profiles(root, out, force=True, cruise_info=_CRUISE_INFO)
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        assert ds.attrs["cruise"] == "odb2026"
+    # the per-cast files state cruise, so no "taking it from cruise_info" fallback
+    msgs = [str(w.message) for w in recwarn]
+    assert not any("no per-cast file states 'cruise'" in m for m in msgs)
+
+
+def test_ctd_profiles_errors_when_casts_disagree_on_cruise(tmp_path):
+    """Two cruises in one directory is a mistake, not a merge — build must error."""
+    root = tmp_path / "CTD"
+    stems = sorted(p.stem for p in _NC.glob("*.nc"))
+    assert len(stems) >= 2, "need at least two fixtures to disagree"
+    labels = {s: ("cruiseA" if i == 0 else "cruiseB") for i, s in enumerate(stems)}
+    _stage1_fixtures_with_cruise(root, lambda stem: labels[stem])
+    out = root / "profiles.nc"
+    with pytest.raises(ValueError, match="disagree about 'cruise'"):
+        build_profiles(root, out, force=True, cruise_info=_CRUISE_INFO)

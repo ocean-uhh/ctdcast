@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 
-from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.loader import SectionsConfig, groupings_path
 from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.processors import StagePaths
@@ -25,7 +25,7 @@ Checks performed:
   - data.ctd_root exists and some stageN/ under it holds at least one .nc file
   - first cast netCDF opens without error
   - profiles_nc exists (if sections or timeseries are enabled)
-  - section_yaml exists and is valid YAML (if sections are enabled)
+  - groupings_yaml exists and is valid YAML (if sections are enabled)
   - output directory is writable (or can be created)
   - cruise_info platform/start_date are set (else the EXPOCODE is a placeholder)
   - cruise_info contributors: no ";" or "," inside any value (they would split
@@ -34,7 +34,7 @@ Checks performed:
     resolves in config/institutions.yaml, emails and ORCIDs are well formed
 
 With --strict:
-  - every cast number in section_yaml exists under data.ctd_root
+  - every cast number in groupings_yaml exists under data.ctd_root
 
 Examples:
   ctdcast validate config.yaml
@@ -60,7 +60,7 @@ Examples:
         "--strict",
         action="store_true",
         default=False,
-        help="Also verify every cast number in section_yaml exists under ctd_root.",
+        help="Also verify every cast number in groupings_yaml exists under ctd_root.",
     )
     return parser
 
@@ -263,23 +263,24 @@ def run(args: argparse.Namespace) -> int:
                 f"{n_inst} institution(s) resolved"
             )
 
-    # section_yaml
+    # groupings_yaml (sections + timeseries)
     need_sections = gen_cfg.get("sections", True)
-    section_yaml_raw = data.get("section_yaml")
+    groupings_yaml = groupings_path(data)
     sections_cfg: dict = {}
-    if need_sections and not section_yaml_raw:
-        warnings.append("data.section_yaml not set; section pages will be skipped")
-    elif section_yaml_raw:
-        section_yaml = Path(section_yaml_raw)
-        if not section_yaml.exists():
-            errors.append(f"data.section_yaml not found: {section_yaml}")
+    if need_sections and not groupings_yaml:
+        warnings.append(
+            "data.groupings_yaml not set; section and timeseries pages will be skipped"
+        )
+    elif groupings_yaml:
+        if not groupings_yaml.exists():
+            errors.append(f"data.groupings_yaml not found: {groupings_yaml}")
         else:
             try:
-                _sec_cfg = SectionsConfig.from_yaml(section_yaml)
+                _sec_cfg = SectionsConfig.from_yaml(groupings_yaml)
                 sections_cfg = _sec_cfg.sections
-                print(f"  section_yaml: {len(sections_cfg)} section(s) defined")
+                print(f"  groupings_yaml: {len(sections_cfg)} section(s) defined")
             except yaml.YAMLError as exc:
-                errors.append(f"section_yaml parse error: {exc}")
+                errors.append(f"data.groupings_yaml parse error: {exc}")
 
     # gebco_nc (optional, just warn if set but missing)
     gebco_raw = data.get("gebco_nc")
@@ -342,7 +343,7 @@ def run(args: argparse.Namespace) -> int:
                     "the section's cast_numbers."
                 )
 
-    # Strict: verify the station numbers in section_yaml exist in nc_dir
+    # Strict: verify the station numbers in groupings_yaml exist under the root
     if args.strict and nc_dir and nc_dir.exists() and expanded_sections:
         nc_cast_nums = _parse_cast_nums_from_dir(nc_dir)
         for sec_name, cast_list in expanded_sections.items():

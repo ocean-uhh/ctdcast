@@ -138,3 +138,35 @@ class TestStage1:
         nc_dir = tmp_path / "nc"
         n = stage1(empty, nc_dir)
         assert n == 0
+
+    def test_stamps_cruise_identity_when_cruise_info_given(self, tmp_path):
+        """With cruise_info, stage 1 stamps cruise + platform + expocode globals."""
+        from ctdcast.processors.stage1 import stage1
+
+        nc_dir = tmp_path / "nc"
+        ci = {"cruise_id": "odb2026", "platform": "odb", "start_date": "2026-07-09"}
+        stage1(FIXTURES_CNV, nc_dir, cruise_info=ci)
+        files = sorted(stage_dir(nc_dir, 1).glob("*.nc"))
+        assert files, "stage 1 produced no files"
+        for nc_path in files:
+            ds = xr.open_dataset(nc_path, engine="netcdf4")
+            try:
+                assert ds.attrs.get("cruise") == "odb2026"
+                assert ds.attrs.get("platform_name")  # platform block resolved
+                assert str(ds.attrs.get("expocode", "")).startswith("29OD")
+            finally:
+                ds.close()
+
+    def test_no_cruise_identity_without_cruise_info(self, tmp_path):
+        """Without cruise_info, stage 1 writes no identity (backward compatible)."""
+        from ctdcast.processors.stage1 import stage1
+
+        nc_dir = tmp_path / "nc"
+        stage1(FIXTURES_CNV, nc_dir)
+        for nc_path in sorted(stage_dir(nc_dir, 1).glob("*.nc")):
+            ds = xr.open_dataset(nc_path, engine="netcdf4")
+            try:
+                assert "cruise" not in ds.attrs
+                assert "expocode" not in ds.attrs
+            finally:
+                ds.close()

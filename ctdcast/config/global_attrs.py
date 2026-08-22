@@ -8,9 +8,11 @@ Three layers, kept apart on purpose (see the file-level-metadata design note):
   file states a bounding box containing one station; the fix is to compute.
 * **authored** — ``title``, ``project``, ``acknowledgement``, people, embargo.
   Taken from ``cruise_info:`` in the cruise config, once, at the level it is true.
-* **entity** — ``platform_*`` and the ``expocode`` (the latter is emitted by the
-  caller as an ``N_PROF`` coordinate, not a global — CCHDO does not assume one
-  file is one cruise).
+* **identity** — ``cruise``, ``platform_*`` and ``expocode``.  Constant for a
+  ctdcast file, so all three are globals.  ``expocode`` is *additionally* emitted
+  on the compiled products as an ``N_PROF`` data variable — a CCHDO round-trip
+  projection of the global, built from it and never authored separately, because
+  CCHDO does not assume one file is one cruise.
 
 The one rule that decides where a fact goes: **a global attribute must be true of
 the entire file.**  Anything that varies within the file (cast lat/lon, station
@@ -470,6 +472,169 @@ def cruise_name(cruise_info: dict[str, Any] | None) -> str | None:
     return str(value) if value else None
 
 
+#: Every attribute `identity_attrs` can emit.  Used only so `aggregate_identity`
+#: can recognise an identity attribute present on a per-cast file but absent from
+#: config -- the strict set it enforces still comes from `identity_attrs` itself,
+#: so adding one there protects it without touching this.
+_IDENTITY_KEYS: frozenset[str] = frozenset(
+    {
+        "cruise",
+        "expocode",
+        "platform",
+        "platform_name",
+        "platform_ices_code",
+        "platform_vocabulary",
+    }
+)
+
+
+def identity_attrs(
+    cruise_info: dict[str, Any] | None, *, include_expocode: bool = True
+) -> dict[str, str]:
+    """Return the attributes that identify *which cruise and ship* this is.
+
+    ``cruise``, the ``platform_*`` block, and ``expocode``.  These are the facts
+    fixed the moment a cast is taken, so they are written at stage 1 onto each
+    per-cast file and lifted unchanged into the compiled products — unlike
+    coverage (computed per file) or people and rights (authored, and revisable
+    for years afterwards).
+
+    Parameters
+    ----------
+    cruise_info : dict or None
+        The ``cruise_info:`` mapping.  ``None`` or empty returns ``{}``, which is
+        what keeps a call path supplying no config unchanged.
+    include_expocode : bool, default True
+        Emit ``expocode``.  The compiled products also carry it as an ``N_PROF``
+        variable via :func:`expocode_profile_var`; this switch exists for a
+        caller that wants only the rest.
+
+    Returns
+    -------
+    dict of str to str
+        Only the attributes that could be resolved.
+    """
+    ci = cruise_info or {}
+    attrs: dict[str, str] = {}
+
+    name = cruise_name(ci)
+    if name:
+        attrs["cruise"] = name
+
+    # platform may be a slug (str) or an inline dict for a vessel not in the
+    # registry; platform_attrs handles both, so don't stringify it.
+    platform = ci.get("platform") or ci.get("ship_slug")
+    if platform:
+        attrs.update(platform_attrs(platform))
+
+    if include_expocode:
+        expocode = cruise_expocode(ci)
+        if expocode:
+            attrs["expocode"] = expocode
+
+    return attrs
+
+
+def aggregate_identity(
+    per_cast: list[dict[str, str]], cruise_info: dict[str, Any] | None = None
+) -> dict[str, str]:
+    """Lift identity attributes from the per-cast files being compiled.
+
+    The compiled product describes one cruise, so every per-cast file should
+    agree about which cruise it is.  Rather than trusting config and hoping, the
+    inputs are compared:
+
+    * constant across every cast that states it → lifted;
+    * **varying → :class:`ValueError`.** Two cruises in one directory is a
+      mistake, not a merge.  The previous behaviour
+      (``combine_attrs="drop_conflicts"``) silently discarded the attribute, so a
+      stray cast from another cruise made ``cruise`` *vanish* rather than fail;
+    * absent from every cast → fall back to *cruise_info* and warn, which is the
+      pre-stage-2 path and the case for files written before identity was
+      recorded at stage 1.
+
+    The strict key set is ``identity_attrs(cruise_info)``' own keys, so an
+    attribute added there is protected automatically.
+
+    Parameters
+    ----------
+    per_cast : list of dict
+        Each per-cast file's global attributes.
+    cruise_info : dict or None
+        Fallback for attributes no cast states.
+
+    Returns
+    -------
+    dict of str to str
+
+    Raises
+    ------
+    ValueError
+        If any identity attribute takes more than one value across the inputs.
+    """
+    from_config = identity_attrs(cruise_info)
+    keys = set(from_config) | {k for attrs in per_cast for k in attrs if k in _IDENTITY_KEYS}
+
+    lifted: dict[str, str] = {}
+    for key in sorted(keys):
+        seen = {str(a[key]) for a in per_cast if a.get(key)}
+        if len(seen) > 1:
+            raise ValueError(
+                f"per-cast files disagree about {key!r}: {sorted(seen)}. "
+                f"A compiled product describes one cruise, so this is either a "
+                f"cast from another cruise in this directory, or two legs sharing "
+                f"one root -- legs have their own departure date and so their own "
+                f"EXPOCODE. Compile each into its own root."
+            )
+        if seen:
+            lifted[key] = seen.pop()
+        elif key in from_config:
+            warnings.warn(
+                f"no per-cast file states {key!r}; taking it from cruise_info. "
+                f"Re-run stage 1, or `ctdcast enrich`, to record it on the files.",
+                stacklevel=2,
+            )
+            lifted[key] = from_config[key]
+    return lifted
+
+
+def expocode_profile_var(
+    expocode: str, n_profiles: int
+) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
+    """Return the ``(dims, data, attrs)`` triple for the ``expocode`` variable.
+
+    A **projection** of the ``expocode`` global, broadcast over ``N_PROF``
+    because CCHDO stores it per profile — a file may hold more than one cruise in
+    their world, though not in ctdcast's.  It takes the value rather than
+    ``cruise_info`` precisely so it cannot be authored independently of the
+    global it projects.
+
+    Parameters
+    ----------
+    expocode : str
+        The lifted value. Empty returns ``None``.
+    n_profiles : int
+        Length of ``N_PROF``.
+
+    Returns
+    -------
+    tuple or None
+    """
+    if not expocode:
+        return None
+    return (
+        ["N_PROF"],
+        np.array([expocode] * n_profiles),
+        {
+            "long_name": "Expedition code (ICES ship code + departure date)",
+            "comment": (
+                "Derived as <ICES platform code><YYYYMMDD departure>; "
+                "CCHDO/GO-SHIP EXPOCODE convention."
+            ),
+        },
+    )
+
+
 def cruise_global_attrs(
     cruise_info: dict[str, Any] | None,
     *,
@@ -578,19 +743,7 @@ def cruise_global_attrs(
     if source:
         attrs.update(dataset_identity(ci, source, config=config))
 
-    # platform may be a slug (str) or an inline dict for a vessel not in the
-    # registry; platform_attrs handles both, so don't stringify it.
-    platform = ci.get("platform") or ci.get("ship_slug")
-    if platform:
-        attrs.update(platform_attrs(platform))
-
-    # EXPOCODE is also emitted per-profile as an N_PROF coordinate (the composable,
-    # CCHDO-round-trippable form).  It is repeated here as a global for discovery:
-    # a ctdcast file is a single cruise, so it is constant, and both come from the
-    # one safe resolver below, so they cannot drift.
-    expocode = cruise_expocode(ci)
-    if expocode:
-        attrs["expocode"] = expocode
+    attrs.update(identity_attrs(ci))
 
     return attrs
 
@@ -853,41 +1006,3 @@ def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
         stacklevel=2,
     )
     return placeholder
-
-
-def expocode_coordinate(
-    cruise_info: dict[str, Any] | None, n_profiles: int
-) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
-    """Return the ``(dims, data, attrs)`` triple for the ``expocode`` coordinate.
-
-    CCHDO stores the EXPOCODE per profile (a file may hold more than one cruise),
-    so both compiled builders emit it as an ``N_PROF`` variable.  This is the one
-    place that builds it, so the CTD and LADCP files describe it identically.
-    Returns ``None`` when no EXPOCODE can be derived.
-
-    Parameters
-    ----------
-    cruise_info : dict or None
-        The ``cruise_info:`` mapping.
-    n_profiles : int
-        Length of the ``N_PROF`` dimension to broadcast the constant value over.
-
-    Returns
-    -------
-    tuple or None
-        ``(["N_PROF"], data, attrs)`` ready to assign to a variable, or ``None``.
-    """
-    expocode = cruise_expocode(cruise_info)
-    if not expocode:
-        return None
-    return (
-        ["N_PROF"],
-        np.array([expocode] * n_profiles),
-        {
-            "long_name": "Expedition code (ICES ship code + departure date)",
-            "comment": (
-                "Derived as <ICES platform code><YYYYMMDD departure>; "
-                "CCHDO/GO-SHIP EXPOCODE convention."
-            ),
-        },
-    )

@@ -13,18 +13,19 @@ _CONFIG_TEMPLATE = """\
 # Run 'ctdcast validate config.yaml' to check all paths before the first run.
 
 data:
-  # Directory containing per-cast netCDF files (one per cast).
-  nc_dir: /path/to/ctd/nc
+  # Roots ctdcast owns.  Each holds stage1/ ... stage3/ (one file per cast per
+  # stage) and the compiled product at its top -- <ctd_root>/profiles.nc and
+  # <ladcp_root>/ladcp_profiles.nc -- so a product cannot drift away from the
+  # stage files it was compiled from.  Created for you.
+  ctd_root: /path/to/ctd_nc
+  # ladcp_root: /path/to/ladcp_nc
 
-  # Compiled profiles netCDF on a 1 dbar grid (required for sections and timeseries).
-  # Build with: ctdcast convert --build-profiles /path/to/nc/ /path/to/profiles.nc
-  profiles_nc: /path/to/profiles.nc
+  # Inputs ctdcast only reads: someone else fills these.
+  # cnv_dir: /path/to/cnv          # calibrated CNV, one per cast
+  # ladcp_dir: /path/to/ladcp      # processed .mat, one per cast
 
   # Sections/timeseries definition file (ctd_sections.yaml).
-  section_yaml: /path/to/ctd_sections.yaml
-
-  # LADCP processed output directory (.mat files named NNN.mat).  Optional.
-  # ladcp_dir: /path/to/ladcp
+  groupings_yaml: /path/to/ctd_groupings.yaml
 
   # Ship track netCDF for the Leaflet map background line.  Optional.
   # ship_track: /path/to/ship_track.nc
@@ -409,7 +410,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
     section_yaml_raw: str | None = data_cfg.get("section_yaml")
     if section_yaml_raw:
         section_yaml_path = (config_path.parent / section_yaml_raw).resolve()
-        draft_path = section_yaml_path.parent / "ctd_sections_draft.yaml"
+        draft_path = section_yaml_path.parent / "ctd_groupings_draft.yaml"
     else:
         draft_path = config_path.parent / "ctd_sections_draft.yaml"
 
@@ -1067,7 +1068,7 @@ def _run_interactive(args: argparse.Namespace) -> int:
                         dx_diam,
                     )
                     _write_file(resolved, yaml_text)
-                    _target = section_yaml or "ctd_sections.yaml"
+                    _target = section_yaml or "ctd_groupings.yaml"
                     _same = Path(_target).resolve() == resolved.resolve()
                     if _same:
                         _draft_msg = (
@@ -1539,12 +1540,20 @@ def _build_config_text(
     profiles_line = (
         f"  profiles_nc: {profiles_nc}"
         if profiles_nc
-        else "  # profiles_nc: /path/to/profiles.nc"
+        else "  # profiles_nc: <ctd_root>/profiles.nc   # derived; set only to override"
+    )
+    # A LADCP root is only meaningful alongside a LADCP input, and the compiled
+    # LADCP product derives from it -- so one key replaces the two the wizard
+    # used to omit entirely, leaving every LADCP config to fail stage 1.
+    ladcp_root_line = (
+        f"  ladcp_root: {ladcp_dir.rstrip('/')}_nc"
+        if ladcp_dir
+        else "  # ladcp_root: /path/to/ladcp_nc   # stage dirs + ladcp_profiles.nc"
     )
     sections_line = (
-        f"  section_yaml: {section_yaml}"
+        f"  groupings_yaml: {section_yaml}"
         if section_yaml
-        else "  # section_yaml: /path/to/ctd_sections.yaml"
+        else "  # groupings_yaml: /path/to/ctd_groupings.yaml"
     )
     ladcp_line = (
         f"  ladcp_dir: {ladcp_dir}" if ladcp_dir else "  # ladcp_dir: /path/to/ladcp"
@@ -1573,13 +1582,18 @@ def _build_config_text(
         "# Run 'ctdcast validate config.yaml' to check all paths before the first run.\n"
         "\n"
         "data:\n"
-        f"  nc_dir: {nc_dir}\n"
+        "  # Roots ctdcast owns: stage1/ ... stage3/ and the compiled product\n"
+        "  # live inside, so a product cannot drift from the files it was built\n"
+        "  # from. Created for you.\n"
+        f"  ctd_root: {nc_dir}\n"
+        f"{ladcp_root_line}\n"
+        "\n"
+        "  # Inputs ctdcast only reads.\n"
         f"{cnv_line}\n"
         f"{cnv_pattern_line}\n"
-        f"{profiles_line}\n"
-        f"{sections_line}\n"
         f"{ladcp_line}\n"
         f"{ladcp_pattern_line}\n"
+        f"{sections_line}\n"
         "  # ship_track: /path/to/ship_track.nc\n"
         f"{gebco_line}\n"
         "\n"

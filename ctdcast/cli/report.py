@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+
+from ctdcast.config.loader import groupings_path
 from pathlib import Path
 
 import yaml
@@ -227,9 +229,7 @@ def run(args: argparse.Namespace) -> int:
         if data.get("profiles_nc")
         else nc_dir / "profiles.nc"
     )
-    section_yaml: Path | None = (
-        Path(data["section_yaml"]) if data.get("section_yaml") else None
-    )
+    section_yaml: Path | None = groupings_path(data)
     ladcp_dir: Path | None = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
     _ladcp_root = data.get("ladcp_root") or data.get("ladcp_nc")
     ladcp_profiles_path: Path | None = (
