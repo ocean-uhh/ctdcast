@@ -880,9 +880,12 @@ def _run_interactive(args: argparse.Namespace) -> int:
                 "gebco_nc": str(_d.get("gebco_nc", "") or ""),
                 "section_yaml": str(_d.get("section_yaml", "") or ""),
                 "output_dir": str(_o.get("dir", "") or ""),
-                "cruise_name": str(_ci.get("name", "") or ""),
+                # `cruise_id` first: that is what the wizard now writes, so
+                # re-running against a config it generated must pre-fill from it.
+                # `name` is the pre-2026-08-21 spelling, kept so an old config
+                # still pre-fills rather than silently blanking.
+                "cruise_name": str(_ci.get("cruise_id") or _ci.get("name", "") or ""),
                 "ship": str(_ci.get("ship", "") or ""),
-                "chief_scientist": str(_ci.get("chief_scientist", "") or ""),
                 "start_date": str(_ci.get("start_date", "") or ""),
                 "end_date": str(_ci.get("end_date", "") or ""),
             }

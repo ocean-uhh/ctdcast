@@ -817,9 +817,7 @@ def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
 
     tail = _compact_date(start_date) if start_date else EXPOCODE_PLACEHOLDER_DATE
     missing = [
-        n
-        for n, v in (("platform", platform), ("start_date", start_date))
-        if not v
+        n for n, v in (("platform", platform), ("start_date", start_date)) if not v
     ]
     placeholder = f"{head}{tail}"
     warnings.warn(

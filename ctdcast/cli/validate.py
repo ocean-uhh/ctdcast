@@ -153,7 +153,9 @@ def run(args: argparse.Namespace) -> int:
     _missing_expo = [
         k
         for k in ("platform", "start_date")
-        if not (cruise_info.get(k) or (k == "platform" and cruise_info.get("ship_slug")))
+        if not (
+            cruise_info.get(k) or (k == "platform" and cruise_info.get("ship_slug"))
+        )
     ]
     if _missing_expo:
         warnings.append(
