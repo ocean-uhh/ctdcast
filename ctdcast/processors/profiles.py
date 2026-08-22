@@ -354,6 +354,10 @@ def build_profiles(
     # Which processing rung each cast was compiled from (1/2/3) — casts are at
     # mixed stages early in a cruise, so the compiled file states it per profile.
     source_stages = np.zeros(n_casts, dtype=np.int8)
+    # The actual per-cast filename each profile came from — provenance that
+    # cast_number+suffix+stage alone cannot reconstruct, and the one thing that
+    # distinguishes casts sharing a number (a plain cast vs its lettered sibling).
+    source_files: list[str] = [""] * n_casts
 
     # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
     cast_sensor_records: list[list[dict[str, str]]] = []
@@ -363,6 +367,7 @@ def build_profiles(
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         cast_sensor_records.append(parse_sensor_channels(ds))
         source_stages[rank] = source_stage
+        source_files[rank] = path.name
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -403,6 +408,7 @@ def build_profiles(
         gebco_per_cast = np.full(n_casts, np.nan, dtype=np.float32)
     gebco_depth_prof = np.repeat(gebco_per_cast.astype(np.float32), 2)
     source_stage_prof = np.repeat(source_stages, 2)
+    source_file_prof = np.repeat(np.array(source_files), 2)
 
     # Build output dataset
     # N_PROF is a plain sequential integer index — cast identity is in
@@ -493,6 +499,20 @@ def build_profiles(
                     ),
                 },
             ),
+            "source_file": (
+                ["N_PROF"],
+                source_file_prof,
+                {
+                    "long_name": "source per-cast filename this profile was compiled from",
+                    "comment": (
+                        "Filename only (see the global 'source' attribute for the "
+                        "naming convention); the absolute root is deliberately not "
+                        "recorded, as it is a local, perishable path. Distinguishes "
+                        "casts that share a number — e.g. a plain cast and its "
+                        "lettered sibling."
+                    ),
+                },
+            ),
             # long_name/units/standard_name come from VARIABLES via write(); the
             # comment records that the position is the per-profile median fix.
             "latitude": (
@@ -564,7 +584,10 @@ def build_profiles(
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,
-        "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdcast",
+        "source": (
+            f"{len(cast_list)} per-cast netCDF files compiled by ctdcast from "
+            "stageN/<stem>_stageN.nc (per-profile source_file records each name)"
+        ),
         "pressure_units": "dbar",
         "pressure_spacing_dbar": dbar,
         "pressure_binning": (

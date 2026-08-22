@@ -99,6 +99,21 @@ def test_cast_id_none_when_no_digits():
     assert cast_id_from_name("nodigits") is None
 
 
+def test_cast_id_strips_stage_suffix():
+    # A per-cast file carries a stage suffix; it must not change the parsed identity.
+    assert cast_id_from_name("mixsed2_011_stage1") == (11, "")
+    assert cast_id_from_name("mixsed2_128_stage3") == (128, "")
+
+
+def test_cast_id_lettered_sibling_survives_stage_suffix():
+    # Regression: the trailing _stageN must not swallow the letter suffix, which
+    # would collapse a lettered sibling onto the plain cast (029b -> 029) and make
+    # them clobber each other's report page.
+    assert cast_id_from_name("mixsed2_029_b_stage1") == (29, "b")
+    assert cast_id_from_name("mixsed2_029_stage1") == (29, "")
+    assert cast_id_from_name("mixsed2_010b_stage2") == (10, "b")
+
+
 def test_compact_cast_list_collapses_runs():
     assert compact_cast_list([131, 133, 134, 136, 163]) == "131, 133–134, 136, 163"
 

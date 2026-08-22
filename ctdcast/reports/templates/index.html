@@ -40,6 +40,9 @@
   {% for d in inventory_datasets %}<a class="file-pill" href="{{ d.href }}">{{ d.label }}</a>{% endfor %}
 </div>
 {% endif %}
+{% if station_pages_note %}
+<p class="warn">{{ station_pages_note }}</p>
+{% endif %}
 
 {{ m.report_body(report, center_sections=["map"]) }}
 

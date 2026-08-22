@@ -314,7 +314,7 @@ def test_stage1_fans_out_to_ladcp(tmp_path: Path) -> None:
         ladcp_nc_dir=ladcp_nc,
         force=True,
     )
-    assert len(list(ladcp_nc.glob("ladcp_*.nc"))) == 4
+    assert len(list((ladcp_nc / "stage1").glob("ladcp_*.nc"))) == 4
 
 
 def test_profiles_fans_out_to_both_sources(tmp_path: Path) -> None:

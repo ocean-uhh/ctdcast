@@ -207,10 +207,10 @@ def run(args: argparse.Namespace) -> int:
     _cruise_info_cfg: dict = cfg.get("cruise_info") or {}
     cruise_info: dict | None = cfg.get("cruise_info") or None
 
-    nc_dir_raw = data.get("nc_dir")
+    nc_dir_raw = data.get("ctd_root") or data.get("nc_dir")
     out_dir_raw = output.get("dir")
     if not nc_dir_raw:
-        print("Config error: data.nc_dir is required.", file=sys.stderr)
+        print("Config error: data.ctd_root is required.", file=sys.stderr)
         return 1
     if not out_dir_raw:
         print("Config error: output.dir is required.", file=sys.stderr)
@@ -219,15 +219,23 @@ def run(args: argparse.Namespace) -> int:
     nc_dir = Path(nc_dir_raw)
     out_dir = Path(out_dir_raw)
 
+    # Derived from the root unless the config names it explicitly.  Without this
+    # a config on the new keys yields None here, and the report silently skips
+    # every section and timeseries page rather than reporting a missing file.
     profiles_path: Path | None = (
-        Path(data["profiles_nc"]) if data.get("profiles_nc") else None
+        Path(str(data["profiles_nc"]))
+        if data.get("profiles_nc")
+        else nc_dir / "profiles.nc"
     )
     section_yaml: Path | None = (
         Path(data["section_yaml"]) if data.get("section_yaml") else None
     )
     ladcp_dir: Path | None = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
+    _ladcp_root = data.get("ladcp_root") or data.get("ladcp_nc")
     ladcp_profiles_path: Path | None = (
-        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
+        Path(str(data["ladcp_profiles_nc"]))
+        if data.get("ladcp_profiles_nc")
+        else (Path(str(_ladcp_root)) / "ladcp_profiles.nc" if _ladcp_root else None)
     )
     ladcp_pattern: str | None = data.get("ladcp_pattern") or None
     ship_track_nc: Path | None = (

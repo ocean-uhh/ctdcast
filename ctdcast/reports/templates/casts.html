@@ -56,6 +56,9 @@ tbody tr:hover td { background: var(--seafoam); }
 {% endif %}
 
 <h2 id="s-table">{{ m.heading_text(2, "Casts") }}</h2>
+{% if no_station_pages %}
+<p class="warn">No per-cast files were found, so per-cast station pages are not available (they are not built from the gridded profiles). The casts below are listed from the compiled profiles; section and time-series links still work.</p>
+{% endif %}
 <table>
     <thead>
       <tr>
@@ -71,8 +74,8 @@ tbody tr:hover td { background: var(--seafoam); }
     </thead>
     <tbody>
     {% for s in stations %}
-      <tr onclick="window.location='casts/cast_{{ s.cast_num }}.html'">
-        <td><a class="cast-link" href="casts/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a></td>
+      <tr{% if not no_station_pages %} onclick="window.location='casts/cast_{{ s.cast_num }}.html'"{% endif %}>
+        <td>{% if no_station_pages %}{{ s.cast_num }}{% else %}<a class="cast-link" href="casts/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a>{% endif %}</td>
         <td class="mono">{{ s.filename }}</td>
         <td>{{ s.time_start_str }}</td>
         <td class="num">{{ s.lat_str }}</td>
@@ -82,7 +85,7 @@ tbody tr:hover td { background: var(--seafoam); }
         <td>{% if s.ladcp_has %}<span class="ladcp-yes">✓</span>{% else %}<span class="ladcp-no">–</span>{% endif %}</td>
         {% endif %}
         <td>
-          <a class="pill-btn pill-profile" href="casts/cast_{{ s.cast_num }}.html">Profile</a>
+          {% if not no_station_pages %}<a class="pill-btn pill-profile" href="casts/cast_{{ s.cast_num }}.html">Profile</a>{% endif %}
           {% for sec in s.sections %}
           <a class="pill-btn" style="background:{{ sec.color }};color:#fff;" href="sections/section_{{ sec.name }}.html">{{ sec.name }}</a>
           {% endfor %}

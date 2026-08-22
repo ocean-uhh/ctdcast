@@ -122,6 +122,6 @@ include = ["ctdcast*"]
 # file that is not in the coverage report fails as MISSING (verified by running
 # the checker) rather than passing quietly -- an unguarded module is the one
 # thing this table must never report as passing.
-#   branch 3, step 14 adds:
+#   branch 4, step 14 adds:
 #     "ctdcast/processors/enrich.py" = 90
 #       file I/O and error paths; the last 10% is genuinely expensive, so 90.

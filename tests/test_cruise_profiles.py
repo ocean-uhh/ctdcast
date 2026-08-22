@@ -251,3 +251,26 @@ class TestBuildProfilesCruise:
         assert not any(v.endswith("_qc") for v in ds.data_vars)
         assert (ds["source_stage"].values == 2).all()
         ds.close()
+
+    def test_source_file_records_each_cast_filename(self, tmp_path):
+        """source_file records each cast's filename, distinguishing same-number casts."""
+        import shutil
+
+        from ctdcast.processors.profiles import build_profiles
+        from ctdcast.processors.stage_layout import stage_path
+
+        root = tmp_path / "CTD"
+        # A plain cast and its lettered sibling: same number, distinct events.
+        for stem in ("mixsed2_011", "mixsed2_011_b"):
+            dst = stage_path(root, stem, 1)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(FIXTURES_NC / "mixsed2_011.nc", dst)
+        out = tmp_path / "profiles.nc"
+        build_profiles(root, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        files = {str(f) for f in ds["source_file"].values}
+        assert "mixsed2_011_stage1.nc" in files
+        assert "mixsed2_011_b_stage1.nc" in files  # the sibling is not dropped
+        # and the two casts stay distinct in identity, not collapsed to one
+        assert {str(s) for s in ds["cast_suffix"].values} == {"", "b"}
+        ds.close()

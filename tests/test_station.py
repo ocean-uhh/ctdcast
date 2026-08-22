@@ -142,3 +142,47 @@ def test_cast_id_letter_suffix_no_underscore():
 def test_cast_id_letter_suffix_with_underscore():
     """Underscore-before-letter format (e.g. mixsed2_004_b.nc) normalises to same suffix."""
     assert _cast_id_from_path(Path("mixsed2_004_b.nc")) == (4, "b")
+
+
+def test_report_select_cast_files_picks_best_available(tmp_path):
+    """The report compiles each cast from its highest-available stage file."""
+    import shutil
+
+    from ctdcast.processors.stage_layout import stage_path
+    from ctdcast.reports._index import _select_cast_files
+
+    root = tmp_path / "CTD"
+    # cast 011 present at stage 1 and stage 3; cast 012 only at stage 1.
+    for src, stem, stage in [
+        (CAST_011, "mixsed2_011", 1),
+        (CAST_011, "mixsed2_011", 3),
+        (CAST_012, "mixsed2_012", 1),
+    ]:
+        dst = stage_path(root, stem, stage)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src, dst)
+
+    assert _select_cast_files(root) == [
+        stage_path(root, "mixsed2_011", 3),  # best-available beats its stage 1
+        stage_path(root, "mixsed2_012", 1),
+    ]
+
+
+def test_read_cast_meta_lettered_sibling_keeps_suffix_under_stage_name(tmp_path):
+    """A nested lettered-sibling file keeps its 'b' suffix, not colliding with plain.
+
+    Regression: the ``_stage1`` suffix on ``mixsed2_011_b_stage1.nc`` must not
+    swallow the ``b`` (which would label it "011" and clobber plain cast 011's page).
+    """
+    import shutil
+
+    from ctdcast.processors.stage_layout import stage_path
+    from ctdcast.reports._index import _read_cast_meta
+
+    dst = stage_path(tmp_path, "mixsed2_011_b", 1)  # stage1/mixsed2_011_b_stage1.nc
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(CAST_011, dst)
+    m = _read_cast_meta(dst)
+    assert m is not None
+    assert (m["cast_num"], m["cast_suffix"]) == (11, "b")
+    assert m["cast_num_str"] == "011b"

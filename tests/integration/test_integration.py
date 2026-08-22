@@ -327,6 +327,35 @@ class TestFullReport:
         ):
             assert (tmp_path / name).exists(), f"Missing index page: {name}"
 
+    def test_profiles_only_fallback_no_station_pages(
+        self, tmp_path, section_yaml_path, profiles_nc
+    ):
+        """No per-cast files → cruise-level report from profiles.nc, no station pages.
+
+        The index and casts list say per-cast pages are absent, and no row links to
+        a per-cast page that was never built.
+        """
+        empty_nc = tmp_path / "empty_nc"
+        empty_nc.mkdir()
+        report(
+            empty_nc,
+            tmp_path,
+            profiles_path=profiles_nc,
+            section_yaml=section_yaml_path,
+            force=True,
+        )
+        # Cruise-level (synthesis) pages are built from profiles.nc ...
+        for name in ("index.html", "casts.html", "sections.html"):
+            assert (tmp_path / name).exists(), f"Missing cruise page: {name}"
+        # ... but no per-cast station pages exist.
+        assert not list((tmp_path / "casts").glob("cast_*.html"))
+        # The index states why per-cast pages are absent (honesty, not silence).
+        index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert "per-cast" in index_html.lower()
+        # casts.html lists the casts but links no row to a missing per-cast page.
+        casts_html = (tmp_path / "casts.html").read_text(encoding="utf-8")
+        assert 'href="casts/cast_' not in casts_html
+
     def test_no_external_resources_in_station(
         self, tmp_path, section_yaml_path, profiles_nc
     ):

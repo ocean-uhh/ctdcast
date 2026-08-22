@@ -20,7 +20,7 @@ def build_parser(
     _epilog = """
 Checks performed:
   - config YAML is readable and has required keys
-  - data.nc_dir exists and contains at least one .nc file
+  - data.ctd_root exists and some stageN/ under it holds at least one .nc file
   - first cast netCDF opens without error
   - profiles_nc exists (if sections or timeseries are enabled)
   - section_yaml exists and is valid YAML (if sections are enabled)
@@ -32,7 +32,7 @@ Checks performed:
     resolves in config/institutions.yaml, emails and ORCIDs are well formed
 
 With --strict:
-  - every cast number in section_yaml exists in nc_dir
+  - every cast number in section_yaml exists under data.ctd_root
 
 Examples:
   ctdcast validate config.yaml
@@ -58,7 +58,7 @@ Examples:
         "--strict",
         action="store_true",
         default=False,
-        help="Also verify every cast number in section_yaml exists in nc_dir.",
+        help="Also verify every cast number in section_yaml exists under ctd_root.",
     )
     return parser
 
@@ -99,24 +99,52 @@ def run(args: argparse.Namespace) -> int:
     gen_cfg = cfg.get("generate", {})
 
     # Required keys
-    if not data.get("nc_dir"):
-        errors.append("data.nc_dir is missing or blank")
+    if not (data.get("ctd_root") or data.get("nc_dir")):
+        errors.append("data.ctd_root is missing or blank")
     if not output.get("dir"):
         errors.append("output.dir is missing or blank")
 
-    nc_dir: Path | None = Path(data["nc_dir"]) if data.get("nc_dir") else None
+    # `nc_dir` is the pre-stage-layout spelling; StagePaths.from_config applies the
+    # same precedence, so the two agree about which directory is the root.
+    _root_raw = data.get("ctd_root") or data.get("nc_dir")
+    nc_dir: Path | None = Path(str(_root_raw)) if _root_raw else None
     out_dir: Path | None = Path(output["dir"]) if output.get("dir") else None
 
-    # nc_dir
+    # ctd_root: per-cast files live under stageN/, with the flat layout still
+    # accepted for a directory written before the stage layout.
+    # Same distinction vsclaude drew for the derived profiles.nc, applied one
+    # block earlier: `ctd_root` is a directory ctdcast WRITES INTO -- stage1/ and
+    # its contents are outputs of `process --stage 1` -- so a fresh, valid config
+    # legitimately points at a root that does not exist yet.  Erroring there
+    # breaks the same contract.  `output.dir` already sets the precedent: validate
+    # creates it rather than failing.
+    #
+    # A missing root is still ambiguous between "not built yet" and a typo, so use
+    # evidence instead of a coin flip: if the PARENT is missing too, the path is
+    # wrong or the volume is not mounted -- that is an error, and a loud one,
+    # because the alternative is stage 1 writing 200 files somewhere unintended.
     if nc_dir is not None:
         if not nc_dir.exists():
-            errors.append(f"data.nc_dir does not exist: {nc_dir}")
-        else:
-            nc_files = sorted(nc_dir.glob("*.nc"))
-            if not nc_files:
-                errors.append(f"data.nc_dir contains no .nc files: {nc_dir}")
+            if nc_dir.parent.exists():
+                warnings.append(
+                    f"data.ctd_root does not exist yet: {nc_dir} — "
+                    f"`ctdcast process --stage 1` will create it."
+                )
             else:
-                print(f"  nc_dir: {len(nc_files)} cast files found")
+                errors.append(
+                    f"data.ctd_root does not exist, and neither does its parent "
+                    f"{nc_dir.parent}: {nc_dir}. Check the path, and whether the "
+                    f"drive is mounted."
+                )
+        else:
+            nc_files = sorted(nc_dir.glob("stage*/*.nc")) or sorted(nc_dir.glob("*.nc"))
+            if not nc_files:
+                warnings.append(
+                    f"data.ctd_root holds no per-cast .nc files, in stage1/…stage3/ "
+                    f"or directly: {nc_dir}. Run `ctdcast process --stage 1` first."
+                )
+            else:
+                print(f"  ctd_root: {len(nc_files)} cast file(s) found")
                 # Try opening the first cast
                 try:
                     import xarray as xr
@@ -131,17 +159,31 @@ def run(args: argparse.Namespace) -> int:
 
     # profiles_nc
     need_profiles = gen_cfg.get("sections", True) or gen_cfg.get("timeseries", True)
-    profiles_raw = data.get("profiles_nc")
+    # Derived from the root unless a config names it explicitly.  The distinction
+    # matters for a *missing* file: profiles.nc is an OUTPUT of ``process --stage
+    # profiles``, so a fresh, valid config that has not been processed yet has no
+    # profiles.nc.  A file the config names explicitly but that is absent is an
+    # error (a wrong path); a derived path that is simply not built yet is a
+    # warning (run the profiles stage before reporting).
+    profiles_explicit = data.get("profiles_nc")
+    profiles_raw = profiles_explicit or (
+        str(Path(str(_root_raw)) / "profiles.nc") if _root_raw else None
+    )
     if need_profiles and not profiles_raw:
         warnings.append(
             "data.profiles_nc not set; sections and timeseries pages will be skipped"
         )
     elif profiles_raw:
         profiles_path = Path(profiles_raw)
-        if not profiles_path.exists():
+        if profiles_path.exists():
+            print(f"  profiles_nc: ok ({profiles_path})")
+        elif profiles_explicit:
             errors.append(f"data.profiles_nc not found: {profiles_path}")
         else:
-            print(f"  profiles_nc: ok ({profiles_path})")
+            warnings.append(
+                f"profiles.nc not built yet at {profiles_path}; run "
+                "'process --stage profiles' before generating a report"
+            )
 
     # cruise_info: contributors, creator, institutions
     cruise_info = cfg.get("cruise_info") or {}
@@ -320,14 +362,34 @@ def _duplicate_top_level_keys(path: Path) -> dict[str, int]:
 
 
 def _parse_cast_nums_from_dir(nc_dir: Path) -> set[int]:
-    """Return the set of integer cast numbers present in nc_dir."""
+    """Return the set of integer cast numbers present under a stage root.
+
+    Walks ``stageN/`` as well as the root itself, and strips the ``_stageN``
+    suffix before parsing.  Without that strip, ``mixsed2_017_stage1`` yields
+    ``"stage1"`` from ``parts[-1]``, raises, and the cast silently disappears
+    from the ``--strict`` check — a false pass rather than a failure.
+
+    Parameters
+    ----------
+    nc_dir : Path
+        The instrument stage root (``data.ctd_root``).
+
+    Returns
+    -------
+    set of int
+        Cast numbers found. A lettered cast (``017b``) contributes its number.
+    """
     nums: set[int] = set()
-    for p in nc_dir.glob("*.nc"):
-        stem = p.stem  # e.g. "cast_042"
+    for p in [*nc_dir.glob("stage*/*.nc"), *nc_dir.glob("*.nc")]:
+        stem = p.stem
+        for suffix in ("_stage1", "_stage2", "_stage3"):
+            if stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
         parts = stem.split("_")
         if parts:
             try:
-                nums.add(int(parts[-1]))
+                nums.add(int("".join(c for c in parts[-1] if c.isdigit())))
             except ValueError:
                 pass
     return nums

@@ -20,6 +20,7 @@ import xarray as xr
 from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.stage_layout import group_by_cast, stage_dir, stage_path
 from ctdcast.readers.ladcp import read_ladcp_cast
 from ctdcast.writers.dtypes import cast_output_dtypes
 from ctdcast.writers.netcdf import write as write_nc
@@ -95,8 +96,10 @@ def run_convert(
 
     The LADCP parallel of :func:`ctdcast.processors.stage1.run`: discovers the
     ``.mat`` files, derives each cast's identity from its filename, and writes
-    ``ladcp_nc_dir/ladcp_<cast_id>.nc``.  Files with no cast number in the stem
-    are skipped.  Returns the number of files written (0 for *dry_run*).
+    ``ladcp_nc_dir/stage1/ladcp_<cast_id>_stage1.nc``.  LADCP has a single
+    processing stage, so its stage-1 file *is* its per-cast product.  Files with
+    no cast number in the stem are skipped.  Returns the number of files written
+    (0 for *dry_run*).
     """
     pattern: str = kw.get("ladcp_pattern") or "*.mat"  # type: ignore[assignment]
     mats = [
@@ -115,7 +118,7 @@ def run_convert(
             print(f"  [dry-run] would convert: {p.name}")
         return 0
 
-    ladcp_nc_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir(ladcp_nc_dir, 1, create=True)  # ladcp_nc_dir is the stage root
     n_written = 0
     # Per-cast data-quality warnings (e.g. blank instrument serials) are captured
     # across the batch and collapsed into one counted summary line per message,
@@ -123,7 +126,8 @@ def run_convert(
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         for (cast_num, cast_suffix), mat_path in mats:
-            nc_path = ladcp_nc_dir / f"ladcp_{format_cast_id(cast_num, cast_suffix)}.nc"
+            stem = f"ladcp_{format_cast_id(cast_num, cast_suffix)}"
+            nc_path = stage_path(ladcp_nc_dir, stem, 1)
             if convert_ladcp_cast(
                 mat_path,
                 nc_path,
@@ -142,8 +146,16 @@ def run_convert(
 
 
 def _select_ladcp_files(ladcp_nc_dir: Path) -> list[Path]:
-    """Return the per-cast ``ladcp_*.nc`` files in *ladcp_nc_dir*, sorted."""
-    return sorted(ladcp_nc_dir.glob("ladcp_*.nc"))
+    """Return the best-available per-cast LADCP file under *ladcp_nc_dir*, sorted.
+
+    LADCP has a single processing stage, so "best-available" is just its stage-1
+    file; the stage layout is used so a nested ``stage1/ladcp_<id>_stage1.nc`` and
+    an old flat ``ladcp_<id>.nc`` (via the compatibility shim) are both found.
+    """
+    return [
+        stages[max(stages)]
+        for _cast_id, stages in sorted(group_by_cast(ladcp_nc_dir).items())
+    ]
 
 
 def build_ladcp_profiles(

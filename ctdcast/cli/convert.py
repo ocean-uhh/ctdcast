@@ -230,11 +230,11 @@ def run(args: argparse.Namespace) -> int:
 
     data = cfg.get("data") or {}
 
-    nc_dir_raw = data.get("nc_dir")
+    nc_dir_raw = data.get("ctd_root") or data.get("nc_dir")
     if not nc_dir_raw:
-        print("Config error: data.nc_dir is required.", file=sys.stderr)
+        print("Config error: data.ctd_root is required.", file=sys.stderr)
         return 1
-    nc_dir = Path(nc_dir_raw)
+    nc_dir = Path(str(nc_dir_raw))
 
     cnv_dir_raw = data.get("cnv_dir")
     # If cnv_dir contains a wildcard (e.g. "/path/msm*1sec.cnv"), split into
@@ -250,8 +250,11 @@ def run(args: argparse.Namespace) -> int:
     cfg_pattern: str = data.get("cnv_pattern") or "*.cnv"
     if args.pattern == "*.cnv":
         args.pattern = cfg_pattern
+    # Derived from the root unless the config names it explicitly.
     profiles_nc_raw = data.get("profiles_nc")
-    profiles_path = Path(profiles_nc_raw) if profiles_nc_raw else None
+    profiles_path = (
+        Path(str(profiles_nc_raw)) if profiles_nc_raw else nc_dir / "profiles.nc"
+    )
 
     # Resolve which steps to run
     if args.only is not None:

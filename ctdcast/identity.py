@@ -41,7 +41,14 @@ def cast_id_from_name(name: str) -> tuple[int, str] | None:
     suffixes are recognised whether directly appended (``mixsed2_004b``) or
     underscore-separated (``mixsed2_004_b``).  Returns ``None`` when no 3+-digit
     group is present.
+
+    A per-cast file may carry a stage suffix (``_stage1`` … ``_stage3``; see
+    :mod:`ctdcast.processors.stage_layout`).  It is stripped first, so a lettered
+    cast like ``mixsed2_029_b_stage1`` parses to ``(29, "b")`` — otherwise the
+    trailing ``_stage1`` defeats the end-anchored letter-suffix match below and
+    the cast collapses to ``(29, "")``, colliding with plain cast 29.
     """
+    name = re.sub(r"_stage\d+$", "", name)
     matches = _CAST_ID_RE.findall(name)
     if not matches:
         return None
