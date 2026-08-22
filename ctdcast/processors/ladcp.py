@@ -20,7 +20,12 @@ import xarray as xr
 from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
-from ctdcast.processors.stage_layout import group_by_cast, stage_dir, stage_path
+from ctdcast.processors.stage_layout import (
+    is_up_to_date,
+    select_best_available,
+    stage_dir,
+    stage_path,
+)
 from ctdcast.readers.ladcp import read_ladcp_cast
 from ctdcast.writers.dtypes import cast_output_dtypes
 from ctdcast.writers.netcdf import write as write_nc
@@ -152,10 +157,7 @@ def _select_ladcp_files(ladcp_nc_dir: Path) -> list[Path]:
     file; the stage layout is used so a nested ``stage1/ladcp_<id>_stage1.nc`` and
     an old flat ``ladcp_<id>.nc`` (via the compatibility shim) are both found.
     """
-    return [
-        stages[max(stages)]
-        for _cast_id, stages in sorted(group_by_cast(ladcp_nc_dir).items())
-    ]
+    return [path for _cast_id, path, _stage in select_best_available(ladcp_nc_dir)]
 
 
 def build_ladcp_profiles(
@@ -173,17 +175,29 @@ def build_ladcp_profiles(
     depth axis (NaN below its own bottom) and stacked on a new ``N_PROF``
     dimension.  Per-cast scalars become ``N_PROF`` vectors; cruise-common
     provenance is kept in attrs, per-cast-varying provenance is already stored as
-    variables.  Returns True if written, False if skipped (existed, not forced).
+    variables.  Returns True if written, False when there is nothing to compile.
+
+    Skips when ``ladcp_profiles.nc`` already exists and is newer than every
+    per-cast source file (same source-mtime rule as the CTD compiler and the
+    processing stages); ``force`` rebuilds regardless.
 
     ``cruise_info`` (the config ``cruise_info:`` block) supplies discovery
     metadata, people, embargo, and the ship/date for the EXPOCODE coordinate.
     Coverage bounds (lat/lon from the per-cast positions, vertical from the depth
     axis in metres) and the creation time are computed from the data.
     """
-    if ladcp_profiles_path.exists() and not force:
-        return False
     files = _select_ladcp_files(ladcp_nc_dir)
     if not files:
+        # Say so.  Silence here is indistinguishable from success, and the CTD
+        # half prints on write, so a quiet LADCP half reads as "did not run".
+        print(
+            f"ladcp-profiles: no per-cast files under {ladcp_nc_dir} "
+            f"(looked in stage1/ and directly) — nothing to compile"
+        )
+        return False
+    # Skip only when the product exists AND is newer than every source cast file,
+    # so a re-converted cast rebuilds the compile rather than keeping it stale.
+    if not force and is_up_to_date(ladcp_profiles_path, files):
         return False
 
     dss = [xr.open_dataset(p, engine="netcdf4").load() for p in files]
@@ -232,6 +246,7 @@ def build_ladcp_profiles(
     )
 
     write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)
+    print(f"ladcp-profiles: wrote {ladcp_profiles_path}")
     return True
 
 

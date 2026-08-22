@@ -26,6 +26,7 @@ from ctdcast.identity import format_cast_id
 from ctdcast.processors.qc import _qc_attrs
 from ctdcast.processors.stage_layout import (
     group_by_cast,
+    is_up_to_date,
     matches_tags,
     parse_stage,
     stage_path,
@@ -385,8 +386,8 @@ def run(
         parsed = parse_stage(input_path)
         stem = parsed[0] if parsed else input_path.stem
         target = stage_path(root, stem, 2)
-        if target.exists() and not force:
-            print(f"  skip (stage 2 exists): {target.name}")
+        if not force and is_up_to_date(target, [input_path]):
+            print(f"  skip (up to date): {target.name}")
             n_skipped += 1
             continue
         if dry_run:

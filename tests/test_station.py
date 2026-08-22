@@ -186,3 +186,30 @@ def test_read_cast_meta_lettered_sibling_keeps_suffix_under_stage_name(tmp_path)
     assert m is not None
     assert (m["cast_num"], m["cast_suffix"]) == (11, "b")
     assert m["cast_num_str"] == "011b"
+
+
+def test_decode_str_handles_numpy_bytes():
+    """cast_suffix read from netCDF as bytes/numpy scalars decodes to a clean str."""
+    import numpy as np
+
+    from ctdcast.reports._index import _decode_str
+
+    assert _decode_str("b") == "b"
+    assert _decode_str(np.str_("b")) == "b"
+    assert _decode_str(np.bytes_(b"b")) == "b"  # would be "b'b'" under plain str()
+    assert _decode_str(b"") == ""
+
+
+def test_nat_safe_min_max_ignore_nat():
+    """Merging down/up times tolerates a NaT on either profile."""
+    import numpy as np
+
+    from ctdcast.reports._index import _nat_safe_max, _nat_safe_min
+
+    a = np.datetime64("2026-07-09T00:00")
+    b = np.datetime64("2026-07-10T00:00")
+    nat = np.datetime64("NaT")
+    assert _nat_safe_min(a, b) == a
+    assert _nat_safe_max(a, b) == b
+    assert _nat_safe_min(nat, b) == b
+    assert _nat_safe_max(a, nat) == a

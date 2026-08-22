@@ -25,6 +25,7 @@ cycle.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 
 from ctdcast.identity import cast_id_from_name, format_cast_id
@@ -206,9 +207,11 @@ def group_by_cast(root: Path | str) -> dict[tuple[int, str], dict[int, Path]]:
     for path in sorted(root.glob("*.nc")):
         if parse_stage(path) is not None:
             continue  # a suffixed file loose at the root — not a flat stage 1
+        if is_product_name(path):
+            continue  # compiled product (…profiles.nc), even if its name has digits
         cast_id = cast_id_from_name(path.stem)
         if cast_id is None:
-            continue  # compiled product or non-cast file
+            continue  # non-cast file
         groups.setdefault(cast_id, {}).setdefault(1, path)
     return groups
 
@@ -236,3 +239,69 @@ def matches_tags(cast_id: tuple[int, str], tags: set[str]) -> bool:
     """
     num, suffix = cast_id
     return format_cast_id(num, suffix) in tags or format_cast_id(num) in tags
+
+
+#: Filename suffix of the compiled gridded products (``profiles.nc``,
+#: ``ladcp_profiles.nc``) that sit at the stage root beside the stage directories.
+PRODUCT_SUFFIX = "profiles.nc"
+
+
+def is_product_name(name: Path | str) -> bool:
+    """Return whether *name* is a compiled-product file, not a per-cast file.
+
+    Compiled products (``…profiles.nc``) live at the stage root; they are terminal
+    gridded artefacts, not casts, and must never be folded into cast discovery —
+    even when the name carries a cruise number (e.g. ``msm_142_profiles.nc``),
+    which would otherwise parse as cast 142.
+    """
+    return Path(name).name.endswith(PRODUCT_SUFFIX)
+
+
+def select_best_available(
+    root: Path | str,
+) -> list[tuple[tuple[int, str], Path, int]]:
+    """Return ``(cast_id, best_path, source_stage)`` per cast, sorted by identity.
+
+    The one place the best-available precedence lives for every consumer (the
+    report, ``build_profiles``, the LADCP compile).  ``best_path`` is the
+    highest-stage file present (3 > 2 > 1); ``source_stage`` is that rung, or 0
+    when the best file is a flat/suffix-less file that does not state its own
+    stage (the compatibility shim only *assumes* stage 1, so 0 = "unknown, guessed
+    stage 1" stays distinct from a stated stage 1).
+
+    Parameters
+    ----------
+    root : Path or str
+        The instrument stage root.
+
+    Returns
+    -------
+    list of (tuple(int, str), Path, int)
+        One ``((cast_num, cast_suffix), path, source_stage)`` per cast, sorted by
+        cast identity.
+    """
+    out: list[tuple[tuple[int, str], Path, int]] = []
+    for cast_id, stages in group_by_cast(root).items():
+        best = max(stages)
+        path = stages[best]
+        stage = 0 if (best == 1 and parse_stage(path) is None) else best
+        out.append((cast_id, path, stage))
+    return sorted(out)
+
+
+def is_up_to_date(target: Path | str, sources: Iterable[Path]) -> bool:
+    """Return whether *target* exists and is newer than every source in *sources*.
+
+    The one skip/re-run test for a derived file (a stage output or a compiled
+    product): skip only when the output already exists **and** no input has been
+    rewritten since (by mtime).  This is what makes a forced re-run of an earlier
+    step propagate — ``process --stage 1 --only 42 --force`` followed by a plain
+    ``process --stage 2 3 profiles`` regenerates cast 42 downstream instead of
+    silently skipping because a stale output happened to exist.  A missing source
+    is ignored (it cannot make the target stale).
+    """
+    target = Path(target)
+    if not target.exists():
+        return False
+    t_mtime = target.stat().st_mtime
+    return all(Path(s).stat().st_mtime <= t_mtime for s in sources if Path(s).exists())

@@ -71,7 +71,7 @@ class StagePaths:
         The one place the ``nc_dir`` → ``ctd_root`` compatibility rule lives, so
         no caller decides it twice.  A config predating the stage layout names
         ``nc_dir``/``ladcp_nc``; those become the roots directly, and
-        :mod:`ctdcast.processors.stage_paths` recognises the unsuffixed files
+        :mod:`ctdcast.processors.stage_layout` recognises the unsuffixed files
         under them as stage 1 — flatness is a *naming* variant, so it is detected
         where naming lives rather than carried as a flag.
 

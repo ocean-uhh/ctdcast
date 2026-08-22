@@ -31,7 +31,7 @@ from ctdcast.identity import (
     expand_cast_numbers,
     format_cast_id,
 )
-from ctdcast.processors.stage_layout import group_by_cast
+from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
@@ -1484,11 +1484,7 @@ def _select_cast_files(nc_dir: Path) -> list[Path]:
     plain cast ``NNN`` and its lettered sibling ``NNNb`` are distinct events.
     Sort order is cast number then suffix (plain before ``b``).
     """
-    results: list[tuple[int, str, Path]] = []
-    for (num, suffix), stages in group_by_cast(nc_dir).items():
-        results.append((num, suffix, stages[max(stages)]))
-    results.sort(key=lambda t: (t[0], t[1]))
-    return [t[2] for t in results]
+    return [path for _cast_id, path, _stage in select_best_available(nc_dir)]
 
 
 def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
@@ -1528,6 +1524,42 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         return None
 
 
+def _decode_str(value: Any) -> str:
+    """Return *value* as ``str``, decoding numpy/bytes scalars.
+
+    netCDF string variables round-trip as ``bytes``/``numpy.bytes_`` under some
+    writing libraries, so a plain ``str(value)`` would yield ``"b'b'"`` for a
+    ``cast_suffix`` of ``b'b'`` — silently corrupting the cast id rather than
+    failing loudly.
+    """
+    item = value.item() if hasattr(value, "item") else value
+    if isinstance(item, bytes):
+        return item.decode("utf-8", "replace")
+    return str(item)
+
+
+def _nat_safe_min(a: Any, b: Any) -> Any:
+    """Return the earlier of two ``datetime64`` values, ignoring ``NaT``.
+
+    ``NaT`` comparisons are always False, so a plain ``min()`` can return ``NaT``
+    or the wrong endpoint when one profile of a cast lacks a time.
+    """
+    if np.isnat(a):
+        return b
+    if np.isnat(b):
+        return a
+    return min(a, b)
+
+
+def _nat_safe_max(a: Any, b: Any) -> Any:
+    """Return the later of two ``datetime64`` values, ignoring ``NaT``."""
+    if np.isnat(a):
+        return b
+    if np.isnat(b):
+        return a
+    return max(a, b)
+
+
 def _read_meta_from_profiles(profiles_path: Path) -> list[dict[str, Any]]:
     """Build the per-cast metadata list from the compiled ``profiles.nc``.
 
@@ -1548,7 +1580,7 @@ def _read_meta_from_profiles(profiles_path: Path) -> list[dict[str, Any]]:
     except Exception:  # noqa: BLE001
         return []
     try:
-        cruise = ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
+        cruise = _decode_str(ds.attrs.get("cruise", UNKNOWN_CRUISE_ID))
         nums = ds["cast_number"].values
         suffixes = ds["cast_suffix"].values if "cast_suffix" in ds else [""] * len(nums)
         lats = ds["latitude"].values
@@ -1567,7 +1599,7 @@ def _read_meta_from_profiles(profiles_path: Path) -> list[dict[str, Any]]:
 
     by_cast: dict[tuple[int, str], dict[str, Any]] = {}
     for i in range(len(nums)):
-        num, suffix = int(nums[i]), str(suffixes[i])
+        num, suffix = int(nums[i]), _decode_str(suffixes[i])
         row = by_cast.get((num, suffix))
         if row is None:
             by_cast[(num, suffix)] = {
@@ -1584,7 +1616,8 @@ def _read_meta_from_profiles(profiles_path: Path) -> list[dict[str, Any]]:
                 "cruise": cruise,
             }
         else:
-            # Merge the down and up profiles of one cast into a single span.
-            row["time_start"] = min(row["time_start"], t_start[i])
-            row["time_end"] = max(row["time_end"], t_end[i])
+            # Merge the down and up profiles of one cast into a single span,
+            # tolerating a NaT time on either profile.
+            row["time_start"] = _nat_safe_min(row["time_start"], t_start[i])
+            row["time_end"] = _nat_safe_max(row["time_end"], t_end[i])
     return list(by_cast.values())

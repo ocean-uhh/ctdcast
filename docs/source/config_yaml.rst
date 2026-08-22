@@ -110,8 +110,9 @@ Example
 .. code-block:: yaml
 
    data:
-     nc_dir:       /data/cruise/CTD/cnv_nc
-     profiles_nc:  /data/cruise/CTD/profiles.nc
+     ctd_root:     /data/cruise/CTD/ctd_nc     # stage1/…stage3/ + profiles.nc
+     ladcp_root:   /data/cruise/LADCP/ladcp_nc
+     cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
      section_yaml: /data/cruise/config/ctd_sections.yaml
      gebco_nc:     /data/GEBCO_2025.nc
 

@@ -15,7 +15,10 @@ from ctdcast.processors.stage_layout import (
     STAGES,
     best_available,
     group_by_cast,
+    is_product_name,
+    is_up_to_date,
     parse_stage,
+    select_best_available,
     stage_dir,
     stage_path,
 )
@@ -187,6 +190,7 @@ def test_group_by_cast_skips_compiled_products_at_root(tmp_path):
     (tmp_path / "mixsed2_017.nc").touch()
     (tmp_path / "profiles.nc").touch()  # compiled product, no cast number
     (tmp_path / "ladcp_profiles.nc").touch()
+    (tmp_path / "notes.nc").touch()  # non-product, no cast number → skipped
     groups = group_by_cast(tmp_path)
     assert set(groups) == {(17, "")}
 
@@ -236,3 +240,48 @@ def test_group_by_cast_tolerates_missing_stage_dirs(tmp_path):
 
 def test_group_by_cast_empty_root(tmp_path):
     assert group_by_cast(tmp_path) == {}
+
+
+# --- is_product_name / select_best_available / is_up_to_date ----------------
+
+
+def test_is_product_name():
+    assert is_product_name("profiles.nc")
+    assert is_product_name("ladcp_profiles.nc")
+    assert is_product_name("sub/msm_142_profiles.nc")  # digit-named product
+    assert not is_product_name("mixsed2_029_stage1.nc")
+    assert not is_product_name("mixsed2_029.nc")
+
+
+def test_group_by_cast_skips_digit_named_product(tmp_path):
+    # A compiled product whose name carries a cruise number must not fold in as a cast.
+    _touch(tmp_path, 1, "mixsed2_017")
+    (tmp_path / "msm_142_profiles.nc").touch()
+    assert set(group_by_cast(tmp_path)) == {(17, "")}
+
+
+def test_select_best_available_stage_and_flat(tmp_path):
+    _touch(tmp_path, 1, "mixsed2_017")
+    _touch(tmp_path, 3, "mixsed2_017")  # best-available = stage 3
+    (tmp_path / "mixsed2_018.nc").touch()  # flat shim → source_stage 0 (unknown)
+    assert select_best_available(tmp_path) == [
+        ((17, ""), stage_path(tmp_path, "mixsed2_017", 3), 3),
+        ((18, ""), tmp_path / "mixsed2_018.nc", 0),
+    ]
+
+
+def test_is_up_to_date(tmp_path):
+    import os
+
+    src = tmp_path / "src.nc"
+    src.touch()
+    tgt = tmp_path / "tgt.nc"
+    assert is_up_to_date(tgt, [src]) is False  # target missing
+    tgt.touch()
+    os.utime(tgt, (src.stat().st_atime, src.stat().st_mtime + 10))
+    assert is_up_to_date(tgt, [src]) is True  # target newer than source
+    os.utime(src, (tgt.stat().st_atime, tgt.stat().st_mtime + 10))
+    assert is_up_to_date(tgt, [src]) is False  # source newer → stale
+    assert (
+        is_up_to_date(tgt, [tmp_path / "missing.nc"]) is True
+    )  # missing source ignored

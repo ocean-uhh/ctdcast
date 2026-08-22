@@ -347,6 +347,8 @@ def test_stagepaths_unconfigured_source_is_skipped(tmp_path: Path) -> None:
 
 def test_process_stage1_ctd_branch_with_no_cnv_files(tmp_path: Path) -> None:
     """stage 1 enters the CTD source branch even when the CNV dir is empty."""
+    # stage1() loads the CTD backend before globbing, so this needs seasenselib.
+    pytest.importorskip("seasenselib")
     cnv = tmp_path / "cnv"
     cnv.mkdir()
     assert process("stage1", cnv_dir=cnv, ctd_root=tmp_path / "CTD") == 0
@@ -360,3 +362,17 @@ def test_process_stage2_without_ctd_root_is_noop() -> None:
 def test_process_stage3_without_ctd_root_is_noop() -> None:
     """stage 3 with no ctd_root configured does nothing, without error."""
     assert process("stage3") == 0
+
+
+def test_stage2_rebuilds_when_stage1_is_newer(tmp_path: Path) -> None:
+    """A stage-1 rewrite makes stage 2 re-run without --force (source-mtime skip)."""
+    import os
+
+    root = tmp_path / "CTD"
+    s1 = _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    assert stage2_run(root) == 1
+    s2 = stage_path(root, "mixsed2_011", 2)
+    assert stage2_run(root) == 0  # unchanged stage 1 → skipped (up to date)
+    # Make stage 1 newer than stage 2: the stale stage-2 file must be rebuilt.
+    os.utime(s1, (s2.stat().st_atime, s2.stat().st_mtime + 10))
+    assert stage2_run(root) == 1

@@ -7,10 +7,11 @@ import sys
 from pathlib import Path
 
 import yaml
-from ctdcast.identity import expand_cast_ids, format_cast_id
+from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 
 from ctdcast.config.loader import SectionsConfig
 from ctdcast.config.people import check_contributors, contributor_attrs
+from ctdcast.processors import StagePaths
 
 
 def build_parser(
@@ -104,10 +105,10 @@ def run(args: argparse.Namespace) -> int:
     if not output.get("dir"):
         errors.append("output.dir is missing or blank")
 
-    # `nc_dir` is the pre-stage-layout spelling; StagePaths.from_config applies the
-    # same precedence, so the two agree about which directory is the root.
-    _root_raw = data.get("ctd_root") or data.get("nc_dir")
-    nc_dir: Path | None = Path(str(_root_raw)) if _root_raw else None
+    # Resolved by the same function the processors use, so validate cannot
+    # green-light a config that `process` would read differently.
+    _paths = StagePaths.from_config(data)
+    nc_dir: Path | None = _paths.ctd_root
     out_dir: Path | None = Path(output["dir"]) if output.get("dir") else None
 
     # ctd_root: per-cast files live under stageN/, with the flat layout still
@@ -166,9 +167,7 @@ def run(args: argparse.Namespace) -> int:
     # error (a wrong path); a derived path that is simply not built yet is a
     # warning (run the profiles stage before reporting).
     profiles_explicit = data.get("profiles_nc")
-    profiles_raw = profiles_explicit or (
-        str(Path(str(_root_raw)) / "profiles.nc") if _root_raw else None
-    )
+    profiles_raw = str(_paths.profiles_path) if _paths.profiles_path else None
     if need_profiles and not profiles_raw:
         warnings.append(
             "data.profiles_nc not set; sections and timeseries pages will be skipped"
@@ -362,34 +361,38 @@ def _duplicate_top_level_keys(path: Path) -> dict[str, int]:
 
 
 def _parse_cast_nums_from_dir(nc_dir: Path) -> set[int]:
-    """Return the set of integer cast numbers present under a stage root.
+    """Return the cast numbers present under a stage root.
 
-    Walks ``stageN/`` as well as the root itself, and strips the ``_stageN``
-    suffix before parsing.  Without that strip, ``mixsed2_017_stage1`` yields
-    ``"stage1"`` from ``parts[-1]``, raises, and the cast silently disappears
-    from the ``--strict`` check — a false pass rather than a failure.
+    Walks ``stageN/`` as well as the root itself and defers to
+    :func:`ctdcast.identity.cast_id_from_name`, which already knows that the cast
+    number is the *last* 3+-digit group — so a cruise or leg number earlier in the
+    stem is not mistaken for it — and that a letter suffix may be appended or
+    underscore-separated.
+
+    A local re-implementation drifted from that: taking the digits of the final
+    underscore-separated field read ``msm_142_1_029_1sec_stage1`` as cast 1 and
+    dropped ``mixsed2_030_b_stage1`` entirely, so ``--strict`` could pass on the
+    wrong casts or report present casts as missing.
 
     Parameters
     ----------
     nc_dir : Path
-        The instrument stage root (``data.ctd_root``).
+        The instrument stage root.
 
     Returns
     -------
     set of int
-        Cast numbers found. A lettered cast (``017b``) contributes its number.
+        Cast numbers found; a lettered cast contributes its number.
     """
     nums: set[int] = set()
-    for p in [*nc_dir.glob("stage*/*.nc"), *nc_dir.glob("*.nc")]:
-        stem = p.stem
-        for suffix in ("_stage1", "_stage2", "_stage3"):
-            if stem.endswith(suffix):
-                stem = stem[: -len(suffix)]
-                break
-        parts = stem.split("_")
-        if parts:
-            try:
-                nums.add(int("".join(c for c in parts[-1] if c.isdigit())))
-            except ValueError:
-                pass
+    for path in [*nc_dir.glob("stage*/*.nc"), *nc_dir.glob("*.nc")]:
+        # A compiled product sits at the root beside the stage directories, and a
+        # non-default name containing digits parses as a cast: `msm_142_profiles`
+        # reads as cast 142. No per-cast file ends in `profiles`, so that is the
+        # discriminator.
+        if path.stem.endswith("profiles"):
+            continue
+        parsed = cast_id_from_name(path.stem)
+        if parsed is not None:
+            nums.add(parsed[0])
     return nums

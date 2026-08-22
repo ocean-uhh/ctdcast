@@ -25,7 +25,7 @@ from ctdcast.config.sensors import (
     resolve_sensor,
 )
 from ctdcast.identity import format_cast_id
-from ctdcast.processors.stage_layout import group_by_cast, parse_stage
+from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
@@ -153,16 +153,10 @@ def _select_cast_files(root: Path) -> list[tuple[int, str, Path, int]]:
     ``nc_dir`` (unsuffixed files under the root) is read as stage 1 via the shim
     in :mod:`ctdcast.processors.stage_layout`.
     """
-    result: list[tuple[int, str, Path, int]] = []
-    for (num, suffix), stages in group_by_cast(root).items():
-        best = max(stages)  # highest stage present == best_available
-        path = stages[best]
-        # A flat/suffix-less file is only *assumed* stage 1 by the shim; it does
-        # not state its stage.  Record 0 (unknown) rather than asserting 1, so
-        # "this file says stage 1" stays distinct from "we guessed stage 1".
-        stage = 0 if (best == 1 and parse_stage(path) is None) else best
-        result.append((num, suffix, path, stage))
-    return sorted(result)
+    return [
+        (num, suffix, path, stage)
+        for (num, suffix), path, stage in select_best_available(root)
+    ]
 
 
 def _turnaround_index(pressure: np.ndarray) -> int:
@@ -283,15 +277,18 @@ def build_profiles(
     ValueError
         If no recognised cast files are found in nc_dir.
     """
-    if profiles_path.exists() and not force:
-        return False
-
     if not isinstance(dbar, int) or dbar < 1:
         raise ValueError(f"dbar must be an integer >= 1, got {dbar!r}.")
 
     cast_list = _select_cast_files(nc_dir)
     if not cast_list:
         raise ValueError(f"No recognised cast netCDF files found in {nc_dir}.")
+
+    # Skip only if profiles.nc exists AND is newer than every source cast file, so
+    # a re-processed cast (a newer stage file) rebuilds the product rather than
+    # leaving a stale compile in place.
+    if not force and is_up_to_date(profiles_path, [p for _n, _s, p, _st in cast_list]):
+        return False
 
     # Pass 1: determine global pressure range for the shared grid
     p_max_global = 0.0
@@ -681,7 +678,6 @@ def run(
         print(f"profiles: wrote {profiles_path}")
     else:
         print(
-            f"profiles: skipped (already exists; use --force to overwrite):"
-            f" {profiles_path}"
+            f"profiles: skipped (up to date; use --force to rebuild): {profiles_path}"
         )
     return result
