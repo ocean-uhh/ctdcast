@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.readers.ladcp import read_ladcp_cast
@@ -146,7 +147,11 @@ def _select_ladcp_files(ladcp_nc_dir: Path) -> list[Path]:
 
 
 def build_ladcp_profiles(
-    ladcp_nc_dir: Path, ladcp_profiles_path: Path, *, force: bool = False
+    ladcp_nc_dir: Path,
+    ladcp_profiles_path: Path,
+    *,
+    force: bool = False,
+    cruise_info: dict | None = None,
 ) -> bool:
     """Compile per-cast ``ladcp_*.nc`` into ``ladcp_profiles.nc``.
 
@@ -157,6 +162,11 @@ def build_ladcp_profiles(
     dimension.  Per-cast scalars become ``N_PROF`` vectors; cruise-common
     provenance is kept in attrs, per-cast-varying provenance is already stored as
     variables.  Returns True if written, False if skipped (existed, not forced).
+
+    ``cruise_info`` (the config ``cruise_info:`` block) supplies discovery
+    metadata, people, embargo, and the ship/date for the EXPOCODE coordinate.
+    Coverage bounds (lat/lon from the per-cast positions, vertical from the depth
+    axis in metres) and the creation time are computed from the data.
     """
     if ladcp_profiles_path.exists() and not force:
         return False
@@ -182,6 +192,33 @@ def build_ladcp_profiles(
     ds_out.attrs["source"] = (
         f"{len(files)} per-cast LADCP netCDF files compiled by ctdcast"
     )
+
+    # EXPOCODE as an N_PROF coordinate (see the CTD builder for the rationale).
+    ci = cruise_info or {}
+    n_profiles = ds_out.sizes["N_PROF"]
+    _expocode_coord = expocode_coordinate(ci, n_profiles)
+    if _expocode_coord is not None:
+        ds_out["expocode"] = _expocode_coord
+
+    # Derived coverage + authored/provenance/people/platform globals.  The LADCP
+    # product is gridded on a depth axis (metres, positive down), not pressure;
+    # take the units from the depth variable's own declared units.
+    _depth = np.asarray(ds_out["depth"].values, dtype="float64")
+    _depth_units = str(ds_out["depth"].attrs.get("units", "m"))
+    _depth_ok = _depth.size and bool(np.isfinite(_depth).any())
+    ds_out.attrs.update(
+        cruise_global_attrs(
+            ci,
+            lats=ds_out["latitude"].values if "latitude" in ds_out else None,
+            lons=ds_out["longitude"].values if "longitude" in ds_out else None,
+            vertical_min=float(np.nanmin(_depth)) if _depth_ok else None,
+            vertical_max=float(np.nanmax(_depth)) if _depth_ok else None,
+            vertical_units=_depth_units,
+            times=ds_out["time"].values if "time" in ds_out else None,
+            source="ladcp",
+        )
+    )
+
     write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)
     return True
 
@@ -197,6 +234,7 @@ def run_compile(
     *,
     force: bool = False,
     dry_run: bool = False,
+    cruise_info: dict | None = None,
     **kw: object,  # noqa: ARG001
 ) -> bool:
     """Build ``ladcp_profiles.nc`` from ``ladcp_*.nc`` in *ladcp_nc_dir*.
@@ -209,4 +247,6 @@ def run_compile(
             f"[dry-run] ladcp-profiles: {ladcp_nc_dir} → {ladcp_profiles_path}  ({n} cast(s))"
         )
         return False
-    return build_ladcp_profiles(ladcp_nc_dir, ladcp_profiles_path, force=force)
+    return build_ladcp_profiles(
+        ladcp_nc_dir, ladcp_profiles_path, force=force, cruise_info=cruise_info
+    )

@@ -183,6 +183,7 @@ def run(args: argparse.Namespace) -> int:
                 ladcp_pattern=_data.get("ladcp_pattern"),
                 profiles_dbar=int(_processing.get("profiles_dbar", 1)),
                 sensor_overrides=SensorOverrides.from_cruise_config(_cfg),
+                cruise_info=_cfg.get("cruise_info") or {},
             )
         except (ValueError, OSError, ImportError, NotImplementedError) as exc:
             print(f"process error: {exc}", file=sys.stderr)

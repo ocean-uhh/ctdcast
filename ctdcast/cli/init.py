@@ -45,13 +45,67 @@ generate:
   index: true
   leaflet: true
 
-# Cruise metadata displayed in page headers and station cards.
+# Cruise metadata: shown in page headers and written into the compiled files as
+# ACDD/CF global attributes.  All optional — but the more you fill in, the more
+# self-describing and citable the output netCDF is.  Run 'ctdcast validate' to
+# check it.  Fill the blanks; uncomment and complete the example blocks you need.
 cruise_info:
   name: ""
-  ship: ""
-  chief_scientist: ""
-  start_date: ""
-  end_date: ""
+  cruise_id: ""                  # short identifier, e.g. "MSM142" (the file's `cruise`)
+  ship: ""                       # display name shown in the report masthead
+
+  # Vessel for the EXPOCODE and platform_* attributes.  Either a platforms.yaml
+  # slug (e.g. odb, msm), OR — for a vessel not in the registry — an inline block.
+  # platform: odb
+  # platform:
+  #   name: "RV Example"
+  #   ices_code: "XXXX"          # look up your ship at https://ocean.ices.dk/codes/ShipCodes.aspx
+  #   platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+
+  project: ""
+  start_date: ""                 # DEPARTURE from port, YYYY-MM-DD; feeds the EXPOCODE (not the first cast)
+  end_date: ""                   # return to port; drives the default embargo release date
+
+  # Who produced the file (ACDD creator_*).  Singular — not a PI list.
+  # creator:
+  #   name: ""
+  #   type: person               # person | group | institution
+  #   orcid: null                # https://orcid.org/0000-0000-0000-000X
+
+  # Everyone with a named role.  Each person once.  Roles are NERC C89 codes:
+  #   PS Cruise principal scientist   PI Project principal investigator
+  #   DI Cruise dataset PI   MC Cruise data manager   CO Project collaborator  ...
+  #   (full list: https://vocab.nerc.ac.uk/collection/C89/current/)
+  # A role may apply to every file, or be scoped to one product (ctd / ladcp).
+  # contributors:
+  #   - name: ""
+  #     orcid: null
+  #     roles: [PS, PI]          # both compiled files
+  #   - name: ""
+  #     orcid: null
+  #     roles:
+  #       ctd: [MC]              # profiles.nc only
+  #       ladcp: [DI]           # ladcp_profiles.nc only
+
+  # Contributing institutions.  Either an institutions.yaml slug, or inline for
+  # one not in the registry (look up the EDMO code at https://edmo.seadatanet.org/).
+  # The CONLEAD entries are what the CF `institution` attribute is derived from,
+  # so a list where nothing leads produces no `institution` at all.
+  # institutions:
+  #   - slug: uhh
+  #     role: CONLEAD            # CONLEAD (leads) | CONMEM (takes part) | FUND (funder)
+  #   - name: "Example Funder"
+  #     id: "https://ror.org/..."   # ROR, or https://edmo.seadatanet.org/report/<code>
+  #     role: FUND
+
+  # Access policy.  An embargo is NOT a licence — during it the file carries a
+  # self-describing moratorium statement, not CC-BY.
+  # embargo:
+  #   policy: "SDN:L08::MO"      # NERC L08 moratorium
+  #   until: null               # null -> end_date + 2 years; or a fixed YYYY-MM-DD
+  #   contact: null             # PI email for access requests
+  # license_after_embargo: "CC-BY-4.0"
+
   # Bounding box for the station map axes (degrees).  Optional — auto-fit if omitted.
   # map_lat_min: -30
   # map_lat_max: -10
@@ -461,6 +515,299 @@ def _prompt(
     return val if val else default
 
 
+#: A short hint for the commented template: the cruise-scoped C89 codes, which
+#: are the ones most cruise configs need.  The full list is served by the
+#: interactive prompt via :func:`ctdcast.config.people.role_choices`.
+_ROLE_HINT = (
+    "PS Cruise principal scientist, DI Cruise dataset principal investigator, "
+    "MC Cruise data manager, TC Cruise technical contact, TS Cruise technician, "
+    "CP Cruise participant, PI Project principal investigator"
+)
+
+
+def _prompt_platform() -> str:
+    """Prompt for a ``platforms.yaml`` vessel slug, listing the known slugs.
+
+    The slug (not the free-text ship name) is what resolves the ICES code used to
+    derive the EXPOCODE.  Returns an empty string when the user skips it.
+    """
+    from ctdcast.config.platforms import load_platforms
+
+    slugs = sorted(load_platforms())
+    if slugs:
+        print(f"  known vessel slugs: {', '.join(slugs)}")
+    return (
+        _prompt("platform slug (platforms.yaml key; feeds the EXPOCODE)", default="")
+        or ""
+    )
+
+
+def _resolve_role(choice: str, roles: list[str]) -> str:
+    """Map a menu number or a typed role name to a valid role.
+
+    Accepts the concept code (``PS``) as well as the prefLabel, since both are
+    valid in config.  Falls back to ``PI`` (with a note) for an unrecognised
+    entry; ``ctdcast validate`` still catches a genuinely wrong role before any
+    file is written.
+    """
+    choice = (choice or "").strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(roles):
+        return roles[int(choice) - 1]
+    for role in roles:
+        if choice.lower() == role.lower():
+            return role
+    # A concept code (PS, DI, CP...) is equally valid in config, so accept it.
+    from ctdcast.config.people import DEFAULT_ROLE_VOCABULARY, ROLE_VOCABULARIES
+
+    terms = ROLE_VOCABULARIES[DEFAULT_ROLE_VOCABULARY]["terms"]
+    for code, label in terms.items():
+        if choice.upper() == code.upper():
+            return label
+    print("    unrecognised role — defaulting to PI (edit later if wrong).")
+    return "PI"
+
+
+#: Product scopes for a contributor, mapped from a one-letter answer.
+_SCOPE_CHOICE = {
+    "a": "all",
+    "all": "all",
+    "c": "ctd",
+    "ctd": "ctd",
+    "l": "ladcp",
+    "ladcp": "ladcp",
+}
+
+
+def _prompt_contributors() -> list[dict[str, object]]:
+    """Collect contributors interactively, one entry per PERSON.
+
+    A person is entered once, with their name and ORCID, and may then hold
+    several roles, each optionally scoped to one product.  That mirrors the
+    config model: repeating a person to give them a second role is what the
+    writer does on output, not what the author does in config.
+
+    Returns
+    -------
+    list of dict
+        ``[{"name": str, "orcid": str, "roles": {scope: [role, ...]}}]``, in the
+        order entered.
+    """
+    from ctdcast.config.people import role_choices
+
+    people: list[dict[str, object]] = []
+    ans = (_prompt("add contributors now? (y/N)", default="n") or "n").lower()
+    if ans not in {"y", "yes"}:
+        return people
+
+    roles = role_choices()
+    print("    roles:")
+    for i, r in enumerate(roles, start=1):
+        print(f"      {i:>2}={r}")
+
+    while True:
+        name = (_prompt("    name (blank to finish)", default="") or "").strip()
+        if not name:
+            break
+        if ";" in name or "," in name:
+            print("    name may not contain ';' or ',' — skipped.")
+            continue
+
+        orcid = (_prompt("    ORCID (optional)", default="") or "").strip()
+        scoped_roles: dict[str, list[str]] = {}
+        while True:
+            role = _resolve_role(
+                _prompt("      role (number, code or name)", default="1") or "1", roles
+            )
+            scope_in = (
+                _prompt(
+                    "      applies to: [a]ll files / [c]td only / [l]adcp only",
+                    default="a",
+                )
+                or "a"
+            ).lower()
+            scope = _SCOPE_CHOICE.get(scope_in, "all")
+            scoped_roles.setdefault(scope, [])
+            if role not in scoped_roles[scope]:
+                scoped_roles[scope].append(role)
+            print(f"      + {role} ({scope})")
+            more = (
+                _prompt("      another role for this person? (y/N)", default="n") or "n"
+            ).lower()
+            if more not in {"y", "yes"}:
+                break
+
+        entry: dict[str, object] = {"name": name, "roles": scoped_roles}
+        if orcid:
+            entry["orcid"] = orcid
+        people.append(entry)
+        flat = ", ".join(f"{r} ({s})" for s, rs in scoped_roles.items() for r in rs)
+        print(f"    added: {name} — {flat}")
+    return people
+
+
+def _prompt_institutions() -> list[dict[str, str]]:
+    """Collect institution slugs interactively, listing the known ones.
+
+    Institutions are a list of their own, deliberately not attached to people:
+    one person may sit at several institutions and one institution may send
+    several people, so the two lists are not positionally aligned.
+
+    Each entry also takes a role, because the role is load-bearing rather than
+    decorative: the lead entries are what the CF ``institution`` attribute is
+    derived from, so a list where nothing leads produces no ``institution`` at
+    all.  Asking here is cheaper than the user discovering the omission later.
+
+    Returns
+    -------
+    list of dict
+        ``{"slug": str, "role": str}`` in the order entered; empty when skipped.
+    """
+    from ctdcast.config.people import (
+        DEFAULT_INSTITUTION_ROLE,
+        INSTITUTION_ROLE_VOCABULARIES,
+        load_institutions,
+    )
+
+    roles = INSTITUTION_ROLE_VOCABULARIES["C59"]["terms"]
+    known = sorted(load_institutions())
+    chosen: list[dict[str, str]] = []
+    ans = (_prompt("add institutions now? (y/N)", default="n") or "n").lower()
+    if ans not in {"y", "yes"}:
+        return chosen
+    if known:
+        print(f"    known slugs: {', '.join(known)}")
+    print(
+        "    (one that is not listed can be written inline in the config, or added"
+        " to ~/.config/ctdcast/institutions.yaml)"
+    )
+    print(f"    roles: {', '.join(f'{c} ({label})' for c, label in roles.items())}")
+    seen: set[str] = set()
+    while True:
+        slug = (_prompt("    slug (blank to finish)", default="") or "").strip()
+        if not slug:
+            break
+        if known and slug not in known:
+            print(f"    {slug!r} is in no registry — write it inline instead.")
+            continue
+        if slug in seen:
+            continue
+        role = (
+            _prompt(f"    role for {slug}", default=DEFAULT_INSTITUTION_ROLE) or ""
+        ).strip() or DEFAULT_INSTITUTION_ROLE
+        if role not in roles:
+            print(f"    {role!r} is not a C59 code — using {DEFAULT_INSTITUTION_ROLE}.")
+            role = DEFAULT_INSTITUTION_ROLE
+        seen.add(slug)
+        chosen.append({"slug": slug, "role": role})
+    if chosen and not any(c["role"] == "CONLEAD" for c in chosen):
+        print(
+            "    note: nothing holds CONLEAD, so the CF `institution` attribute "
+            "will be omitted."
+        )
+    return chosen
+
+
+def _person_lines(person: dict[str, object], item_indent: str) -> list[str]:
+    """Render one contributor as YAML list-item lines at *item_indent*.
+
+    Uses the compact ``roles: [...]`` form when every role applies to every
+    compiled file, and the scoped mapping form otherwise.
+    """
+    field = item_indent + "  "
+    lines = [f'{item_indent}- name: "{person["name"]}"']
+    lines.append(f"{field}orcid: {person.get('orcid') or 'null'}")
+
+    roles = person.get("roles")
+    if isinstance(roles, dict):
+        scopes = {s: rs for s, rs in roles.items() if rs}
+        if set(scopes) == {"all"}:
+            joined = ", ".join(f'"{r}"' for r in scopes["all"])
+            lines.append(f"{field}roles: [{joined}]")
+        else:
+            lines.append(f"{field}roles:")
+            for scope in ("all", "ctd", "ladcp"):
+                if scopes.get(scope):
+                    joined = ", ".join(f'"{r}"' for r in scopes[scope])
+                    lines.append(f"{field}  {scope}: [{joined}]")
+    elif isinstance(roles, list):
+        joined = ", ".join(f'"{r}"' for r in roles)
+        lines.append(f"{field}roles: [{joined}]")
+    else:
+        lines.append(f"{field}role: {person.get('role', 'PI')}")
+    return lines
+
+
+def _format_contributors_yaml(
+    contributors: list[dict[str, object]] | dict[str, list[dict[str, str]]] | None,
+    institutions: list[dict[str, str]] | None = None,
+) -> str:
+    """Render the ``contributors:`` and ``institutions:`` blocks for the config.
+
+    Emits a commented template when nothing was entered, so the generated file
+    still shows the shape.  Accepts the list from :func:`_prompt_contributors`,
+    and — for back-compat — the older ``{"all": [...], "ctd": [...]}`` scoped
+    dict, which is folded into per-person scoped roles.
+
+    Institution entries are ``{"slug": ..., "role": ...}``; a bare string is
+    still accepted and takes the registry's default role.
+    """
+    people: list[dict[str, object]] = []
+    if isinstance(contributors, dict):
+        merged: dict[str, dict[str, object]] = {}
+        for scope, entries in contributors.items():
+            for c in entries or []:
+                who = merged.setdefault(
+                    str(c["name"]),
+                    {"name": c["name"], "orcid": c.get("orcid"), "roles": {}},
+                )
+                bucket = who["roles"]
+                assert isinstance(bucket, dict)
+                bucket.setdefault(scope, []).append(c.get("role", "PI"))
+        people = list(merged.values())
+    elif contributors:
+        people = list(contributors)
+
+    institutions = institutions or []
+
+    if not people and not institutions:
+        return (
+            "  # Each person appears ONCE and may hold several roles; a role can be"
+            " scoped\n"
+            "  # to one product (`all`, `ctd`, `ladcp`).\n"
+            f"  #   # roles (NERC C89): {_ROLE_HINT}\n"
+            "  # contributors:\n"
+            '  #   - name: "Jane Doe"\n'
+            "  #     orcid: null\n"
+            "  #     roles: [PS, PI]          # both roles, on every compiled file\n"
+            '  #   - name: "Sam Rivera"\n'
+            "  #     orcid: null\n"
+            "  #     roles:\n"
+            "  #       all: [PI]              # every compiled file\n"
+            "  #       ctd: [MC]              # profiles.nc only\n"
+            "  #       ladcp: [DI]            # ladcp_profiles.nc only\n"
+            "  # institutions:                # NOT aligned with the people list\n"
+            "  #   - uhh                      # a registry slug\n"
+            '  #   - name: "Some Institute"   # or inline, needing no registry\n'
+            '  #     id: "https://ror.org/…"\n'
+            "  #     role: FUND\n"
+        )
+
+    lines: list[str] = []
+    if people:
+        lines.append("  contributors:")
+        for person in people:
+            lines.extend(_person_lines(person, "    "))
+    if institutions:
+        lines.append("  institutions:              # not aligned with the people list")
+        for item in institutions:
+            if isinstance(item, dict):
+                lines.append(f"    - slug: {item['slug']}")
+                lines.append(f"      role: {item['role']}")
+            else:
+                lines.append(f"    - {item}")
+    return "\n".join(lines) + "\n"
+
+
 def _resolve_output_path(initial: Path, force: bool) -> Path | None:
     """Return a writable output path, prompting to overwrite or rename if it exists.
 
@@ -594,24 +941,37 @@ def _run_interactive(args: argparse.Namespace) -> int:
         default=_ex.get("section_yaml", "") or "ctd_sections.yaml",
     )
 
-    _section_header("Output")
+    _section_header("Report")
     output_dir = (
-        _prompt("output_dir", default=_ex.get("output_dir", "") or "outputs/ctd_report")
+        _prompt("report dir", default=_ex.get("output_dir", "") or "outputs/ctd_report")
         or "outputs/ctd_report"
     )
 
     _section_header("Cruise info (optional)")
-    cruise_name = _prompt("cruise name", default=_ex.get("cruise_name", "")) or ""
-    ship = _prompt("ship", default=_ex.get("ship", "")) or ""
-    chief_scientist = (
-        _prompt("chief scientist", default=_ex.get("chief_scientist", "")) or ""
+    # The cruise identifier — written to `cruise_id`, which is what the compiled
+    # files and report headers read; a value like "MSM142".  (Was previously
+    # written to `name`, which nothing reads — the cause of cruise=UNK.)
+    cruise_name = (
+        _prompt("cruise id (e.g. MSM142)", default=_ex.get("cruise_name", "")) or ""
     )
+    # Ask the vessel slug first, then default the free-text ship (masthead) name
+    # to that vessel's registry name — deriving the name from the ICES code
+    # (unambiguous) rather than validating a typed name into a code (ambiguous).
+    from ctdcast.config.platforms import platform_display_name
+
+    platform = _prompt_platform()
+    _ship_default = platform_display_name(platform) or _ex.get("ship", "")
+    ship = _prompt("ship", default=_ship_default) or ""
+    # The chief scientist is captured in the contributor step (role PS, Cruise
+    # principal scientist) rather than a separate free-text field.
     start_date = _parse_date(
         _prompt("start date (YYYY-MM-DD)", default=_ex.get("start_date", "")) or ""
     )
     end_date = _parse_date(
         _prompt("end date (YYYY-MM-DD)", default=_ex.get("end_date", "")) or ""
     )
+    contributors = _prompt_contributors()
+    institutions = _prompt_institutions()
 
     # Run detection if profiles.nc is available.
     _draft_msg: str = ""
@@ -730,9 +1090,11 @@ def _run_interactive(args: argparse.Namespace) -> int:
         output_dir=output_dir,
         cruise_name=cruise_name,
         ship=ship,
-        chief_scientist=chief_scientist,
         start_date=start_date,
         end_date=end_date,
+        platform=platform,
+        contributors=contributors,
+        institutions=institutions,
     )
     config_path.parent.mkdir(parents=True, exist_ok=True)
     _write_file(config_path, config_text)
@@ -1150,9 +1512,13 @@ def _build_config_text(
     output_dir: str,
     cruise_name: str,
     ship: str,
-    chief_scientist: str,
     start_date: str,
     end_date: str,
+    platform: str = "",
+    contributors: list[dict[str, object]]
+    | dict[str, list[dict[str, str]]]
+    | None = None,
+    institutions: list[dict[str, str]] | None = None,
 ) -> str:
     """Build a config.yaml string with user-supplied paths and cruise metadata."""
     cnv_line = f"  cnv_dir: {cnv_dir}" if cnv_dir else "  # cnv_dir: /path/to/cnv"
@@ -1186,6 +1552,14 @@ def _build_config_text(
         if gebco_nc
         else "  # gebco_nc: /path/to/GEBCO_2025.nc"
     )
+    platform_line = (
+        f"  platform: {platform}"
+        if platform
+        else "  # platform: odb   # platforms.yaml slug -> ICES code for the EXPOCODE"
+    )
+    contributors_block = _format_contributors_yaml(
+        contributors or [], institutions or []
+    )
     return (
         "# ctdcast configuration — generated by ctdcast init --interactive\n"
         "# Run 'ctdcast validate config.yaml' to check all paths before the first run.\n"
@@ -1212,11 +1586,15 @@ def _build_config_text(
         "  leaflet: true\n"
         "\n"
         "cruise_info:\n"
-        f'  name: "{cruise_name}"\n'
+        f'  cruise_id: "{cruise_name}"\n'
         f'  ship: "{ship}"\n'
-        f'  chief_scientist: "{chief_scientist}"\n'
+        f"{platform_line}\n"
         f'  start_date: "{start_date}"\n'
         f'  end_date: "{end_date}"\n'
+        f"{contributors_block}"
+        "  # embargo:                   # moratorium -> a self-describing license\n"
+        '  #   policy: "SDN:L08::MO"\n'
+        "  #   until: null              # null -> end_date + 2 years\n"
         "\n"
         "display:\n"
         "  section_style: pcolormesh\n"

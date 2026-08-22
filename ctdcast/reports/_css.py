@@ -102,7 +102,7 @@ body {{
 p, li {{ max-width: 78ch; }}
 .masthead {{
   background: var(--ocean); color: #fff; position: relative;
-  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 0.9rem;
 }}
 .masthead h1 {{ margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }}
 .masthead .sub {{ font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }}

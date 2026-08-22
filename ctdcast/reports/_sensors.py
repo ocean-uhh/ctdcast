@@ -203,11 +203,16 @@ def generate_sensors_page(
     cruise: str = "",
     nav_prefix: str = "",
     show_nav: bool = True,
+    inventory_pills: list[dict[str, str]] | None = None,
+    current_href: str = "sbe_sensors.html",
 ) -> Path:
     """Render the SBE sensors page for *profiles_path* to *out_path*.
 
     Reads the sensor catalog and change log with :func:`read_sensor_tables` and
     writes a self-contained HTML file.  Returns the written *out_path*.
+    ``inventory_pills`` (``{"label", "href"}`` entries) render a cross-navigation
+    pill bar to the other compiled-file inventory pages; ``current_href`` marks
+    this page's own pill as the non-link active one.
     """
     meta = read_sensor_tables(profiles_path)
     html = get_template("sensors.html").render(
@@ -219,6 +224,8 @@ def generate_sensors_page(
         nav_prefix=nav_prefix,
         nav_current="sensors",
         show_nav=show_nav,
+        inventory_pills=inventory_pills or [],
+        current_href=current_href,
         masthead_bg=ROLE_ACCENT.get("component", ""),
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),

@@ -8,7 +8,45 @@
 
 cruise_info:
   cruise_id: odb26
-  ship: Odon de Buen
+  ship: Odon de Buen             # free-text display name in the report masthead
+  platform: odb                  # platforms.yaml slug -> ICES code for the EXPOCODE
+  start_date: 2026-07-09         # DEPARTURE from port (feeds the EXPOCODE), not first cast
+  end_date: 2026-07-31
+  # People written into the compiled files as ACDD attributes (example names).
+  # Roles are NERC C89 terms, as the code or the full label.  Cruise-scoped:
+  #   PS Cruise principal scientist (the chief scientist; may be shared)
+  #   DI Cruise dataset principal investigator (responsible for one subset)
+  #   MC Cruise data manager    TC Cruise technical contact
+  #   TS Cruise technician      CP Cruise participant
+  # Project-scoped: PI CI CO DP MP PM PA PD PG RA.  Unscoped: DM DC.
+  # `ctdcast init --interactive` can build this block for you.
+  role_vocabulary: C89             # or G04 (ISO CI_RoleCode) for IOOS/ISO checkers
+  creator:
+    name: "Jane Doe"               # whoever produced the file (singular)
+    type: person
+  # Each person appears ONCE. A role may apply to every compiled file, or be
+  # scoped to one product: `all` -> both, `ctd` -> profiles.nc,
+  # `ladcp` -> ladcp_profiles.nc. Someone with no role in a scope is absent from
+  # that file. Each (person, role) pair takes one position in the parallel
+  # strings, so a two-role person appears twice with name and ORCID repeated.
+  contributors:
+    - name: "Jane Doe"
+      orcid: null
+      roles: [PS, PI]              # both roles, on both compiled files
+    - name: "Sam Rivera"
+      orcid: null
+      roles:
+        ctd: [MC]                  # profiles.nc only
+    - name: "Alex Kim"
+      orcid: null
+      roles:
+        ladcp: [DI]                # ladcp_profiles.nc only
+  institutions:                    # slugs from institutions.yaml; NOT aligned
+    - uhh                          # with the people list
+  # An embargo is not a licence; it yields a self-describing moratorium `license`.
+  # embargo:
+  #   policy: "SDN:L08::MO"       # NERC L08 moratorium
+  #   until: null                 # null -> end_date + 2 years
   # Map extent — if omitted, auto-fitted to the cast positions.
   # Set these to keep a consistent map across re-runs as new casts arrive.
   # map_lat_min: 65.0

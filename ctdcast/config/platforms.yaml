@@ -1,0 +1,168 @@
+# Research vessels — short code → identity and controlled-vocabulary URIs
+#
+# [Contract — a wrong ICES code produces a well-formed EXPOCODE for somebody
+#  else's cruise. Changes need review.]
+#
+# Keyed on a SHORT ASCII SLUG, not the vessel name: names carry accents
+# ("Odón de Buen"), punctuation and generational ambiguity ("Meteor"), none of
+# which belong in a config file you have to type. `name:` carries the display
+# form, `native_name:` the accented one where it differs.
+#
+# In config.yaml:      ship: odb
+# Not:                 ship: "Odón de Buen"
+#
+# The EXPOCODE is derived as <ices_code> + <cruise start_date as YYYYMMDD>,
+# where start_date is the DEPARTURE date from port, not the first cast.
+#
+# Fields:
+#   name                 display form, ASCII, used in reports and `platform_name`
+#   native_name          the vessel's own spelling, where it differs from `name`
+#   ices_code            4-character ICES/NODC platform code -> the EXPOCODE prefix
+#   ices_uri             the NVS C17 concept
+#   callsign, imo, mmsi  identity, and the disambiguators when two ships share a name
+#   platform             L06 SeaVoX platform category label
+#   platform_vocabulary  the L06 concept
+#   operator             owner/operator, free text
+#   in_service           years, for sanity-checking a cruise date against the hull
+#   cchdo_ship_code      only where CCHDO's usage differs from C17 (see meteor3)
+
+schema_version: 1
+
+platforms:
+
+  msm:
+    name: "Maria S. Merian"
+    ices_code: "06M2"
+    ices_uri: "https://vocab.nerc.ac.uk/collection/C17/current/06M2/"
+    callsign: "DBBT"
+    imo: "9274197"
+    mmsi: "211753000"
+    length_m: 94.8
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Germany"
+    operator: "Universität Hamburg (managed by Briese Research)"
+    in_service: "2006-"
+    wod_code: "9048"
+
+  odb:
+    name: "Odon de Buen"
+    native_name: "Odón de Buen"
+    ices_code: "29OD"
+    ices_uri: "https://vocab.nerc.ac.uk/collection/C17/current/29OD/"
+    callsign: "EABT"
+    imo: "9962914"
+    mmsi: "224509000"
+    length_m: 84.3
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Spain"
+    operator: "IEO-CSIC"
+    in_service: "2024-"
+    previous_name: "Armon Vigo V140"
+    # NOT 29DB. See forbidden_codes.
+
+  # --- Meteor: four hulls, three codes, and one that does not exist yet -------
+  # Slugged by generation deliberately. There is no bare `meteor` key: it is
+  # unambiguous only until Meteor IV enters service, and a key that silently
+  # changes meaning in 2027 is the exact failure this file exists to prevent.
+  # See `ambiguous_slugs` below for what happens if someone writes `ship: meteor`.
+
+  meteor1:
+    name: "Meteor"
+    generation: 1
+    ices_code: "06ME"
+    ices_uri: "https://vocab.nerc.ac.uk/collection/C17/current/06ME/"
+    length_m: 67
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Germany"
+    in_service: "1924-1946"
+    note: >
+      Deutsche Atlantik Expedition 1925-04-16 to 1927-06-02. Transferred to the
+      USSR in 1946 as "Ekvator". Present for historical data only.
+
+  meteor2:
+    name: "Meteor"
+    generation: 2
+    ices_code: "06MT"
+    ices_uri: "https://vocab.nerc.ac.uk/collection/C17/current/06MT/"
+    imo: "6407573"
+    length_m: 82.1
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Germany"
+    operator: "Deutsches Hydrographisches Institut (DHI)"
+    in_service: "1964-1985"
+    note: >
+      Sold to New Zealand (DSIR) in 1985 and renamed Raphuia.
+      CAUTION: CCHDO's live index uses this code, 06MT, for MODERN Meteor
+      cruises that C17 assigns to 06M3 (meteor3). See meteor3.cchdo_ship_code.
+
+  meteor3:
+    name: "Meteor"
+    generation: 3
+    ices_code: "06M3"
+    ices_uri: "https://vocab.nerc.ac.uk/collection/C17/current/06M3/"
+    callsign: "DBBH"
+    imo: "8411279"
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Germany"
+    in_service: "1986-"
+    cchdo_ship_code: "06MT"
+    note: >
+      The present FS Meteor, commissioned 1986-03-15. C17 assigns 06M3, but
+      CCHDO's cruise index carries 56 Meteor cruises under 06MT and only 5 under
+      06M3. If the cruise is already lodged with CCHDO, use the EXPOCODE on their
+      record rather than deriving one. `cchdo_ship_code` records the divergence;
+      it is NOT used for derivation, only surfaced as a warning at write time.
+
+  meteor4:
+    name: "Meteor"
+    generation: 4
+    ices_code: null          # DOES NOT EXIST YET
+    ices_uri: null
+    platform: "research vessel"
+    platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
+    country: "Germany"
+    in_service: "2027-"
+    note: >
+      Entering service 2027; C17 has no entry as of 2026-08-21 (the only Meteor
+      codes are 06ME, 06MT, 06M3 and 06M5, the last a fishing vessel).
+      Request a code from ICES (ocean.ices.dk/codes/ShipCodes.aspx) or via
+      github.com/nvs-vocabs/C17/issues before the first cruise needs an EXPOCODE.
+      With ices_code null the loader must refuse to derive an EXPOCODE rather
+      than emitting a malformed one.
+
+# ---------------------------------------------------------------------------
+# Slugs that must not resolve
+# ---------------------------------------------------------------------------
+# The loader raises, quoting the message, rather than picking a default. A
+# guess here is silent and permanent: the file is simply filed against the
+# wrong hull.
+ambiguous_slugs:
+  meteor: >
+    "meteor" is ambiguous - four hulls carry the name. Use meteor3 for the
+    present FS Meteor (1986-), meteor2 for the 1964-1985 vessel, meteor1 for
+    the 1924-1946 one, or meteor4 from 2027.
+
+# ---------------------------------------------------------------------------
+# ICES codes that must never be written, with the reason
+# ---------------------------------------------------------------------------
+# Checked at write time against the derived EXPOCODE prefix. Each is a real trap
+# met while resolving these vessels; none of them is flagged deprecated in C17,
+# so a name-based lookup finds them and nothing complains.
+forbidden_codes:
+  "06MM": >
+    Deprecated Merian code. C17: "Multiple hulls. Do not use this code.
+    NOAA/ICES conflict resolved by both stopping use." Use 06M2.
+  "29DB": >
+    A DIFFERENT Odon de Buen - built 1973 as FV El Pescador, RV from 1979,
+    sold 2016, 22.5 m. Not the 2024 IEO-CSIC vessel. Use 29OD.
+    Both entries are live in C17; disambiguate by IMO or length.
+  "06M5": >
+    A German FISHING vessel named Meteor (1971, 19.09 m), not a research
+    vessel. Use meteor3 -> 06M3.
+  "32EQ": "Deprecated Meteor code, no metadata in C17."
+  "90QD": "Deprecated Meteor code (ICES request, 1954-1960)."

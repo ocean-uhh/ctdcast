@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from ctdcast.config.global_attrs import order_attrs
 from ctdcast.config.parameters import VARIABLES
 
 _QARTOD_FLAG_VALUES = np.array([1, 2, 3, 4, 9], dtype=np.int8)
@@ -28,7 +29,8 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     coordinate variables such as ``latitude``/``longitude`` — applies
     ``units``, ``long_name``, ``standard_name``, and ``label_units`` (when
     defined).  For each ``{var}_qc`` variable, generates complete CF flag
-    attributes.  Appends ``Conventions = "CF-1.13"`` to the global attrs.
+    attributes.  Sets ``Conventions = "CF-1.13"`` unless the caller already
+    declared one (a richer value such as ``"CF-1.13, ACDD-1.3"`` is preserved).
 
     Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
     replaces *path* so a failed write never leaves a partial file.
@@ -82,13 +84,37 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
         ds[var].attrs = attrs
 
     global_attrs = dict(ds.attrs)
-    global_attrs["Conventions"] = "CF-1.13"
-    ds.attrs = global_attrs
+    # Default to CF-1.13, but let a caller that has already declared a richer
+    # conformance (e.g. the compiled profiles builder writes "CF-1.13, ACDD-1.3")
+    # keep it rather than being silently downgraded here.
+    global_attrs.setdefault("Conventions", "CF-1.13")
+    # Write the global attributes in the canonical order (identity → platform →
+    # coverage → people → rights → provenance); unnamed attrs keep their order and
+    # follow.  One source of truth with the inventory page's grouping.
+    ds.attrs = order_attrs(global_attrs)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".nc.tmp")
-    kw: dict = {}
-    if encoding:
-        kw["encoding"] = encoding
+
+    # Give every datetime variable an explicit CF time encoding.  Without it
+    # xarray guesses ``units="days since <first timestamp>"`` as int64, which
+    # cannot hold sub-day (second-resolution) cast times, so it warns and falls
+    # back to seconds.  Pinning a fixed epoch in float64 seconds is the CF-standard
+    # encoding, is faithful to sub-second precision, and silences the warning.
+    # (CF always stores time as a numeric count since an epoch; it decodes back to
+    # real datetimes on read — this is not "time as an integer".)
+    enc: dict = dict(encoding or {})
+    for name, var in ds.variables.items():
+        if np.issubdtype(var.dtype, np.datetime64) and name not in enc:
+            enc[name] = {
+                "units": "seconds since 1970-01-01T00:00:00",
+                "dtype": "float64",
+                "calendar": "proleptic_gregorian",
+                # A NaT (e.g. an incomplete cast) would otherwise write as a bare
+                # NaN a strict CF reader cannot flag as missing; declare it.
+                "_FillValue": np.nan,
+            }
+
+    kw: dict = {"encoding": enc} if enc else {}
     ds.to_netcdf(str(tmp), **kw)
     tmp.replace(path)

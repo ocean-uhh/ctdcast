@@ -60,3 +60,17 @@
 {% if not report.sections %}<p class="caption">No plottable data for this selection.</p>{% endif %}
 {% if report.not_applicable %}<p class="caption">Not applicable to this {% if report.sections %}selection{% else %}deployment{% endif %}: {{ report.not_applicable | join(", ") }}.</p>{% endif %}
 {% endmacro %}
+
+
+{# Cross-navigation pill bar linking the compiled-file inventory pages
+   (profiles.nc / ladcp_profiles.nc / SBE sensors).  The page matching
+   current_href is rendered as a non-link active pill.  Requires the
+   .inventory-strip / .file-pill CSS (in each page's head_extra). #}
+{% macro inventory_pills(pills, current_href="") %}
+{% if pills %}
+<nav class="inventory-strip">
+  <span class="label">Data inventory:</span>
+  {% for d in pills %}{% if d.href == current_href %}<span class="file-pill file-pill-active">{{ d.label }}</span>{% else %}<a class="file-pill" href="{{ d.href }}">{{ d.label }}</a>{% endif %}{% endfor %}
+</nav>
+{% endif %}
+{% endmacro %}

@@ -481,11 +481,25 @@ def report(
         # keeps a single discovery point on the summary rather than a top-nav
         # pill per single-target page (which does not scale as more compiled
         # products — e.g. ladcp_profiles.nc — are added).
-        inventory_datasets: list[dict[str, str]] = []
-        for _src in (profiles_path, ladcp_profiles_path):
-            if _src is None or not Path(_src).exists():
-                continue
-            _src = Path(_src)
+        # Build the full inventory-pill set FIRST — one pill per compiled dataset
+        # plus the SBE sensors page — so every inventory page can render a
+        # cross-navigation bar to every other one (and mark its own pill active),
+        # not just the summary page.
+        _dataset_srcs = [
+            Path(s)
+            for s in (profiles_path, ladcp_profiles_path)
+            if s is not None and Path(s).exists()
+        ]
+        _has_sensors = profiles_path is not None and Path(profiles_path).exists()
+        inventory_datasets: list[dict[str, str]] = [
+            {"label": s.name, "href": f"{s.stem}_inventory.html"} for s in _dataset_srcs
+        ]
+        if _has_sensors:
+            inventory_datasets.append(
+                {"label": "SBE sensors", "href": "sbe_sensors.html"}
+            )
+
+        for _src in _dataset_srcs:
             _href = f"{_src.stem}_inventory.html"
             _t0 = perf_counter()
             try:
@@ -498,8 +512,9 @@ def report(
                     cruise=cruise,
                     nav_prefix="",
                     show_nav=True,
+                    inventory_pills=inventory_datasets,
+                    current_href=_href,
                 )
-                inventory_datasets.append({"label": _src.name, "href": _href})
                 print(f"  [{_href}: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
                 import traceback
@@ -509,9 +524,8 @@ def report(
                 traceback.print_exc()
 
         # SBE sensors page — reads the sensor catalog/linkage from profiles.nc and
-        # renders the configuration / inventory / rewiring tables.  Pill sits
-        # beside the netCDF inventory pills.
-        if profiles_path is not None and Path(profiles_path).exists():
+        # renders the configuration / inventory / rewiring tables.
+        if _has_sensors:
             _t0 = perf_counter()
             try:
                 from ctdcast.reports._sensors import generate_sensors_page
@@ -522,9 +536,8 @@ def report(
                     cruise=cruise,
                     nav_prefix="",
                     show_nav=True,
-                )
-                inventory_datasets.append(
-                    {"label": "SBE sensors", "href": "sbe_sensors.html"}
+                    inventory_pills=inventory_datasets,
+                    current_href="sbe_sensors.html",
                 )
                 print(f"  [sbe_sensors.html: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
