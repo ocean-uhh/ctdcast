@@ -18,6 +18,7 @@ import xarray as xr
 from ctdcast.analysis.derive import derive_salinity
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
+from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import (
     group_by_cast,
     is_up_to_date,
@@ -71,6 +72,12 @@ def stage3(
         ds = _apply_conductivity_slope(ds, slope)
         # Step 3: re-derive salinity from calibrated conductivity
         ds = derive_salinity(ds)
+        append_history(
+            ds.attrs,
+            f"calibration: conductivity_slope={slope} applied; "
+            "salinity re-derived from calibrated conductivity",
+            stage="stage3",
+        )
 
     return ds
 

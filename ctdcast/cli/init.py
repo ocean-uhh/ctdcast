@@ -1,4 +1,4 @@
-"""``ctdcast init`` — write config.yaml and optionally ctd_sections_draft.yaml."""
+"""``ctdcast init`` — write config.yaml and optionally ctd_groupings_draft.yaml."""
 
 from __future__ import annotations
 
@@ -13,18 +13,19 @@ _CONFIG_TEMPLATE = """\
 # Run 'ctdcast validate config.yaml' to check all paths before the first run.
 
 data:
-  # Directory containing per-cast netCDF files (one per cast).
-  nc_dir: /path/to/ctd/nc
+  # Roots ctdcast owns.  Each holds stage1/ ... stage3/ (one file per cast per
+  # stage) and the compiled product at its top -- <ctd_root>/profiles.nc and
+  # <ladcp_root>/ladcp_profiles.nc -- so a product cannot drift away from the
+  # stage files it was compiled from.  Created for you.
+  ctd_root: /path/to/ctd_nc
+  # ladcp_root: /path/to/ladcp_nc
 
-  # Compiled profiles netCDF on a 1 dbar grid (required for sections and timeseries).
-  # Build with: ctdcast convert --build-profiles /path/to/nc/ /path/to/profiles.nc
-  profiles_nc: /path/to/profiles.nc
+  # Inputs ctdcast only reads: someone else fills these.
+  # cnv_dir: /path/to/cnv          # calibrated CNV, one per cast
+  # ladcp_dir: /path/to/ladcp      # processed .mat, one per cast
 
-  # Sections/timeseries definition file (ctd_sections.yaml).
-  section_yaml: /path/to/ctd_sections.yaml
-
-  # LADCP processed output directory (.mat files named NNN.mat).  Optional.
-  # ladcp_dir: /path/to/ladcp
+  # Cast groupings: sections (vs distance) and timeseries (vs time).
+  groupings_yaml: /path/to/ctd_groupings.yaml
 
   # Ship track netCDF for the Leaflet map background line.  Optional.
   # ship_track: /path/to/ship_track.nc
@@ -138,7 +139,7 @@ display:
 """
 
 _SECTIONS_TEMPLATE = """\
-# ctd_sections.yaml — define transect groups and timeseries.
+# ctd_groupings.yaml — define transect groups (sections) and timeseries.
 #
 # Each entry under 'sections:' groups casts into a named transect page.
 # cast_numbers can be individual integers or [first, last] ranges (inclusive).
@@ -202,7 +203,7 @@ Examples:
   ctdcast init                        write template config.yaml here
   ctdcast init cruise/                write config.yaml inside cruise/
   ctdcast init myconfig.yaml          write to a specific filename
-  ctdcast init . --sections           also write template ctd_sections.yaml
+  ctdcast init . --sections           also write template ctd_groupings.yaml
   ctdcast init . --force              overwrite existing files
   ctdcast init --interactive          prompt for paths; auto-detect sections
   ctdcast init --interactive \\
@@ -240,7 +241,7 @@ Examples:
         "--sections",
         action="store_true",
         default=False,
-        help="Also write a template ctd_sections.yaml (non-interactive mode only).",
+        help="Also write a template ctd_groupings.yaml (non-interactive mode only).",
     )
     parser.add_argument(
         "--force",
@@ -254,7 +255,7 @@ Examples:
         default=False,
         help=(
             "Prompt for data paths and cruise info.  If profiles.nc is provided, "
-            "offers to auto-detect sections and write ctd_sections_draft.yaml."
+            "offers to auto-detect sections and write ctd_groupings_draft.yaml."
         ),
     )
     parser.add_argument(
@@ -263,9 +264,10 @@ Examples:
         default=False,
         dest="auto_section",
         help=(
-            "Read profiles_nc from an existing config file and rewrite "
-            "ctd_sections_draft.yaml using the current detection parameters.  "
-            "Does not touch config.yaml.  Requires dest to be an existing config file."
+            "Read the compiled profiles.nc named by an existing config file and "
+            "rewrite ctd_groupings_draft.yaml using the current detection "
+            "parameters.  Does not touch config.yaml.  Requires dest to be an "
+            "existing config file."
         ),
     )
     parser.add_argument(
@@ -357,7 +359,7 @@ def run(args: argparse.Namespace) -> int:
     print(f"Written: {config_path}")
 
     if args.sections:
-        sections_path = config_path.parent / "ctd_sections.yaml"
+        sections_path = config_path.parent / "ctd_groupings.yaml"
         if sections_path.exists() and not args.force:
             print(
                 f"ERROR: {sections_path} already exists. Use --force to overwrite.",
@@ -376,12 +378,17 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _run_auto_section(args: argparse.Namespace) -> int:
-    """Re-run section/timeseries detection and rewrite ctd_sections_draft.yaml.
+    """Re-run section/timeseries detection and rewrite the groupings draft.
 
-    Reads ``profiles_nc`` from the config file passed as *dest*.  Does not
-    modify the config file.  All detection parameters come from CLI flags.
+    Resolves the compiled ``profiles.nc`` from the config file passed as *dest*
+    the same way every other entry point does -- derived from ``ctd_root`` unless
+    ``profiles_nc`` overrides it -- and does not modify the config file.  All
+    detection parameters come from CLI flags.
     """
     import yaml
+
+    from ctdcast.config.loader import groupings_path
+    from ctdcast.processors import StagePaths
 
     config_path = Path(args.dest)
     if config_path.suffix not in {".yaml", ".yml"}:
@@ -394,24 +401,31 @@ def _run_auto_section(args: argparse.Namespace) -> int:
         cfg = yaml.safe_load(fh) or {}
 
     data_cfg: dict = cfg.get("data") or {}
-    profiles_nc_raw: str | None = data_cfg.get("profiles_nc")
-    if not profiles_nc_raw:
-        print("ERROR: profiles_nc not set in config.", file=sys.stderr)
+    profiles_path = StagePaths.from_config(data_cfg).profiles_path
+    if profiles_path is None:
+        print(
+            "ERROR: no CTD root in config — set data.ctd_root (or data.profiles_nc "
+            "to point at a product outside it).",
+            file=sys.stderr,
+        )
         return 1
-
-    profiles_path = Path(profiles_nc_raw)
     if not profiles_path.exists():
-        print(f"ERROR: profiles_nc not found: {profiles_path}", file=sys.stderr)
+        print(
+            f"ERROR: profiles.nc not found: {profiles_path}\n"
+            "       Build it with: ctdcast process profiles",
+            file=sys.stderr,
+        )
         return 1
 
-    # Derive draft output path: if section_yaml is set, write the draft alongside it
-    # (resolving relative to the config file's directory).
-    section_yaml_raw: str | None = data_cfg.get("section_yaml")
-    if section_yaml_raw:
-        section_yaml_path = (config_path.parent / section_yaml_raw).resolve()
-        draft_path = section_yaml_path.parent / "ctd_sections_draft.yaml"
+    # Write the draft alongside the production groupings file when the config
+    # names one (resolved relative to the config file's directory), so the user
+    # reviews the draft next to the file it would replace.
+    groupings_raw = groupings_path(data_cfg)
+    if groupings_raw is not None:
+        groupings_yaml = (config_path.parent / groupings_raw).resolve()
+        draft_path = groupings_yaml.parent / "ctd_groupings_draft.yaml"
     else:
-        draft_path = config_path.parent / "ctd_sections_draft.yaml"
+        draft_path = config_path.parent / "ctd_groupings_draft.yaml"
 
     dx_sec = args.dx_section
     dx_diam = args.dx_diameter
@@ -849,10 +863,11 @@ def _resolve_output_path(initial: Path, force: bool) -> Path | None:
 
 
 def _run_interactive(args: argparse.Namespace) -> int:
-    """Run the interactive init wizard; write config.yaml and optionally ctd_sections_draft.yaml.
+    """Run the interactive init wizard; write config.yaml and a groupings draft.
 
-    The config always records the user's intended production ``section_yaml`` path.
-    When detection runs, the draft is written alongside that path for review.
+    The config always records the user's intended production ``groupings_yaml``
+    path.  When detection runs, the draft is written alongside that path for
+    review.
     """
     dest: Path = args.dest
     initial = dest if dest.suffix in {".yaml", ".yml"} else dest / "config.yaml"
@@ -871,14 +886,22 @@ def _run_interactive(args: argparse.Namespace) -> int:
             _o = _cfg.get("output", {}) or {}
             _ci = _cfg.get("cruise_info", {}) or {}
             _ex = {
-                "nc_dir": str(_d.get("nc_dir", "") or ""),
+                # `ctd_root` first: that is what the wizard now writes.  `nc_dir`
+                # is the superseded spelling, kept so an older config still
+                # pre-fills rather than silently blanking.
+                "ctd_root": str(_d.get("ctd_root") or _d.get("nc_dir") or ""),
                 "cnv_dir": str(_d.get("cnv_dir", "") or ""),
                 "cnv_pattern": str(_d.get("cnv_pattern", "") or ""),
                 "profiles_nc": str(_d.get("profiles_nc", "") or ""),
                 "ladcp_dir": str(_d.get("ladcp_dir", "") or ""),
                 "ladcp_pattern": str(_d.get("ladcp_pattern", "") or ""),
                 "gebco_nc": str(_d.get("gebco_nc", "") or ""),
-                "section_yaml": str(_d.get("section_yaml", "") or ""),
+                # `groupings_yaml` first: that is what the wizard now writes.
+                # `section_yaml` is the superseded spelling, kept so an older
+                # config still pre-fills rather than silently blanking.
+                "groupings_yaml": str(
+                    _d.get("groupings_yaml") or _d.get("section_yaml") or ""
+                ),
                 "output_dir": str(_o.get("dir", "") or ""),
                 # `cruise_id` first: that is what the wizard now writes, so
                 # re-running against a config it generated must pre-fill from it.
@@ -904,13 +927,13 @@ def _run_interactive(args: argparse.Namespace) -> int:
 
     _section_header("Data paths")
     nc_dir = _prompt(
-        "nc_dir — per-cast netCDF directory"
-        " (one .nc per cast, converted from CNV, 1 dbar, both downcast and upcast)",
-        default=_ex.get("nc_dir", ""),
+        "ctd_root — the CTD root ctdcast owns"
+        " (stage1/ … stage3/ and profiles.nc are created inside it)",
+        default=_ex.get("ctd_root", ""),
         required=True,
     )
     if not nc_dir:
-        print("ERROR: nc_dir is required.", file=sys.stderr)
+        print("ERROR: ctd_root is required.", file=sys.stderr)
         return 1
     cnv_dir = _prompt(
         "cnv_dir — raw CNV files directory (for ctdcast run --ctd)",
@@ -920,10 +943,15 @@ def _run_interactive(args: argparse.Namespace) -> int:
         "cnv_pattern — glob to select CNV files",
         default=_ex.get("cnv_pattern", "") or "*.cnv",
     )
+    # Not written to the config: `profiles.nc` is derived as
+    # `<ctd_root>/profiles.nc`.  It is asked for here only because section and
+    # timeseries auto-detection needs to *read* one, and the user may keep an
+    # existing product somewhere else while migrating to the root layout.
     profiles_nc = _prompt(
-        "profiles_nc — compiled profiles.nc"
-        " (required for section/timeseries auto-detection; optional otherwise)",
-        default=_ex.get("profiles_nc", ""),
+        "profiles.nc to read for section/timeseries detection"
+        " (blank to skip detection)",
+        default=_ex.get("profiles_nc", "")
+        or (str(Path(nc_dir) / "profiles.nc") if nc_dir else ""),
     )
     ladcp_dir = _prompt(
         "ladcp_dir — LADCP .mat directory",
@@ -941,12 +969,12 @@ def _run_interactive(args: argparse.Namespace) -> int:
     )
     print(
         "  ↳ ctdcast reads this YAML when generating reports."
-        " If detection runs, a draft (ctd_sections_draft.yaml)"
+        " If detection runs, a draft (ctd_groupings_draft.yaml)"
         " is written in the same directory for review."
     )
-    section_yaml = _prompt(
-        "section_yaml — production YAML path",
-        default=_ex.get("section_yaml", "") or "ctd_sections.yaml",
+    groupings_yaml = _prompt(
+        "groupings_yaml — production YAML path (sections + timeseries)",
+        default=_ex.get("groupings_yaml", "") or "ctd_groupings.yaml",
     )
 
     _section_header("Report")
@@ -1052,9 +1080,11 @@ def _run_interactive(args: argparse.Namespace) -> int:
                     return 1
                 _print_detection_summary(sections, timeseries)
                 _draft_dir = (
-                    Path(section_yaml).parent if section_yaml else config_path.parent
+                    Path(groupings_yaml).parent
+                    if groupings_yaml
+                    else config_path.parent
                 )
-                _draft_initial = _draft_dir / "ctd_sections_draft.yaml"
+                _draft_initial = _draft_dir / "ctd_groupings_draft.yaml"
                 resolved = _resolve_output_path(_draft_initial, args.force)
                 if resolved is not None:
                     yaml_text = _format_sections_yaml(
@@ -1067,34 +1097,33 @@ def _run_interactive(args: argparse.Namespace) -> int:
                         dx_diam,
                     )
                     _write_file(resolved, yaml_text)
-                    _target = section_yaml or "ctd_sections.yaml"
+                    _target = groupings_yaml or "ctd_groupings.yaml"
                     _same = Path(_target).resolve() == resolved.resolve()
                     if _same:
                         _draft_msg = (
                             f"  Draft written  : {resolved}"
-                            f"\n  section_yaml   : {_target}"
+                            f"\n  groupings_yaml : {_target}"
                             f"\n  ↳ Draft is already at the production path — no rename needed."
                         )
                     else:
                         _draft_msg = (
                             f"  Draft written  : {resolved}"
-                            f"\n  section_yaml   : {_target}"
+                            f"\n  groupings_yaml : {_target}"
                             f"\n  ↳ Review the draft, then rename to activate:"
                             f"\n      mv {resolved} {_target}"
                         )
     # Config always points to the user's intended production path; the draft
     # is a temporary review copy that the user renames to activate.
-    effective_section_yaml = section_yaml
+    effective_groupings_yaml = groupings_yaml
 
     config_text = _build_config_text(
         nc_dir=nc_dir,
         cnv_dir=cnv_dir,
         cnv_pattern=cnv_pattern,
-        profiles_nc=profiles_nc,
         ladcp_dir=ladcp_dir,
         ladcp_pattern=ladcp_pattern,
         gebco_nc=gebco_nc,
-        section_yaml=effective_section_yaml,
+        groupings_yaml=effective_groupings_yaml,
         output_dir=output_dir,
         cruise_name=cruise_name,
         ship=ship,
@@ -1462,16 +1491,16 @@ def _format_sections_yaml(
     min_run_casts: int = 4,
     dx_diameter_km: float = 1.0,
 ) -> str:
-    """Return a YAML string for ``ctd_sections_draft.yaml``."""
+    """Return a YAML string for ``ctd_groupings_draft.yaml``."""
     lines: list[str] = [
-        "# ctd_sections_draft.yaml — auto-generated by ctdcast init --interactive",
+        "# ctd_groupings_draft.yaml — auto-generated by ctdcast init --interactive",
         (
             f"# Detection thresholds: dx_section={dx_section_km} km,"
             f" dx_diameter={dx_diameter_km} km, max_turn={max_turn_deg}°,"
             f" min_run={min_run_casts}, max_section_casts={max_section_casts}"
         ),
         "# Review carefully: rename groups, adjust cast ranges, move entries between",
-        "# sections/timeseries as appropriate.  Rename to ctd_sections.yaml when done.",
+        "# sections/timeseries as appropriate.  Rename to ctd_groupings.yaml when done.",
         "",
     ]
 
@@ -1512,11 +1541,10 @@ def _build_config_text(
     nc_dir: str,
     cnv_dir: str | None,
     cnv_pattern: str | None,
-    profiles_nc: str | None,
     ladcp_dir: str | None,
     ladcp_pattern: str | None,
     gebco_nc: str | None,
-    section_yaml: str | None,
+    groupings_yaml: str | None,
     output_dir: str,
     cruise_name: str,
     ship: str,
@@ -1536,15 +1564,18 @@ def _build_config_text(
         if cnv_pattern and cnv_pattern != pattern_default
         else f"  # cnv_pattern: {pattern_default}  # glob to select CNV files"
     )
-    profiles_line = (
-        f"  profiles_nc: {profiles_nc}"
-        if profiles_nc
-        else "  # profiles_nc: /path/to/profiles.nc"
+    # A LADCP root is only meaningful alongside a LADCP input, and the compiled
+    # LADCP product derives from it -- so one key replaces the two the wizard
+    # used to omit entirely, leaving every LADCP config to fail stage 1.
+    ladcp_root_line = (
+        f"  ladcp_root: {ladcp_dir.rstrip('/')}_nc"
+        if ladcp_dir
+        else "  # ladcp_root: /path/to/ladcp_nc   # stage dirs + ladcp_profiles.nc"
     )
     sections_line = (
-        f"  section_yaml: {section_yaml}"
-        if section_yaml
-        else "  # section_yaml: /path/to/ctd_sections.yaml"
+        f"  groupings_yaml: {groupings_yaml}"
+        if groupings_yaml
+        else "  # groupings_yaml: /path/to/ctd_groupings.yaml"
     )
     ladcp_line = (
         f"  ladcp_dir: {ladcp_dir}" if ladcp_dir else "  # ladcp_dir: /path/to/ladcp"
@@ -1573,13 +1604,18 @@ def _build_config_text(
         "# Run 'ctdcast validate config.yaml' to check all paths before the first run.\n"
         "\n"
         "data:\n"
-        f"  nc_dir: {nc_dir}\n"
+        "  # Roots ctdcast owns: stage1/ ... stage3/ and the compiled product\n"
+        "  # live inside, so a product cannot drift from the files it was built\n"
+        "  # from. Created for you.\n"
+        f"  ctd_root: {nc_dir}\n"
+        f"{ladcp_root_line}\n"
+        "\n"
+        "  # Inputs ctdcast only reads.\n"
         f"{cnv_line}\n"
         f"{cnv_pattern_line}\n"
-        f"{profiles_line}\n"
-        f"{sections_line}\n"
         f"{ladcp_line}\n"
         f"{ladcp_pattern_line}\n"
+        f"{sections_line}\n"
         "  # ship_track: /path/to/ship_track.nc\n"
         f"{gebco_line}\n"
         "\n"

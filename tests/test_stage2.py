@@ -70,7 +70,7 @@ class TestApplyStage2:
         ds = _load(CAST_011)
         ds_out = apply_stage2(ds)
         assert "history" in ds_out.attrs
-        assert "apply_stage2" in ds_out.attrs["history"]
+        assert "stage2: soak/deck" in ds_out.attrs["history"]
 
     def test_history_contains_parameters(self):
         from ctdcast.processors.stage2 import apply_stage2

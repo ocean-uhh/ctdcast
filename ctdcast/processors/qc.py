@@ -7,10 +7,17 @@ physical range.  Operates on per-cast Datasets (dim=time); call after
 
 from __future__ import annotations
 
-import datetime
-
 import numpy as np
 import xarray as xr
+
+from ctdcast.processors.history import append_history
+
+#: QARTOD primary flag values (IOOS QARTOD).  The complete vocabulary — every
+#: value and its meaning — is encoded in :func:`_qc_attrs`; these name the two
+#: flags the ctdcast pipeline sets, so the code that writes a flag, the code that
+#: masks on it, and the vocabulary that gives it meaning share one definition.
+QARTOD_SUSPECT = np.int8(3)
+QARTOD_FAIL = np.int8(4)
 
 # Physical plausibility bounds by internal variable name.
 # These are deliberately generous — they catch instrument malfunction,
@@ -92,7 +99,7 @@ def apply_gross_range(
         out_of_range = ~np.isnan(vals) & ((vals < vmin) | (vals > vmax))
         if out_of_range.any():
             qc = ds[qc_name].values.copy()
-            qc[out_of_range] = np.int8(3)
+            qc[out_of_range] = QARTOD_SUSPECT
             ds[qc_name] = xr.DataArray(
                 qc,
                 dims=ds[qc_name].dims,
@@ -101,12 +108,11 @@ def apply_gross_range(
         applied.append(f"{var}:[{vmin},{vmax}]")
 
     if applied:
-        stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+        append_history(
+            ds.attrs,
+            f"gross_range QARTOD flag 3: {', '.join(applied)}",
+            stage="stage3",
         )
-        entry = f"{stamp} ctdcast apply_gross_range: {', '.join(applied)}"
-        prev = ds.attrs.get("history", "")
-        ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
 
     return ds
 

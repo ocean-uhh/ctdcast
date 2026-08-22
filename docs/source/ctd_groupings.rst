@@ -1,12 +1,20 @@
-.. _ctd_sections:
+.. _ctd_groupings:
 
-=================
-ctd_sections.yaml
-=================
+==================
+ctd_groupings.yaml
+==================
 
 This file defines two kinds of cast group under two top-level keys: ``sections``
 (named transects plotted as a vertical section against distance) and
-``timeseries`` (repeat stations plotted against time — see below).
+``timeseries`` (repeat stations plotted against time — see below).  It is named
+by the ``groupings_yaml`` key of the ``data`` block; ``section_yaml`` is the
+superseded spelling and is still accepted.
+
+.. note::
+
+   The file was called ``ctd_sections.yaml`` and the key ``section_yaml`` up to
+   2026-08.  Both still work — the rename is because the file defines
+   *timeseries* as well as sections, so the old name described only half of it.
 
 An optional ``cruise_info:`` block at the top level provides cruise and ship
 metadata that appears in page headers and footers.  Values here take precedence

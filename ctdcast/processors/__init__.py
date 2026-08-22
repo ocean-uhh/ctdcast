@@ -148,9 +148,14 @@ def _run_stage1(
     backend: str = "seasenselib",
     pattern: str = "*.cnv",
     ladcp_pattern: str | None = None,
+    cruise_info: dict | None = None,
     **_kw: object,
 ) -> int:
-    """Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP)."""
+    """Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP).
+
+    ``cruise_info`` (the config ``cruise_info:`` block) is stamped as the cruise
+    identity on each per-cast file, so a stage-1 file is self-describing.
+    """
     total = 0
     if paths.cnv_dir is not None and paths.ctd_root is not None:
         total += (
@@ -162,6 +167,7 @@ def _run_stage1(
                 cast_tags=cast_tags,
                 backend=backend,
                 pattern=pattern,
+                cruise_info=cruise_info,
             )
             or 0
         )
@@ -174,6 +180,7 @@ def _run_stage1(
                 dry_run=dry_run,
                 cast_tags=cast_tags,
                 ladcp_pattern=ladcp_pattern,
+                cruise_info=cruise_info,
             )
             or 0
         )

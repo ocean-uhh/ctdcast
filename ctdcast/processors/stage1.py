@@ -11,7 +11,6 @@ The ``converters`` module re-exports these names for backward compatibility.
 from __future__ import annotations
 
 import contextlib
-import datetime
 import io
 import logging
 import sys
@@ -21,8 +20,10 @@ from typing import Protocol
 
 import xarray as xr
 
+from ctdcast.config.global_attrs import identity_attrs
 from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.writers.netcdf import write as write_nc
 
@@ -54,7 +55,7 @@ _DERIVE_ON_DEMAND: frozenset[str] = frozenset(
 _KEEP_VARS: frozenset[str] = frozenset({"oxygen_raw_1", "oxygen_raw_2"})
 
 
-def _normalise(ds: xr.Dataset) -> xr.Dataset:
+def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     """Rename variables to ctdcast canonical names and drop non-standard columns.
 
     Applied between the reader (seasenselib or future hex reader) and the
@@ -76,19 +77,23 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
        (e.g. ``ctd_temperature_1`` → ``ctd_temperature`` when there is no
        ``ctd_temperature_2``).
     5. Append a ``history`` line recording the ctdcast version and stage.
+    6. Stamp the cruise identity (``cruise`` + ``platform_*`` + ``expocode``)
+       when *cruise_info* supplies it, so a per-cast stage file is
+       self-describing when copied out of its directory.
 
     Parameters
     ----------
     ds:
         Dataset as returned by the reader (seasenselib or hex reader).
+    cruise_info:
+        The config ``cruise_info:`` mapping.  ``None`` or empty writes no
+        identity attributes, so a call path supplying no config is unchanged.
 
     Returns
     -------
     xr.Dataset
         Normalised Dataset ready for :func:`ctdcast.writers.netcdf.write`.
     """
-    from ctdcast._version import __version__
-
     ds = ds.copy()
 
     # Step 1: rename via CNV_ALIASES (lowercase key lookup).  The reader
@@ -155,7 +160,13 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
         if _c not in ds.data_vars:
             continue
         _u = ds[_c].attrs.get("units", "").lower().replace(" ", "").replace("^", "")
-        if _u in ("s/m", "sm-1", "sm⁻1", "siemens/m", "siemenspermetre"):  # pragma: no cover
+        if _u in (
+            "s/m",
+            "sm-1",
+            "sm⁻1",
+            "siemens/m",
+            "siemenspermetre",
+        ):  # pragma: no cover
             converted = ds[_c] * 10.0
             _attrs = dict(ds[_c].attrs)
             _attrs["units"] = "mS cm-1"
@@ -191,10 +202,14 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
             ds = ds.rename({v1: plain})
 
     # Step 5: append history
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    entry = f"{stamp} ctdcast {__version__} stage1: normalise (CNV → canonical names)"
-    prev = ds.attrs.get("history", "")
-    ds.attrs["history"] = f"{prev}\n{entry}".lstrip("\n")
+    append_history(ds.attrs, "normalise (CNV → canonical names)", stage="stage1")
+
+    # Step 6: stamp the immutable cruise identity.  identity_attrs returns {} when
+    # cruise_info is None/empty, so this is a no-op for callers that pass no config
+    # (e.g. the stage-1 tests).  Config remains the source of truth: the compiler
+    # re-applies it and warns on disagreement, so this is a portability snapshot,
+    # not a second authority.
+    ds.attrs.update(identity_attrs(cruise_info))
 
     return ds
 
@@ -208,6 +223,7 @@ class CtdBackend(Protocol):
         nc_path: Path,
         *,
         force: bool = False,
+        cruise_info: dict | None = None,
     ) -> bool:
         """Convert one CNV file to netCDF.
 
@@ -219,6 +235,9 @@ class CtdBackend(Protocol):
             Desired output netCDF path.
         force:
             If True, overwrite an existing nc_path.
+        cruise_info:
+            The config ``cruise_info:`` mapping, stamped as cruise identity on
+            the output; ``None`` writes none.
 
         Returns
         -------
@@ -251,6 +270,7 @@ class _SeasenselibBackend:
         nc_path: Path,
         *,
         force: bool = False,
+        cruise_info: dict | None = None,
     ) -> bool:
         """Convert one CNV file using seasenselib.
 
@@ -262,6 +282,9 @@ class _SeasenselibBackend:
             Desired output netCDF path.
         force:
             If True, overwrite an existing nc_path.
+        cruise_info:
+            The config ``cruise_info:`` mapping, stamped as cruise identity on
+            the output; ``None`` writes none.
 
         Returns
         -------
@@ -272,7 +295,7 @@ class _SeasenselibBackend:
             return False
         with contextlib.redirect_stdout(io.StringIO()):
             ds = self._sl.read(str(cnv_path))
-        ds = _normalise(ds)
+        ds = _normalise(ds, cruise_info=cruise_info)
         write_nc(ds, nc_path)
         return True
 
@@ -311,6 +334,7 @@ def stage1(
     force: bool = False,
     cast_filter: int | list[int] | None = None,
     pattern: str = "*.cnv",
+    cruise_info: dict | None = None,
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
 
@@ -330,6 +354,10 @@ def stage1(
         Accepts a single int or a list of ints for multi-cast filtering.
     pattern:
         Filename glob pattern applied within ``cnv_dir`` (default: ``"*.cnv"``).
+    cruise_info:
+        The config ``cruise_info:`` mapping, stamped as cruise identity on each
+        per-cast file; ``None`` writes none (the default, so bare conversions are
+        unchanged).
 
     Returns
     -------
@@ -364,7 +392,9 @@ def stage1(
         for cnv_path in cnv_files:
             nc_path = stage_path(nc_dir, cnv_path.stem, 1)
             try:
-                written = b.convert_cast(cnv_path, nc_path, force=force)
+                written = b.convert_cast(
+                    cnv_path, nc_path, force=force, cruise_info=cruise_info
+                )
             except Exception as exc:  # noqa: BLE001
                 print(
                     f"  FAILED: {cnv_path.name}  ({type(exc).__name__}: {exc})",

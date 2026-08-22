@@ -136,14 +136,14 @@ class TestInit:
         rc = _init.run(_init_ns(dest=tmp_path, force=True))
         assert rc == 0
 
-    def test_sections_flag_writes_sections_yaml(self, tmp_path):
+    def test_sections_flag_writes_groupings_yaml(self, tmp_path):
         rc = _init.run(_init_ns(dest=tmp_path, sections=True))
         assert rc == 0
-        assert (tmp_path / "ctd_sections.yaml").exists()
+        assert (tmp_path / "ctd_groupings.yaml").exists()
 
-    def test_sections_yaml_is_valid_yaml(self, tmp_path):
+    def test_groupings_yaml_is_valid_yaml(self, tmp_path):
         _init.run(_init_ns(dest=tmp_path, sections=True))
-        parsed = yaml.safe_load((tmp_path / "ctd_sections.yaml").read_text())
+        parsed = yaml.safe_load((tmp_path / "ctd_groupings.yaml").read_text())
         assert isinstance(parsed, dict)
 
 

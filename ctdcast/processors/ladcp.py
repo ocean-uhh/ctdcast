@@ -17,9 +17,15 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
+from ctdcast.config.global_attrs import (
+    CREATION_NOTE,
+    aggregate_identity,
+    cruise_global_attrs,
+    identity_attrs,
+)
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import (
     is_up_to_date,
     select_best_available,
@@ -56,6 +62,7 @@ def convert_ladcp_cast(
     cast_num: int,
     cast_suffix: str = "",
     force: bool = False,
+    cruise_info: dict | None = None,
 ) -> bool:
     """Convert one LDEO ``.mat`` to a per-cast LADCP netCDF.
 
@@ -69,6 +76,10 @@ def convert_ladcp_cast(
         Cast identity written into the file (and used to join to ``profiles.nc``).
     force:
         Overwrite an existing *nc_path* if True.
+    cruise_info:
+        The config ``cruise_info:`` mapping, stamped as cruise identity
+        (``cruise`` + ``platform_*`` + ``expocode``) so the file is
+        self-describing; ``None`` writes none.
 
     Returns
     -------
@@ -79,6 +90,8 @@ def convert_ladcp_cast(
         return False
     ds = read_ladcp_cast(mat_path, cast_num=cast_num, cast_suffix=cast_suffix)
     ds = cast_output_dtypes(ds)
+    # Stamp the immutable cruise identity; identity_attrs returns {} for no config.
+    ds.attrs.update(identity_attrs(cruise_info))
     write_nc(ds, nc_path)
     return True
 
@@ -95,6 +108,7 @@ def run_convert(
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
+    cruise_info: dict | None = None,
     **kw: object,
 ) -> int:
     """Convert every LADCP ``.mat`` in *ladcp_dir* to a per-cast netCDF.
@@ -104,7 +118,7 @@ def run_convert(
     ``ladcp_nc_dir/stage1/ladcp_<cast_id>_stage1.nc``.  LADCP has a single
     processing stage, so its stage-1 file *is* its per-cast product.  Files with
     no cast number in the stem are skipped.  Returns the number of files written
-    (0 for *dry_run*).
+    (0 for *dry_run*).  ``cruise_info`` is stamped as cruise identity on each file.
     """
     pattern: str = kw.get("ladcp_pattern") or "*.mat"  # type: ignore[assignment]
     mats = [
@@ -139,6 +153,7 @@ def run_convert(
                 cast_num=cast_num,
                 cast_suffix=cast_suffix,
                 force=force,
+                cruise_info=cruise_info,
             ):
                 n_written += 1
     summarise_warnings(caught)
@@ -201,6 +216,7 @@ def build_ladcp_profiles(
         return False
 
     dss = [xr.open_dataset(p, engine="netcdf4").load() for p in files]
+    per_cast_attrs = [dict(d.attrs) for d in dss]
     try:
         depth = max((d["depth"] for d in dss), key=lambda x: x.size).values
         nbt = max((d.sizes.get("bottom_track", 0) for d in dss), default=0)
@@ -219,12 +235,12 @@ def build_ladcp_profiles(
         f"{len(files)} per-cast LADCP netCDF files compiled by ctdcast"
     )
 
-    # EXPOCODE as an N_PROF coordinate (see the CTD builder for the rationale).
+    # Identity (cruise, platform_*, expocode) is lifted from the per-cast files,
+    # strictly: constant across casts → lifted; varying → error (two cruises in
+    # one directory); absent → cruise_info fallback with a warning.  This replaces
+    # the old drop_conflicts merge as the authority for identity at compile.
     ci = cruise_info or {}
-    n_profiles = ds_out.sizes["N_PROF"]
-    _expocode_coord = expocode_coordinate(ci, n_profiles)
-    if _expocode_coord is not None:
-        ds_out["expocode"] = _expocode_coord
+    identity = aggregate_identity(per_cast_attrs, ci)
 
     # Derived coverage + authored/provenance/people/platform globals.  The LADCP
     # product is gridded on a depth axis (metres, positive down), not pressure;
@@ -243,6 +259,23 @@ def build_ladcp_profiles(
             times=ds_out["time"].values if "time" in ds_out else None,
             source="ladcp",
         )
+    )
+    # Per-cast-sourced identity is authoritative over the config identity that
+    # cruise_global_attrs still emits, so a compiled file states the cruise its
+    # casts actually came from (and errors if they disagree).
+    ds_out.attrs.update(identity)
+
+    # Provenance: what wrote the file, then what it did.  Both go through
+    # `append_history`; `cruise_global_attrs` no longer returns a `history` key,
+    # so this no longer depends on being called after it.
+    append_history(ds_out.attrs, CREATION_NOTE, stage="create")
+    append_history(
+        ds_out.attrs,
+        (
+            f"compiled {len(files)} LADCP casts; aligned onto the deepest cast's "
+            "depth axis (common-axis reindex, not a regrid)"
+        ),
+        stage="ladcp_profiles",
     )
 
     write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)

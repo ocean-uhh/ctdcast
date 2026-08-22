@@ -69,6 +69,7 @@ def report(
     out_dir: Path,
     *,
     profiles_path: Path | None = None,
+    groupings_yaml: Path | None = None,
     section_yaml: Path | None = None,
     ladcp_dir: Path | None = None,
     ladcp_profiles_path: Path | None = None,
@@ -99,8 +100,12 @@ def report(
         Root output directory.
     profiles_path:
         Path to compiled ``profiles.nc``. Required for section and time series pages.
+    groupings_yaml:
+        Cast groupings — ``sections:`` and ``timeseries:``. Conventionally
+        ``ctd_groupings.yaml``.
     section_yaml:
-        Path to the sections/timeseries YAML file (``ctd_sections.yaml``).
+        Superseded spelling of *groupings_yaml*; accepted, and used only when
+        *groupings_yaml* is absent.
     ladcp_dir:
         Directory containing processed LADCP ``.mat`` files named ``NNN.mat``
         or ``NNNb.mat`` (letter-suffix variants supported).
@@ -164,6 +169,11 @@ def report(
         can exit non-zero when a requested page could not be generated.
 
     """
+    # `groupings_yaml` names what the file actually holds -- sections *and*
+    # timeseries.  `section_yaml` named half of it; still accepted so an existing
+    # caller keeps working.
+    groupings_yaml = groupings_yaml or section_yaml
+
     cfg = config if config is not None else DEFAULT_REPORT_CONFIG
     _figdebug.clear()  # reset the per-figure debug registry for this build
     _failed = 0
@@ -192,7 +202,7 @@ def report(
 
     # Load sections YAML once. SectionsConfig returns empty defaults when absent.
     _sections_cfg = (
-        SectionsConfig.from_yaml(section_yaml) if section_yaml else SectionsConfig()
+        SectionsConfig.from_yaml(groupings_yaml) if groupings_yaml else SectionsConfig()
     )
 
     # cruise_info: explicit param wins; YAML cruise_info: block is the fallback.
