@@ -211,14 +211,9 @@ def run(args: argparse.Namespace) -> int:
     ladcp_profiles_path = (
         Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
     )
-    paths = StagePaths(
-        cnv_dir=cnv_dir,
-        nc_dir=nc_dir,
-        profiles_path=profiles_path,
-        ladcp_dir=ladcp_dir,
-        ladcp_nc_dir=ladcp_nc_dir,
-        ladcp_profiles_path=ladcp_profiles_path,
-    )
+    # StagePaths.from_config is the single home of the nc_dir → ctd_root shim; the
+    # local vars above stay only for the pre-flight source-completeness messages.
+    paths = StagePaths.from_config(data)
 
     requested = stages_for(args.stage)
     names = {s.name for s in requested}
