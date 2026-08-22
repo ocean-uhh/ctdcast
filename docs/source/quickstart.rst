@@ -66,7 +66,7 @@ Section and time series pages additionally require a compiled ``profiles.nc``.
            ...
        profiles.nc          # compiled 2D profiles (optional but recommended)
 
-See :doc:`config_reference` for a description of what each file must contain.
+See :doc:`config_yaml` for a description of what each file must contain.
 
 ----
 
@@ -115,7 +115,7 @@ casts into named transects:
        color: "#377eb8"
        cast_numbers: [[20, 35]]
 
-See :doc:`config_reference` for the full section YAML specification.
+See :doc:`ctd_sections` for the full section YAML specification.
 
 ----
 
@@ -154,7 +154,7 @@ copy the entire output directory anywhere and it works offline.
            section_KTout.html
            ...
 
-See :doc:`output_structure` for a description of what each page contains.
+See :doc:`report_output` for a description of what each page contains.
 
 ----
 
@@ -177,6 +177,9 @@ Only pages for new casts will be written.  Existing section and time series page
 Where to go next
 ----------------
 
-- :doc:`config_reference` — all ``config.yaml`` and ``ctd_sections.yaml`` fields.
-- :doc:`output_structure` — what each report page contains.
+- :doc:`config_yaml` — every ``config.yaml`` field.
+- :doc:`cruise_metadata` — the ``cruise_info`` block: identity, platform, people, embargo.
+- :doc:`ctd_sections` — every ``ctd_sections.yaml`` field.
+- :doc:`data_files` — the netCDF files ctdcast reads and writes.
+- :doc:`report_output` — what each report page contains.
 - :doc:`api` — Python API for calling ctdcast from your own scripts.

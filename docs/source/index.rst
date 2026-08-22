@@ -39,8 +39,12 @@ Contents
    :caption: Reference
 
    cli_reference
-   config_reference
-   output_structure
+   processing_framework
+   config_yaml
+   cruise_metadata
+   ctd_sections
+   data_files
+   report_output
    api
 
 .. toctree::

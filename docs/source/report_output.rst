@@ -1,8 +1,9 @@
+.. _report_output:
 .. _output_structure:
 
-================
-Output structure
-================
+=============
+Report output
+=============
 
 All generated HTML files are fully self-contained: figures are embedded as base64 PNG
 images, JavaScript libraries are bundled inline, and no external requests are made at
