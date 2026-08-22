@@ -24,6 +24,7 @@ CLAUDE.md
 # Test / coverage
 .pytest_cache/
 .coverage
+coverage.json
 htmlcov/
 
 # Editors

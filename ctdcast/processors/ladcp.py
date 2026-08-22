@@ -20,6 +20,12 @@ import xarray as xr
 from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.stage_layout import (
+    is_up_to_date,
+    select_best_available,
+    stage_dir,
+    stage_path,
+)
 from ctdcast.readers.ladcp import read_ladcp_cast
 from ctdcast.writers.dtypes import cast_output_dtypes
 from ctdcast.writers.netcdf import write as write_nc
@@ -95,8 +101,10 @@ def run_convert(
 
     The LADCP parallel of :func:`ctdcast.processors.stage1.run`: discovers the
     ``.mat`` files, derives each cast's identity from its filename, and writes
-    ``ladcp_nc_dir/ladcp_<cast_id>.nc``.  Files with no cast number in the stem
-    are skipped.  Returns the number of files written (0 for *dry_run*).
+    ``ladcp_nc_dir/stage1/ladcp_<cast_id>_stage1.nc``.  LADCP has a single
+    processing stage, so its stage-1 file *is* its per-cast product.  Files with
+    no cast number in the stem are skipped.  Returns the number of files written
+    (0 for *dry_run*).
     """
     pattern: str = kw.get("ladcp_pattern") or "*.mat"  # type: ignore[assignment]
     mats = [
@@ -115,7 +123,7 @@ def run_convert(
             print(f"  [dry-run] would convert: {p.name}")
         return 0
 
-    ladcp_nc_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir(ladcp_nc_dir, 1, create=True)  # ladcp_nc_dir is the stage root
     n_written = 0
     # Per-cast data-quality warnings (e.g. blank instrument serials) are captured
     # across the batch and collapsed into one counted summary line per message,
@@ -123,7 +131,8 @@ def run_convert(
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         for (cast_num, cast_suffix), mat_path in mats:
-            nc_path = ladcp_nc_dir / f"ladcp_{format_cast_id(cast_num, cast_suffix)}.nc"
+            stem = f"ladcp_{format_cast_id(cast_num, cast_suffix)}"
+            nc_path = stage_path(ladcp_nc_dir, stem, 1)
             if convert_ladcp_cast(
                 mat_path,
                 nc_path,
@@ -142,8 +151,13 @@ def run_convert(
 
 
 def _select_ladcp_files(ladcp_nc_dir: Path) -> list[Path]:
-    """Return the per-cast ``ladcp_*.nc`` files in *ladcp_nc_dir*, sorted."""
-    return sorted(ladcp_nc_dir.glob("ladcp_*.nc"))
+    """Return the best-available per-cast LADCP file under *ladcp_nc_dir*, sorted.
+
+    LADCP has a single processing stage, so "best-available" is just its stage-1
+    file; the stage layout is used so a nested ``stage1/ladcp_<id>_stage1.nc`` and
+    an old flat ``ladcp_<id>.nc`` (via the compatibility shim) are both found.
+    """
+    return [path for _cast_id, path, _stage in select_best_available(ladcp_nc_dir)]
 
 
 def build_ladcp_profiles(
@@ -161,17 +175,29 @@ def build_ladcp_profiles(
     depth axis (NaN below its own bottom) and stacked on a new ``N_PROF``
     dimension.  Per-cast scalars become ``N_PROF`` vectors; cruise-common
     provenance is kept in attrs, per-cast-varying provenance is already stored as
-    variables.  Returns True if written, False if skipped (existed, not forced).
+    variables.  Returns True if written, False when there is nothing to compile.
+
+    Skips when ``ladcp_profiles.nc`` already exists and is newer than every
+    per-cast source file (same source-mtime rule as the CTD compiler and the
+    processing stages); ``force`` rebuilds regardless.
 
     ``cruise_info`` (the config ``cruise_info:`` block) supplies discovery
     metadata, people, embargo, and the ship/date for the EXPOCODE coordinate.
     Coverage bounds (lat/lon from the per-cast positions, vertical from the depth
     axis in metres) and the creation time are computed from the data.
     """
-    if ladcp_profiles_path.exists() and not force:
-        return False
     files = _select_ladcp_files(ladcp_nc_dir)
     if not files:
+        # Say so.  Silence here is indistinguishable from success, and the CTD
+        # half prints on write, so a quiet LADCP half reads as "did not run".
+        print(
+            f"ladcp-profiles: no per-cast files under {ladcp_nc_dir} "
+            f"(looked in stage1/ and directly) — nothing to compile"
+        )
+        return False
+    # Skip only when the product exists AND is newer than every source cast file,
+    # so a re-converted cast rebuilds the compile rather than keeping it stale.
+    if not force and is_up_to_date(ladcp_profiles_path, files):
         return False
 
     dss = [xr.open_dataset(p, engine="netcdf4").load() for p in files]
@@ -220,6 +246,7 @@ def build_ladcp_profiles(
     )
 
     write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)
+    print(f"ladcp-profiles: wrote {ladcp_profiles_path}")
     return True
 
 

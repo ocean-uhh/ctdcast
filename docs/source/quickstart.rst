@@ -57,16 +57,29 @@ Prepare your input files
 ctdcast needs at minimum a directory of per-cast netCDF files (one per CTD cast).
 Section and time series pages additionally require a compiled ``profiles.nc``.
 
+Each instrument gets one **root** that ctdcast owns. Inside it, one directory per
+processing stage, and the compiled product at the top:
+
 .. code-block:: text
 
-   /data/cruise/CTD/
-       cnv_nc/
-           cast_001.nc
-           cast_002.nc
-           ...
-       profiles.nc          # compiled 2D profiles (optional but recommended)
+   /data/cruise/CTD/ctd_nc/          # ctd_root
+       stage1/
+           cast_001_stage1.nc        # raw CNV converted
+           cast_002_stage1.nc
+       stage2/
+           cast_001_stage2.nc        # + soak / back-on-deck flags
+       stage3/
+           cast_001_stage3.nc        # + QC and calibration
+       profiles.nc                   # compiled product (optional but recommended)
 
-See :doc:`config_reference` for a description of what each file must contain.
+   /data/cruise/LADCP/ladcp_nc/      # ladcp_root
+       stage1/
+       ladcp_profiles.nc
+
+A directory of unsuffixed per-cast files written before the stage layout is still
+read, as stage 1.
+
+See :doc:`config_yaml` for a description of what each file must contain.
 
 ----
 
@@ -79,10 +92,10 @@ the current directory), then adjust the paths:
 .. code-block:: yaml
 
    data:
-     nc_dir:       /data/cruise/CTD/cnv_nc
-     profiles_nc:  /data/cruise/CTD/profiles.nc
+     ctd_root:     /data/cruise/CTD/ctd_nc     # profiles.nc derives from this
+     cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
      section_yaml: /data/cruise/config/ctd_sections.yaml
-     gebco_nc:     /data/GEBCO_2025.nc   # optional
+     gebco_nc:     /data/GEBCO_2025.nc         # optional
 
    output:
      dir: /data/cruise/report
@@ -115,7 +128,7 @@ casts into named transects:
        color: "#377eb8"
        cast_numbers: [[20, 35]]
 
-See :doc:`config_reference` for the full section YAML specification.
+See :doc:`ctd_sections` for the full section YAML specification.
 
 ----
 
@@ -154,7 +167,7 @@ copy the entire output directory anywhere and it works offline.
            section_KTout.html
            ...
 
-See :doc:`output_structure` for a description of what each page contains.
+See :doc:`report_output` for a description of what each page contains.
 
 ----
 
@@ -177,6 +190,9 @@ Only pages for new casts will be written.  Existing section and time series page
 Where to go next
 ----------------
 
-- :doc:`config_reference` — all ``config.yaml`` and ``ctd_sections.yaml`` fields.
-- :doc:`output_structure` — what each report page contains.
+- :doc:`config_yaml` — every ``config.yaml`` field.
+- :doc:`cruise_metadata` — the ``cruise_info`` block: identity, platform, people, embargo.
+- :doc:`ctd_sections` — every ``ctd_sections.yaml`` field.
+- :doc:`data_files` — the netCDF files ctdcast reads and writes.
+- :doc:`report_output` — what each report page contains.
 - :doc:`api` — Python API for calling ctdcast from your own scripts.

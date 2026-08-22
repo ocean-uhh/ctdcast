@@ -20,6 +20,7 @@ from ctdcast.processors.profiles import run as profiles_run
 from ctdcast.processors.stage1 import run as stage1_run
 from ctdcast.processors.stage2 import run as stage2_run
 from ctdcast.processors.stage3 import run as stage3_run
+from ctdcast.processors.stage_layout import stage_path
 
 
 def test_stages_is_nonempty_tuple_of_stage() -> None:
@@ -131,35 +132,35 @@ def test_run_stage1_dry_run(tmp_path: Path) -> None:
 
 
 def test_run_stage2_dry_run(tmp_path: Path) -> None:
-    """stage2.run dry_run returns 0 and writes nothing."""
-    nc_dir = tmp_path / "nc"
-    nc_dir.mkdir()
-    shutil.copy(FIXTURES_NC / "mixsed2_011.nc", nc_dir / "mixsed2_011.nc")
-    mtime_before = (nc_dir / "mixsed2_011.nc").stat().st_mtime
-    result = stage2_run(nc_dir, dry_run=True)
+    """stage2.run dry_run returns 0 and writes no stage-2 file."""
+    root = tmp_path / "CTD"
+    src = stage_path(root, "mixsed2_011", 1)
+    src.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(FIXTURES_NC / "mixsed2_011.nc", src)
+    result = stage2_run(root, dry_run=True)
     assert result == 0
-    assert (nc_dir / "mixsed2_011.nc").stat().st_mtime == mtime_before
+    assert not stage_path(root, "mixsed2_011", 2).exists()
 
 
 def test_run_stage3_dry_run(tmp_path: Path) -> None:
-    """stage3.run dry_run returns 0 and writes nothing."""
-    nc_dir = tmp_path / "nc"
-    nc_dir.mkdir()
-    shutil.copy(FIXTURES_NC / "mixsed2_011.nc", nc_dir / "mixsed2_011.nc")
-    mtime_before = (nc_dir / "mixsed2_011.nc").stat().st_mtime
-    result = stage3_run(nc_dir, dry_run=True)
+    """stage3.run dry_run returns 0 and writes no stage-3 file."""
+    root = tmp_path / "CTD"
+    src = stage_path(root, "mixsed2_011", 2)
+    src.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(FIXTURES_NC / "mixsed2_011.nc", src)
+    result = stage3_run(root, dry_run=True)
     assert result == 0
-    assert (nc_dir / "mixsed2_011.nc").stat().st_mtime == mtime_before
+    assert not stage_path(root, "mixsed2_011", 3).exists()
 
 
-def test_run_stage2_nc_dir_not_found(tmp_path: Path) -> None:
-    """stage2.run raises FileNotFoundError when nc_dir does not exist."""
+def test_run_stage2_root_not_found(tmp_path: Path) -> None:
+    """stage2.run raises FileNotFoundError when the stage root does not exist."""
     with pytest.raises(FileNotFoundError):
         stage2_run(tmp_path / "missing", dry_run=True)
 
 
-def test_run_stage3_nc_dir_not_found(tmp_path: Path) -> None:
-    """stage3.run raises FileNotFoundError when nc_dir does not exist."""
+def test_run_stage3_root_not_found(tmp_path: Path) -> None:
+    """stage3.run raises FileNotFoundError when the stage root does not exist."""
     with pytest.raises(FileNotFoundError):
         stage3_run(tmp_path / "missing", dry_run=True)
 
@@ -179,41 +180,105 @@ def test_run_profiles_dry_run(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _place(root: Path, name: str, stem: str, stage: int) -> Path:
+    """Copy fixture *name* into *root* as *stem* at *stage*; return the path."""
+    dst = stage_path(root, stem, stage)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(FIXTURES_NC / name, dst)
+    return dst
+
+
 def test_run_stage2_cast_tags(tmp_path: Path) -> None:
-    """stage2.run with cast_tags processes only the matching file."""
-    nc_dir = tmp_path / "nc"
-    nc_dir.mkdir()
-    for name in ("mixsed2_011.nc", "mixsed2_012.nc"):
-        shutil.copy(FIXTURES_NC / name, nc_dir / name)
+    """stage2.run with cast_tags processes only the matching cast."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    _place(root, "mixsed2_012.nc", "mixsed2_012", 1)
 
-    stage2_run(nc_dir, cast_tags={"011"}, force=True)
+    stage2_run(root, cast_tags={"011"})
 
-    # 011 was processed — it will have _qc variables; 012 was skipped — it won't
-    import xarray as xr
-
-    ds_011 = xr.open_dataset(nc_dir / "mixsed2_011.nc", engine="netcdf4")
-    ds_012 = xr.open_dataset(nc_dir / "mixsed2_012.nc", engine="netcdf4")
-    assert any(v.endswith("_qc") for v in ds_011.data_vars), "011 should be flagged"
-    assert not any(v.endswith("_qc") for v in ds_012.data_vars), (
-        "012 should be untouched"
-    )
-    ds_011.close()
-    ds_012.close()
+    assert stage_path(root, "mixsed2_011", 2).exists(), "011 should be processed"
+    assert not stage_path(root, "mixsed2_012", 2).exists(), "012 should be filtered out"
 
 
 def test_run_stage3_cast_tags(tmp_path: Path) -> None:
-    """stage3.run with cast_tags processes only the matching file."""
-    nc_dir = tmp_path / "nc"
-    nc_dir.mkdir()
-    for name in ("mixsed2_011.nc", "mixsed2_012.nc"):
-        shutil.copy(FIXTURES_NC / name, nc_dir / name)
+    """stage3.run with cast_tags processes only the matching cast."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 2)
+    _place(root, "mixsed2_012.nc", "mixsed2_012", 2)
 
-    mtime_012_before = (nc_dir / "mixsed2_012.nc").stat().st_mtime
-    stage3_run(nc_dir, cast_tags={"011"}, force=True)
+    stage3_run(root, cast_tags={"011"})
 
-    assert (nc_dir / "mixsed2_012.nc").stat().st_mtime == mtime_012_before, (
-        "012 should not be touched"
-    )
+    assert stage_path(root, "mixsed2_011", 3).exists(), "011 should be processed"
+    assert not stage_path(root, "mixsed2_012", 3).exists(), "012 should be filtered out"
+
+
+# ---------------------------------------------------------------------------
+# Non-destructive stage lineage — new files, frozen predecessors, strict reads
+# ---------------------------------------------------------------------------
+
+
+def test_stage2_is_non_destructive(tmp_path: Path) -> None:
+    """stage 2 writes a new stage-2 file and leaves the stage-1 file byte-frozen."""
+    root = tmp_path / "CTD"
+    s1 = _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    before = s1.read_bytes()
+
+    assert stage2_run(root) == 1
+    s2 = stage_path(root, "mixsed2_011", 2)
+    assert s2.exists()
+    assert s1.read_bytes() == before, "stage 1 must be frozen"
+
+    import xarray as xr
+
+    ds = xr.open_dataset(s2, engine="netcdf4")
+    assert any(v.endswith("_qc") for v in ds.data_vars), "stage 2 should add _qc flags"
+    ds.close()
+
+
+def test_stage2_skips_when_target_exists(tmp_path: Path) -> None:
+    """A second stage-2 run skips the cast whose target already exists."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    assert stage2_run(root) == 1
+    assert stage2_run(root) == 0  # target exists → skipped
+
+
+def test_stage2_force_rewrites_target(tmp_path: Path) -> None:
+    """--force reprocesses a cast even when its stage-2 file already exists."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    assert stage2_run(root) == 1
+    assert stage2_run(root, force=True) == 1  # rewritten despite existing target
+
+
+def test_stage2_skips_cast_missing_stage1(tmp_path: Path) -> None:
+    """A cast present only at stage 2 has no stage-1 input, so stage 2 skips it."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 2)  # only stage 2 present
+    assert stage2_run(root) == 0
+
+
+def test_stage3_reads_stage2_strictly(tmp_path: Path) -> None:
+    """stage 3 requires a stage-2 file; a stage-1-only cast is skipped (not promoted)."""
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 1)  # only stage 1 present
+    assert stage3_run(root) == 0
+    assert not stage_path(root, "mixsed2_011", 3).exists()
+
+
+def test_stage_pipeline_lineage(tmp_path: Path) -> None:
+    """stage 2 then 3 leave all files, with earlier stages frozen by later ones."""
+    root = tmp_path / "CTD"
+    s1 = _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    assert stage2_run(root) == 1
+    s2 = stage_path(root, "mixsed2_011", 2)
+    s1_bytes, s2_bytes = s1.read_bytes(), s2.read_bytes()
+
+    assert stage3_run(root) == 1
+    s3 = stage_path(root, "mixsed2_011", 3)
+    assert s1.exists() and s2.exists() and s3.exists()
+    assert s1.read_bytes() == s1_bytes, "stage 1 frozen by stage 3"
+    assert s2.read_bytes() == s2_bytes, "stage 2 frozen by stage 3"
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +314,7 @@ def test_stage1_fans_out_to_ladcp(tmp_path: Path) -> None:
         ladcp_nc_dir=ladcp_nc,
         force=True,
     )
-    assert len(list(ladcp_nc.glob("ladcp_*.nc"))) == 4
+    assert len(list((ladcp_nc / "stage1").glob("ladcp_*.nc"))) == 4
 
 
 def test_profiles_fans_out_to_both_sources(tmp_path: Path) -> None:
@@ -272,7 +337,42 @@ def test_profiles_fans_out_to_both_sources(tmp_path: Path) -> None:
 
 def test_stagepaths_unconfigured_source_is_skipped(tmp_path: Path) -> None:
     """A stage with no configured source for it does nothing, without error."""
-    # profiles with neither profiles_path nor ladcp_profiles_path configured.
-    result = process("profiles", nc_dir=FIXTURES_NC)
+    # profiles with neither ctd_root nor ladcp_root configured — both products
+    # are unconfigured, so nothing is written.  (With a root set, profiles_path
+    # now derives as <root>/profiles.nc, so passing a read dir alone would write.)
+    result = process("profiles")
     assert result is False  # nothing written
     assert isinstance(StagePaths(), StagePaths)
+
+
+def test_process_stage1_ctd_branch_with_no_cnv_files(tmp_path: Path) -> None:
+    """stage 1 enters the CTD source branch even when the CNV dir is empty."""
+    # stage1() loads the CTD backend before globbing, so this needs seasenselib.
+    pytest.importorskip("seasenselib")
+    cnv = tmp_path / "cnv"
+    cnv.mkdir()
+    assert process("stage1", cnv_dir=cnv, ctd_root=tmp_path / "CTD") == 0
+
+
+def test_process_stage2_without_ctd_root_is_noop() -> None:
+    """stage 2 with no ctd_root configured does nothing, without error."""
+    assert process("stage2") == 0
+
+
+def test_process_stage3_without_ctd_root_is_noop() -> None:
+    """stage 3 with no ctd_root configured does nothing, without error."""
+    assert process("stage3") == 0
+
+
+def test_stage2_rebuilds_when_stage1_is_newer(tmp_path: Path) -> None:
+    """A stage-1 rewrite makes stage 2 re-run without --force (source-mtime skip)."""
+    import os
+
+    root = tmp_path / "CTD"
+    s1 = _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    assert stage2_run(root) == 1
+    s2 = stage_path(root, "mixsed2_011", 2)
+    assert stage2_run(root) == 0  # unchanged stage 1 → skipped (up to date)
+    # Make stage 1 newer than stage 2: the stale stage-2 file must be rebuilt.
+    os.utime(s1, (s2.stat().st_atime, s2.stat().st_mtime + 10))
+    assert stage2_run(root) == 1

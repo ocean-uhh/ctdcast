@@ -50,7 +50,7 @@ Processing stages:
   Stage 3: gross-range QC and conductivity calibration (reads processing: config)
   profiles: bin per-cast netCDF to profiles.nc on a 1-dbar grid
 
-Paths (nc_dir, cnv_dir, profiles_nc) are read from the config YAML.
+Paths (ctd_root, cnv_dir, ladcp_root, ladcp_dir) are read from the config YAML.
 
 Examples:
   ctdcast process config.yaml --stage 1
@@ -203,22 +203,11 @@ def run(args: argparse.Namespace) -> int:
     processing_cfg = cfg.get("processing") or {}
     trim_cfg = processing_cfg.get("trim") or {}
 
-    cnv_dir = Path(data["cnv_dir"]) if data.get("cnv_dir") else None
-    nc_dir = Path(data["nc_dir"]) if data.get("nc_dir") else None
-    profiles_path = Path(data["profiles_nc"]) if data.get("profiles_nc") else None
-    ladcp_dir = Path(data["ladcp_dir"]) if data.get("ladcp_dir") else None
-    ladcp_nc_dir = Path(data["ladcp_nc"]) if data.get("ladcp_nc") else None
-    ladcp_profiles_path = (
-        Path(data["ladcp_profiles_nc"]) if data.get("ladcp_profiles_nc") else None
-    )
-    paths = StagePaths(
-        cnv_dir=cnv_dir,
-        nc_dir=nc_dir,
-        profiles_path=profiles_path,
-        ladcp_dir=ladcp_dir,
-        ladcp_nc_dir=ladcp_nc_dir,
-        ladcp_profiles_path=ladcp_profiles_path,
-    )
+    # StagePaths.from_config is the single home of the ctd_root/nc_dir precedence
+    # and of the derived product paths.  The pre-flight checks below read it too,
+    # rather than re-reading the raw keys — otherwise a config using the root keys
+    # passes resolution and then fails a guard written against the old spelling.
+    paths = StagePaths.from_config(data)
 
     requested = stages_for(args.stage)
     names = {s.name for s in requested}
@@ -233,55 +222,46 @@ def run(args: argparse.Namespace) -> int:
     # its output, or an output without its input — is an error, not a silent
     # no-op: the wrapper would otherwise skip it and exit 0 having written nothing.
     if "stage1" in names:
-        if cnv_dir and not nc_dir:
+        if paths.cnv_dir and not paths.ctd_root:
             print(
-                "Config error: stage 1 has data.cnv_dir but no data.nc_dir.",
+                "Config error: stage 1 has data.cnv_dir but no data.ctd_root.",
                 file=sys.stderr,
             )
             return 1
-        if ladcp_dir and not ladcp_nc_dir:
+        if paths.ladcp_dir and not paths.ladcp_root:
             print(
-                "Config error: stage 1 has data.ladcp_dir but no data.ladcp_nc.",
+                "Config error: stage 1 has data.ladcp_dir but no data.ladcp_root.",
                 file=sys.stderr,
             )
             return 1
-        if not ((cnv_dir and nc_dir) or (ladcp_dir and ladcp_nc_dir)):
+        if not (
+            (paths.cnv_dir and paths.ctd_root) or (paths.ladcp_dir and paths.ladcp_root)
+        ):
             print(
-                "Config error: stage 1 needs data.cnv_dir+nc_dir (CTD) or "
-                "data.ladcp_dir+ladcp_nc (LADCP).",
+                "Config error: stage 1 needs data.cnv_dir+ctd_root (CTD) or "
+                "data.ladcp_dir+ladcp_root (LADCP).",
                 file=sys.stderr,
             )
             return 1
-        if cnv_dir and not cnv_dir.exists():
-            print(f"cnv_dir not found: {cnv_dir}", file=sys.stderr)
+        if paths.cnv_dir and not paths.cnv_dir.exists():
+            print(f"cnv_dir not found: {paths.cnv_dir}", file=sys.stderr)
             return 1
-        if ladcp_dir and not ladcp_dir.exists():
-            print(f"ladcp_dir not found: {ladcp_dir}", file=sys.stderr)
+        if paths.ladcp_dir and not paths.ladcp_dir.exists():
+            print(f"ladcp_dir not found: {paths.ladcp_dir}", file=sys.stderr)
             return 1
-    if names & {"stage2", "stage3"} and not nc_dir:
-        print("Config error: data.nc_dir required for stages 2/3.", file=sys.stderr)
+    if names & {"stage2", "stage3"} and not paths.ctd_root:
+        print("Config error: data.ctd_root required for stages 2/3.", file=sys.stderr)
         return 1
-    if "profiles" in names:
-        if profiles_path and not nc_dir:
-            print(
-                "Config error: stage 'profiles' has data.profiles_nc but no data.nc_dir.",
-                file=sys.stderr,
-            )
-            return 1
-        if ladcp_profiles_path and not ladcp_nc_dir:
-            print(
-                "Config error: stage 'profiles' has data.ladcp_profiles_nc but no "
-                "data.ladcp_nc.",
-                file=sys.stderr,
-            )
-            return 1
-        if not ((nc_dir and profiles_path) or (ladcp_nc_dir and ladcp_profiles_path)):
-            print(
-                "Config error: stage 'profiles' needs data.nc_dir+profiles_nc (CTD) "
-                "or data.ladcp_nc+ladcp_profiles_nc (LADCP).",
-                file=sys.stderr,
-            )
-            return 1
+    if "profiles" in names and not (paths.ctd_root or paths.ladcp_root):
+        # The "output configured without its input" checks that used to live here
+        # are now unreachable: a compiled product derives from its root, so it is
+        # None exactly when the root is None.  One condition replaces three.
+        print(
+            "Config error: stage 'profiles' needs data.ctd_root (CTD) or "
+            "data.ladcp_root (LADCP).",
+            file=sys.stderr,
+        )
+        return 1
 
     # Flat tuning bag forwarded to every stage wrapper; each names the kwargs it
     # uses and ignores the rest.

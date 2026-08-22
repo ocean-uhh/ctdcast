@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ctdcast.config.global_attrs import cruise_name
+
 import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
@@ -207,7 +209,7 @@ def generate_station_page(
     dur_m = dur_rem // 60
     duration_str = f"{dur_h}h {dur_m:02d}m"
     _ci = cruise_info or {}
-    cruise = _ci.get("cruise_id") or ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
+    cruise = cruise_name(_ci) or ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
     ship = (
         _ci.get("ship")
         or ds.attrs.get("ship")

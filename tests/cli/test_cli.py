@@ -389,7 +389,12 @@ class TestValidate:
         assert rc == 0
 
     def test_missing_nc_dir_returns_error(self, tmp_path):
-        cfg_path = self._write_cfg(tmp_path, data={"nc_dir": str(tmp_path / "missing")})
+        # A missing root whose PARENT is also missing is a wrong path or an
+        # unmounted drive → error.  (A missing root whose parent exists is only a
+        # warning: the root is where stage 1 writes, so it may not exist yet.)
+        cfg_path = self._write_cfg(
+            tmp_path, data={"nc_dir": str(tmp_path / "no" / "such" / "root")}
+        )
         rc = _validate.run(_validate_ns(config=cfg_path))
         assert rc == 1
 
@@ -399,12 +404,15 @@ class TestValidate:
         rc = _validate.run(_validate_ns(config=p))
         assert rc == 1
 
-    def test_empty_nc_dir_returns_error(self, tmp_path):
+    def test_empty_nc_dir_warns_not_error(self, tmp_path):
+        # An existing but empty root is a warning ("run process --stage 1"), not an
+        # error: the root is where stage 1 writes, so emptiness is a pre-processing
+        # state rather than an invalid config.
         empty = tmp_path / "empty_nc"
         empty.mkdir()
         cfg_path = self._write_cfg(tmp_path, data={"nc_dir": str(empty)})
         rc = _validate.run(_validate_ns(config=cfg_path))
-        assert rc == 1
+        assert rc == 0
 
     def test_bad_yaml_returns_error(self, tmp_path):
         p = tmp_path / "config.yaml"
@@ -776,7 +784,9 @@ class TestProcess:
         _process.run(
             _process.build_parser().parse_args([str(p), "--stage", "1", "--force"])
         )
-        assert list(ladcp_nc.glob("ladcp_*.nc")), "stage 1 should convert LADCP .mat"
+        assert list((ladcp_nc / "stage1").glob("ladcp_*.nc")), (
+            "stage 1 should convert LADCP .mat into stage1/"
+        )
         _process.run(
             _process.build_parser().parse_args(
                 [str(p), "--stage", "profiles", "--force"]

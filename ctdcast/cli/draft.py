@@ -247,7 +247,11 @@ def _run_pipeline(
     n = convert_ctd_files(
         cnv_dir, nc_dir, backend="seasenselib", force=force, pattern=pattern
     )
-    if n == 0 and not any(nc_dir.glob("*.nc")):
+    # Per-cast files live under stageN/ now, with the flat layout still possible
+    # for a directory written earlier — check both, or a re-run over a full set
+    # aborts as "nothing to report".
+    _existing = any(nc_dir.glob("stage*/*.nc")) or any(nc_dir.glob("*.nc"))
+    if n == 0 and not _existing:
         print(
             "Warning: no casts converted and nc_dir is empty — nothing to report.",
             file=sys.stderr,

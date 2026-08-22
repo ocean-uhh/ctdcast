@@ -58,7 +58,7 @@ def test_select_cast_files_keeps_plain_and_b_as_distinct(tmp_path):
     ):
         (tmp_path / name).touch()
     selected = _select_cast_files(tmp_path)
-    ids = [(num, suffix) for num, suffix, _path in selected]
+    ids = [(num, suffix) for num, suffix, _path, _stage in selected]
     assert ids == [(10, ""), (10, "b"), (29, ""), (29, "b")]
 
 

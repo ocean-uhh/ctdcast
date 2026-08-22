@@ -42,11 +42,64 @@ class StagePaths:
     """
 
     cnv_dir: Path | None = None
-    nc_dir: Path | None = None
-    profiles_path: Path | None = None
+    ctd_root: Path | None = None
     ladcp_dir: Path | None = None
-    ladcp_nc_dir: Path | None = None
-    ladcp_profiles_path: Path | None = None
+    ladcp_root: Path | None = None
+    #: Set only when the config names a compiled product explicitly; ``None``
+    #: means "derive it from the root", which is the normal case.
+    profiles_override: Path | None = None
+    ladcp_profiles_override: Path | None = None
+
+    @property
+    def profiles_path(self) -> Path | None:
+        """Compiled CTD product: the explicit override, else ``<ctd_root>/profiles.nc``."""
+        if self.profiles_override is not None:
+            return self.profiles_override
+        return self.ctd_root / "profiles.nc" if self.ctd_root else None
+
+    @property
+    def ladcp_profiles_path(self) -> Path | None:
+        """Compiled LADCP product: override, else ``<ladcp_root>/ladcp_profiles.nc``."""
+        if self.ladcp_profiles_override is not None:
+            return self.ladcp_profiles_override
+        return self.ladcp_root / "ladcp_profiles.nc" if self.ladcp_root else None
+
+    @classmethod
+    def from_config(cls, data: dict) -> "StagePaths":
+        """Resolve a config ``data:`` block, applying the flat-layout shim.
+
+        The one place the ``nc_dir`` → ``ctd_root`` compatibility rule lives, so
+        no caller decides it twice.  A config predating the stage layout names
+        ``nc_dir``/``ladcp_nc``; those become the roots directly, and
+        :mod:`ctdcast.processors.stage_layout` recognises the unsuffixed files
+        under them as stage 1 — flatness is a *naming* variant, so it is detected
+        where naming lives rather than carried as a flag.
+
+        Parameters
+        ----------
+        data : dict
+            The config's ``data:`` mapping.
+
+        Returns
+        -------
+        StagePaths
+            Paths for whichever sources are configured; ``None`` for the rest.
+        """
+
+        def _p(*keys: str) -> Path | None:
+            for k in keys:
+                if data.get(k):
+                    return Path(str(data[k]))
+            return None
+
+        return cls(
+            cnv_dir=_p("cnv_dir"),
+            ctd_root=_p("ctd_root", "nc_dir"),
+            ladcp_dir=_p("ladcp_dir"),
+            ladcp_root=_p("ladcp_root", "ladcp_nc"),
+            profiles_override=_p("profiles_nc"),
+            ladcp_profiles_override=_p("ladcp_profiles_nc"),
+        )
 
 
 @dataclass(frozen=True)
@@ -99,11 +152,11 @@ def _run_stage1(
 ) -> int:
     """Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP)."""
     total = 0
-    if paths.cnv_dir is not None and paths.nc_dir is not None:
+    if paths.cnv_dir is not None and paths.ctd_root is not None:
         total += (
             _stage1.run(
                 paths.cnv_dir,
-                paths.nc_dir,
+                paths.ctd_root,
                 force=force,
                 dry_run=dry_run,
                 cast_tags=cast_tags,
@@ -112,11 +165,11 @@ def _run_stage1(
             )
             or 0
         )
-    if paths.ladcp_dir is not None and paths.ladcp_nc_dir is not None:
+    if paths.ladcp_dir is not None and paths.ladcp_root is not None:
         total += (
             _ladcp.run_convert(
                 paths.ladcp_dir,
-                paths.ladcp_nc_dir,
+                paths.ladcp_root,
                 force=force,
                 dry_run=dry_run,
                 cast_tags=cast_tags,
@@ -136,13 +189,13 @@ def _run_stage2(
     **kw: object,
 ) -> int:
     """Apply soak/deck flagging to per-cast CTD netCDF (LADCP has no stage 2)."""
-    if paths.nc_dir is None:
+    if paths.ctd_root is None:
         return 0
     # stage2.run filters kw to its own accepted keys, so forwarding the full
     # tuning bag is safe here.
     return (
         _stage2.run(
-            paths.nc_dir,
+            paths.ctd_root,
             force=force,
             dry_run=dry_run,
             cast_tags=cast_tags,
@@ -162,11 +215,11 @@ def _run_stage3(
     **_kw: object,
 ) -> int:
     """Apply QC + calibration to per-cast CTD netCDF (LADCP has no stage 3)."""
-    if paths.nc_dir is None:
+    if paths.ctd_root is None:
         return 0
     return (
         _stage3.run(
-            paths.nc_dir,
+            paths.ctd_root,
             force=force,
             dry_run=dry_run,
             cast_tags=cast_tags,
@@ -195,11 +248,11 @@ def _run_profiles(
     ship/date from which the EXPOCODE is derived; it is threaded to both builders.
     """
     wrote = False
-    if paths.nc_dir is not None and paths.profiles_path is not None:
+    if paths.ctd_root is not None and paths.profiles_path is not None:
         wrote = (
             bool(
                 _profiles.run(
-                    paths.nc_dir,
+                    paths.ctd_root,
                     paths.profiles_path,
                     force=force,
                     dry_run=dry_run,
@@ -211,11 +264,11 @@ def _run_profiles(
             )
             or wrote
         )
-    if paths.ladcp_nc_dir is not None and paths.ladcp_profiles_path is not None:
+    if paths.ladcp_root is not None and paths.ladcp_profiles_path is not None:
         wrote = (
             bool(
                 _ladcp.run_compile(
-                    paths.ladcp_nc_dir,
+                    paths.ladcp_root,
                     paths.ladcp_profiles_path,
                     force=force,
                     dry_run=dry_run,
@@ -296,9 +349,13 @@ def process(
     stage: int | str | list[int | str] | None = None,
     *,
     cnv_dir: Path | str | None = None,
+    ctd_root: Path | str | None = None,
+    ladcp_dir: Path | str | None = None,
+    ladcp_root: Path | str | None = None,
+    # Superseded by the roots above; still accepted so an existing caller keeps
+    # working until it migrates (see .claude/stage-files-plan.md §12).
     nc_dir: Path | str | None = None,
     profiles_path: Path | str | None = None,
-    ladcp_dir: Path | str | None = None,
     ladcp_nc_dir: Path | str | None = None,
     ladcp_profiles_path: Path | str | None = None,
     force: bool = False,
@@ -320,11 +377,18 @@ def process(
         or ``"profiles"``, or a list of these.  A list runs its subset in
         :data:`STAGES` order regardless of the order requested.  ``None`` (the
         default) runs every stage in order.
-    cnv_dir, nc_dir, profiles_path:
-        CTD pipeline paths.  Present → CTD participates in the relevant stages.
-    ladcp_dir, ladcp_nc_dir, ladcp_profiles_path:
-        LADCP pipeline paths.  Present → LADCP participates in stage 1 (convert)
+    cnv_dir, ctd_root:
+        CTD pipeline paths.  ``cnv_dir`` is the external CNV input; ``ctd_root``
+        is the directory ctdcast owns, holding ``stage1/`` … ``stage3/`` and the
+        compiled product.  Present → CTD participates in the relevant stages.
+    ladcp_dir, ladcp_root:
+        LADCP equivalents.  Present → LADCP participates in stage 1 (convert)
         and ``profiles`` (compile).
+    nc_dir, profiles_path, ladcp_nc_dir, ladcp_profiles_path:
+        Superseded.  ``nc_dir``/``ladcp_nc_dir`` are read as the roots when the
+        root arguments are absent, and the two product paths as explicit
+        overrides of the derived ones.  Accepted so an existing caller keeps
+        working; prefer the roots.
     force:
         Re-run even when outputs already exist.
     dry_run:
@@ -343,15 +407,20 @@ def process(
         A list of per-stage return values when *stage* is ``None`` or a list;
         the single stage's return value for a scalar *stage*.
     """
-    paths = StagePaths(
-        cnv_dir=Path(cnv_dir) if cnv_dir is not None else None,
-        nc_dir=Path(nc_dir) if nc_dir is not None else None,
-        profiles_path=Path(profiles_path) if profiles_path is not None else None,
-        ladcp_dir=Path(ladcp_dir) if ladcp_dir is not None else None,
-        ladcp_nc_dir=Path(ladcp_nc_dir) if ladcp_nc_dir is not None else None,
-        ladcp_profiles_path=(
-            Path(ladcp_profiles_path) if ladcp_profiles_path is not None else None
-        ),
+    # Routed through `from_config` so the root-vs-legacy precedence is decided in
+    # exactly one place, whether the caller is the CLI reading YAML or Python
+    # passing kwargs.
+    paths = StagePaths.from_config(
+        {
+            "cnv_dir": cnv_dir,
+            "ctd_root": ctd_root,
+            "nc_dir": nc_dir,
+            "ladcp_dir": ladcp_dir,
+            "ladcp_root": ladcp_root,
+            "ladcp_nc": ladcp_nc_dir,
+            "profiles_nc": profiles_path,
+            "ladcp_profiles_nc": ladcp_profiles_path,
+        }
     )
 
     results = [

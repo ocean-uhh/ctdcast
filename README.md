@@ -89,7 +89,7 @@ Open `<output.dir>/index.html` in any browser.
 
 | File | Description |
 |---|---|
-| `cnv_nc/*.nc` | Per-cast netCDF files, one per CTD cast |
+| `ctd_nc/stageN/*_stageN.nc` | Per-cast netCDF files, one per CTD cast per stage |
 | `profiles.nc` | Compiled profiles on a 1 dbar grid |
 | `ctd_sections.yaml` | Section definitions — which casts belong to each transect |
 

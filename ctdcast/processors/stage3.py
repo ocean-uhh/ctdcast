@@ -16,7 +16,15 @@ from pathlib import Path
 import xarray as xr
 
 from ctdcast.analysis.derive import derive_salinity
+from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
+from ctdcast.processors.stage_layout import (
+    group_by_cast,
+    is_up_to_date,
+    matches_tags,
+    parse_stage,
+    stage_path,
+)
 from ctdcast.writers.netcdf import write as _write_nc
 
 
@@ -99,76 +107,91 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
 
 
 def run(
-    nc_dir: Path,
+    root: Path,
     *,
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
     **kw: object,
 ) -> int:
-    """Apply stage3 (QC + calibration) to NC files in *nc_dir*.
+    """Apply stage 3 (QC + calibration) across the casts under *root*.
 
-    Reads each ``*.nc`` file, applies :func:`stage3`, and writes the result
-    back in place using :func:`ctdcast.writers.netcdf.write`.  Called by
-    :func:`ctdcast.processors.process` with ``stage=3`` or
-    ``stage="stage3"``.
+    Reads each cast's **stage-2** file, applies :func:`stage3`, and writes a new
+    ``stage3/<stem>_stage3.nc`` — never in place.  Reads are strict: a cast with
+    no stage-2 file is skipped with a warning (its soak/deck flags were never
+    applied, so QC'ing it would manufacture a product whose filename lies).
+    Called by :func:`ctdcast.processors.process` with ``stage=3``.
 
     Parameters
     ----------
-    nc_dir:
-        Directory of per-cast netCDF files (read and written in place).
+    root:
+        The CTD stage root (``ctd_root``).  Stage files live under
+        ``root/stage2/`` … ``root/stage3/``.
     force:
-        Reprocess files that already carry QC flag variables.  Without
-        ``force``, already-QC'd files are skipped.
+        Rewrite the stage-3 file even when it already exists.  Without ``force``,
+        a cast whose ``stage3/<stem>_stage3.nc`` exists is skipped.
     dry_run:
-        Print which files would be processed without writing any output.
+        Print what would be processed without writing any output.
     cast_tags:
-        If given, process only files whose stem contains one of the zero-padded
-        3-digit cast numbers (e.g. ``{"042", "043"}``).
+        If given, process only casts selected by these zero-padded tags
+        (e.g. ``{"042"}``), matched on the parsed cast identity.
     **kw:
         Passed to :func:`stage3` (e.g. ``cruise_cfg``).
 
     Returns
     -------
     int
-        Number of files written (0 for dry_run).
+        Number of stage-3 files written (0 for dry_run).
 
     Raises
     ------
     FileNotFoundError
-        If *nc_dir* does not exist or is not a directory.
+        If *root* does not exist or is not a directory.
     """
-    if not nc_dir.is_dir():
-        raise FileNotFoundError(f"nc_dir not found: {nc_dir}")
+    if not root.is_dir():
+        raise FileNotFoundError(f"stage root not found: {root}")
 
     cruise_cfg: dict | None = kw.get("cruise_cfg")  # type: ignore[assignment]
 
-    nc_files = sorted(nc_dir.glob("*.nc"))
-    if cast_tags is not None:
-        nc_files = [p for p in nc_files if any(t in p.stem for t in cast_tags)]
-
+    groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
-    for nc_path in nc_files:
+    for cast_id in sorted(groups):
+        if cast_tags is not None and not matches_tags(cast_id, cast_tags):
+            continue
+        input_path = groups[cast_id].get(2)  # strict: stage 3 reads stage 2
+        if input_path is None:
+            num, suffix = cast_id
+            print(
+                f"  skip (no stage 2): cast {format_cast_id(num, suffix)}",
+                file=sys.stderr,
+            )
+            n_skipped += 1
+            continue
+        parsed = parse_stage(input_path)
+        stem = parsed[0] if parsed else input_path.stem
+        target = stage_path(root, stem, 3)
+        if not force and is_up_to_date(target, [input_path]):
+            print(f"  skip (up to date): {target.name}")
+            n_skipped += 1
+            continue
         if dry_run:
-            print(f"  [dry-run] stage 3 would process: {nc_path.name}")
+            print(
+                f"  [dry-run] stage 3 would process: {input_path.name} -> {target.name}"
+            )
             continue
         ds = None
         try:
-            ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-            already_qcd = any(v.endswith("_qc") for v in ds.data_vars)
-            if already_qcd and not force:
-                print(f"  skip (already QC'd): {nc_path.name}")
-                n_skipped += 1
-                continue
+            ds = xr.open_dataset(input_path, engine="netcdf4").load()
             ds_out = stage3(ds, cruise_cfg=cruise_cfg)
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
-            _write_nc(ds_out, nc_path)
-            print(f"  ok: {nc_path.name}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _write_nc(ds_out, target)
+            print(f"  ok: {target.name}")
             n += 1
         except Exception as exc:  # noqa: BLE001
             print(
-                f"  FAILED: {nc_path.name}  ({type(exc).__name__}: {exc})",
+                f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",
                 file=sys.stderr,
             )
             n_failed += 1

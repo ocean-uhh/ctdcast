@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ctdcast.config.global_attrs import cruise_name
+
 import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
@@ -231,7 +233,7 @@ def generate_section_page(
             dense_bathy_x = x_total - dense_bathy_x
 
     _ci = cruise_info or {}
-    cruise = _ci.get("cruise_id") or ds_all.attrs.get("cruise") or UNKNOWN_CRUISE_ID
+    cruise = cruise_name(_ci) or ds_all.attrs.get("cruise") or UNKNOWN_CRUISE_ID
     ship = (
         _ci.get("ship")
         or ds_all.attrs.get("ship")

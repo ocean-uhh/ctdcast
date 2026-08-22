@@ -16,7 +16,11 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
-from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
+from ctdcast.config.global_attrs import (
+    cruise_global_attrs,
+    cruise_name,
+    expocode_coordinate,
+)
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
     SensorOverrides,
@@ -24,7 +28,8 @@ from ctdcast.config.sensors import (
     catalog_var_name,
     resolve_sensor,
 )
-from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.identity import format_cast_id
+from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
@@ -34,7 +39,7 @@ _SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
 
 def _build_sensor_catalog(
     cast_sensor_records: list[list[dict[str, str]]],
-    cast_list: list[tuple[int, str, Path]],
+    cast_list: list[tuple[int, str, Path, int]],
     n_profiles: int,
     overrides: SensorOverrides,
 ) -> tuple[dict, dict]:
@@ -141,23 +146,21 @@ def _build_sensor_catalog(
     return catalog_vars, linkage_vars
 
 
-def _select_cast_files(nc_dir: Path) -> list[tuple[int, str, Path]]:
-    """Return sorted ``(cast_num, cast_suffix, path)`` triples, one per distinct cast.
+def _select_cast_files(root: Path) -> list[tuple[int, str, Path, int]]:
+    """Return sorted ``(cast_num, cast_suffix, path, source_stage)`` per cast.
 
-    Recognises any ``*.nc`` file whose stem contains a 3+-digit cast number.
-    The **last** such group is taken as the cast number, so cruise/leg numbers
-    earlier in the name (e.g. ``142`` in ``msm_142_1_001_1sec``) are ignored.
-    A plain cast ``NNN`` and its lettered sibling ``NNNb``/``NNN_b`` are
-    distinct events; identity is the ``(number, suffix)`` pair.  If the same
-    pair appears in more than one file, the last in sorted order wins.
+    Each cast is compiled from its **best-available** stage file — stage 3 if
+    present, else stage 2, else stage 1 — so a mixed-stage directory early in a
+    cruise compiles honestly, and ``source_stage`` records the rung each profile
+    came from.  A plain cast ``NNN`` and its lettered sibling ``NNNb`` are
+    distinct events; identity is the ``(number, suffix)`` pair.  An old flat
+    ``nc_dir`` (unsuffixed files under the root) is read as stage 1 via the shim
+    in :mod:`ctdcast.processors.stage_layout`.
     """
-    chosen: dict[tuple[int, str], Path] = {}
-    for p in sorted(nc_dir.glob("*.nc")):
-        _id = cast_id_from_name(p.stem)
-        if _id is None:
-            continue
-        chosen[_id] = p
-    return sorted((num, suffix, p) for (num, suffix), p in chosen.items())
+    return [
+        (num, suffix, path, stage)
+        for (num, suffix), path, stage in select_best_available(root)
+    ]
 
 
 def _turnaround_index(pressure: np.ndarray) -> int:
@@ -188,7 +191,7 @@ def _bin_to_grid(
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
-        if v in _SKIP_VARS:
+        if v in _SKIP_VARS or v.endswith("_qc"):
             continue
         vals = ds_half[v].values.astype(float)
         out = np.full(n, np.nan, dtype=np.float32)
@@ -278,9 +281,6 @@ def build_profiles(
     ValueError
         If no recognised cast files are found in nc_dir.
     """
-    if profiles_path.exists() and not force:
-        return False
-
     if not isinstance(dbar, int) or dbar < 1:
         raise ValueError(f"dbar must be an integer >= 1, got {dbar!r}.")
 
@@ -288,9 +288,15 @@ def build_profiles(
     if not cast_list:
         raise ValueError(f"No recognised cast netCDF files found in {nc_dir}.")
 
+    # Skip only if profiles.nc exists AND is newer than every source cast file, so
+    # a re-processed cast (a newer stage file) rebuilds the product rather than
+    # leaving a stale compile in place.
+    if not force and is_up_to_date(profiles_path, [p for _n, _s, p, _st in cast_list]):
+        return False
+
     # Pass 1: determine global pressure range for the shared grid
     p_max_global = 0.0
-    for _, _suffix, path in cast_list:
+    for _num, _suffix, path, _stage in cast_list:
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         p_max_global = max(p_max_global, float(ds["pressure"].max()))
         ds.close()
@@ -306,9 +312,15 @@ def build_profiles(
     # cruise_id wins over the per-cast file attr (OdB per-cast files carry no
     # cruise attr, which is why the compiled file used to read "UNK").
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
-    var_names = [v for v in ds0.data_vars if v not in _SKIP_VARS]
+    # Exclude QARTOD _qc flags: they are per-cast integer flags, not griddable
+    # science, so binning would average them into meaningless floats.  profiles.nc
+    # carries no _qc today; this keeps that true now that best-available can pick a
+    # stage-3 file.  (Honouring flag 4 in the product is a separate, later change.)
+    var_names = [
+        v for v in ds0.data_vars if v not in _SKIP_VARS and not v.endswith("_qc")
+    ]
     _ci = cruise_info or {}
-    _cfg_cruise = _ci.get("cruise_id")
+    _cfg_cruise = cruise_name(_ci)
     _file_cruise = ds0.attrs.get("cruise")
     if _cfg_cruise and _file_cruise and str(_cfg_cruise) != str(_file_cruise):
         warnings.warn(
@@ -340,14 +352,23 @@ def build_profiles(
     max_pressures = np.full(n_casts, np.nan, dtype=np.float32)
     lats_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
     lons_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
+    # Which processing rung each cast was compiled from (1/2/3) — casts are at
+    # mixed stages early in a cruise, so the compiled file states it per profile.
+    source_stages = np.zeros(n_casts, dtype=np.int8)
+    # The actual per-cast filename each profile came from — provenance that
+    # cast_number+suffix+stage alone cannot reconstruct, and the one thing that
+    # distinguishes casts sharing a number (a plain cast vs its lettered sibling).
+    source_files: list[str] = [""] * n_casts
 
     # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
     cast_sensor_records: list[list[dict[str, str]]] = []
 
     # Pass 2: split and bin each cast
-    for rank, (cast_num, cast_suffix, path) in enumerate(cast_list):
+    for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         cast_sensor_records.append(parse_sensor_channels(ds))
+        source_stages[rank] = source_stage
+        source_files[rank] = path.name
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -387,6 +408,8 @@ def build_profiles(
     if gebco_per_cast is None:
         gebco_per_cast = np.full(n_casts, np.nan, dtype=np.float32)
     gebco_depth_prof = np.repeat(gebco_per_cast.astype(np.float32), 2)
+    source_stage_prof = np.repeat(source_stages, 2)
+    source_file_prof = np.repeat(np.array(source_files), 2)
 
     # Build output dataset
     # N_PROF is a plain sequential integer index — cast identity is in
@@ -456,6 +479,39 @@ def build_profiles(
                 {
                     "long_name": "downcast or upcast (deprecated alias for cast_direction)",
                     "flag_values": "down up",
+                },
+            ),
+            "source_stage": (
+                ["N_PROF"],
+                source_stage_prof,
+                {
+                    "long_name": "processing stage of the source file for this profile",
+                    # int8 + flag_values/flag_meanings matches the QARTOD idiom in
+                    # processors/qc.py that writers/netcdf.py already emits.
+                    "flag_values": np.array([0, 1, 2, 3], dtype=np.int8),
+                    "flag_meanings": "unknown converted soak_flagged qc_calibrated",
+                    "comment": (
+                        "Best-available rung for this cast at compile time: "
+                        "1 = raw converted, 2 = soak/deck flagged, 3 = QC and "
+                        "calibration. 0 = unknown: an unsuffixed flat file assumed "
+                        "to be stage 1 by the compatibility shim, which does not "
+                        "state its own stage. Casts can be at mixed stages early "
+                        "in a cruise."
+                    ),
+                },
+            ),
+            "source_file": (
+                ["N_PROF"],
+                source_file_prof,
+                {
+                    "long_name": "source per-cast filename this profile was compiled from",
+                    "comment": (
+                        "Filename only (see the global 'source' attribute for the "
+                        "naming convention); the absolute root is deliberately not "
+                        "recorded, as it is a local, perishable path. Distinguishes "
+                        "casts that share a number — e.g. a plain cast and its "
+                        "lettered sibling."
+                    ),
                 },
             ),
             # long_name/units/standard_name come from VARIABLES via write(); the
@@ -529,7 +585,10 @@ def build_profiles(
     attrs = {
         "title": f"{cruise} CTD profiles — all casts, downcast + upcast",
         "cruise": cruise,
-        "source": f"{len(cast_list)} per-cast netCDF files compiled by ctdcast",
+        "source": (
+            f"{len(cast_list)} per-cast netCDF files compiled by ctdcast from "
+            "stageN/<stem>_stageN.nc (per-profile source_file records each name)"
+        ),
         "pressure_units": "dbar",
         "pressure_spacing_dbar": dbar,
         "pressure_binning": (
@@ -623,7 +682,6 @@ def run(
         print(f"profiles: wrote {profiles_path}")
     else:
         print(
-            f"profiles: skipped (already exists; use --force to overwrite):"
-            f" {profiles_path}"
+            f"profiles: skipped (up to date; use --force to rebuild): {profiles_path}"
         )
     return result

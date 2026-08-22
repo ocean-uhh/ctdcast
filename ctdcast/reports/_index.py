@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ctdcast.config.global_attrs import cruise_name
+
 import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,7 @@ from ctdcast.identity import (
     expand_cast_numbers,
     format_cast_id,
 )
+from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
@@ -203,19 +206,45 @@ def report(
     # else: cruise_info == {} → keep as-is, YAML block suppressed
 
     cast_files = _select_cast_files(nc_dir)
-    if not cast_files:
+    have_per_cast = bool(cast_files)
+    station_pages_note: str | None = None
+    if have_per_cast:
+        print(f"Found {len(cast_files)} cast files")
+        all_meta_raw = [_read_cast_meta(p) for p in cast_files]
+        all_meta = sorted(
+            [m for m in all_meta_raw if m is not None],
+            key=lambda m: m["time_start"],
+            reverse=True,
+        )
+    elif profiles_path is not None and Path(profiles_path).exists():
+        # No per-cast files: build the cruise-level (synthesis) report from the
+        # compiled profiles.nc.  Per-cast station pages read raw stage files to
+        # reveal data warts (soak, spikes, down/up mismatch) that binning averages
+        # away, so they are NOT built from the grid — and the index says so.
+        print(
+            f"No per-cast files in {nc_dir}; building cruise-level report from "
+            f"{Path(profiles_path).name} (no station pages)."
+        )
+        all_meta = sorted(
+            _read_meta_from_profiles(Path(profiles_path)),
+            key=lambda m: m["time_start"],
+            reverse=True,
+        )
+        station_pages_note = (
+            "Per-cast station pages are not shown: they require the per-cast files "
+            f"(none were found in {nc_dir}) and are deliberately not built from the "
+            f"compiled {Path(profiles_path).name}, because they exist to show "
+            "raw-scan data quality that gridding averages away. The cruise-level "
+            "pages here are compiled from the gridded profiles."
+        )
+    else:
         print(f"No cast .nc files found in {nc_dir}")
         return
-
-    print(f"Found {len(cast_files)} cast files")
-    all_meta_raw = [_read_cast_meta(p) for p in cast_files]
-    all_meta = sorted(
-        [m for m in all_meta_raw if m is not None],
-        key=lambda m: m["time_start"],
-        reverse=True,
-    )
+    if not all_meta:
+        print(f"No casts found for {nc_dir}")
+        return
     _nc_cruise = all_meta[0].get("cruise") if all_meta else None
-    cruise = cruise_info.get("cruise_id") or _nc_cruise or "UNK"
+    cruise = cruise_name(cruise_info) or _nc_cruise or "UNK"
 
     # Pre-load GEBCO for the cruise area into memory so every map figure
     # subsets from numpy arrays rather than reopening the file from disk.
@@ -263,7 +292,7 @@ def report(
                 if _note and _note not in all_cast_notes[_cn_int]:
                     all_cast_notes[_cn_int].append(str(_note))
 
-    if gen["stations"]:
+    if gen["stations"] and have_per_cast:
         _t0 = perf_counter()
         cast_num_strs = [m["cast_num_str"] for m in all_meta]
         _cast_set: set[int] | None = (
@@ -562,6 +591,7 @@ def report(
             cruise_info=cruise_info,
             timeseries_cfg=timeseries_cfg,
             inventory_datasets=inventory_datasets,
+            station_pages_note=station_pages_note,
             cfg=cfg,
         )
         print(f"  [index.html: {perf_counter() - _t0:.1f}s]")
@@ -575,6 +605,7 @@ def report(
             ladcp_dir=ladcp_dir,
             ladcp_pattern=ladcp_pattern,
             cruise_info=cruise_info,
+            no_station_pages=not have_per_cast,
             cfg=cfg,
         )
         print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
@@ -645,6 +676,7 @@ def _write_index(
     cruise_info: dict[str, Any] | None = None,
     timeseries_cfg: dict[str, Any] | None = None,
     inventory_datasets: list[dict[str, str]] | None = None,
+    station_pages_note: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write index.html with header card, stats, overview map, and stacked property panels.
@@ -836,6 +868,7 @@ def _write_index(
         "n_days": n_days,
         "report": report,
         "inventory_datasets": inventory_datasets or [],
+        "station_pages_note": station_pages_note,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
@@ -1004,9 +1037,16 @@ def _write_stations_list(
     ladcp_dir: Path | None = None,
     ladcp_pattern: str | None = None,
     cruise_info: dict[str, Any] | None = None,
+    no_station_pages: bool = False,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
-    """Write casts.html with cruise map, depth pills, and section/timeseries links."""
+    """Write casts.html with cruise map, depth pills, and section/timeseries links.
+
+    When *no_station_pages* is true (a report compiled from ``profiles.nc`` with no
+    per-cast files), the cast rows drop their link to the per-cast page — those
+    pages are not produced — and a note explains why, so no row points at a file
+    that does not exist.
+    """
     # LADCP: collect cast numbers that have a processed .mat file.
     # Use find_ladcp_file per cast so non-NNN.mat filenames (e.g. msm_142_1_NNN.mat)
     # are handled correctly.
@@ -1097,6 +1137,7 @@ def _write_stations_list(
         "duration_days": _duration_days,
         "max_depth_str": f"{_max_depth:.0f} dbar" if _max_depth else "",
         "stations": stations,
+        "no_station_pages": no_station_pages,
         "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0, cfg=cfg),
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
@@ -1437,23 +1478,15 @@ def _mtime_skip_reason(
 
 
 def _select_cast_files(nc_dir: Path) -> list[Path]:
-    """Return sorted list of cast .nc files from any cruise naming convention.
+    """Return the best-available per-cast file, sorted by cast identity.
 
-    Accepts any ``*.nc`` file whose stem contains a 3+-digit cast number,
-    optionally followed by a letter suffix (e.g. ``mixsed2_004b.nc``,
-    ``msm_142_1_001_1sec.nc``).  The **last** 3+-digit group in the stem is
-    taken as the cast number so that cruise/leg numbers earlier in the name
-    (e.g. the ``142`` in ``msm_142_1_001_1sec``) are not confused with cast
-    numbers.  Sort order is cast number then suffix (plain before ``b``).
+    Each cast contributes its highest-available stage file (stage 3 > 2 > 1) from
+    the stage layout under *nc_dir*; an old flat directory of unsuffixed files is
+    read as stage 1 via the shim in :mod:`ctdcast.processors.stage_layout`.  A
+    plain cast ``NNN`` and its lettered sibling ``NNNb`` are distinct events.
+    Sort order is cast number then suffix (plain before ``b``).
     """
-    results: list[tuple[int, str, Path]] = []
-    for p in sorted(nc_dir.glob("*.nc")):
-        _id = cast_id_from_name(p.stem)
-        if _id is None:
-            continue
-        results.append((_id[0], _id[1], p))
-    results.sort(key=lambda t: (t[0], t[1]))
-    return [t[2] for t in results]
+    return [path for _cast_id, path, _stage in select_best_available(nc_dir)]
 
 
 def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
@@ -1491,3 +1524,102 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         }
     except Exception:  # noqa: BLE001
         return None
+
+
+def _decode_str(value: Any) -> str:
+    """Return *value* as ``str``, decoding numpy/bytes scalars.
+
+    netCDF string variables round-trip as ``bytes``/``numpy.bytes_`` under some
+    writing libraries, so a plain ``str(value)`` would yield ``"b'b'"`` for a
+    ``cast_suffix`` of ``b'b'`` — silently corrupting the cast id rather than
+    failing loudly.
+    """
+    item = value.item() if hasattr(value, "item") else value
+    if isinstance(item, bytes):
+        return item.decode("utf-8", "replace")
+    return str(item)
+
+
+def _nat_safe_min(a: Any, b: Any) -> Any:
+    """Return the earlier of two ``datetime64`` values, ignoring ``NaT``.
+
+    ``NaT`` comparisons are always False, so a plain ``min()`` can return ``NaT``
+    or the wrong endpoint when one profile of a cast lacks a time.
+    """
+    if np.isnat(a):
+        return b
+    if np.isnat(b):
+        return a
+    return min(a, b)
+
+
+def _nat_safe_max(a: Any, b: Any) -> Any:
+    """Return the later of two ``datetime64`` values, ignoring ``NaT``."""
+    if np.isnat(a):
+        return b
+    if np.isnat(b):
+        return a
+    return max(a, b)
+
+
+def _read_meta_from_profiles(profiles_path: Path) -> list[dict[str, Any]]:
+    """Build the per-cast metadata list from the compiled ``profiles.nc``.
+
+    Used when no per-cast files are present.  The index, cruise map and leaflet
+    are *synthesis* views (per the design rule that station pages read per-cast
+    stage files while sections, timeseries and the index read ``profiles.nc``),
+    so their cast count, positions and times come from the compiled file — which
+    records them exactly.  This does **not** produce station pages: those exist to
+    show raw-scan warts (soak, spikes, down/up mismatch) that binning averages
+    away, so a station page from the grid would be defeated for its purpose.
+
+    Returns one row per cast (the compiled file holds a down and an up profile per
+    cast; they are merged — earliest start, latest end), matching the dict shape
+    of :func:`_read_cast_meta` so downstream synthesis code is unchanged.
+    """
+    try:
+        ds = xr.open_dataset(profiles_path, decode_timedelta=False, engine="netcdf4")
+    except Exception:  # noqa: BLE001
+        return []
+    try:
+        cruise = _decode_str(ds.attrs.get("cruise", UNKNOWN_CRUISE_ID))
+        nums = ds["cast_number"].values
+        suffixes = ds["cast_suffix"].values if "cast_suffix" in ds else [""] * len(nums)
+        lats = ds["latitude"].values
+        lons = ds["longitude"].values
+        t_start = ds["time_start"].values
+        t_end = ds["time_end"].values
+        maxp = (
+            ds["max_pressure_dbar"].values
+            if "max_pressure_dbar" in ds
+            else np.full(len(nums), np.nan)
+        )
+    except KeyError:
+        return []
+    finally:
+        ds.close()
+
+    by_cast: dict[tuple[int, str], dict[str, Any]] = {}
+    for i in range(len(nums)):
+        num, suffix = int(nums[i]), _decode_str(suffixes[i])
+        row = by_cast.get((num, suffix))
+        if row is None:
+            by_cast[(num, suffix)] = {
+                "cast_num": num,
+                "cast_suffix": suffix,
+                "cast_num_str": format_cast_id(num, suffix),
+                "path": profiles_path,
+                "lat": float(lats[i]),
+                "lon": float(lons[i]),
+                "max_depth": float(maxp[i]),
+                "time_start": t_start[i],
+                "time_end": t_end[i],
+                "raw_filename": "",
+                "cruise": cruise,
+            }
+        else:
+            # Merge the down and up profiles of one cast into a single span,
+            # tolerating a NaT time on either profile.
+            row["time_start"] = _nat_safe_min(row["time_start"], t_start[i])
+            row["time_end"] = _nat_safe_max(row["time_end"], t_end[i])
+    return list(by_cast.values())
