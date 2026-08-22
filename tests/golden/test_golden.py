@@ -6,17 +6,22 @@ PNG *validity and geometry*, not pixels, so it cannot catch a spine/colorbar/col
 drift.  This gate can: it renders every panel of the full report from the fixture
 casts, hashes each embedded PNG, and compares against a baseline.
 
-matplotlib PNG bytes are **not** reproducible across platforms (font backends differ
-between macOS/Linux/Windows), so this is a *local before/after gate*, not a CI test:
+matplotlib PNG bytes are **not** reproducible across environments (font backends
+and versions differ between macOS/Linux/Windows and even between machines), so a
+baseline is valid ONLY on the machine that wrote it.  This is therefore an
+**opt-in, single-machine before/after gate**, never part of a normal ``pytest``
+run — it stays skipped unless you explicitly ask for it, so a leftover
+``baseline.json`` can never fail the suite:
 
-    # on pre-refactor main (or the tip before you start), snapshot the baseline:
+    # snapshot before your change (writes baseline.json on THIS machine):
     GOLDEN_WRITE=1 venv/bin/python -m pytest tests/golden/ -q
 
-    # after the refactor, on the SAME machine, confirm nothing moved:
-    venv/bin/python -m pytest tests/golden/ -q
+    # compare after, on the SAME machine:
+    GOLDEN_CHECK=1 venv/bin/python -m pytest tests/golden/ -q
 
-``baseline.json`` is machine-specific and git-ignored; when it is absent the test
-skips, so CI and other checkouts are unaffected.
+``baseline.json`` is machine-specific and git-ignored.  Regenerate it yourself
+on your own machine; a baseline written elsewhere (e.g. by another contributor or
+a container) will report every panel as changed and is meaningless to you.
 """
 
 from __future__ import annotations
@@ -28,6 +33,8 @@ import os
 import re
 from pathlib import Path
 
+import matplotlib
+import matplotlib.pyplot as plt
 import pytest
 
 from ctdcast.processors.profiles import build_profiles
@@ -88,15 +95,34 @@ def _png_manifest(html_root: Path) -> dict[str, str]:
 def test_panel_pngs_match_baseline(tmp_path: Path) -> None:
     """Every embedded panel PNG is byte-identical to the committed-locally baseline."""
     write = bool(os.environ.get("GOLDEN_WRITE"))
-    # Skip *before* the expensive full-report render when there is nothing to compare
-    # against and we are not writing a baseline (the usual case in CI / fresh checkouts).
+    check = bool(os.environ.get("GOLDEN_CHECK"))
+    # Opt-in only.  matplotlib PNG bytes are not reproducible across environments
+    # (font backends, versions), so a baseline is valid ONLY on the machine that
+    # wrote it.  A plain ``pytest`` / the full suite must therefore NOT run this —
+    # a leftover or foreign baseline.json would fail spuriously on every panel.
+    # Run it deliberately, on one machine, around a change you want to pixel-check:
+    #   GOLDEN_WRITE=1 pytest tests/golden/   # snapshot before
+    #   GOLDEN_CHECK=1 pytest tests/golden/   # compare after
+    if not write and not check:
+        pytest.skip(
+            "golden gate is opt-in (PNG bytes are environment-specific): "
+            "GOLDEN_WRITE=1 to snapshot, then GOLDEN_CHECK=1 to compare, "
+            "on the same machine"
+        )
     if not write and not _BASELINE.exists():
         pytest.skip(
             "no tests/golden/baseline.json — snapshot it first with "
-            "GOLDEN_WRITE=1 pytest tests/golden/ (on the pre-refactor tree)"
+            "GOLDEN_WRITE=1 pytest tests/golden/"
         )
 
-    _render_full_report(tmp_path)
+    # Render hermetically: reset to matplotlib defaults so global rcParams warmed
+    # up by earlier tests in a full-suite run cannot shift the pixels.  All-panels
+    # drift (every hash changing at once) is the signature of that leak, not a real
+    # figure change; the report layers its own style per figure on top of these
+    # defaults, so the render is the same standalone or deep in the suite.
+    plt.close("all")
+    with matplotlib.style.context("default"):
+        _render_full_report(tmp_path)
     current = _png_manifest(tmp_path)
     assert current, "no PNGs found in the generated report"
 

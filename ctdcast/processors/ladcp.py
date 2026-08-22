@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from ctdcast.config.global_attrs import cruise_expocode, cruise_global_attrs
+from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.readers.ladcp import read_ladcp_cast
@@ -195,27 +195,24 @@ def build_ladcp_profiles(
 
     # EXPOCODE as an N_PROF coordinate (see the CTD builder for the rationale).
     ci = cruise_info or {}
-    n_profiles = ds_out.sizes.get("N_PROF", len(files))
-    expocode = cruise_expocode(ci)
-    if expocode:
-        ds_out["expocode"] = (
-            "N_PROF",
-            np.array([expocode] * n_profiles),
-            {"long_name": "Expedition code (ICES ship code + departure date)"},
-        )
+    n_profiles = ds_out.sizes["N_PROF"]
+    _expocode_coord = expocode_coordinate(ci, n_profiles)
+    if _expocode_coord is not None:
+        ds_out["expocode"] = _expocode_coord
 
     # Derived coverage + authored/provenance/people/platform globals.  The LADCP
     # product is gridded on a depth axis (metres, positive down), not pressure;
     # take the units from the depth variable's own declared units.
     _depth = np.asarray(ds_out["depth"].values, dtype="float64")
     _depth_units = str(ds_out["depth"].attrs.get("units", "m"))
+    _depth_ok = _depth.size and bool(np.isfinite(_depth).any())
     ds_out.attrs.update(
         cruise_global_attrs(
             ci,
             lats=ds_out["latitude"].values if "latitude" in ds_out else None,
             lons=ds_out["longitude"].values if "longitude" in ds_out else None,
-            vertical_min=float(np.nanmin(_depth)) if _depth.size else None,
-            vertical_max=float(np.nanmax(_depth)) if _depth.size else None,
+            vertical_min=float(np.nanmin(_depth)) if _depth_ok else None,
+            vertical_max=float(np.nanmax(_depth)) if _depth_ok else None,
             vertical_units=_depth_units,
             times=ds_out["time"].values if "time" in ds_out else None,
             source="ladcp",

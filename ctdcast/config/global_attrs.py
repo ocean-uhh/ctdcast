@@ -16,7 +16,7 @@ The one rule that decides where a fact goes: **a global attribute must be true o
 the entire file.**  Anything that varies within the file (cast lat/lon, station
 name, sensor serial) is a variable, not an attribute.
 
-Conformance target is ACDD-1.3 (with CF).  We take OG1's *vocabularies* (W08
+Conformance target is ACDD-1.3 (with CF).  We take OG1's *vocabularies* (C89
 roles, EDMO institutions, L06 platform, L08 access policy) without adopting OG1's
 glider-mission entity model.
 """
@@ -24,13 +24,20 @@ glider-mission entity model.
 from __future__ import annotations
 
 import datetime as _dt
+import warnings
 from typing import Any
 
 import numpy as np
-
+from ctdcast._version import __version__ as _CTDCAST_VERSION
 from ctdcast.config.parameters import VARIABLES
-from ctdcast.config.people import contributor_attrs
-from ctdcast.config.platforms import expocode_from_cruise_info, platform_attrs
+from ctdcast.config.platforms import (
+    PlatformError,
+    expocode_from_cruise_info,
+    parse_config_date,
+    platform_attrs,
+)
+
+from ctdcast.config.people import check_contributors, contributor_attrs
 
 #: Canonical coordinate units, taken from the single source of truth in
 #: :data:`ctdcast.config.parameters.VARIABLES` so the bound units always match
@@ -40,6 +47,181 @@ _LON_UNITS = VARIABLES["longitude"]["units"]
 
 #: CC BY 4.0 canonical URL, named as the licence that applies *on release*.
 _CC_BY_4_URL = "https://creativecommons.org/licenses/by/4.0/"
+
+#: Software provenance written into the ``history`` attribute.  URL, not a DOI —
+#: ctdcast has no minted DOI yet; swap in the DOI here if/when one exists.
+_CTDCAST_URL = "https://github.com/ocean-uhh/ctdcast"
+
+#: Canonical grouping + order of the compiled-file global attributes.  Single
+#: source of truth for both the on-disk write order (:func:`order_attrs`) and the
+#: inventory page's grouped tables (:func:`group_attrs`).  The order within each
+#: group is the canonical order; the group titles are the HTML section headings.
+ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Identity & discovery",
+        (
+            # Order per Eleanor's spec (2026-08-22); platform folded in here.
+            "title",
+            "cruise",
+            "platform",
+            "platform_name",
+            "platform_ices_code",
+            "platform_vocabulary",
+            "expocode",
+            "id",
+            "naming_authority",
+            "project",
+            "internal_mission_identifier",
+            # emitted but unlisted / future-proof — trail the spec'd order:
+            "summary",
+            "program",
+            "references",
+        ),
+    ),
+    (
+        "Spatiotemporal coverage",
+        (
+            "geospatial_lat_min",
+            "geospatial_lat_max",
+            "geospatial_lat_units",
+            "geospatial_lon_min",
+            "geospatial_lon_max",
+            "geospatial_lon_units",
+            "geospatial_vertical_min",
+            "geospatial_vertical_max",
+            "geospatial_vertical_units",
+            "geospatial_vertical_positive",
+            "time_coverage_start",
+            "time_coverage_end",
+            "time_coverage_duration",
+            "time_coverage_resolution",
+        ),
+    ),
+    (
+        "People & institutions",
+        (
+            # The cruise contributors (the science) and the contributing
+            # institutions.  The file's *creator* (who produced the file) lives in
+            # Provenance & processing, not here.
+            "contributor_name",
+            "contributor_role",
+            "contributor_role_vocabulary",
+            "contributor_id",
+            "contributor_email",
+            "contributing_institutions",
+            # `_id` (identifiers), NOT OG1's `contributing_institutions_vocabulary`
+            # -- see the note at the emit site in people.py.  Naming rule for this
+            # whole block: `*_id` identifies the thing the attribute names,
+            # `*_vocabulary` is the scheme URI the neighbouring codes come from.
+            "contributing_institutions_id",
+            "contributing_institutions_role",
+            "contributing_institutions_role_vocabulary",
+            # CF `institution` is a lossy projection of the three attributes
+            # above (their lead-role entries, joined), so it groups with them.
+            # It is the ONLY institution attribute in the file: the creator is a
+            # person identified by ORCID, with no institution of their own.  See
+            # people._cf_institution.
+            "institution",
+            "publisher_name",
+            "publisher_email",
+            "publisher_url",
+        ),
+    ),
+    (
+        "Rights & access",
+        (
+            # Order per Eleanor's spec (2026-08-22): acknowledgement first.
+            "acknowledgement",
+            "license",
+            "access_constraint",
+            "date_available",
+            "license_after_embargo",
+            "citation",
+            "doi",
+        ),
+    ),
+    (
+        "Provenance & processing",
+        (
+            "date_created",
+            "date_modified",
+            "history",
+            # The file's creator (who produced it) — distinct from the cruise
+            # contributors above.  The creator is a person, identified by
+            # `creator_id` (ORCID); no institution is attached to them, so that
+            # every institution in the file comes from `institutions:` and its
+            # CF projection.  `source` sits here as the how of the original
+            # measurement, paired with the `institution` that says where.
+            "creator_name",
+            "creator_type",
+            "creator_id",
+            "source",
+            "processing_level",
+            "data_mode",
+            "data_mode_meaning",
+            "Conventions",
+            "featureType",
+            "cdm_data_type",
+            "pressure_units",
+            "pressure_spacing_dbar",
+            "pressure_binning",
+            "cchdo_software_version",
+            "cchdo_parameters_version",
+        ),
+    ),
+)
+
+#: Title for attributes not named in :data:`ATTR_GROUPS` (never dropped).
+OTHER_GROUP = "Other"
+
+
+def canonical_attr_order() -> list[str]:
+    """Return the flat canonical order of all named global attributes."""
+    return [name for _title, names in ATTR_GROUPS for name in names]
+
+
+def order_attrs(attrs: dict[str, Any]) -> dict[str, Any]:
+    """Return *attrs* in canonical order.
+
+    Named attributes come first in :func:`canonical_attr_order`; any remaining
+    ones keep their original relative order and follow (so nothing is dropped and
+    an unrecognised attribute stays visible rather than being silently reordered
+    away).
+    """
+    rank = {name: i for i, name in enumerate(canonical_attr_order())}
+    known = [k for k in canonical_attr_order() if k in attrs]
+    extra = [k for k in attrs if k not in rank]
+    return {k: attrs[k] for k in (*known, *extra)}
+
+
+def group_attrs(attrs: dict[str, Any]) -> list[dict[str, Any]]:
+    """Split *attrs* into the canonical groups for display.
+
+    Groups appear in :data:`ATTR_GROUPS` order; within each group the attributes
+    keep the order they appear in *attrs* (i.e. the file order), so the rendered
+    page can be checked visually against the canonical spec.  Unnamed attributes
+    fall into a trailing :data:`OTHER_GROUP`.  Empty groups are omitted.
+
+    Returns
+    -------
+    list of dict
+        ``[{"title": str, "rows": [(key, value), ...]}, ...]``.  The key is
+        ``rows`` (not ``items``) so a Jinja template's ``group.rows`` does not
+        collide with the dict ``.items()`` method.
+    """
+    group_of: dict[str, str] = {
+        name: title for title, names in ATTR_GROUPS for name in names
+    }
+    buckets: dict[str, list[tuple[str, Any]]] = {title: [] for title, _ in ATTR_GROUPS}
+    buckets[OTHER_GROUP] = []
+    for key, value in attrs.items():
+        buckets[group_of.get(key, OTHER_GROUP)].append((key, value))
+    ordered_titles = [title for title, _ in ATTR_GROUPS] + [OTHER_GROUP]
+    return [
+        {"title": title, "rows": buckets[title]}
+        for title in ordered_titles
+        if buckets[title]
+    ]
 
 
 def _finite(values: Any) -> np.ndarray:
@@ -93,7 +275,14 @@ def coverage_attrs(
         attrs["geospatial_lon_max"] = float(flat_lon.max())
         attrs["geospatial_lon_units"] = _LON_UNITS
 
-    if vertical_min is not None and vertical_max is not None:
+    # Guard on finiteness, not just None: an all-NaN pressure column reduces to
+    # NaN, and writing geospatial_vertical_max=NaN is a silently invalid bound.
+    if (
+        vertical_min is not None
+        and vertical_max is not None
+        and np.isfinite(vertical_min)
+        and np.isfinite(vertical_max)
+    ):
         attrs["geospatial_vertical_min"] = float(vertical_min)
         attrs["geospatial_vertical_max"] = float(vertical_max)
         attrs["geospatial_vertical_units"] = vertical_units
@@ -103,52 +292,45 @@ def coverage_attrs(
 
     if times is not None:
         t = np.asarray(times).ravel()
-        t = t[~np.isnat(t)] if t.dtype.kind == "M" else t
-        if t.size:
-            t0 = np.datetime64(t.min(), "s")
-            t1 = np.datetime64(t.max(), "s")
-            attrs["time_coverage_start"] = str(t0) + "Z"
-            attrs["time_coverage_end"] = str(t1) + "Z"
-            days = int((t1 - t0) / np.timedelta64(1, "D"))
-            attrs["time_coverage_duration"] = f"P{days}D"
+        # Only a datetime64 array can carry NaT and be turned into a timestamp;
+        # anything else (numeric epochs, object dtype) is not a wall-clock time we
+        # can label safely, so it is skipped rather than mis-encoded.
+        if t.dtype.kind == "M":
+            t = t[~np.isnat(t)]
+            if t.size:
+                t0 = np.datetime64(t.min(), "s")
+                t1 = np.datetime64(t.max(), "s")
+                attrs["time_coverage_start"] = str(t0) + "Z"
+                attrs["time_coverage_end"] = str(t1) + "Z"
+                attrs["time_coverage_duration"] = _iso_duration(t1 - t0)
 
     return attrs
 
 
-def _with_source_contributors(
-    cruise_info: dict[str, Any], source: str | None
-) -> dict[str, Any]:
-    """Return *cruise_info* with a source's own contributors appended.
+def _iso_duration(delta: np.timedelta64) -> str:
+    """Format a timedelta64 as an ISO-8601 duration, never truncating to ``P0D``.
 
-    A per-source block — e.g. ``cruise_info["ladcp"]["contributors"]`` — credits
-    people who worked on *that product only*.  The LADCP processing personnel
-    (``GEN_Processing_personnel`` in the ``.mat``) belong on ``ladcp_profiles.nc``
-    but **not** on the CTD file, so they are appended to the cruise-level
-    contributors when the LADCP file is written and omitted otherwise.
-
-    Parameters
-    ----------
-    cruise_info : dict
-        The ``cruise_info:`` mapping.
-    source : str or None
-        The product key (``"ctd"``, ``"ladcp"``).  None or a source with no
-        sub-block returns *cruise_info* unchanged.
-
-    Returns
-    -------
-    dict
-        A shallow copy with the merged contributor list, or the original when
-        there is nothing to merge.
+    Whole days become ``P<days>D``; any remainder adds a ``T<h>H<m>M<s>S`` time
+    part, down to seconds — so a six-hour survey reads ``PT6H`` and a 45-second
+    span reads ``PT45S`` rather than the ``P0D`` that a coarser division would
+    emit for a real elapsed time.  Only a genuinely zero-length span is ``P0D``.
     """
-    if not source:
-        return cruise_info
-    block = cruise_info.get(source)
-    extra = block.get("contributors") if isinstance(block, dict) else None
-    if not extra:
-        return cruise_info
-    merged = dict(cruise_info)
-    merged["contributors"] = list(cruise_info.get("contributors") or []) + list(extra)
-    return merged
+    total_seconds = int(delta / np.timedelta64(1, "s"))
+    total_seconds = max(total_seconds, 0)
+    days, rem = divmod(total_seconds, 86_400)
+    hours, rem = divmod(rem, 3_600)
+    minutes, seconds = divmod(rem, 60)
+    date_part = f"{days}D" if days else ""
+    time_bits = (
+        (f"{hours}H" if hours else "")
+        + (f"{minutes}M" if minutes else "")
+        + (f"{seconds}S" if seconds else "")
+    )
+    time_part = f"T{time_bits}" if time_bits else ""
+    if not date_part and not time_part:
+        # Genuinely zero-length span.
+        return "P0D"
+    return "P" + date_part + time_part
 
 
 def _plus_two_years(date: _dt.date) -> _dt.date:
@@ -157,23 +339,6 @@ def _plus_two_years(date: _dt.date) -> _dt.date:
         return date.replace(year=date.year + 2)
     except ValueError:  # 29 February in a leap year
         return date.replace(year=date.year + 2, day=28)
-
-
-def _as_date(value: Any) -> _dt.date | None:
-    """Coerce a config date value (date, ISO string) to a ``date``, or None."""
-    if value is None:
-        return None
-    if isinstance(value, _dt.datetime):
-        return value.date()
-    if isinstance(value, _dt.date):
-        return value
-    text = str(value).strip()
-    for fmt in ("%Y-%m-%d", "%Y%m%d"):
-        try:
-            return _dt.datetime.strptime(text, fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 def license_attrs(cruise_info: dict[str, Any]) -> dict[str, str]:
@@ -204,9 +369,9 @@ def license_attrs(cruise_info: dict[str, Any]) -> dict[str, str]:
     """
     embargo = cruise_info.get("embargo")
     if isinstance(embargo, dict):
-        until = _as_date(embargo.get("until"))
+        until = parse_config_date(embargo.get("until"))
         if until is None:
-            end = _as_date(cruise_info.get("end_date"))
+            end = parse_config_date(cruise_info.get("end_date"))
             until = _plus_two_years(end) if end is not None else None
         until_str = until.isoformat() if until else "a date to be set"
 
@@ -248,7 +413,12 @@ def license_attrs(cruise_info: dict[str, Any]) -> dict[str, str]:
 
 
 def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
-    """Return ``date_created`` / ``date_modified`` and CF/ACDD conformance tags.
+    """Return ``date_created`` / ``date_modified``, a software ``history`` line,
+    and CF/ACDD conformance tags.
+
+    The ``history`` line records the software provenance — which ctdcast version
+    produced the file, and where to find it — so the file is traceable to its
+    generator (CF's audit-trail attribute).
 
     Parameters
     ----------
@@ -264,6 +434,7 @@ def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
     return {
         "date_created": stamp,
         "date_modified": stamp,
+        "history": f"{stamp}: created by ctdcast v{_CTDCAST_VERSION} ({_CTDCAST_URL})",
         "Conventions": "CF-1.13, ACDD-1.3",
         "featureType": "profile",
         "cdm_data_type": "Profile",
@@ -280,6 +451,7 @@ def cruise_global_attrs(
     vertical_units: str = "dbar",
     times: Any = None,
     source: str | None = None,
+    config: dict[str, Any] | None = None,
     now: _dt.datetime | None = None,
 ) -> dict[str, str]:
     """Compose the full global-attribute set for a compiled cruise file.
@@ -298,10 +470,15 @@ def cruise_global_attrs(
     lats, lons, vertical_min, vertical_max, vertical_units, times
         Passed to :func:`coverage_attrs`.
     source : str, optional
-        Product key (``"ctd"``, ``"ladcp"``).  When given, contributors from
-        ``cruise_info[source]["contributors"]`` are appended to the cruise-level
-        list, so a product's own processing personnel are credited on that file
-        alone (see :func:`_with_source_contributors`).
+        Product key (``"ctd"``, ``"ladcp"``).  Passed to
+        :func:`ctdcast.config.people.contributor_attrs`, which writes only the
+        roles each contributor scoped to this product (their ``roles: {all, ctd,
+        ladcp}`` mapping) plus their unscoped roles — so a product's own
+        processing personnel are credited on that file alone.
+    config : dict, optional
+        The whole cruise config.  Only used to read ``processing.profiles_dbar``
+        for the grid token in :func:`dataset_identity`; without it a CTD file is
+        identified at the 1 dbar default.
     now : datetime, optional
         Creation timestamp (injectable for tests).
 
@@ -314,9 +491,20 @@ def cruise_global_attrs(
     attrs: dict[str, str] = {}
 
     # Authored discovery fields, each written only when present.
-    for key in ("title", "summary", "project", "program", "cruise_id"):
+    for key in ("title", "summary", "project", "program"):
         if ci.get(key):
             attrs[key] = str(ci[key])
+
+    # `cruise` is the attribute; `cruise_id` is only the config KEY that feeds it.
+    # It used to sit in the loop above, which writes each key out under its own
+    # name -- correct for title/summary/project/program, where key and attribute
+    # coincide, and an accident for this one, which emitted a `cruise_id`
+    # attribute duplicating `cruise` in every file.  Emitting `cruise` here (not
+    # only in the CTD builder) is also what gives the LADCP product a cruise
+    # name at all: it merges per-cast attrs with drop_conflicts, and the OdB
+    # per-cast files carry no `cruise` attribute to survive that merge.
+    if ci.get("cruise_id"):
+        attrs["cruise"] = str(ci["cruise_id"])
     if ci.get("acknowledgement"):
         # Collapse the YAML folded-scalar newlines into one line.
         attrs["acknowledgement"] = " ".join(str(ci["acknowledgement"]).split())
@@ -333,27 +521,340 @@ def cruise_global_attrs(
     )
     attrs.update(provenance_attrs(now))
     attrs.update(license_attrs(ci))
-    attrs.update(contributor_attrs(_with_source_contributors(ci, source)))
 
-    slug = ci.get("platform") or ci.get("ship_slug")
-    if slug:
-        attrs.update(platform_attrs(str(slug)))
+    # Validate before writing (``ctdcast validate`` is optional, so this is the
+    # last line of defence).  Only a *contributor-level* error — a bad ORCID, a
+    # delimiter in a value, an unknown role/scope, or a bad role vocabulary — can
+    # corrupt the positional parallel strings, so only those omit the people
+    # block.  An institution or creator error does NOT: contributor_attrs skips an
+    # unresolved institution and still writes the contributors, so a valid PI list
+    # must not be dropped over an institution typo (that was the earlier bug).
+    # Any residual raise (e.g. a bad creator ORCID) is caught and omits, not
+    # crashes.  Per-product scoping is handled inside contributor_attrs via
+    # ``source`` (each person's ``roles: {ctd, ladcp, all}`` mapping).
+    people_errors, _ = check_contributors(ci)
+    contributor_fatal = [
+        e for e in people_errors if "contributors" in e or "role_vocabulary" in e
+    ]
+    if people_errors:
+        warnings.warn(
+            "cruise_info metadata has errors: " + "; ".join(people_errors),
+            stacklevel=2,
+        )
+    if not contributor_fatal:
+        try:
+            attrs.update(contributor_attrs(ci, source=source))
+        except Exception as exc:  # noqa: BLE001
+            warnings.warn(
+                f"omitting people attributes from the compiled file: {exc}",
+                stacklevel=2,
+            )
+
+    if source:
+        attrs.update(dataset_identity(ci, source, config=config))
+
+    # platform may be a slug (str) or an inline dict for a vessel not in the
+    # registry; platform_attrs handles both, so don't stringify it.
+    platform = ci.get("platform") or ci.get("ship_slug")
+    if platform:
+        attrs.update(platform_attrs(platform))
 
     # EXPOCODE is also emitted per-profile as an N_PROF coordinate (the composable,
     # CCHDO-round-trippable form).  It is repeated here as a global for discovery:
     # a ctdcast file is a single cruise, so it is constant, and both come from the
-    # one source below, so they cannot drift.
-    expocode = expocode_from_cruise_info(ci)
+    # one safe resolver below, so they cannot drift.
+    expocode = cruise_expocode(ci)
     if expocode:
         attrs["expocode"] = expocode
 
     return attrs
 
 
-def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
-    """Return the cruise EXPOCODE, or None when it cannot be derived.
+#: OceanSITES Reference Table 4 data modes.  Single letters rather than OG1's
+#: spelled-out forms because OG1's own examples are inconsistent — it shows both
+#: ``sea008_..._delayed`` and ``sp032_..._R`` — and oceanarray already uses the
+#: OceanSITES letters, so one convention serves both packages.
+DATA_MODES: dict[str, str] = {
+    "R": "real-time",
+    "P": "provisional",
+    "D": "delayed-mode",
+    "M": "mixed",
+}
 
-    Thin pass-through to :func:`ctdcast.config.platforms.expocode_from_cruise_info`
-    so callers building the ``expocode`` ``N_PROF`` coordinate have one import.
+#: Vertical grid of each compiled product, when it is fixed by the processing
+#: rather than chosen per cruise.  LADCP casts arrive on a native 10 m grid; the
+#: CTD bin comes from ``processing.profiles_dbar`` and so is looked up per run.
+_FIXED_GRID = {"ladcp": "10m"}
+
+
+def grid_token(product: str, config: dict[str, Any] | None = None) -> str | None:
+    """Return the vertical-grid token for a product, e.g. ``"2dbar"`` or ``"10m"``.
+
+    The grid belongs in the identifier because it is part of what the file *is*,
+    not a parameter of how it was made: regridding the same casts at 1 dbar and
+    at 3 dbar yields two products that a user may legitimately want to keep side
+    by side, and nothing else in the name would tell them apart.
+
+    Parameters
+    ----------
+    product : str
+        ``"ctd"`` or ``"ladcp"``.
+    config : dict, optional
+        The whole cruise config, read for ``processing.profiles_dbar``.
+
+    Returns
+    -------
+    str or None
+        A token safe for an identifier field (no ``_``), or None if unknown.
     """
-    return expocode_from_cruise_info(cruise_info or {})
+    if product in _FIXED_GRID:
+        return _FIXED_GRID[product]
+    if product == "ctd":
+        dbar = ((config or {}).get("processing") or {}).get("profiles_dbar", 1)
+        try:
+            value = float(dbar)
+        except (TypeError, ValueError):
+            return None
+        text = f"{value:g}"
+        return f"{text}dbar"
+    return None
+
+
+def dataset_identity(
+    cruise_info: dict[str, Any] | None,
+    product: str,
+    *,
+    config: dict[str, Any] | None = None,
+    grid: str | None = None,
+) -> dict[str, str]:
+    """Build the ACDD identity attributes for one compiled product.
+
+    Two identifiers, sharing a tail::
+
+        id                          29OD20260709_R_ctd_2dbar
+        internal_mission_identifier mixsed2_20260709_R_ctd_2dbar
+
+    ``id`` follows OG1's ``<platform_serial>_<start_date>_<data_mode>`` shape,
+    with the EXPOCODE standing in for platform-plus-date — it already *is* the
+    ICES ship code followed by the departure date, so repeating the date would be
+    redundant.  ``internal_mission_identifier`` is the institution's own name for
+    the cruise and carries the date explicitly, since a project short name like
+    ``mixsed2`` has none.  The product and grid then distinguish the files within
+    one cruise.
+
+    The leading ``<expocode>_ctd`` is exactly CCHDO's own file name
+    (``740H20200119_ctd.nc``), so a ctdcast identifier is a strict extension of
+    the convention ctdcast already reads.
+
+    ``_`` separates fields and must not occur inside one — the OceanSITES rule,
+    adopted so the identifier can be split back apart.
+
+    Parameters
+    ----------
+    cruise_info : dict or None
+        The ``cruise_info:`` mapping.  Reads ``data_mode``, ``naming_authority``
+        and ``internal_id``.
+    product : str
+        ``"ctd"`` or ``"ladcp"``.
+    config : dict, optional
+        The whole cruise config, for the grid lookup.
+    grid : str, optional
+        Overrides the derived grid token.
+
+    Returns
+    -------
+    dict of str to str
+        ``id``, ``naming_authority``, ``internal_mission_identifier``,
+        ``data_mode`` and ``data_mode_meaning`` — only those that can be built.
+    """
+    ci = cruise_info or {}
+    attrs: dict[str, str] = {}
+
+    mode = str(ci.get("data_mode") or "D").upper()
+    if mode not in DATA_MODES:
+        warnings.warn(
+            f"cruise_info.data_mode {mode!r} is not an OceanSITES data mode "
+            f"({sorted(DATA_MODES)}); using 'D'.",
+            stacklevel=2,
+        )
+        mode = "D"
+    attrs["data_mode"] = mode
+    attrs["data_mode_meaning"] = DATA_MODES[mode]
+
+    token = grid if grid is not None else grid_token(product, config)
+    tail = [mode, product] + ([token] if token else [])
+
+    # A placeholder EXPOCODE is fine as an attribute -- it states what is missing
+    # -- but not in `id`, which ACDD ties to the file name: braces are hostile in
+    # a shell and an `id` that changes once the date is filled in would break the
+    # promise that the identifier and the file on disk do not drift.
+    expocode = cruise_expocode(ci)
+    if expocode and not is_placeholder_expocode(expocode):
+        attrs["id"] = "_".join([expocode, *tail])
+
+    internal = ci.get("internal_id")
+    start = ci.get("start_date")
+    if internal:
+        parts = [str(internal)]
+        if start is not None:
+            parts.append(_compact_date(start))
+        attrs["internal_mission_identifier"] = "_".join([*parts, *tail])
+
+    authority = ci.get("naming_authority")
+    if authority:
+        attrs["naming_authority"] = str(authority)
+
+    return attrs
+
+
+def dataset_filename(
+    cruise_info: dict[str, Any] | None,
+    product: str,
+    *,
+    config: dict[str, Any] | None = None,
+    grid: str | None = None,
+) -> str | None:
+    """Return ``<id>.nc`` for a compiled product, or None when no ``id`` exists.
+
+    ACDD notes that the ``id`` may be the file name without its suffix, which is
+    what this enforces, so the file on disk and the identifier inside it cannot
+    drift apart.
+    """
+    identity = dataset_identity(cruise_info, product, config=config, grid=grid)
+    ident = identity.get("id")
+    return f"{ident}.nc" if ident else None
+
+
+def _compact_date(value: Any) -> str:
+    """Return ``YYYYMMDD`` for a date, datetime or ISO-ish string."""
+    if isinstance(value, (_dt.date, _dt.datetime)):
+        return value.strftime("%Y%m%d")
+    return str(value).replace("-", "")[:8]
+
+
+#: Stand-ins for the two halves of an EXPOCODE when config cannot supply them.
+#: Braces are not legal in an EXPOCODE (it is ICES code + ``YYYYMMDD``, both
+#: alphanumeric), so a placeholder can never be mistaken for a real code by a
+#: reader or a regex — the same reasoning as ``UNKCRUISE`` in
+#: :mod:`ctdcast.config.parameters`: conspicuous beats plausible.
+#: [Contract — a file carrying one of these is provisional. Do not publish it.]
+EXPOCODE_PLACEHOLDER_ICES = "{ICES}"
+EXPOCODE_PLACEHOLDER_DATE = "{YYYYMMDD}"
+
+
+def is_placeholder_expocode(expocode: str | None) -> bool:
+    """True when *expocode* carries a placeholder for a missing config value."""
+    return bool(expocode) and "{" in str(expocode)
+
+
+def cruise_expocode(cruise_info: dict[str, Any] | None) -> str | None:
+    """Return the cruise EXPOCODE, with placeholders for what config omits.
+
+    A *present* but unusable slug (ambiguous, no ICES code, or a forbidden code)
+    is a config error that :func:`ctdcast.config.platforms.derive_expocode` raises
+    on — but at build time a wrong EXPOCODE is worse than none and a hard crash
+    mid-pipeline is worse still, so here it is downgraded to a loud warning and
+    ``None``.  The resolver keeps its strict raising contract for direct callers;
+    this is the lenient wrapper the file builders use.
+
+    A *missing* ``platform``/``ship_slug`` or ``start_date`` is different: the
+    cruise is mid-processing and has simply not settled that value yet.  Returning
+    ``None`` there meant the compiled file carried no cruise identifier at all,
+    and — because the departure date appears nowhere else (see the CCHDO
+    exemplar, which encodes it only inside the EXPOCODE) — the fact was lost
+    rather than merely deferred.  So the shape is kept and the missing half is
+    filled with a conspicuous placeholder::
+
+        29OD{YYYYMMDD}      departure date not yet set
+        {ICES}20260709      ship not yet resolved to an ICES code
+        {ICES}{YYYYMMDD}    neither
+
+    The file can therefore be generated and read, and states plainly which fact
+    is absent.  Callers that must not see a placeholder — the filename builder
+    above all — test with :func:`is_placeholder_expocode`.
+
+    Parameters
+    ----------
+    cruise_info : dict or None
+        The ``cruise_info:`` mapping.
+
+    Returns
+    -------
+    str or None
+        The EXPOCODE, possibly containing placeholders; ``None`` only when the
+        slug is present but unusable.
+    """
+    ci = cruise_info or {}
+    platform = ci.get("platform") or ci.get("ship_slug")
+    start_date = ci.get("start_date")
+
+    try:
+        if platform and start_date:
+            return expocode_from_cruise_info(ci)
+        # One or both halves are absent: build the shape by hand rather than
+        # asking the resolver, which correctly refuses an incomplete config.
+        if platform:
+            head = expocode_from_cruise_info({**ci, "start_date": "1900-01-01"})
+            head = head[: -len("19000101")]
+        else:
+            head = EXPOCODE_PLACEHOLDER_ICES
+    except PlatformError as exc:
+        warnings.warn(
+            f"cannot derive EXPOCODE; omitting it from the compiled file: {exc}",
+            stacklevel=2,
+        )
+        return None
+
+    tail = _compact_date(start_date) if start_date else EXPOCODE_PLACEHOLDER_DATE
+    missing = [
+        n
+        for n, v in (("platform", platform), ("start_date", start_date))
+        if not v
+    ]
+    placeholder = f"{head}{tail}"
+    warnings.warn(
+        f"cruise_info.{' and '.join(missing)} not set; writing the placeholder "
+        f"EXPOCODE {placeholder!r} so the file can still be built. It is not a "
+        f"valid EXPOCODE — do not publish this file, and the compiled product "
+        f"keeps its fallback name rather than being named after it.",
+        stacklevel=2,
+    )
+    return placeholder
+
+
+def expocode_coordinate(
+    cruise_info: dict[str, Any] | None, n_profiles: int
+) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
+    """Return the ``(dims, data, attrs)`` triple for the ``expocode`` coordinate.
+
+    CCHDO stores the EXPOCODE per profile (a file may hold more than one cruise),
+    so both compiled builders emit it as an ``N_PROF`` variable.  This is the one
+    place that builds it, so the CTD and LADCP files describe it identically.
+    Returns ``None`` when no EXPOCODE can be derived.
+
+    Parameters
+    ----------
+    cruise_info : dict or None
+        The ``cruise_info:`` mapping.
+    n_profiles : int
+        Length of the ``N_PROF`` dimension to broadcast the constant value over.
+
+    Returns
+    -------
+    tuple or None
+        ``(["N_PROF"], data, attrs)`` ready to assign to a variable, or ``None``.
+    """
+    expocode = cruise_expocode(cruise_info)
+    if not expocode:
+        return None
+    return (
+        ["N_PROF"],
+        np.array([expocode] * n_profiles),
+        {
+            "long_name": "Expedition code (ICES ship code + departure date)",
+            "comment": (
+                "Derived as <ICES platform code><YYYYMMDD departure>; "
+                "CCHDO/GO-SHIP EXPOCODE convention."
+            ),
+        },
+    )

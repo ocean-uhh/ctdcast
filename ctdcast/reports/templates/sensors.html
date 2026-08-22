@@ -16,6 +16,16 @@ td.was { color: var(--muted); }
 .scroll-x { overflow-x: auto; }
 table.config td.range { white-space: nowrap; font-weight: 600; }
 table.config th { white-space: nowrap; }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { background: var(--muted); cursor: default; }
 </style>
 {% endblock %}
 
@@ -30,6 +40,7 @@ table.config th { white-space: nowrap; }
 {% endblock %}
 
 {% block content %}
+{{ m.inventory_pills(inventory_pills, current_href) }}
 {% if meta.error %}
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% elif not meta.has_catalog %}

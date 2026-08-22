@@ -1,23 +1,37 @@
 # Institutions — short slug → name and EDMO identifier
 #
 # [Contract — the EDMO URI is published in the netCDF as
-#  contributing_institutions_vocabulary. A wrong code attributes the work to
+#  contributing_institutions_id. A wrong code attributes the work to
 #  another organisation.]
 #
-# Keyed on a short ASCII slug, referenced from config.yaml:
+# Keyed on a short ASCII slug, referenced from config.yaml as its own list --
+# NOT hung off a person (institutions and people have no positional relationship,
+# and `institution:` on a contributor is a validation error):
 #
-#   contributors:
-#     - name: "..."
-#       institution: uhh
+#   cruise_info:
+#     institutions:
+#       - uhh
+#       - slug: ulpgc
+#         role: CONLEAD
 #
 # EDMO is the European Directory of Marine Organisations; the record URL form is
-# https://edmo.seadatanet.org/report/<code>, which is one of the two forms OG1
-# names for contributing_institutions_vocabulary (the other being ROR).
+# https://edmo.seadatanet.org/report/<code>; ROR (https://ror.org/<id>) is the
+# other accepted form. Both are written to contributing_institutions_id.
 #
 # `name_variants` exists so a name found in an external file can be matched back
 # to a slug. It mirrors the structure of AMOCatlas's
-# amocatlas/metadata/institution_registry.yml, which is keyed on the EDMO code
-# instead; the two convert trivially if the registries are ever merged.
+# amocatlas/metadata/institution_registry.yml (30 institutions, keyed on the EDMO
+# code rather than a slug, with the same name_variants/country/id_url fields);
+# the two convert trivially, so that file is the natural place to seed from.
+#
+# An entry may also carry a default `role:` (a NERC C59 code -- CONLEAD, CONMEM,
+# DATM, FUND), used when a cruise config names the slug without one. Omitted
+# means CONMEM.
+#
+# THIS FILE IS PACKAGE DATA. A user who installed ctdcast from PyPI cannot edit
+# it usefully -- it lives in site-packages and is replaced on upgrade. Two other
+# registries are merged over it, and a cruise config can also define an
+# institution inline; see ctdcast.config.people.institution_registry_paths.
 
 schema_version: 1
 
@@ -48,9 +62,9 @@ institutions:
       - "University of Las Palmas de Gran Canaria"
       - "ULPGC"
     note: >
-      UNCONFIRMED — chosen from the EDMO register by institution name, not from
-      the person's own statement of affiliation. Other ULPGC records exist:
-      1398 Faculty of Marine Science, 1694 Chemistry. Confirm before publishing.
+      EDMO 342 confirmed 2026-08-22. Other ULPGC records exist (1398 Faculty of
+      Marine Science, 1694 Chemistry) — use those instead if a person's own unit
+      differs.
 
   ub:
     name: "Universitat de Barcelona, Department of Earth and Ocean Dynamics"
@@ -62,4 +76,4 @@ institutions:
       - "University of Barcelona"
       - "UB"
     note: >
-      UNCONFIRMED — as above. Confirm the department with each person.
+      EDMO 5506 confirmed 2026-08-22.

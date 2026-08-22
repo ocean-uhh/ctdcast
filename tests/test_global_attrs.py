@@ -11,12 +11,19 @@ from __future__ import annotations
 import datetime
 
 import numpy as np
+import pytest
 
 from ctdcast.config.global_attrs import (
+    ATTR_GROUPS,
+    OTHER_GROUP,
+    canonical_attr_order,
     coverage_attrs,
     cruise_expocode,
     cruise_global_attrs,
+    expocode_coordinate,
+    group_attrs,
     license_attrs,
+    order_attrs,
     provenance_attrs,
 )
 
@@ -57,7 +64,36 @@ def test_time_coverage_and_iso_duration():
     times = np.array(["2026-07-09T10:00", "2026-07-31T18:00"], dtype="datetime64[ns]")
     a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
     assert a["time_coverage_start"].endswith("Z")
-    assert a["time_coverage_duration"] == "P22D"
+    # 22 days 8 hours — the partial day is kept, not truncated to P22D.
+    assert a["time_coverage_duration"] == "P22DT8H"
+
+
+def test_sub_day_span_is_not_p0d():
+    """A six-hour survey must not report a zero-length ISO duration."""
+    times = np.array(["2026-07-09T10:00", "2026-07-09T16:00"], dtype="datetime64[ns]")
+    a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
+    assert a["time_coverage_duration"] == "PT6H"
+
+
+def test_whole_day_span_has_no_time_part():
+    times = np.array(["2026-07-09T00:00", "2026-07-12T00:00"], dtype="datetime64[ns]")
+    a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
+    assert a["time_coverage_duration"] == "P3D"
+
+
+def test_all_nan_vertical_bounds_are_omitted():
+    """An all-NaN pressure column must not write a NaN geospatial bound."""
+    a = coverage_attrs(
+        lats=[1.0], lons=[2.0], vertical_min=float("nan"), vertical_max=float("nan")
+    )
+    assert "geospatial_vertical_min" not in a
+    assert "geospatial_vertical_max" not in a
+
+
+def test_non_datetime_times_are_skipped_not_misencoded():
+    """A numeric epoch array is not a wall-clock time; skip rather than mislabel."""
+    a = coverage_attrs(lats=[1.0], lons=[2.0], times=np.array([1_000_000, 2_000_000]))
+    assert "time_coverage_start" not in a
 
 
 def test_all_nan_positions_yield_no_geospatial():
@@ -138,7 +174,8 @@ def test_cruise_global_attrs_composes_all_layers():
     a = cruise_global_attrs(
         ci, lats=[65.1, 65.9], lons=[-30.0, -29.5], vertical_min=1.0, vertical_max=100.0
     )
-    assert a["cruise_id"] == "odb2026"
+    assert a["cruise"] == "odb2026"
+    assert "cruise_id" not in a  # the config key's name, never an attribute
     assert a["project"] == "AEI-DFG DS-MIXSED"
     assert a["platform_name"] == "Odón de Buen"
     assert a["contributor_name"] == "E F-W"
@@ -162,35 +199,181 @@ def test_empty_cruise_info_still_gives_derived_and_provenance():
     assert "expocode" not in a
 
 
-# --- per-source (LADCP-only) contributors ----------------------------------
+# --- role-scoped contributors (per compiled product) -----------------------
 
 
-def _ci_with_ladcp_processors():
+def _ci_scoped():
+    """One contributors list; roles scoped per product (the C89 roles model).
+
+    A role under ``all`` (or a bare ``roles: [...]``) lands on every file; a role
+    under ``ctd``/``ladcp`` lands only on that product's compiled file.
+    """
     return {
-        "contributors": [{"name": "A PI", "role": "PI"}],
-        "ladcp": {
-            "contributors": [
-                {"name": "Angel Ruiz-Angulo", "role": "Data scientist"},
-                {"name": "Mara Navarro Buigues", "role": "Data scientist"},
-            ]
-        },
+        "contributors": [
+            {"name": "A PI", "roles": ["PI"]},  # both files
+            {"name": "LADCP Person", "roles": {"ladcp": ["DI"]}},  # ladcp only
+            {"name": "CTD Person", "roles": {"ctd": ["MC"]}},  # ctd only
+        ]
     }
 
 
-def test_ladcp_source_appends_its_own_contributors():
-    """LADCP processors are credited on the LADCP file, after the cruise PIs."""
-    a = cruise_global_attrs(_ci_with_ladcp_processors(), source="ladcp")
-    names = a["contributor_name"].split("; ")
-    assert names == ["A PI", "Angel Ruiz-Angulo", "Mara Navarro Buigues"]
-    assert a["contributor_role"].split("; ") == ["PI", "Data scientist", "Data scientist"]
+def test_ladcp_source_includes_only_its_scoped_contributors():
+    a = cruise_global_attrs(_ci_scoped(), source="ladcp")
+    assert a["contributor_name"].split("; ") == ["A PI", "LADCP Person"]
+    # roles are written as the C89 prefLabels, not the config codes
+    assert a["contributor_role"].split("; ") == [
+        "Project principal investigator",
+        "Cruise dataset principal investigator",
+    ]
 
 
-def test_ctd_source_excludes_ladcp_contributors():
-    """The same config yields only the cruise PIs on the CTD file."""
-    a = cruise_global_attrs(_ci_with_ladcp_processors(), source="ctd")
-    assert a["contributor_name"] == "A PI"
+def test_ctd_source_includes_only_its_scoped_contributors():
+    a = cruise_global_attrs(_ci_scoped(), source="ctd")
+    assert a["contributor_name"].split("; ") == ["A PI", "CTD Person"]
 
 
-def test_no_source_leaves_contributors_untouched():
-    a = cruise_global_attrs(_ci_with_ladcp_processors())
-    assert a["contributor_name"] == "A PI"
+def test_no_source_is_the_union_of_scopes():
+    a = cruise_global_attrs(_ci_scoped())
+    assert a["contributor_name"].split("; ") == ["A PI", "LADCP Person", "CTD Person"]
+
+
+# --- build-time robustness: warn and omit rather than crash -----------------
+
+
+def test_malformed_orcid_warns_and_omits_people_not_crash():
+    """A typo'd ORCID must not abort the whole compile (was an uncaught ValueError)."""
+    ci = {"contributors": [{"name": "X", "role": "PI", "orcid": "not-an-orcid"}]}
+    with pytest.warns(UserWarning, match="has errors"):
+        a = cruise_global_attrs(ci, lats=[1.0], lons=[2.0])
+    assert "contributor_name" not in a
+    # the rest of the file's metadata is still produced
+    assert "date_created" in a
+
+
+def test_unknown_role_warns_and_omits_people_not_crash():
+    """A role outside the chosen vocabulary omits the people with a warning."""
+    ci = {"contributors": [{"name": "X", "roles": ["NotARole"]}]}
+    with pytest.warns(UserWarning, match="has errors"):
+        a = cruise_global_attrs(ci, source="ladcp")
+    assert "contributor_name" not in a
+
+
+def test_delimiter_in_name_warns_and_omits_people():
+    """A comma in a name would split one person into two — caught, people omitted."""
+    ci = {"contributors": [{"name": "Bad, Name", "roles": ["PI"]}]}
+    with pytest.warns(UserWarning, match="has errors"):
+        a = cruise_global_attrs(ci, source="ctd")
+    assert "contributor_name" not in a
+
+
+def test_ambiguous_platform_warns_and_omits_expocode_not_crash():
+    """A registered-but-unusable slug must not abort the build."""
+    ci = {"platform": "meteor", "start_date": "2026-01-13"}  # ambiguous slug
+    with pytest.warns(UserWarning, match="EXPOCODE"):
+        a = cruise_global_attrs(ci, lats=[1.0], lons=[2.0])
+    assert "expocode" not in a
+    assert "date_created" in a
+
+
+def test_expocode_coordinate_shape_and_none():
+    ci = {"platform": "odb", "start_date": "2026-07-09"}
+    dims, data, meta = expocode_coordinate(ci, 4)
+    assert dims == ["N_PROF"]
+    assert list(data) == ["29OD20260709"] * 4
+    assert "long_name" in meta
+    assert expocode_coordinate({}, 4) is None
+
+
+# --- canonical order + grouping --------------------------------------------
+
+
+def test_canonical_order_has_no_duplicate_attrs():
+    """No attribute may appear in two groups, or write order is ambiguous."""
+    order = canonical_attr_order()
+    assert len(order) == len(set(order)), "duplicate attr name in ATTR_GROUPS"
+
+
+def test_order_attrs_puts_known_first_in_canonical_order():
+    # deliberately scrambled input
+    attrs = {
+        "Conventions": "CF-1.13, ACDD-1.3",
+        "geospatial_lat_min": 1.0,
+        "title": "T",
+        "platform": "research vessel",
+    }
+    ordered = list(order_attrs(attrs))
+    # title (Identity) < platform (Platform) < geospatial (Coverage) < Conventions (Provenance)
+    assert ordered == ["title", "platform", "geospatial_lat_min", "Conventions"]
+
+
+def test_order_attrs_keeps_unknowns_at_end_in_original_order():
+    attrs = {"zzz_custom": 1, "title": "T", "aaa_custom": 2}
+    ordered = list(order_attrs(attrs))
+    assert ordered[0] == "title"
+    assert ordered[1:] == ["zzz_custom", "aaa_custom"]  # unknowns keep input order
+
+
+def test_group_attrs_orders_groups_and_omits_empty():
+    attrs = {"title": "T", "license": "x", "Conventions": "CF"}
+    groups = group_attrs(attrs)
+    titles = [g["title"] for g in groups]
+    assert titles == [
+        "Identity & discovery",
+        "Rights & access",
+        "Provenance & processing",
+    ]
+    # Platform / Coverage / People groups are absent (empty)
+    assert "Platform" not in titles
+
+
+def test_group_attrs_preserves_file_order_within_a_group():
+    # two Identity attrs given in reverse-of-canonical order stay in file order
+    attrs = {"project": "P", "title": "T"}
+    (identity,) = group_attrs(attrs)
+    assert [k for k, _ in identity["rows"]] == ["project", "title"]
+
+
+def test_group_attrs_leftovers_go_to_other_group_last():
+    attrs = {"title": "T", "some_future_attr": "x"}
+    groups = group_attrs(attrs)
+    assert groups[-1]["title"] == OTHER_GROUP
+    assert [k for k, _ in groups[-1]["rows"]] == ["some_future_attr"]
+
+
+def test_group_titles_match_attr_groups_spec():
+    spec_titles = [t for t, _ in ATTR_GROUPS]
+    assert spec_titles[0] == "Identity & discovery"
+    assert "People & institutions" in spec_titles
+
+
+def test_institution_groups_with_the_institutions_not_the_creator():
+    """`institution` describes the data's origin, so it belongs beside the list
+    it projects — and it is the only institution attribute left."""
+    order = [a for _, attrs in ATTR_GROUPS for a in attrs]
+    i = order.index("institution")
+    assert order.index("contributing_institutions") < i
+    assert i < order.index("creator_name")
+    for retired in (
+        "institution_id",
+        "creator_institution",
+        "creator_institution_id",
+        "contributing_institutions_vocabulary",
+    ):
+        assert retired not in order
+
+
+def test_cruise_id_config_key_becomes_the_cruise_attribute():
+    """The LADCP builder sets no `cruise` of its own and merges per-cast attrs
+    with drop_conflicts, so this is the only thing naming the cruise in
+    ladcp_profiles.nc when the per-cast files carry no `cruise` attribute."""
+    a = cruise_global_attrs({"cruise_id": "odb2026"}, source="ladcp")
+    assert a["cruise"] == "odb2026"
+    assert "cruise_id" not in a
+    order = [x for _, attrs in ATTR_GROUPS for x in attrs]
+    assert "cruise" in order and "cruise_id" not in order
+
+
+def test_no_cruise_id_leaves_the_file_attribute_to_win():
+    """Absent from config, nothing is written, so the per-cast file's own
+    `cruise` attribute survives instead of being overwritten with a blank."""
+    assert "cruise" not in cruise_global_attrs({})

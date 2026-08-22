@@ -20,6 +20,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
+from ctdcast.config.global_attrs import group_attrs
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
@@ -143,7 +144,13 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             )
             if source and source != name:
                 rename_map[str(source)] = str(name)
-        global_attrs = {str(k): str(v)[:200] for k, v in ds.attrs.items()}
+        # Show global attributes in full: this page exists to display the file's
+        # provenance, and people/licence/institution strings routinely exceed a
+        # couple hundred characters — truncating them hides the very metadata the
+        # inventory is meant to surface.  The HTML wraps long values.  Values are
+        # shown in the file's own order, split into the canonical groups so the
+        # page can be checked against the specification.
+        global_attrs = {str(k): str(v) for k, v in ds.attrs.items()}
         return {
             "filename": nc_path.name,
             "filesize": nc_path.stat().st_size if nc_path.exists() else 0,
@@ -155,6 +162,7 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "sensor_channel": sensor_channel,
             "rename_map": dict(sorted(rename_map.items(), key=lambda kv: kv[1])),
             "global_attrs": global_attrs,
+            "global_attr_groups": group_attrs(global_attrs),
         }
 
 
@@ -166,6 +174,8 @@ def generate_dataset_page(
     cruise: str = "",
     nav_prefix: str = "",
     show_nav: bool = False,
+    inventory_pills: list[dict[str, str]] | None = None,
+    current_href: str = "",
 ) -> Path:
     """Render the netCDF inventory of *nc_path* to a self-contained HTML *out_path*.
 
@@ -186,6 +196,11 @@ def generate_dataset_page(
         Render the full report page-nav when ``True`` (the in-report cruise
         inventory page).  Standalone inspections leave it ``False`` so the nav's
         report-relative links are not shown for an arbitrary file.
+    inventory_pills:
+        ``{"label", "href"}`` entries for the compiled-file inventory pages
+        (profiles/ladcp/sensors), rendered as a cross-navigation pill bar.
+    current_href:
+        The href of this page, rendered as the non-link active pill.
 
     Returns
     -------
@@ -202,6 +217,8 @@ def generate_dataset_page(
         nav_prefix=nav_prefix,
         nav_current="inventory",
         show_nav=show_nav,
+        inventory_pills=inventory_pills or [],
+        current_href=current_href,
         masthead_bg=ROLE_ACCENT.get("component", ""),
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),

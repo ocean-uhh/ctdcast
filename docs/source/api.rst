@@ -62,6 +62,28 @@ Plotting parameters
    :members:
    :undoc-members:
 
+File-level metadata
+-------------------
+
+Cruise-level metadata written into the compiled files as ACDD-1.3 global
+attributes.  :mod:`~ctdcast.config.global_attrs` composes the derived coverage
+bounds, provenance, embargo licence, people, and platform attributes;
+:mod:`~ctdcast.config.platforms` resolves the vessel registry and derives the
+EXPOCODE; :mod:`~ctdcast.config.people` turns the structured ``contributors``
+list into the semicolon-delimited ACDD strings.
+
+.. automodule:: ctdcast.config.global_attrs
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.config.platforms
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.config.people
+   :members:
+   :undoc-members:
+
 ----
 
 Section manifest

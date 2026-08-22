@@ -106,41 +106,81 @@ def resolve_platform(slug: str) -> dict[str, Any]:
     return registry[key]
 
 
+def parse_config_date(value: Any) -> _dt.date | None:
+    """Coerce a config date value to a :class:`datetime.date`, or ``None``.
+
+    Accepts a ``date``/``datetime`` (YAML parses a bare ``2026-03-27`` as a
+    ``date``), an ISO ``"YYYY-MM-DD"`` string, or a compact ``"YYYYMMDD"`` string.
+    Returns ``None`` for ``None`` or any value it cannot parse, leaving the
+    caller to decide whether that is an error.  Shared by the EXPOCODE derivation
+    and the embargo-date logic so both accept exactly the same date forms.
+    """
+    if value is None:
+        return None
+    if isinstance(value, _dt.datetime):
+        return value.date()
+    if isinstance(value, _dt.date):
+        return value
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            return _dt.datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 def _departure_yyyymmdd(start_date: str | _dt.date) -> str:
     """Normalise a departure date to a ``YYYYMMDD`` string.
-
-    Accepts a ``datetime.date`` (YAML parses ``2026-03-27`` as one), an ISO
-    ``"YYYY-MM-DD"`` string, or an already-compact ``"YYYYMMDD"`` string.
 
     Raises
     ------
     PlatformError
         If the value cannot be parsed as a calendar date.
     """
-    if isinstance(start_date, _dt.datetime):
-        return start_date.strftime("%Y%m%d")
-    if isinstance(start_date, _dt.date):
-        return start_date.strftime("%Y%m%d")
-    text = str(start_date).strip()
-    for fmt in ("%Y-%m-%d", "%Y%m%d"):
-        try:
-            return _dt.datetime.strptime(text, fmt).strftime("%Y%m%d")
-        except ValueError:
-            continue
-    raise PlatformError(
-        f"cannot parse departure date {start_date!r}; expected YYYY-MM-DD"
-    )
+    parsed = parse_config_date(start_date)
+    if parsed is None:
+        raise PlatformError(
+            f"cannot parse departure date {start_date!r}; expected YYYY-MM-DD"
+        )
+    return parsed.strftime("%Y%m%d")
 
 
-def derive_expocode(slug: str, start_date: str | _dt.date) -> str:
+def resolve_platform_spec(platform: str | dict[str, Any]) -> dict[str, Any]:
+    """Resolve a config platform value (a registry slug **or** an inline dict).
+
+    A **string** is a slug looked up in ``platforms.yaml``.  A **mapping** is used
+    inline — for a vessel not (yet) in the shared registry — and should carry at
+    least ``ices_code`` (for the EXPOCODE) and ``name``, plus optional ``platform``
+    (L06 category) and ``platform_vocabulary``.  This mirrors the inline
+    institution form, so a user can name a new vessel in their own config without
+    first editing ``platforms.yaml``.
+
+    Parameters
+    ----------
+    platform : str or dict
+        A ``platforms.yaml`` slug, or an inline platform record.
+
+    Returns
+    -------
+    dict
+        The platform record (registry entry, or the inline mapping as given).
+    """
+    if isinstance(platform, dict):
+        return dict(platform)
+    return resolve_platform(str(platform))
+
+
+def derive_expocode(platform: str | dict[str, Any], start_date: str | _dt.date) -> str:
     """Derive the CCHDO/GO-SHIP EXPOCODE for a cruise.
 
     ``EXPOCODE = <ICES ship code> + <departure date YYYYMMDD>``.
 
     Parameters
     ----------
-    slug : str
-        ``cruise_info.ship_slug`` — resolved against ``platforms.yaml``.
+    platform : str or dict
+        A ``platforms.yaml`` slug, or an inline platform record carrying at least
+        ``ices_code`` (see :func:`resolve_platform_spec`).
     start_date : str or datetime.date
         The departure date from port (``cruise_info.start_date``).  **Not** the
         first cast; the two can differ (MSM142 departs 2026-03-27, first cast
@@ -154,23 +194,28 @@ def derive_expocode(slug: str, start_date: str | _dt.date) -> str:
     Raises
     ------
     PlatformError
-        If the slug is unknown/ambiguous, the platform has no ICES code, the
+        If a slug is unknown/ambiguous, the platform has no ICES code, the
         derived code is in ``forbidden_codes``, or *start_date* is unparseable.
     """
-    record = resolve_platform(slug)
+    record = resolve_platform_spec(platform)
+    label = (
+        platform if isinstance(platform, str) else (record.get("name") or "<inline>")
+    )
     ices_code = record.get("ices_code")
     if not ices_code:
         raise PlatformError(
-            f"platform {slug!r} has no ices_code in platforms.yaml, so no EXPOCODE "
-            f"can be derived; request a code from ICES before publishing"
+            f"platform {label!r} has no ices_code, so no EXPOCODE can be derived; "
+            f"look up the ICES ship code at https://ocean.ices.dk/codes/ShipCodes.aspx "
+            f"(or the NVS mirror https://vocab.nerc.ac.uk/collection/C17/current/), "
+            f"or request a new one from ICES before publishing"
         )
     ices_code = str(ices_code).strip()
 
     forbidden = _forbidden_codes()
     if ices_code in forbidden:
         raise PlatformError(
-            f"ICES code {ices_code!r} (from slug {slug!r}) is in forbidden_codes: "
-            f"{str(forbidden[ices_code]).strip()}"
+            f"ICES code {ices_code!r} (from platform {label!r}) is in "
+            f"forbidden_codes: {str(forbidden[ices_code]).strip()}"
         )
 
     return f"{ices_code}{_departure_yyyymmdd(start_date)}"
@@ -201,25 +246,26 @@ def expocode_from_cruise_info(cruise_info: dict[str, Any]) -> str | None:
     ``cruise_info["ship_slug"]``.  ``ship`` (the free-text display name) is never
     used as a slug — name lookup is exactly the ambiguity this registry avoids.
     """
-    slug = cruise_info.get("platform") or cruise_info.get("ship_slug")
+    platform = cruise_info.get("platform") or cruise_info.get("ship_slug")
     start_date = cruise_info.get("start_date")
-    if not slug or not start_date:
+    if not platform or not start_date:
         return None
-    return derive_expocode(str(slug), start_date)
+    return derive_expocode(platform, start_date)
 
 
-def platform_attrs(slug: str) -> dict[str, str]:
-    """Return ACDD platform global attributes for *slug*.
+def platform_attrs(platform: str | dict[str, Any]) -> dict[str, str]:
+    """Return ACDD platform global attributes for a slug or inline platform.
 
     Emits ``platform``, ``platform_vocabulary``, ``platform_name`` and
-    ``platform_ices_code`` from the registry, skipping any the record omits.
-    Returns an empty mapping when the slug does not resolve to a usable record
+    ``platform_ices_code`` from the resolved record, skipping any it omits.
+    Returns an empty mapping when a slug does not resolve to a usable record
     (the caller decides whether that is fatal).
 
     Parameters
     ----------
-    slug : str
-        ``cruise_info.ship_slug``.
+    platform : str or dict
+        A ``platforms.yaml`` slug, or an inline platform record
+        (see :func:`resolve_platform_spec`).
 
     Returns
     -------
@@ -227,7 +273,7 @@ def platform_attrs(slug: str) -> dict[str, str]:
         Platform attributes ready to merge into a dataset.
     """
     try:
-        record = resolve_platform(slug)
+        record = resolve_platform_spec(platform)
     except PlatformError:
         return {}
     attrs: dict[str, str] = {}
@@ -240,3 +286,20 @@ def platform_attrs(slug: str) -> dict[str, str]:
     if record.get("ices_code"):
         attrs["platform_ices_code"] = str(record["ices_code"])
     return attrs
+
+
+def platform_display_name(platform: str | dict[str, Any]) -> str | None:
+    """Return the registry display name for a slug or inline platform, or ``None``.
+
+    Uses the plain ``name`` (not ``native_name``), for the report masthead and for
+    defaulting the free-text ``ship`` in ``ctdcast init`` from the chosen slug —
+    deriving the name from the ICES code (unambiguous) rather than resolving a
+    typed name into a code (ambiguous).  Returns ``None`` when a slug does not
+    resolve.
+    """
+    try:
+        record = resolve_platform_spec(platform)
+    except PlatformError:
+        return None
+    name = record.get("name")
+    return str(name) if name else None

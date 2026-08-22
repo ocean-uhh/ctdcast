@@ -130,3 +130,44 @@ def test_platform_attrs_unknown_slug_is_empty_not_error():
 def test_registry_loads():
     reg = load_platforms()
     assert {"msm", "odb", "meteor3"} <= set(reg)
+
+
+# --- inline platform form (vessel not in the registry) ---------------------
+
+
+def test_inline_platform_derives_expocode():
+    """A vessel given inline (not a slug) still yields an EXPOCODE from its code."""
+    ci = {
+        "platform": {"name": "RV Example", "ices_code": "12AB"},
+        "start_date": "2026-07-09",
+    }
+    assert expocode_from_cruise_info(ci) == "12AB20260709"
+
+
+def test_inline_platform_attrs():
+    attrs = platform_attrs(
+        {
+            "name": "RV Example",
+            "ices_code": "12AB",
+            "platform": "research vessel",
+            "platform_vocabulary": "https://vocab.nerc.ac.uk/collection/L06/current/31/",
+        }
+    )
+    assert attrs["platform_name"] == "RV Example"
+    assert attrs["platform_ices_code"] == "12AB"
+    assert attrs["platform"] == "research vessel"
+
+
+def test_inline_platform_without_ices_code_raises():
+    from ctdcast.config.platforms import derive_expocode
+
+    with pytest.raises(PlatformError, match="no ices_code"):
+        derive_expocode({"name": "RV Example"}, "2026-07-09")
+
+
+def test_slug_and_inline_are_interchangeable_paths():
+    """The slug path and the inline path go through one resolver."""
+    from ctdcast.config.platforms import resolve_platform_spec
+
+    assert resolve_platform_spec("odb")["ices_code"] == "29OD"
+    assert resolve_platform_spec({"ices_code": "12AB"})["ices_code"] == "12AB"

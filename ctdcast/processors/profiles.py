@@ -16,7 +16,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
-from ctdcast.config.global_attrs import cruise_expocode, cruise_global_attrs
+from ctdcast.config.global_attrs import cruise_global_attrs, expocode_coordinate
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import (
     SensorOverrides,
@@ -308,7 +308,15 @@ def build_profiles(
     ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
     var_names = [v for v in ds0.data_vars if v not in _SKIP_VARS]
     _ci = cruise_info or {}
-    cruise = str(_ci.get("cruise_id") or ds0.attrs.get("cruise") or "UNK")
+    _cfg_cruise = _ci.get("cruise_id")
+    _file_cruise = ds0.attrs.get("cruise")
+    if _cfg_cruise and _file_cruise and str(_cfg_cruise) != str(_file_cruise):
+        warnings.warn(
+            f"cruise_info.cruise_id {str(_cfg_cruise)!r} differs from the per-cast "
+            f"file's cruise attribute {str(_file_cruise)!r}; using the config value.",
+            stacklevel=2,
+        )
+    cruise = str(_cfg_cruise or _file_cruise or "UNK")
     ds0.close()
 
     n_casts = len(cast_list)
@@ -510,19 +518,9 @@ def build_profiles(
     # EXPOCODE as an N_PROF coordinate (per CCHDO — one file may hold more than
     # one cruise, so this is per-profile, not a global attribute).  Omitted when
     # the config supplies no ship/start_date to derive it from.
-    expocode = cruise_expocode(_ci)
-    if expocode:
-        data_vars["expocode"] = (
-            ["N_PROF"],
-            np.array([expocode] * n_profiles),
-            {
-                "long_name": "Expedition code (ICES ship code + departure date)",
-                "comment": (
-                    "Derived as <ICES platform code><YYYYMMDD departure>; "
-                    "CCHDO/GO-SHIP EXPOCODE convention."
-                ),
-            },
-        )
+    _expocode_coord = expocode_coordinate(_ci, n_profiles)
+    if _expocode_coord is not None:
+        data_vars["expocode"] = _expocode_coord
 
     # Base provenance attrs, then the ACDD/derived/authored layer on top (which
     # upgrades Conventions to include ACDD-1.3 and adds coverage bounds, people,
@@ -540,16 +538,33 @@ def build_profiles(
         ),
         "Conventions": "CF-1.13",
     }
+    # Guard the reductions: an empty grid or all-NaN max-pressure would make
+    # np.nanmin/nanmax warn and emit a NaN bound; pass None so it is omitted.
+    _v_min = (
+        float(np.nanmin(pressure_coord))
+        if pressure_coord.size and np.isfinite(pressure_coord).any()
+        else None
+    )
+    _v_max = (
+        float(np.nanmax(max_pressure_prof))
+        if np.isfinite(max_pressure_prof).any()
+        else None
+    )
     attrs.update(
         cruise_global_attrs(
             _ci,
             lats=lats,
             lons=lons,
-            vertical_min=float(np.nanmin(pressure_coord)),
-            vertical_max=float(np.nanmax(max_pressure_prof)),
+            vertical_min=_v_min,
+            vertical_max=_v_max,
             vertical_units=VARIABLES["pressure"]["units"],
             times=time_starts,
             source="ctd",
+            # The identifier's grid token must reflect the ACTUAL bin spacing used
+            # here (build_profiles' own `dbar`), not the config default — otherwise
+            # a 2-dbar file is labelled `..._ctd_1dbar` while pressure_spacing_dbar
+            # correctly says 2.  grid_token reads processing.profiles_dbar.
+            config={"processing": {"profiles_dbar": dbar}},
         )
     )
 

@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 
 import yaml
+from ctdcast.identity import expand_cast_ids, format_cast_id
 
 from ctdcast.config.loader import SectionsConfig
 from ctdcast.config.people import check_contributors, contributor_attrs
-from ctdcast.identity import expand_cast_ids, format_cast_id
 
 
 def build_parser(
@@ -26,7 +26,8 @@ Checks performed:
   - section_yaml exists and is valid YAML (if sections are enabled)
   - output directory is writable (or can be created)
   - cruise_info contributors: no ";" or "," inside any value (they would split
-    one person into two), every role is a NERC W08 term, every institution
+    one person into two), every role is a term of the declared vocabulary
+    (NERC C89 by default), every institution
     resolves in config/institutions.yaml, emails and ORCIDs are well formed
 
 With --strict:

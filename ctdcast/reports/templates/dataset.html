@@ -18,6 +18,16 @@ details.attrs table { margin: 0.3rem 0 0.2rem; }
 details.attrs td { font-size: var(--fs-xs); }
 .rename { color: var(--muted); }
 .rename .arrow { color: var(--ocean); }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { background: var(--muted); cursor: default; }
 </style>
 {% endblock %}
 
@@ -32,6 +42,7 @@ details.attrs td { font-size: var(--fs-xs); }
 {% endblock %}
 
 {% block content %}
+{{ m.inventory_pills(inventory_pills, current_href) }}
 {% if meta.error %}
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}
@@ -123,13 +134,17 @@ details.attrs td { font-size: var(--fs-xs); }
 {{ var_table(meta.sensor_channel, show_type=false, show_units=false) }}
 {% endif %}
 
-{% if meta.global_attrs %}
+{% if meta.global_attr_groups %}
 <h2 id="s-global">{{ m.heading_text(nums["s-global"], "Global attributes") }}</h2>
+<p class="dims-line">Shown in the file's own write order, split into the canonical groups.</p>
+{% for grp in meta.global_attr_groups %}
+<h3>{{ m.heading_text(nums["s-global"] ~ "." ~ loop.index, grp.title) }}</h3>
 <table class="nc">
   <tbody>
-    {% for k, val in meta.global_attrs.items() %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}
+    {% for k, val in grp.rows %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}
   </tbody>
 </table>
+{% endfor %}
 {% endif %}
 
 {% endif %}
