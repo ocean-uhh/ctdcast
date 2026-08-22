@@ -25,6 +25,7 @@ Checks performed:
   - profiles_nc exists (if sections or timeseries are enabled)
   - section_yaml exists and is valid YAML (if sections are enabled)
   - output directory is writable (or can be created)
+  - cruise_info platform/start_date are set (else the EXPOCODE is a placeholder)
   - cruise_info contributors: no ";" or "," inside any value (they would split
     one person into two), every role is a term of the declared vocabulary
     (NERC C89 by default), every institution
@@ -144,6 +145,22 @@ def run(args: argparse.Namespace) -> int:
 
     # cruise_info: contributors, creator, institutions
     cruise_info = cfg.get("cruise_info") or {}
+
+    # EXPOCODE: a missing half is not an error (the cruise may not have settled
+    # its departure date) but it does mean the compiled file carries a
+    # placeholder and keeps a fallback name, so say so here rather than letting
+    # it surface as a warning at the end of a long build.
+    _missing_expo = [
+        k
+        for k in ("platform", "start_date")
+        if not (cruise_info.get(k) or (k == "platform" and cruise_info.get("ship_slug")))
+    ]
+    if _missing_expo:
+        warnings.append(
+            f"cruise_info.{' and '.join(_missing_expo)} not set: the compiled "
+            f"file will carry a placeholder EXPOCODE and keep its fallback "
+            f"name. Fine mid-cruise; not publishable."
+        )
     people_errors, people_warnings = check_contributors(cruise_info)
     errors.extend(people_errors)
     warnings.extend(people_warnings)

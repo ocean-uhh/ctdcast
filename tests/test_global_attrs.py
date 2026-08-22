@@ -20,8 +20,11 @@ from ctdcast.config.global_attrs import (
     coverage_attrs,
     cruise_expocode,
     cruise_global_attrs,
+    dataset_filename,
+    dataset_identity,
     expocode_coordinate,
     group_attrs,
+    is_placeholder_expocode,
     license_attrs,
     order_attrs,
     provenance_attrs,
@@ -377,3 +380,61 @@ def test_no_cruise_id_leaves_the_file_attribute_to_win():
     """Absent from config, nothing is written, so the per-cast file's own
     `cruise` attribute survives instead of being overwritten with a blank."""
     assert "cruise" not in cruise_global_attrs({})
+
+
+# --- placeholder EXPOCODE ----------------------------------------------------
+
+_EXPO_BASE = {
+    "platform": "odb",
+    "start_date": "2026-07-09",
+    "data_mode": "R",
+    "internal_id": "mixsed2",
+}
+
+
+def test_missing_start_date_keeps_the_expocode_shape():
+    """The departure date appears nowhere else in the file (the CCHDO exemplar
+    encodes it only inside the EXPOCODE), so returning None lost the fact
+    rather than deferring it."""
+    ci = {k: v for k, v in _EXPO_BASE.items() if k != "start_date"}
+    with pytest.warns(UserWarning, match="start_date"):
+        assert cruise_expocode(ci) == "29OD{YYYYMMDD}"
+
+
+def test_missing_platform_placeholders_the_other_half():
+    ci = {k: v for k, v in _EXPO_BASE.items() if k != "platform"}
+    with pytest.warns(UserWarning, match="platform"):
+        assert cruise_expocode(ci) == "{ICES}20260709"
+
+
+def test_both_missing_placeholders_both():
+    with pytest.warns(UserWarning):
+        assert cruise_expocode({"data_mode": "R"}) == "{ICES}{YYYYMMDD}"
+
+
+def test_placeholder_can_never_be_mistaken_for_a_real_expocode():
+    """Braces are not legal in an EXPOCODE (ICES code + YYYYMMDD, alphanumeric),
+    so no reader or regex can accept one by accident."""
+    with pytest.warns(UserWarning):
+        expo = cruise_expocode({"platform": "odb"})
+    assert is_placeholder_expocode(expo)
+    assert not expo.replace("{", "").replace("}", "") == expo
+    assert not is_placeholder_expocode("29OD20260709")
+
+
+def test_placeholder_never_reaches_the_id_or_the_filename():
+    """ACDD ties `id` to the file name; braces are shell-hostile, and an `id`
+    that changes once the date is filled in would break that promise."""
+    ci = {k: v for k, v in _EXPO_BASE.items() if k != "start_date"}
+    with pytest.warns(UserWarning):
+        identity = dataset_identity(ci, "ctd", grid="1dbar")
+        assert dataset_filename(ci, "ctd", grid="1dbar") is None
+    assert "id" not in identity
+    # the internal identifier still builds — it never used the EXPOCODE
+    assert identity["internal_mission_identifier"] == "mixsed2_R_ctd_1dbar"
+
+
+def test_a_present_but_unusable_slug_still_yields_none_not_a_placeholder():
+    """An ambiguous slug is an authoring mistake, not a deferred value."""
+    with pytest.warns(UserWarning, match="ambiguous"):
+        assert cruise_expocode({**_EXPO_BASE, "platform": "meteor"}) is None
