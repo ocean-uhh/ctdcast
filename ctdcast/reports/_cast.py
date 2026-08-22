@@ -448,12 +448,14 @@ def _render_qc_table(nc_path: Path) -> str | None:
         trows = "".join(
             f"<tr><td class='mono'>{escape(r['var'])}</td>"
             f"<td>{escape(r['test'])}</td>"
-            f"<td class='num'>{escape(r['suspect'])}</td></tr>"
+            f"<td class='num'>{escape(r['suspect'])}</td>"
+            f"<td class='num'>{escape(r['fail'])}</td></tr>"
             for r in thresholds
         )
         thr_html = (
             "<table class='nc qc-thresholds'><thead><tr><th>Variable</th>"
-            "<th>Test</th><th class='num'>Suspect range</th></tr></thead>"
+            "<th>Test</th><th class='num'>Suspect range / threshold</th>"
+            "<th class='num'>Fail range / threshold</th></tr></thead>"
             f"<tbody>{trows}</tbody></table>"
         )
 

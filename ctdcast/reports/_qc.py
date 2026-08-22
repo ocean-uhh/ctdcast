@@ -13,11 +13,15 @@ are not griddable), so the flags only exist on the per-cast files.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import xarray as xr
+
+#: Trailing sensor number (``conductivity_1`` → family ``conductivity``).
+_SENSOR_SUFFIX = re.compile(r"_\d+$")
 
 #: ctdcast-local display colours for the QARTOD flag values it declares.  A file
 #: states its flag *values and meanings*; colour is the one thing it does not
@@ -102,14 +106,48 @@ def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
         return []
 
 
-def qc_thresholds(nc_path: Path) -> list[dict[str, Any]]:
-    """Return the gross-range thresholds recorded on each ``{var}_qc`` companion.
+def _range(lo: Any, hi: Any) -> str | None:
+    """Return ``"[lo, hi]"`` when both bounds are present, else ``None``."""
+    return f"[{lo}, {hi}]" if lo is not None and hi is not None else None
 
-    Reads the ``qc_gross_range_suspect_min``/``…_max`` attrs that
-    :func:`ctdcast.processors.qc.apply_gross_range` stamps on the qc variable, so
-    the table reflects the values actually applied to the file (defaults, config,
-    or per-cast overrides) without parsing the ``history`` prose.  One row per
-    ``(variable, test)``.  Returns ``[]`` on any read error.
+
+def _collapse_siblings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge dual-sensor rows that share identical thresholds.
+
+    ``conductivity_1`` and ``conductivity_2`` with the same bounds are one row,
+    labelled ``conductivity_*`` — the thresholds are per-family, so repeating a row
+    per sensor is noise.  Siblings whose thresholds differ (e.g. a per-sensor
+    config override) stay separate.  First-seen order is preserved.
+    """
+    grouped: dict[tuple, dict[str, Any]] = {}
+    order: list[tuple] = []
+    for r in rows:
+        family = _SENSOR_SUFFIX.sub("", r["var"])
+        key = (family, r["test"], r["suspect"], r["fail"])
+        if key not in grouped:
+            grouped[key] = {**r, "_names": [r["var"]]}
+            order.append(key)
+        else:
+            grouped[key]["_names"].append(r["var"])
+    out: list[dict[str, Any]] = []
+    for key in order:
+        g = grouped[key]
+        names = g.pop("_names")
+        g["var"] = f"{key[0]}_*" if len(names) > 1 else names[0]
+        out.append(g)
+    return out
+
+
+def qc_thresholds(nc_path: Path) -> list[dict[str, Any]]:
+    """Return the QC thresholds recorded on each ``{var}_qc``, one row per (var, test).
+
+    Reads the ``qc_gross_range_*`` and ``qc_spike_*`` attrs that
+    :func:`ctdcast.processors.qc.apply_gross_range` /
+    :func:`ctdcast.processors.qc.apply_spike_test` stamp, as
+    ``{var, test, suspect, fail}`` rows — so the table shows the suspect and fail
+    tiers side by side, reflecting the values actually applied (defaults, config,
+    or per-cast overrides) without parsing the ``history`` prose.  A tier with no
+    value renders as an en-dash.  Returns ``[]`` on any read error.
     """
     try:
         with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:
@@ -121,14 +159,32 @@ def qc_thresholds(nc_path: Path) -> list[dict[str, Any]]:
                 if base not in ds.data_vars:
                     continue
                 a = ds[v].attrs
-                smin = a.get("qc_gross_range_suspect_min")
-                smax = a.get("qc_gross_range_suspect_max")
-                if smin is not None and smax is not None:
+                gr_s = _range(
+                    a.get("qc_gross_range_suspect_min"),
+                    a.get("qc_gross_range_suspect_max"),
+                )
+                gr_f = _range(
+                    a.get("qc_gross_range_fail_min"),
+                    a.get("qc_gross_range_fail_max"),
+                )
+                if gr_s or gr_f:
                     rows.append(
                         {
                             "var": base,
                             "test": "gross-range",
-                            "suspect": f"[{smin}, {smax}]",
+                            "suspect": gr_s or "–",
+                            "fail": gr_f or "–",
+                        }
+                    )
+                sp_s = a.get("qc_spike_suspect_threshold")
+                sp_f = a.get("qc_spike_fail_threshold")
+                if sp_s is not None or sp_f is not None:
+                    rows.append(
+                        {
+                            "var": base,
+                            "test": "spike",
+                            "suspect": f"|Δ| > {sp_s}" if sp_s is not None else "–",
+                            "fail": f"|Δ| > {sp_f}" if sp_f is not None else "–",
                         }
                     )
             return rows

@@ -147,15 +147,19 @@ processing:
   # trim:
   #   near_surface_dbar: 10.0
 
-  # Stage 3 gross-range QC — bounds by variable.  Values outside the range are
-  # flagged suspect (QARTOD flag 3).  Anything you do not list keeps its built-in
-  # default, and the report's QC panel shows the range actually applied.  Bounds
+  # Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
+  # gross_range bounds are [min, max]; spike thresholds are on
+  # |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
+  # default, and the report's QC panel shows the tiers actually applied.  Values
   # are in each variable's stored units: conductivity mS/cm, salinity PSU,
-  # temperature deg C, oxygen umol/kg.
+  # temperature deg C, oxygen umol/kg, pressure dbar.
   # qc:
   #   gross_range:
-  #     conductivity_1: [0.0, 70.0]
-  #     ctd_salinity_1: [30.0, 38.0]
+  #     suspect: { ctd_salinity_1: [30.0, 38.0] }
+  #     fail:    { ctd_salinity_1: [0.0, 42.0] }
+  #   spike:
+  #     suspect: { pressure: 10.0 }
+  #     fail:    { pressure: 50.0 }
 
   # Stage 3 calibration.
   # calibration:

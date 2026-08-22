@@ -67,7 +67,7 @@ body {
 p, li { max-width: 78ch; }
 .masthead {
   background: var(--ocean); color: #fff; position: relative;
-  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 2rem;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 0.9rem;
 }
 .masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
 .masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
@@ -220,6 +220,16 @@ details.attrs table { margin: 0.3rem 0 0.2rem; }
 details.attrs td { font-size: var(--fs-xs); }
 .rename { color: var(--muted); }
 .rename .arrow { color: var(--ocean); }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { background: var(--muted); cursor: default; }
 </style>
 
 </head>
@@ -233,7 +243,7 @@ details.attrs td { font-size: var(--fs-xs); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-21 18:55 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-22 21:11 UTC</p>
   
   <div style="margin-top:0.65rem;margin-bottom:0.5rem">
     <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
@@ -247,14 +257,22 @@ details.attrs td { font-size: var(--fs-xs); }
   
   <dl class="meta-grid">
     <div><dt>File</dt><dd>profiles_demo.nc</dd></div>
-    <div><dt>Size</dt><dd>336.2 KB</dd></div>
+    <div><dt>Size</dt><dd>341.3 KB</dd></div>
     <div><dt>Dimensions</dt><dd>N_PROF=8, pressure=718</dd></div>
     <div><dt>Coordinates</dt><dd>4</dd></div>
-    <div><dt>Data variables</dt><dd>19</dd></div>
+    <div><dt>Data variables</dt><dd>21</dd></div>
   </dl>
 
   <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
 </div>
+
+
+
+
+<nav class="inventory-strip">
+  <span class="label">Data inventory:</span>
+  <span class="file-pill file-pill-active">profiles_demo.nc</span><a class="file-pill" href="sbe_sensors.html">SBE sensors</a>
+</nav>
 
 
 
@@ -472,12 +490,12 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>mS cm-1</td>
       <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (primary)</td>
-      <td class="num">18.26</td><td class="num">36.76</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">27.89</td><td class="num">36.76</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mS cm⁻¹</td></tr></table>
+          <table><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
         </details>
         
       </td>
@@ -490,12 +508,12 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>mS cm-1</td>
       <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (secondary)</td>
-      <td class="num">18.17</td><td class="num">36.75</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">27.89</td><td class="num">36.75</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mS cm⁻¹</td></tr></table>
+          <table><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
         </details>
         
       </td>
@@ -509,7 +527,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>m</td>
       <td><strong>altitude_of_sea_floor</strong>: Altimeter distance to seafloor</td>
       <td class="num">-9.99e-29</td><td class="num">102.5</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -526,12 +544,12 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>mg m-3</td>
       <td><strong>mass_concentration_of_chlorophyll_in_sea_water</strong>: Chlorophyll fluorescence</td>
-      <td class="num">-9.99e-29</td><td class="num">5.346</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">2.898</td><td class="num">3.366</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3983 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mg m⁻³</td></tr></table>
+          <table><tr><td class="mono">label_units</td><td>mg/m³</td></tr></table>
         </details>
         
       </td>
@@ -544,12 +562,12 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>umol kg-1</td>
       <td><strong>moles_of_oxygen_per_unit_mass_in_sea_water</strong>: Dissolved oxygen (preferred sensor)</td>
-      <td class="num">236.9</td><td class="num">368</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">236.9</td><td class="num">344.7</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>µmol kg⁻¹</td></tr></table>
+          <table><tr><td class="mono">label_units</td><td>µmol/kg</td></tr></table>
         </details>
         
       </td>
@@ -562,8 +580,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>1</td>
       <td><strong>sea_water_practical_salinity</strong>: Practical salinity (primary)</td>
-      <td class="num">19.09</td><td class="num">35.19</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">31.92</td><td class="num">35.19</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -580,8 +598,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>1</td>
       <td><strong>sea_water_practical_salinity</strong>: Practical salinity (secondary)</td>
-      <td class="num">18.98</td><td class="num">35.19</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">31.92</td><td class="num">35.19</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -599,7 +617,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>degree_Celsius</td>
       <td><strong>sea_water_temperature</strong>: In-situ temperature (primary)</td>
       <td class="num">0.1661</td><td class="num">8.499</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -617,7 +635,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>degree_Celsius</td>
       <td><strong>sea_water_temperature</strong>: In-situ temperature (secondary)</td>
       <td class="num">0.1682</td><td class="num">8.493</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -634,8 +652,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="mono">float32</td>
       <td>1</td>
       <td><strong>sea_water_turbidity</strong>: Turbidity</td>
-      <td class="num">-9.99e-29</td><td class="num">0.6267</td>
-      <td class="num" style="color:var(--warn);font-weight:600">4018 / 5744</td>
+      <td class="num">0.0072</td><td class="num">0.6267</td>
+      <td class="num" style="color:var(--warn);font-weight:600">3956 / 5744</td>
       <td>
         
         <details class="attrs"><summary>1 attr</summary>
@@ -676,6 +694,42 @@ details.attrs td { font-size: var(--fs-xs); }
         
         <details class="attrs"><summary>1 attr</summary>
           <table><tr><td class="mono">comment</td><td>Same value for downcast and upcast profiles of the same cast.</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">source_file</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">&lt;U21</td>
+      <td></td>
+      <td>source per-cast filename this profile was compiled from</td>
+      <td class="num">—</td><td class="num">—</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>1 attr</summary>
+          <table><tr><td class="mono">comment</td><td>Filename only (see the global &#39;source&#39; attribute for the naming convention); the absolute root is deliberately not recorded, as it is a local, perishable path. Distinguishes casts that share a number — e.g. a plain cast and its lettered sibling.</td></tr></table>
+        </details>
+        
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="mono">source_stage</td>
+      <td class="mono">N_PROF</td>
+      
+      <td class="mono">int8</td>
+      <td></td>
+      <td>processing stage of the source file for this profile</td>
+      <td class="num">3</td><td class="num">3</td>
+      <td class="num" >8</td>
+      <td>
+        
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">flag_values</td><td>[0 1 2 3]</td></tr><tr><td class="mono">flag_meanings</td><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><td class="mono">comment</td><td>Best-available rung for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 = unknown: an unsuffixed flat file assumed to be stage 1 by the compatibility shim, which does not state its own stage. Casts can be at mixed stages early in a cruise.</td></tr></table>
         </details>
         
       </td>
@@ -810,7 +864,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>
         
         <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>pH sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 18</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>339</td></tr><tr><td class="mono">sensor_calibration_date</td><td>13/02/24</td></tr><tr><td class="mono">sbe_sensor_id</td><td>43</td></tr><tr><td class="mono">sbe_sensor_element</td><td>pH_Sensor</td></tr></table>
+          <table><tr><td class="mono">sensor_type</td><td>pH sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 18</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>339</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2024-Feb-13</td></tr><tr><td class="mono">sbe_sensor_id</td><td>43</td></tr><tr><td class="mono">sbe_sensor_element</td><td>pH_Sensor</td></tr></table>
         </details>
         
       </td>
@@ -882,7 +936,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>
         
         <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>transmissometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs C-Star</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>2033</td></tr><tr><td class="mono">sensor_calibration_date</td><td>14/04/2020</td></tr><tr><td class="mono">sbe_sensor_id</td><td>71</td></tr><tr><td class="mono">sbe_sensor_element</td><td>WET_LabsCStar</td></tr></table>
+          <table><tr><td class="mono">sensor_type</td><td>transmissometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs C-Star</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>2033</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2020-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>71</td></tr><tr><td class="mono">sbe_sensor_element</td><td>WET_LabsCStar</td></tr></table>
         </details>
         
       </td>
@@ -900,7 +954,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>
         
         <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>optical backscatter sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO NTU</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016/04/12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>67</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TurbidityMeter</td></tr></table>
+          <table><tr><td class="mono">sensor_type</td><td>optical backscatter sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO NTU</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016-Apr-12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>67</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TurbidityMeter</td></tr></table>
         </details>
         
       </td>
@@ -1363,11 +1417,30 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 <h2 id="s-global">(6) Global attributes</h2>
+<p class="dims-line">Shown in the file's own write order, split into the canonical groups.</p>
+
+<h3>(6.1) Identity &amp; discovery</h3>
 <table class="nc">
   <tbody>
-    <tr><td class="mono">title</td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr><tr><td class="mono">cruise</td><td>UNK</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr><tr><td class="mono">pressure_binning</td><td>mean of raw samples per 1-dbar bin</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13</td></tr>
+    <tr><td class="mono">title</td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr><tr><td class="mono">cruise</td><td>UNK</td></tr>
   </tbody>
 </table>
+
+<h3>(6.2) Spatiotemporal coverage</h3>
+<table class="nc">
+  <tbody>
+    <tr><td class="mono">geospatial_lat_min</td><td>65.58246</td></tr><tr><td class="mono">geospatial_lat_max</td><td>65.86038</td></tr><tr><td class="mono">geospatial_lat_units</td><td>degrees_north</td></tr><tr><td class="mono">geospatial_lon_min</td><td>-29.58836</td></tr><tr><td class="mono">geospatial_lon_max</td><td>-29.43282</td></tr><tr><td class="mono">geospatial_lon_units</td><td>degrees_east</td></tr><tr><td class="mono">geospatial_vertical_min</td><td>1.0</td></tr><tr><td class="mono">geospatial_vertical_max</td><td>718.0</td></tr><tr><td class="mono">geospatial_vertical_units</td><td>dbar</td></tr><tr><td class="mono">geospatial_vertical_positive</td><td>down</td></tr><tr><td class="mono">time_coverage_start</td><td>2026-07-12T02:40:06Z</td></tr><tr><td class="mono">time_coverage_end</td><td>2026-07-22T09:43:02Z</td></tr><tr><td class="mono">time_coverage_duration</td><td>P10DT7H2M56S</td></tr>
+  </tbody>
+</table>
+
+<h3>(6.3) Provenance &amp; processing</h3>
+<table class="nc">
+  <tbody>
+    <tr><td class="mono">date_created</td><td>2026-08-22T21:11:07Z</td></tr><tr><td class="mono">date_modified</td><td>2026-08-22T21:11:07Z</td></tr><tr><td class="mono">history</td><td>2026-08-22T21:11:07Z ctdcast 0.1.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-08-22T21:11:07Z ctdcast 0.1.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 4 (soak/deck) records before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>D</td></tr><tr><td class="mono">data_mode_meaning</td><td>delayed-mode</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
+  </tbody>
+</table>
+
 
 
 
@@ -1381,6 +1454,6 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-21 18:55 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-22 21:11 UTC</footer>
 </body>
 </html>

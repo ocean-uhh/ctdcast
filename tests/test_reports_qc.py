@@ -52,11 +52,14 @@ class TestQCSummary:
 class TestQCThresholds:
     """qc_thresholds reads the gross-range attrs stamped on each _qc companion."""
 
-    def test_reads_the_suspect_range(self, tmp_path):
+    def test_reads_both_tiers(self, tmp_path):
         rows = qc_thresholds(_qc_file(tmp_path))
         assert rows, "gross-range attrs must be readable back"
-        assert all(r["test"] == "gross-range" for r in rows)
-        assert all(r["suspect"].startswith("[") for r in rows)
+        gr = [r for r in rows if r["test"] == "gross-range"]
+        assert gr, "gross-range rows expected"
+        assert all({"var", "test", "suspect", "fail"} <= set(r) for r in gr)
+        # at least one variable carries a suspect range like [2.0, 40.0]
+        assert any(r["suspect"].startswith("[") for r in gr)
 
     def test_empty_for_a_file_without_qc(self):
         assert qc_thresholds(CAST_011) == []
@@ -108,13 +111,19 @@ class TestCastsIndexQCColumn:
     """The casts index gains a per-cast QC-flagged percentage column."""
 
     def test_column_shows_percent_for_a_flagged_cast(self, tmp_path):
-        from ctdcast.reports._index import _read_cast_meta, _write_stations_list
+        from ctdcast.reports._index import (
+            _cast_qc_pct,
+            _read_cast_meta,
+            _write_stations_list,
+        )
 
         src = _qc_file(tmp_path, "mixsed2_011_stage3.nc")
+        pct = _cast_qc_pct(src)
+        assert pct is not None and pct > 0
         _write_stations_list([_read_cast_meta(src)], "MSM142", tmp_path)
         html = (tmp_path / "casts.html").read_text(encoding="utf-8")
         assert "QC flagged" in html  # the column header
-        assert "1.0%" in html  # the aggregated suspect+fail percentage
+        assert f"{pct}%" in html  # the aggregated suspect+fail percentage
 
     def test_column_shows_dash_for_stage1_cast(self, tmp_path):
         from ctdcast.reports._index import _read_cast_meta, _write_stations_list

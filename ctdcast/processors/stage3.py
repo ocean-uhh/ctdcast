@@ -37,8 +37,10 @@ def stage3(
 
     Applies the following in order:
 
-    1. Gross-range QC (``qc.apply_gross_range``), using ``GROSS_RANGE_DEFAULTS``
-       merged with any overrides from ``cruise_cfg["qc"]["gross_range"]``.
+    1. Two-tier gross-range QC (``qc.apply_gross_range``) and the QARTOD spike
+       test (``qc.apply_spike_test``), using the package defaults merged with any
+       overrides from ``cruise_cfg["qc"]["gross_range"]`` and
+       ``cruise_cfg["qc"]["spike"]`` (each with ``suspect``/``fail`` sub-dicts).
     2. Conductivity calibration slope, if ``cruise_cfg["calibration"]["conductivity_slope"]``
        is present.  Multiplies ``conductivity_1`` (and ``conductivity_2`` if
        present) by the slope and records it in the variable's attributes.
@@ -61,9 +63,9 @@ def stage3(
     """
     cfg = cruise_cfg or {}
 
-    # Step 1: gross-range QC
-    thresholds = cfg.get("qc", {}).get("gross_range") or {}
-    ds = qc.apply_gross_range(ds, thresholds or None)
+    # Step 1: gross-range + spike QC
+    ds = qc.apply_gross_range(ds, cfg.get("qc", {}).get("gross_range") or None)
+    ds = qc.apply_spike_test(ds, cfg.get("qc", {}).get("spike") or None)
 
     # Step 2: conductivity calibration
     slope_raw = cfg.get("calibration", {}).get("conductivity_slope")

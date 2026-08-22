@@ -2066,25 +2066,26 @@ def draw_qc_histogram_fig(
             data = ds[vname].values.astype(float).ravel()
             flags = ds[f"{vname}_qc"].values.astype(int).ravel()
             all_mask = np.isfinite(data)
-            kept_mask = all_mask & ~np.isin(flags, (4, 9))
+            good_mask = all_mask & (flags == 1)  # QARTOD pass only
             all_data = data[all_mask]
             if all_data.size == 0:
                 ax.set_visible(False)
                 continue
 
-            # Shared bin edges from ALL data so the two histograms are directly
-            # comparable — otherwise each picks its own bins over its own range and
-            # the grey/kept bars misalign, looking like two offset distributions.
+            # Grey = all finite data; colour = only the good (pass) data, on the
+            # SAME bin edges (computed once from all data) so they overlay exactly.
+            # Grey showing above the colour is data flagged for any reason — a
+            # gross-range suspect cluster or a mis-set threshold is then visible.
             bin_edges = np.histogram_bin_edges(all_data, bins=60)
             ax.hist(all_data, bins=bin_edges, color="#aaaaaa", alpha=0.6, label="all")
-            kept = data[kept_mask]
-            if kept.size:
+            good = data[good_mask]
+            if good.size:
                 ax.hist(
-                    kept,
+                    good,
                     bins=bin_edges,
                     color=VAR_COLORS.get(vname, "#2c7fb8"),
                     alpha=0.85,
-                    label="kept",
+                    label="good",
                 )
             ax.set_yscale("log")
             ax.set_xlabel(vlabel(vname))
@@ -2096,20 +2097,24 @@ def draw_qc_histogram_fig(
             xlim_lo, xlim_hi = all_lo - pad, all_hi + pad
             ax.set_xlim(xlim_lo, xlim_hi)
 
-            # Suspect thresholds as orange dashed lines, labelled, drawn only when
-            # they fall within the plotted range (a far-off bound would just clip).
+            # Gross-range bounds: suspect orange dashed, fail red dotted, labelled,
+            # drawn only when they fall within the plotted range (a far-off bound
+            # would just clip).  Spike thresholds are on the difference metric, not
+            # the value, so they are not drawn here.
             qattrs = ds[f"{vname}_qc"].attrs
             handles, labels = [], []
-            for key, tag in (
-                ("qc_gross_range_suspect_min", "suspect min"),
-                ("qc_gross_range_suspect_max", "suspect max"),
+            for key, tag, color, ls in (
+                ("qc_gross_range_suspect_min", "suspect min", "#f39c12", "--"),
+                ("qc_gross_range_suspect_max", "suspect max", "#f39c12", "--"),
+                ("qc_gross_range_fail_min", "fail min", "#e74c3c", ":"),
+                ("qc_gross_range_fail_max", "fail max", "#e74c3c", ":"),
             ):
                 bound = qattrs.get(key)
                 if bound is not None and xlim_lo <= float(bound) <= xlim_hi:
                     line = ax.axvline(
                         float(bound),
-                        color="#f39c12",
-                        linestyle="--",
+                        color=color,
+                        linestyle=ls,
                         linewidth=pen("thin"),
                     )
                     handles.append(line)
@@ -2120,12 +2125,12 @@ def draw_qc_histogram_fig(
             ax.grid(True)
             _hide_outer_spines(ax, clean=cfg.clean_spines)
 
-            n_removed = int(all_mask.sum()) - int(kept_mask.sum())
-            if n_removed:
+            n_flagged = int(all_mask.sum()) - int(good_mask.sum())
+            if n_flagged:
                 ax.text(
                     0.97,
                     0.95,
-                    f"{n_removed} removed",
+                    f"{n_flagged} flagged",
                     transform=ax.transAxes,
                     ha="right",
                     va="top",
