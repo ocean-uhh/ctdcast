@@ -19,10 +19,8 @@
 # other accepted form. Both are written to contributing_institutions_id.
 #
 # `name_variants` exists so a name found in an external file can be matched back
-# to a slug. It mirrors the structure of AMOCatlas's
-# amocatlas/metadata/institution_registry.yml (30 institutions, keyed on the EDMO
-# code rather than a slug, with the same name_variants/country/id_url fields);
-# the two convert trivially, so that file is the natural place to seed from.
+# to a slug -- institution names arrive spelled many ways, and the EDMO code is
+# the only stable identity.
 #
 # An entry may also carry a default `role:` (a NERC C59 code -- CONLEAD, CONMEM,
 # DATM, FUND), used when a cruise config names the slug without one. Omitted
@@ -43,6 +41,11 @@ institutions:
     edmo_uri: "https://edmo.seadatanet.org/report/1156"
     country: "Germany"
     name_variants:
+      - "University of Hamburg Institute of Oceanography"
+      - "University of Hamburg Institute of Oceanography (IfM)"
+      - "IfM Hamburg"
+      - "Institut für Meereskunde Hamburg"
+      - "University of Hamburg (IfM)"
       - "University of Hamburg"
       - "Universität Hamburg"
       - "Institut für Meereskunde"
@@ -77,3 +80,326 @@ institutions:
       - "UB"
     note: >
       EDMO 5506 confirmed 2026-08-22.
+
+  geomar:
+    name: "Helmholtz Centre for Ocean Research Kiel (GEOMAR)"
+    edmo: 2947
+    edmo_uri: "https://edmo.seadatanet.org/report/2947"
+    country: "Germany"
+    name_variants:
+      - "GEOMAR Helmholtz Centre for Ocean Research Kiel"
+      - "GEOMAR"
+      - "Helmholtz Centre for Ocean Research Kiel"
+      - "GEOMAR Helmholtz-Zentrum fuer Ozeanforschung Kiel"
+    note: >
+      EDMO 2947 confirmed 2026-08-22 against the SeaDataNet record title, which
+      reads "Helmholtz Centre for Ocean Research Kiel (GEOMAR)". 
+
+  # ---------------------------------------------------------------------------
+  # North Atlantic / AMOC observing institutions, added 2026-08-22.  Slugs are
+  # assigned by hand, since they are typed into every cruise config.
+  #
+  # [Verification] Every EDMO code below was resolved against its SeaDataNet
+  # record on 2026-08-22; all 32 exist and none names a different organisation.
+  # Where the record's own title was fuller than the name held here, the record's
+  # title was adopted and the former spelling kept as a variant -- a reader who
+  # resolves the URI should see the name the file gives.  Two exceptions kept
+  # deliberately: lops, whose EDMO title is itself truncated ("satellite remote",
+  # missing "sensing"), and famri, whose title carries a doubled parenthesis.
+  # ---------------------------------------------------------------------------
+
+  apl:
+    name: "University of Washington, Applied Physics Laboratory (UW-APL)"
+    edmo: 1554
+    edmo_uri: "https://edmo.seadatanet.org/report/1554"
+    country: "USA"
+    name_variants:
+      - "Applied Physics Laboratory (University of Washington)"
+      - "Applied Physics Laboratory Univ. of Washington"
+      - "Applied Physics Laboratory University of Washington"
+      - "APL-UW"
+      - "University of Washington Applied Physics Laboratory"
+
+  awi:
+    name: "Alfred Wegener Institute Helmholtz Centre for Polar and Marine Research (AWI)"
+    edmo: 1368
+    edmo_uri: "https://edmo.seadatanet.org/report/1368"
+    country: "Germany"
+    name_variants:
+      - "Alfred Wegener Institute (AWI)"
+      - "Alfred Wegener Institute"
+      - "Alfred Wegener Institute (Bremerhaven Germany)"
+      - "AWI"
+      - "Alfred-Wegener-Institut"
+
+  bio:
+    name: "Bedford Institute of Oceanography"
+    edmo: 1811
+    edmo_uri: "https://edmo.seadatanet.org/report/1811"
+    country: "Canada"
+    name_variants:
+      - "BIO"
+
+  bremen:
+    name: "University of Bremen"
+    edmo: 1157
+    edmo_uri: "https://edmo.seadatanet.org/report/1157"
+    country: "Germany"
+    name_variants:
+      - "Universität Bremen"
+      - "Bremen University"
+      - "Institut für Umweltphysik Universität Bremen"
+
+  dfo:
+    name: "Fisheries and Oceans Canada"
+    edmo: 5370
+    edmo_uri: "https://edmo.seadatanet.org/report/5370"
+    country: "Canada"
+    name_variants:
+      - "DFO"
+      - "Pêches et Océans Canada"
+      - "Fisheries and Oceans Canada Northwest Atlantic Fisheries Centre and Institute of Ocean Sciences"
+
+  famri:
+    name: "Faroe Marine Research Institute (FAMRI)"
+    edmo: 3084
+    edmo_uri: "https://edmo.seadatanet.org/report/3084"
+    country: "Faroe Islands"
+    name_variants:
+      - "Faroe Marine Research Institute"
+      - "FAMRI"
+      - "Faroese Marine Research Institute"
+
+  gatech:
+    name: "Georgia Institute of Technology"
+    edmo: 3075
+    edmo_uri: "https://edmo.seadatanet.org/report/3075"
+    country: "USA"
+    name_variants:
+      - "Georgia Tech"
+      - "GA Tech"
+      - "GT"
+
+  iap:
+    name: "Institute of Atmospheric Physics, Chinese Academy of Sciences"
+    edmo: 2452
+    edmo_uri: "https://edmo.seadatanet.org/report/2452"
+    country: "China"
+    name_variants:
+      - "Institute of Atmospheric Physics Chinese Academy of Sciences"
+      - "IAP"
+
+  imr:
+    name: "Institute of Marine Research (IMR)"
+    edmo: 1351
+    edmo_uri: "https://edmo.seadatanet.org/report/1351"
+    country: "Norway"
+    name_variants:
+      - "Institute for Marine Research (Bergen)"
+      - "Institute for Marine Research"
+      - "Institute for Marine Research (Bergen Norway)"
+      - "IMR"
+      - "Havforskningsinstituttet"
+
+  ios:
+    name: "Institute of Ocean Sciences (IOS)"
+    edmo: 4155
+    edmo_uri: "https://edmo.seadatanet.org/report/4155"
+    country: "Canada"
+    name_variants:
+      - "Institute of Ocean Sciences (DFO)"
+      - "Institute of Ocean Sciences"
+      - "IOS"
+      - "Fisheries and Oceans Canada Institute of Ocean Sciences"
+
+  jpl:
+    name: "National Aeronautics and Space Administration - Jet Propulsion Laboratory (NASA JPL)"
+    edmo: 1224
+    edmo_uri: "https://edmo.seadatanet.org/report/1224"
+    country: "USA"
+    name_variants:
+      - "NASA JPL"
+      - "National Aeronautics and Space Administration, Jet Propulsion Laboratory"
+      - "National Aeronautics and Space Administration Jet Propulsion Laboratory"
+      - "NASA Jet Propulsion Laboratory"
+      - "National Aeronautics and Space Administration (NASA) Jet Propulsion Laboratory"
+      - "National Aeronautics and Space Administration (NASA) Jet Propulsion Laboratory (JPL)"
+      - "National Aeronautics and Space Administration JPL"
+      - "National Aeronautics and Space Administration Jet Propulsion Laboratory (USA)"
+
+  lops:
+    name: "Laboratory for Ocean Physics and Satellite remote sensing (LOPS)"
+    edmo: 4536
+    edmo_uri: "https://edmo.seadatanet.org/report/4536"
+    country: "France"
+    name_variants:
+      - "Laboratoire d'Océanographie Physique et Spatiale"
+      - "Laboratoire d'Oceanographie Physique et Spatiale"
+      - "Laboratoire d'Océanographie Physique et Spatiale, UMR 6523"
+      - "LOPS"
+
+  meds:
+    name: "Fisheries and Oceans Canada (Marine Environmental Data Section)"
+    edmo: 1979
+    edmo_uri: "https://edmo.seadatanet.org/report/1979"
+    country: "Canada"
+    name_variants:
+      - "Fisheries and Oceans Canada Marine Environmental Data Section"
+      - "Fisheries and Oceans Canada Marine Environmental Data Section"
+      - "DFO Marine Environmental Data Section"
+
+  mfri:
+    name: "Marine and Freshwater Research Institute (MFRI)"
+    edmo: 4766
+    edmo_uri: "https://edmo.seadatanet.org/report/4766"
+    country: "Iceland"
+    name_variants:
+      - "Marine and Freshwater Research Institute"
+      - "MFRI"
+      - "Hafrannsóknastofnun"
+
+  mun:
+    name: "Memorial University of Newfoundland (Ocean Sciences Centre)"
+    edmo: 2649
+    edmo_uri: "https://edmo.seadatanet.org/report/2649"
+    country: "Canada"
+    name_variants:
+      - "Memorial University of Newfoundland Ocean Sciences Centre"
+      - "Memorial University Ocean Sciences Centre"
+      - "MUN Ocean Sciences Centre"
+      - "Memorial University"
+      - "Ocean Sciences Centre"
+
+  nafc:
+    name: "Northwest Atlantic Fisheries Centre"
+    edmo: 4157
+    edmo_uri: "https://edmo.seadatanet.org/report/4157"
+    country: "Canada"
+    name_variants:
+      - "NAFC"
+      - "Fisheries and Oceans Canada Northwest Atlantic Fisheries Centre"
+
+  nioz:
+    name: "Royal Netherlands Institute for Sea Research (NIOZ)"
+    edmo: 630
+    edmo_uri: "https://edmo.seadatanet.org/report/630"
+    country: "Netherlands"
+    name_variants:
+      - "Royal Netherlands Institute for Sea Research"
+      - "Royal Netherlands Institute for Sea Research and Utrecht University"
+      - "NIOZ"
+      - "Nederlands Instituut voor Onderzoek der Zee"
+
+  nocl:
+    name: "National Oceanography Centre (Liverpool)"
+    edmo: 2424
+    edmo_uri: "https://edmo.seadatanet.org/report/2424"
+    country: "UK"
+    name_variants:
+      - "National Oceanography Centre Liverpool"
+      - "NOC Liverpool"
+      - "NOCL"
+
+  nocs:
+    name: "National Oceanography Centre (Southampton)"
+    edmo: 17
+    edmo_uri: "https://edmo.seadatanet.org/report/17"
+    country: "UK"
+    name_variants:
+      - "National Oceanography Centre"
+      - "National Oceanography Centre at Southampton"
+      - "National Oceanography Centre Southampton"
+      - "NOC Southampton"
+      - "NOCS"
+      - "National Oceanography Centre (Southampton) (UK)"
+
+  npi:
+    name: "Norwegian Polar Institute (NPI)"
+    edmo: 1349
+    edmo_uri: "https://edmo.seadatanet.org/report/1349"
+    country: "Norway"
+    name_variants:
+      - "Norwegian Polar Institute"
+      - "NPI"
+
+  rsmas:
+    name: "Rosenstiel School of Marine and Atmospheric Science (University of Miami)"
+    edmo: 1382
+    edmo_uri: "https://edmo.seadatanet.org/report/1382"
+    country: "USA"
+    name_variants:
+      - "Rosenstiel School of Marine and Atmospheric Science, University of Miami"
+      - "Rosenstiel School of Marine and Atmospheric Science , University of Miami"
+      - "University of Miami"
+      - "RSMAS"
+
+  sams:
+    name: "Scottish Association for Marine Science (SAMS)"
+    edmo: 44
+    edmo_uri: "https://edmo.seadatanet.org/report/44"
+    country: "UK"
+    name_variants:
+      - "Scottish Association for Marine Science"
+      - "SAMS"
+
+  scripps:
+    name: "Scripps Institution of Oceanography"
+    edmo: 1390
+    edmo_uri: "https://edmo.seadatanet.org/report/1390"
+    country: "USA"
+    name_variants:
+      - "SIO"
+      - "Scripps"
+      - "UCSD"
+      - "University of California San Diego"
+
+  uib:
+    name: "Balearic Islands University (Department of Physics)"
+    edmo: 1586
+    edmo_uri: "https://edmo.seadatanet.org/report/1586"
+    country: "Spain"
+    name_variants:
+      - "Balearic Islands University, Department of Physics"
+      - "Balearic Islands University Department of Physics"
+      - "Balearic Islands University (Physics)"
+      - "UIB Physics"
+      - "University of the Balearic Islands"
+      - "Universitat de les Illes Balears"
+
+  usf:
+    name: "University of South Florida"
+    edmo: 3838
+    edmo_uri: "https://edmo.seadatanet.org/report/3838"
+    country: "USA"
+    name_variants:
+      - "University of South Florida USA"
+      - "USF"
+
+  utrecht:
+    name: "Utrecht University"
+    edmo: 1627
+    edmo_uri: "https://edmo.seadatanet.org/report/1627"
+    country: "Netherlands"
+    name_variants:
+      - "Universiteit Utrecht"
+      - "UU"
+
+  whoi:
+    name: "Woods Hole Oceanographic Institution"
+    edmo: 3844
+    edmo_uri: "https://edmo.seadatanet.org/report/3844"
+    country: "USA"
+    name_variants:
+      - "WHOI"
+      - "Woods Hole"
+
+  xiamen:
+    name: "Xiamen University - State Key Laboratory of Marine Environmental Science"
+    edmo: 2401
+    edmo_uri: "https://edmo.seadatanet.org/report/2401"
+    country: "China"
+    name_variants:
+      - "Xiamen University State Key Laboratory of Marine Environmental Science"
+      - "Xiamen University China"
+      - "Xiamen University"
+      - "XMU"

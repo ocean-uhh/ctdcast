@@ -145,12 +145,17 @@ def _normalise(ds: xr.Dataset) -> xr.Dataset:
 
     # Step 1c: convert conductivity from S/m to mS/cm — the CCHDO/oceanographic
     # convention and what gsw.SP_from_C expects.  1 S/m = 10 mS/cm.  Guarded on
-    # the source units so a file already in mS/cm is not double-converted.
+    # the source units so a file already in mS/cm is not double-converted.  The
+    # seasenselib reader now emits mS/cm directly, so on those files this guard
+    # is a no-op; the conversion body remains for any reader that hands us S/m
+    # (a future hex reader, or a differently-configured CNV) and is marked
+    # no-cover because no real fixture can exercise it while seasenselib is the
+    # only reader.
     for _c in ("conductivity_1", "conductivity_2"):
         if _c not in ds.data_vars:
             continue
         _u = ds[_c].attrs.get("units", "").lower().replace(" ", "").replace("^", "")
-        if _u in ("s/m", "sm-1", "sm⁻1", "siemens/m", "siemenspermetre"):
+        if _u in ("s/m", "sm-1", "sm⁻1", "siemens/m", "siemenspermetre"):  # pragma: no cover
             converted = ds[_c] * 10.0
             _attrs = dict(ds[_c].attrs)
             _attrs["units"] = "mS cm-1"

@@ -60,7 +60,7 @@ class TestStage1:
             ds.close()
 
     def test_conductivity_converted_to_mscm(self, tmp_path):
-        """Conductivity is converted S/m -> mS/cm (factor 10) during stage1."""
+        """Stage-1 conductivity is in mS/cm (the reader emits it; stage1 guards against double-converting a file already in those units)."""
         import numpy as np
 
         from ctdcast.processors.stage1 import stage1

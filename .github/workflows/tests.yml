@@ -116,6 +116,13 @@ jobs:
         run: |
           python -m pip install -e ".[test]" --prefer-binary
 
+      - name: Install conversion backend
+        # seasenselib (the CNV reader) is installed only in the coverage job, not
+        # the test matrix — it exercises the stage-1 conversion path so its
+        # coverage counts, without slowing every matrix cell.
+        run: |
+          python -m pip install seasenselib --prefer-binary
+
       - name: All tests with coverage gate
         run: |
           pytest --cov-fail-under=79
