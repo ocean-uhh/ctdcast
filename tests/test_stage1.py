@@ -4,6 +4,8 @@ import pytest
 import xarray as xr
 from conftest import FIXTURES_CNV
 
+from ctdcast.processors.stage_layout import parse_stage, stage_dir
+
 pytest.importorskip("seasenselib")
 
 
@@ -42,7 +44,7 @@ class TestStage1:
         nc_dir = tmp_path / "nc"
         n = stage1(FIXTURES_CNV, nc_dir)
         assert n == len(list(FIXTURES_CNV.glob("*.cnv")))
-        assert len(list(nc_dir.glob("*.nc"))) == n
+        assert len(list(stage_dir(nc_dir, 1).glob("*.nc"))) == n
 
     def test_nc_files_readable(self, tmp_path):
         """Each produced NC file must be openable as an xr.Dataset."""
@@ -50,7 +52,9 @@ class TestStage1:
 
         nc_dir = tmp_path / "nc"
         stage1(FIXTURES_CNV, nc_dir)
-        for nc_path in sorted(nc_dir.glob("*.nc")):
+        produced = sorted(stage_dir(nc_dir, 1).glob("*.nc"))
+        assert produced, "stage 1 produced no files under stage1/"
+        for nc_path in produced:
             ds = xr.open_dataset(nc_path, engine="netcdf4")
             assert ds.sizes["time"] > 0
             ds.close()
@@ -64,7 +68,7 @@ class TestStage1:
         nc_dir = tmp_path / "nc"
         stage1(FIXTURES_CNV, nc_dir)
         checked = 0
-        for nc_path in sorted(nc_dir.glob("*.nc")):
+        for nc_path in sorted(stage_dir(nc_dir, 1).glob("*.nc")):
             ds = xr.open_dataset(nc_path, engine="netcdf4")
             if "conductivity_1" in ds:
                 c = ds["conductivity_1"]
@@ -83,7 +87,8 @@ class TestStage1:
         nc_dir = tmp_path / "nc"
         stage1(FIXTURES_CNV, nc_dir)
         cnv_stems = {p.stem for p in FIXTURES_CNV.glob("*.cnv")}
-        nc_stems = {p.stem for p in nc_dir.glob("*.nc")}
+        # Output stems carry the _stage1 suffix; compare the base stems.
+        nc_stems = {parse_stage(p)[0] for p in stage_dir(nc_dir, 1).glob("*.nc")}
         assert cnv_stems == nc_stems
 
     def test_skip_existing_when_force_false(self, tmp_path):
@@ -110,7 +115,7 @@ class TestStage1:
 
         nc_dir = tmp_path / "nc"
         n = stage1(FIXTURES_CNV, nc_dir, cast_filter=4)
-        nc_files = list(nc_dir.glob("*.nc"))
+        nc_files = list(stage_dir(nc_dir, 1).glob("*.nc"))
         assert n == len(nc_files)
         for nc_path in nc_files:
             assert "004" in nc_path.stem, f"Unexpected file: {nc_path.name}"

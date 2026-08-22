@@ -23,6 +23,7 @@ import xarray as xr
 
 from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
 from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.writers.netcdf import write as write_nc
 
 
@@ -313,7 +314,8 @@ def stage1(
     cnv_dir:
         Directory containing raw SBE CNV files.
     nc_dir:
-        Output directory for per-cast netCDF files (created if absent).
+        The CTD stage root; stage 1 writes ``stage1/<stem>_stage1.nc`` under it
+        (the stage1 directory is created if absent).
     backend:
         Backend name (currently only ``"seasenselib"``).
     force:
@@ -334,7 +336,7 @@ def stage1(
     ImportError
         If the chosen backend's package is not installed.
     """
-    nc_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir(nc_dir, 1, create=True)  # nc_dir is the stage root; write to stage1/
     b = get_ctd_backend(backend)
 
     cnv_files = sorted(cnv_dir.glob(pattern))
@@ -355,7 +357,7 @@ def stage1(
         # GSW Nsquared() warns on dp=0 (stationary CTD between 1-second samples).
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
         for cnv_path in cnv_files:
-            nc_path = nc_dir / (cnv_path.stem + ".nc")
+            nc_path = stage_path(nc_dir, cnv_path.stem, 1)
             try:
                 written = b.convert_cast(cnv_path, nc_path, force=force)
             except Exception as exc:  # noqa: BLE001
@@ -392,7 +394,8 @@ def run(
     cnv_dir:
         Directory containing raw SBE CNV files.
     nc_dir:
-        Output directory for per-cast netCDF files (created if absent).
+        The CTD stage root; stage 1 writes ``stage1/<stem>_stage1.nc`` under it
+        (the stage1 directory is created if absent).
     force:
         Overwrite existing NC files.
     dry_run:

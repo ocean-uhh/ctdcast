@@ -178,3 +178,76 @@ class TestBuildProfilesCruise:
                 f"Cast {i}: down/up gebco_depth_m differ ({d} vs {u})"
             )
         ds.close()
+
+    def test_source_stage_flat_fixtures_are_unknown(self, tmp_path):
+        """Flat fixtures are only assumed stage 1 by the shim → source_stage 0."""
+        import numpy as np
+
+        from ctdcast.processors.profiles import build_profiles
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(FIXTURES_NC, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        assert ds["source_stage"].dtype == np.int8
+        assert (ds["source_stage"].values == 0).all()
+        ds.close()
+
+    def test_source_stage_records_nested_rung(self, tmp_path):
+        """A nested stage-3 file compiles with source_stage == 3 (it states its stage)."""
+        import shutil
+
+        from ctdcast.processors.profiles import build_profiles
+        from ctdcast.processors.stage_layout import stage_path
+
+        root = tmp_path / "CTD"
+        dst = stage_path(root, "mixsed2_011", 3)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(FIXTURES_NC / "mixsed2_011.nc", dst)
+        out = tmp_path / "profiles.nc"
+        build_profiles(root, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        assert (ds["source_stage"].values == 3).all()
+        ds.close()
+
+    def test_source_stage_mixed_directory(self, tmp_path):
+        """Casts at different rungs yield mixed source_stage (nested stage1 → 1, not 0)."""
+        import shutil
+
+        import numpy as np
+
+        from ctdcast.processors.profiles import build_profiles
+        from ctdcast.processors.stage_layout import stage_path
+
+        root = tmp_path / "CTD"
+        for stem, name, stage in [
+            ("mixsed2_011", "mixsed2_011.nc", 1),
+            ("mixsed2_012", "mixsed2_012.nc", 3),
+        ]:
+            dst = stage_path(root, stem, stage)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(FIXTURES_NC / name, dst)
+        out = tmp_path / "profiles.nc"
+        build_profiles(root, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        assert set(np.unique(ds["source_stage"].values)) == {1, 3}
+        ds.close()
+
+    def test_qc_flags_excluded_from_profiles(self, tmp_path):
+        """profiles.nc carries no _qc columns even when compiled from a flagged stage."""
+        import shutil
+
+        from ctdcast.processors.profiles import build_profiles
+        from ctdcast.processors.stage2 import run as stage2_run
+        from ctdcast.processors.stage_layout import stage_path
+
+        root = tmp_path / "CTD"
+        s1 = stage_path(root, "mixsed2_011", 1)
+        s1.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(FIXTURES_NC / "mixsed2_011.nc", s1)
+        stage2_run(root)  # writes a stage-2 file carrying QARTOD _qc flags
+        out = tmp_path / "profiles.nc"
+        build_profiles(root, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        assert not any(v.endswith("_qc") for v in ds.data_vars)
+        assert (ds["source_stage"].values == 2).all()
+        ds.close()

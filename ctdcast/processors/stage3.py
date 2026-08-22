@@ -174,7 +174,9 @@ def run(
             n_skipped += 1
             continue
         if dry_run:
-            print(f"  [dry-run] stage 3 would process: {input_path.name} -> {target.name}")
+            print(
+                f"  [dry-run] stage 3 would process: {input_path.name} -> {target.name}"
+            )
             continue
         ds = None
         try:

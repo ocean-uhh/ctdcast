@@ -18,6 +18,7 @@ import xarray as xr
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.stage1 import stage1 as convert_ctd_files
+from ctdcast.processors.stage_layout import stage_path
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._index import _read_cast_meta, report
 from ctdcast.reports._section import generate_section_page
@@ -423,7 +424,7 @@ class TestOxygenConversion:
             )
         assert n == 1, "Expected exactly one NC file written"
 
-        nc_path = tmp_path / (_OXY_CNV.stem + ".nc")
+        nc_path = stage_path(tmp_path, _OXY_CNV.stem, 1)
         assert nc_path.exists()
 
         ds = xr.open_dataset(nc_path, engine="netcdf4")

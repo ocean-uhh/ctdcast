@@ -44,9 +44,7 @@ def test_cast_stages_match_the_pipeline_registry():
     # imports the stage modules that import this one).  This ties them so adding
     # a stage to one without the other fails loudly -- e.g. a future hex→CNV
     # stage 0.
-    registry_cast_stages = {
-        s.number for s in processors.STAGES if s.scope == "cast"
-    }
+    registry_cast_stages = {s.number for s in processors.STAGES if s.scope == "cast"}
     assert registry_cast_stages == set(STAGES)
 
 
