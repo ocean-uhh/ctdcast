@@ -124,14 +124,14 @@ class TestClassifySynthetic:
         """Files scanned yet no pair is its own kind (GPS-fed), distinct from too-few/no-files."""
         verdict = classify_offsets([], n_scanned=182)
         assert verdict.kind == "no_clock_pair"
-        assert "182 file(s) scanned" in verdict.note
+        assert "182 cast(s) scanned" in verdict.note
         assert "GPS-fed" in verdict.note  # measured now: 182 scanned, none had a pair
 
-    def test_no_files_scanned_is_insufficient_not_no_clock_pair(self) -> None:
-        """An empty series from zero files scanned is a mount/path problem, not a GPS-fed cruise."""
+    def test_no_casts_scanned_is_insufficient_not_no_clock_pair(self) -> None:
+        """An empty series from zero casts scanned is a mount/path problem, not a GPS-fed cruise."""
         verdict = classify_offsets([], n_scanned=0)
         assert verdict.kind == "insufficient"
-        assert "no stage-1 files" in verdict.note
+        assert "no cast files" in verdict.note
 
 
 class TestCastNumber:
@@ -262,27 +262,27 @@ class TestReader:
     """The stage-1 file reader (clock_offsets), on tmp_path files — runs in CI."""
 
     @staticmethod
-    def _write_stage1(directory: Path, stem: str, header: str) -> None:
-        """Write a minimal stage-1 file carrying *header* as the seasenselib raw_metadata envelope."""
+    def _write(directory: Path, name: str, header: str) -> None:
+        """Write a minimal cast file *name* carrying *header* as the seasenselib raw_metadata envelope."""
+        directory.mkdir(parents=True, exist_ok=True)
         envelope = {
             "schema": "test",
             "raw_format": "sbe-cnv",
             "blocks": {"header": header},
         }
         ds = xr.Dataset(attrs={"raw_metadata": json.dumps(envelope)})
-        ds.to_netcdf(directory / f"{stem}_stage1.nc", engine="netcdf4")
+        ds.to_netcdf(directory / name, engine="netcdf4")
 
     def test_skips_clockless_cast_and_counts_scanned(self, tmp_path: Path) -> None:
-        """A cast without both clocks is skipped and warned; scanned counts every file, kept or not."""
+        """A cast without both clocks is skipped and warned; scanned counts every cast, kept or not."""
         stage1 = tmp_path / "stage1"
-        stage1.mkdir()
-        self._write_stage1(
+        self._write(
             stage1,
-            "cast_001",
+            "cast_001_stage1.nc",
             "* System UTC = Mar 29 2026 20:23:55\n* NMEA UTC (Time) = Mar 29 2026 20:24:00\n"
             "# start_time = Mar 29 2026 20:23:55 [System UTC, first data scan.]",
         )
-        self._write_stage1(stage1, "cast_002", "* System UTC = Mar 29 2026 21:00:00")
+        self._write(stage1, "cast_002_stage1.nc", "* System UTC = Mar 29 2026 21:00:00")
         with pytest.warns(UserWarning, match="skipped"):
             casts, scanned, coordinate_counts = clock_offsets(tmp_path)
         assert scanned == 2
@@ -292,22 +292,21 @@ class TestReader:
         # source is counted — the bracketless cast is left out, not tallied as "unknown".
         assert coordinate_counts == {"system": 1}
 
-    def test_skips_unnumbered_filename(self, tmp_path: Path) -> None:
-        """A stage-1 file whose name carries no cast number is skipped, not fed a broken cast id."""
-        stage1 = tmp_path / "stage1"
-        stage1.mkdir()
-        # A full clock pair, but a digitless stem -> cast_id_from_name returns None.
-        self._write_stage1(
-            stage1,
-            "baseline",  # yields baseline_stage1.nc — no cast number
+    def test_reads_flat_nc_dir_layout(self, tmp_path: Path) -> None:
+        """A legacy flat nc_dir (suffix-less cast files under the root, no stage1/) is discovered."""
+        self._write(
+            tmp_path,
+            "cast_001.nc",
             "* System UTC = Mar 29 2026 20:23:55\n* NMEA UTC (Time) = Mar 29 2026 20:24:00",
         )
-        with pytest.warns(UserWarning, match="unnumbered"):
-            casts, scanned, _ = clock_offsets(tmp_path)
-        assert scanned == 1
-        assert (
-            casts == []
-        )  # not included with a fabricated cast id that cast_number would reject
+        self._write(
+            tmp_path,
+            "cast_002.nc",
+            "* System UTC = Mar 29 2026 21:00:00\n* NMEA UTC (Time) = Mar 29 2026 21:00:03",
+        )
+        casts, scanned, _ = clock_offsets(tmp_path)
+        assert scanned == 2  # flat files are folded in as stage 1, not missed
+        assert [c.cast_id for c in casts] == ["001", "002"]
 
 
 class TestRealMSM142Regression:

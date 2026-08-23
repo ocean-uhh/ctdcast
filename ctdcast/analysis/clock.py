@@ -17,7 +17,7 @@ line: three contiguous casts at one value are a level, not scatter. :func:`class
 recurses, splitting at each detected step until every segment is flat (sd below the quantisation).
 A segment that will not flatten is a drift only if a rate positively fits it — otherwise it is a
 noisy level, reported as a constant/step with a resolution caveat rather than a drift.
-:func:`classify_offsets` is pure; :func:`clock_offsets` reads the stage-1 files.
+:func:`classify_offsets` is pure; :func:`clock_offsets` reads the cast files.
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ from ctdcast.config.cnv_header import (
     parse_star_block,
     parse_start_time,
 )
-from ctdcast.identity import cast_id_from_name, format_cast_id
-from ctdcast.processors.stage_layout import parse_stage, stage_dir
+from ctdcast.identity import format_cast_id
+from ctdcast.processors.stage_layout import group_by_cast
 
 # SBE header timestamps are whole seconds.  Named, with its reasoning, so a future sub-second
 # Seasave that changes the resolution does not silently loosen the flatness test below.
@@ -169,22 +169,27 @@ def suggested_config_yaml(verdict: ClockVerdict) -> str | None:
 def clock_offsets(
     root: Path | str,
 ) -> tuple[list[CastClock], int, dict[str, int]]:
-    """Return the stage-1 casts carrying both clocks, the number of files scanned, and a coordinate census.
+    """Return the casts carrying both clocks, the number of casts scanned, and a coordinate census.
 
-    Reads each file's ``raw_metadata`` header; a cast missing/unparseable a clock, or whose
-    filename carries no cast number, is skipped and counted in a single warning. The scanned count
-    lets a caller distinguish "these headers are GPS-fed" from "the data volume is not mounted". The
-    census counts which clock each cast's ``start_time`` bracket anchors the *coordinate* to
-    (``system`` vs ``nmea``) — the fact the stage-2 gate keys on, orthogonal to the offset
-    structure. Only *determined* sources are counted; a bracketless header (``"unknown"``) is left
-    out rather than tallied as a source it never named.
+    Discovers casts with :func:`group_by_cast`, the same best-available machinery the report uses,
+    so it works across the nested ``stageN/`` layout, a flat ``nc_dir``, or a tree processed only to
+    stage 2/3 — and skips compiled products and unnumbered files. The header (``raw_metadata``)
+    rides every stage, so the raw clock pair is read from each cast's stage-1 file when present,
+    else its lowest available stage. A cast whose clock is missing/unparseable is skipped and
+    counted in a single warning. The census counts which clock each cast's ``start_time`` bracket
+    anchors the *coordinate* to (``system`` vs ``nmea``) — the fact the stage-2 gate keys on,
+    orthogonal to the offset structure. Only *determined* sources are counted; a bracketless header
+    (``"unknown"``) is left out rather than tallied as a source it never named.
     """
     casts: list[CastClock] = []
     coordinate_counts: Counter[str] = Counter()
     scanned = 0
     skipped = 0
-    for nc_path in sorted(stage_dir(root, 1).glob("*.nc")):
+    for cast_id, stages in group_by_cast(root).items():
         scanned += 1
+        nc_path = stages.get(
+            1, stages[min(stages)]
+        )  # raw header rides every stage; prefer stage 1
         ds = xr.open_dataset(nc_path, engine="netcdf4")
         try:
             header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
@@ -196,16 +201,14 @@ def clock_offsets(
         ):  # count only a determined coordinate source
             coordinate_counts[start.clock] += 1
         clocks = parse_star_block(header or "").clocks
-        parsed = parse_stage(nc_path)
-        ident = cast_id_from_name(parsed[0]) if parsed else None
-        if clocks.offset_seconds is None or ident is None:
-            # No computable offset, or no cast number to key it on: keep it out of the series
-            # rather than fabricate a cast id that later numeric steps cannot use.
+        if (
+            clocks.offset_seconds is None
+        ):  # no computable offset -> keep out of the series
             skipped += 1
             continue
         casts.append(
             CastClock(
-                cast_id=format_cast_id(*ident),
+                cast_id=format_cast_id(*cast_id),
                 system_utc=clocks.system_dt,
                 nmea_utc=clocks.nmea_dt,
                 offset_seconds=clocks.offset_seconds,
@@ -213,8 +216,8 @@ def clock_offsets(
         )
     if skipped:
         warnings.warn(
-            f"clock diagnostic: {skipped} of {scanned} cast(s) skipped for a missing clock or an "
-            "unnumbered filename.",
+            f"clock diagnostic: {skipped} of {scanned} cast(s) skipped for a missing/unparseable "
+            "clock.",
             stacklevel=2,
         )
     casts.sort(key=lambda c: c.system_utc)
@@ -333,26 +336,28 @@ def classify_offsets(
     positively fits is a **drift**; otherwise the segments stand and the non-flat sd becomes a
     resolution caveat (per-cast comparison noise, or possibly-hidden structure). *n_scanned*, when
     given, is reported in the too-few message so a reader can tell "no clocks in these headers"
-    from "few files present"; the cause of an empty result is not asserted here.
+    from "few casts present"; the cause of an empty result is not asserted here.
     """
     n = len(series)
     scanned = n_scanned if n_scanned is not None else n
     if n == 0:
-        # Split by what was measured, not assumed: no files scanned is a mount/path problem;
-        # files scanned but none carrying a pair means the headers are GPS-fed.
+        # Split by what was measured, not assumed: no casts scanned is a mount/path problem;
+        # casts scanned but none carrying a pair means the headers are GPS-fed.
         if scanned == 0:
-            return ClockVerdict("insufficient", [], "no stage-1 files found to scan.")
+            return ClockVerdict(
+                "insufficient", [], "no cast files found under the root."
+            )
         return ClockVerdict(
             "no_clock_pair",
             [],
-            f"no cast carries a System/NMEA clock pair in the {scanned} file(s) scanned — "
+            f"no cast carries a System/NMEA clock pair in the {scanned} cast(s) scanned — "
             "start_time is GPS-fed, so there is no acquisition-clock error to correct.",
         )
     if n < MIN_CASTS:
         return ClockVerdict(
             "insufficient",
             [],
-            f"only {n} of {scanned} file(s) carry a clock pair — too few to classify.",
+            f"only {n} of {scanned} cast(s) carry a clock pair — too few to classify.",
         )
 
     segments = [_segment(run) for run in _segment_runs(series)]

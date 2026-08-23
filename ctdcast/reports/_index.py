@@ -1059,23 +1059,26 @@ def _make_clock_section(
     )
     from ctdcast.config.cnv_header import header_from_raw_metadata, parse_start_time
     from ctdcast.plotters.plots import draw_clock_offset_fig
-    from ctdcast.processors.stage_layout import stage_dir
+    from ctdcast.processors.stage_layout import group_by_cast
     from ctdcast.reports._encode import render_b64
 
-    stage1 = stage_dir(nc_dir, 1)
-    stage1_files = sorted(stage1.glob("*.nc")) if stage1.is_dir() else []
-    if not stage1_files:
+    # Discover casts the same way clock_offsets does (nested, flat, or stage-2/3-only trees); absent
+    # only when there are no casts at all, in which case the section is simply not shown.
+    groups = group_by_cast(nc_dir)
+    if not groups:
         return None
 
     series, scanned, coordinate_counts = clock_offsets(nc_dir)
     verdict = classify_offsets(series, n_scanned=scanned)
 
-    # Caption facts: cruise-constant.  Read from the first stage-1 header's start_time bracket
-    # (present on every stage-1 file via raw_metadata) rather than a global attr, so this works on
-    # trees predating the attr.  The bracket names which clock the coordinate is anchored to — the
-    # fact that decides whether the offsets below are a defect or a curiosity.
+    # Caption facts: cruise-constant.  Read from the first cast's start_time bracket (present on
+    # every file via raw_metadata) rather than a global attr, so this works on trees predating the
+    # attr.  The bracket names which clock the coordinate is anchored to — the fact that decides
+    # whether the offsets below are a defect or a curiosity.
+    first_stages = groups[sorted(groups)[0]]
+    caption_path = first_stages.get(1, first_stages[min(first_stages)])
     caption: dict[str, Any] = {}
-    ds = xr.open_dataset(stage1_files[0], engine="netcdf4")
+    ds = xr.open_dataset(caption_path, engine="netcdf4")
     try:
         start = parse_start_time(
             header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""

@@ -96,7 +96,7 @@ def run(args: argparse.Namespace) -> int:
     verdict = classify_offsets(series, n_scanned=scanned)
 
     print(
-        f"Clock diagnostic — {scanned} file(s) scanned, {len(series)} with a clock pair."
+        f"Clock diagnostic — {scanned} cast(s) scanned, {len(series)} with a clock pair."
     )
     print(coordinate_summary(coordinate_counts, scanned))
     print(f"Verdict: {verdict.kind}")
