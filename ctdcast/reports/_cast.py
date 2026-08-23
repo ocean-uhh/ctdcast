@@ -6,6 +6,7 @@ from ctdcast.config.cnv_header import (
     Correction,
     correction_records,
     header_from_raw_metadata,
+    provenance_advisories,
 )
 from ctdcast.config.global_attrs import cruise_name
 
@@ -525,16 +526,20 @@ def _render_qc_table(nc_path: Path) -> str | None:
 
 
 def _render_provenance_table(
-    records: list[Correction], attrs: dict[str, Any]
+    records: list[Correction],
+    attrs: dict[str, Any],
+    advisories: list[str] | None = None,
 ) -> str | None:
     """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
 
     *records* are the structured corrections (deck-unit align first, then each Sea-Bird
     Data Processing module in file order, a repeat suffixed); *attrs* supplies the time
-    coordinate's source and offset.  The full verbatim blocks stay in the
-    ``sbe_acquisition`` / ``sbe_processing`` attributes.  Values escaped here (emitted
-    ``|safe``).
+    coordinate's source and offset; *advisories* are the structural implications
+    (:func:`~ctdcast.config.cnv_header.provenance_advisories`) drawn as a note beneath the
+    tables.  The full verbatim blocks stay in the ``sbe_acquisition`` / ``sbe_processing``
+    attributes.  Values escaped here (emitted ``|safe``).
     """
+    advisories = advisories or []
     src = attrs.get("time_coordinate_source")
     off = attrs.get("time_clock_offset_seconds")
     if not records and not src and off is None:
@@ -575,12 +580,17 @@ def _render_provenance_table(
             f"<th>Value</th></tr></thead><tbody>{trows}</tbody></table>"
         )
 
+    advisory_html = ""
+    if advisories:
+        items = "".join(f"<li>{escape(a)}</li>" for a in advisories)
+        advisory_html = f"<h3{tight}>Advisories</h3><ul class='caption' style='margin-top:0'>{items}</ul>"
+
     note = (
         "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
         "full verbatim blocks are kept in the <code>sbe_acquisition</code> and "
         "<code>sbe_processing</code> attributes.</p>"
     )
-    return f"{corr_html}{time_html}{note}"
+    return f"{corr_html}{time_html}{advisory_html}{note}"
 
 
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
@@ -754,6 +764,9 @@ CAST_PANELS: dict[str, Panel] = {
                 header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
             ),
             dict(c.ds.attrs),
+            provenance_advisories(
+                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
+            ),
         ),
     ),
 }

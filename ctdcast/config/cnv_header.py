@@ -566,6 +566,60 @@ def sbe_history_notes(header_text: str) -> list[SbeHistoryNote]:
     return notes
 
 
+def _is_pressure_bin(bintype: str) -> bool:
+    """True when a ``binavg`` bin type is a pressure axis.
+
+    Only ``decibars`` is confirmed in the corpus. SBE's Bin Average also offers depth and
+    scan-number bins; do not match a guessed ``meters`` string — verify what SBE writes for
+    a depth bin before adding it here.
+    """
+    return bintype.strip().casefold() == "decibars"
+
+
+def provenance_advisories(header_text: str) -> list[str]:
+    """Structural implications of the SBE ledger — what the file *is* and what was done.
+
+    Each is a fact about the cast and its consequence, not a comparison to any
+    recommendation. The single source for both a stage-1 warning and the note under the
+    cast-page provenance table, so the two never drift. (The SBE-conformance check — where a
+    cast deviates from Sea-Bird's *published* recommendation — is a separate, later concern
+    and deliberately not here.)
+    """
+    if not header_text:
+        return []
+    acq = parse_star_block(header_text)
+    start = parse_start_time(header_text)
+    chain = parse_processing_chain(header_text)
+    advisories: list[str] = []
+
+    if any(
+        step.module == "binavg" and _is_pressure_bin(step.params.get("bintype", ""))
+        for step in chain.steps
+    ):
+        advisories.append(
+            "Already binned to a pressure grid before ctdcast read it — a terminal product "
+            "entering mid-ladder; deck-unit alignment and loop-edit corrections cannot be "
+            "applied to it."
+        )
+
+    c0 = acq.deck_unit.advance.get("primary conductivity")
+    c1 = acq.deck_unit.advance.get("secondary conductivity")
+    if c0 is not None and c1 is not None and c0 != c1:
+        advisories.append(
+            f"Deck-unit advance is asymmetric (primary conductivity +{c0:.3f} s, secondary "
+            f"+{c1:.3f} s) — the secondary channel carries a residual the primary does not, so "
+            "its salinity may spike where the primary's does not."
+        )
+
+    if start.clock == "system" and acq.clocks.nmea_utc:
+        advisories.append(
+            "The time coordinate is on the system clock, which differs from GPS (NMEA) by "
+            f"{acq.clocks.offset_seconds} s."
+        )
+
+    return advisories
+
+
 def _correction_flat(rec: Correction) -> str:
     """Flatten a :class:`Correction` to its one-line ``correction_<key>`` attribute value."""
     head = f"{rec.producer} {rec.version}".strip()

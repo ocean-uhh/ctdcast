@@ -22,6 +22,7 @@ from ctdcast.config.cnv_header import (
     parse_processing_chain,
     parse_star_block,
     parse_start_time,
+    provenance_advisories,
     sbe_history_notes,
 )
 
@@ -614,3 +615,46 @@ class TestSbeHistoryNotes:
     def test_empty_header(self):
         """No header -> no notes."""
         assert sbe_history_notes("") == []
+
+
+class TestProvenanceAdvisories:
+    """provenance_advisories reports the structural implications of the ledger."""
+
+    def test_pressure_gridded(self):
+        """OdB binned to decibars -> the terminal-product advisory, and only that."""
+        adv = provenance_advisories(_stage1_header())
+        assert any("pressure grid" in a for a in adv)
+        assert not any("asymmetric" in a for a in adv)  # V 5.2 is symmetric
+        assert not any("system clock" in a for a in adv)  # nmea/header, not system
+
+    def test_asymmetric_advance(self):
+        """The V 5.0 deck (0.073 / 0.043) -> the asymmetric-advance advisory."""
+        adv = provenance_advisories(_text(HEX_MSM_021))
+        assert any(
+            "asymmetric" in a and "+0.073 s" in a and "+0.043 s" in a for a in adv
+        )
+
+    def test_system_clock(self):
+        """MSM142's system-clock start_time (with NMEA present) -> the system-clock advisory."""
+        adv = provenance_advisories(_text(CNV_MSM_017))
+        assert any("system clock" in a for a in adv)
+        assert not any(
+            "pressure grid" in a for a in adv
+        )  # binavg seconds, not decibars
+
+    def test_clean_cast_no_advisories(self):
+        """A symmetric deck, seconds bin, NMEA clock -> nothing to advise."""
+        header = (
+            "* SBE 11plus V 5.2\n"
+            "* advance primary conductivity  0.073 seconds\n"
+            "* advance secondary conductivity  0.073 seconds\n"
+            "# start_time = Jul 10 2026 08:12:49 [NMEA time, header]\n"
+            "# bad_flag = -9.990e-29\n"
+            "# binavg_bintype = seconds\n"
+            "# file_type = ascii\n"
+        )
+        assert provenance_advisories(header) == []
+
+    def test_empty_header(self):
+        """No header -> no advisories."""
+        assert provenance_advisories("") == []

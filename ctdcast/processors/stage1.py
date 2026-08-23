@@ -23,6 +23,7 @@ import xarray as xr
 from ctdcast.config.cnv_header import (
     build_correction_ledger,
     header_from_raw_metadata,
+    provenance_advisories,
     sbe_history_notes,
 )
 from ctdcast.config.global_attrs import identity_attrs
@@ -148,8 +149,6 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
                 converted.attrs = new_attrs
                 ds = ds.drop_vars([_v]).assign({_target: converted})
             else:
-                import warnings
-
                 warnings.warn(
                     f"Oxygen variable {_v!r} is in µmol/L but no density is available "
                     "for conversion.  Variable dropped; reprocess with density present.",
@@ -239,8 +238,12 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     # Step 7: stamp the SBE upstream-provenance ledger, read from the same verbatim
     # header.  Records what the deck unit and SBE Data Processing did before ctdcast, so
     # a later stage cannot re-apply a correction already made.  No-op with no SBE header.
+    # Structural advisories (pressure-gridded, asymmetric advance, system clock) are also
+    # raised as warnings; the batch collapses identical ones via summarise_warnings.
     if header:
         ds.attrs.update(build_correction_ledger(header))
+        for advisory in provenance_advisories(header):
+            warnings.warn(advisory, stacklevel=2)
 
     return ds
 
