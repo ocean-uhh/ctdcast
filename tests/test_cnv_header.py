@@ -15,12 +15,14 @@ from ctdcast.config.cnv_header import (
     Correction,
     ProcessingChain,
     StartTime,
+    SbeHistoryNote,
     build_correction_ledger,
     correction_records,
     header_from_raw_metadata,
     parse_processing_chain,
     parse_star_block,
     parse_start_time,
+    sbe_history_notes,
 )
 
 # Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw
@@ -573,3 +575,42 @@ class TestBuildCorrectionLedger:
             ledger["correction_celltm"]
             == "SBE Data Processing 7.26.7.129: alpha=0.0300"
         )
+
+
+class TestSbeHistoryNotes:
+    """sbe_history_notes yields one note per timestamped SBE module, attributed to SBE."""
+
+    def test_one_note_per_timestamped_module(self):
+        """Every module in the real chain has a date, so each yields a note in file order."""
+        notes = sbe_history_notes(_stage1_header())
+        assert [n.stage for n in notes] == [
+            "datcnv",
+            "wildedit",
+            "wfilter",
+            "filter",
+            "celltm",
+            "Derive",
+            "binavg",
+        ]
+        celltm = next(n for n in notes if n.stage == "celltm")
+        assert isinstance(celltm, SbeHistoryNote)
+        assert celltm.version == "7.26.7.129"
+        assert celltm.note == "alpha=0.0300, 0.0300 tau=7.0000, 7.0000"
+        # timestamp is the verbatim SBE stamp — no ISO 'Z'
+        assert "Z" not in celltm.timestamp
+        assert celltm.timestamp and celltm.timestamp[0].isalpha()
+
+    def test_module_without_date_is_skipped(self):
+        """A module with no _date line yields no note (a history line needs a stamp)."""
+        header = (
+            "# bad_flag = -9.990e-29\n"
+            "# celltm_date = Jul 18 2026 15:40:38, 7.26.7.129\n"
+            "# celltm_alpha = 0.0300\n"
+            "# loopedit_in = C:/x.cnv\n"  # loopedit present but has no _date
+            "# file_type = ascii\n"
+        )
+        assert [n.stage for n in sbe_history_notes(header)] == ["celltm"]
+
+    def test_empty_header(self):
+        """No header -> no notes."""
+        assert sbe_history_notes("") == []

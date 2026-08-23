@@ -179,6 +179,21 @@ class Correction:
     parameters: str
 
 
+@dataclass(frozen=True)
+class SbeHistoryNote:
+    """One SBE Data Processing module rendered as a ``history`` line's components.
+
+    ``timestamp`` is the module's verbatim SBE stamp (no ``Z``); ``stage`` is the module
+    name as spelled; ``note`` is its salient-parameter body. The deck-unit align has no
+    timestamp and is not a history note (it is ``correction_align``).
+    """
+
+    timestamp: str
+    version: str
+    stage: str
+    note: str
+
+
 def _collapse(value: str) -> str:
     """Collapse internal whitespace runs to single spaces and strip the ends."""
     return re.sub(r"\s+", " ", value.strip())
@@ -412,17 +427,24 @@ def parse_processing_chain(header_text: str) -> ProcessingChain:
     return ProcessingChain(steps=steps, verbatim="\n".join(region))
 
 
-def _module_version(params: dict[str, str]) -> str:
-    """Extract the SBE Data Processing version from a module's ``date`` value.
+def _module_date_parts(params: dict[str, str]) -> tuple[str, str]:
+    """Split a module's ``date`` value into ``(timestamp, version)``.
 
-    The date is ``<timestamp>, <version> [<module>_vars = N]``; return the version
-    between the comma and any trailing bracket, or ``""`` if there is no date line. The
-    bracket is stripped *before* splitting on the comma, so a comma inside the bracket
-    cannot corrupt the version.
+    The date is ``<timestamp>, <version> [<module>_vars = N]``; the bracket is stripped
+    *before* the comma split so a comma inside it cannot corrupt either half. A date with
+    no comma (no version recorded) is all timestamp; an absent date gives ``("", "")``.
+    :func:`_module_version` and :func:`_module_timestamp` share this so they cannot drift.
     """
     date = re.sub(r"\[.*\]", "", params.get("date", ""))
-    tail = date.rsplit(",", 1)[-1] if "," in date else ""
-    return tail.strip()
+    if "," not in date:
+        return date.strip(), ""
+    timestamp, version = date.rsplit(",", 1)
+    return timestamp.strip(), version.strip()
+
+
+def _module_version(params: dict[str, str]) -> str:
+    """The SBE Data Processing version from a module's ``date`` value, or ``""``."""
+    return _module_date_parts(params)[1]
 
 
 def _count_phrase(n: int, noun: str) -> str:
@@ -514,6 +536,34 @@ def correction_records(header_text: str) -> list[Correction]:
     return _correction_records(
         parse_star_block(header_text), parse_processing_chain(header_text)
     )
+
+
+def sbe_history_notes(header_text: str) -> list[SbeHistoryNote]:
+    """Return one history note per **timestamped** SBE Data Processing module, file order.
+
+    Attributed to Sea-Bird so a stage-1 file's ``history`` shows what SBE did before
+    ctdcast, oldest-first. A module with no ``_date`` line — the third-party dialect that
+    emits none — is skipped, because a history line needs a stamp and it has none: such a
+    module still appears in ``correction_<module>`` and ``sbe_processing_order`` but not in
+    ``history``. The deck-unit align has no timestamp either and is recorded only as
+    ``correction_align``. The note body is the same summary the ledger uses.
+    """
+    if not header_text:
+        return []
+    notes: list[SbeHistoryNote] = []
+    for step in parse_processing_chain(header_text).steps:
+        timestamp, version = _module_date_parts(step.params)
+        if not timestamp:  # no date -> no stamp -> no history line
+            continue
+        notes.append(
+            SbeHistoryNote(
+                timestamp=timestamp,
+                version=version,
+                stage=step.module,
+                note=_correction_body(step),
+            )
+        )
+    return notes
 
 
 def _correction_flat(rec: Correction) -> str:

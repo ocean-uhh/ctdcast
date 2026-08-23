@@ -38,6 +38,45 @@ class TestAppendHistory:
         assert attrs["history"].startswith("seed line from upstream\n")
         assert "stage3: new step" in attrs["history"]
 
+    def test_producer_override(self):
+        """A non-ctdcast producer is stamped in place of 'ctdcast'."""
+        attrs: dict = {}
+        append_history(
+            attrs,
+            "alpha=0.03",
+            stage="celltm",
+            version="7.26",
+            producer="SBE Data Processing",
+        )
+        assert "SBE Data Processing 7.26 celltm: alpha=0.03" in attrs["history"]
+        assert "ctdcast" not in attrs["history"]
+
+    def test_verbatim_timestamp_kept_without_z(self):
+        """A supplied timestamp is used as-is; no ISO 'Z' is appended."""
+        attrs: dict = {}
+        append_history(attrs, "x", stage="datcnv", timestamp="Jul 30 2026 11:10:35")
+        assert attrs["history"].startswith("Jul 30 2026 11:10:35 ")
+        assert "Z" not in attrs["history"].split(" datcnv")[0]
+
+    def test_prepend_inserts_at_front(self):
+        """prepend=True puts the line before existing history (oldest-first upstream step)."""
+        attrs = {"history": "reader line"}
+        append_history(
+            attrs, "x", stage="datcnv", timestamp="Jul 30 2026 11:10:35", prepend=True
+        )
+        lines = attrs["history"].split("\n")
+        assert "datcnv" in lines[0]
+        assert lines[1] == "reader line"
+
+    def test_empty_note_no_trailing_space(self):
+        """A module with no salient parameters leaves no dangling 'stage: ' whitespace."""
+        attrs: dict = {}
+        append_history(attrs, "", stage="Derive", timestamp="Jul 30 2026 11:10:44")
+        assert (
+            attrs["history"]
+            == "Jul 30 2026 11:10:44 ctdcast " + __version__ + " Derive:"
+        )
+
 
 def test_history_accumulates_across_stages():
     """A stage-3 dataset inherits the stage-2 line and appends its own.
