@@ -160,9 +160,11 @@ back to a built-in default.
          suspect: { pressure: 10.0 }                 # dbar
          fail:    { pressure: 50.0 }
      clock:                                          # from `ctdcast clock config.yaml`
-       segments:
-         - casts: [[1, 32]]
-           clock_offset_seconds: 7.44
+       segments:                                     # one entry per segment found
+         - casts: [[1, 3]]
+           clock_offset_seconds: 4.33
+         - casts: [[4, 32]]
+           clock_offset_seconds: 7.76
          - casts: [[33, 182]]
            clock_offset_seconds: -2.07
 

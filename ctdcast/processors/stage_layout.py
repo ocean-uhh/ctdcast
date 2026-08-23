@@ -264,7 +264,7 @@ def select_best_available(
 
     The one place the best-available precedence lives for every consumer (the
     report, ``build_profiles``, the LADCP compile).  ``best_path`` is the
-    highest-stage file present (3 > 2 > 1); ``source_stage`` is that rung, or 0
+    highest-stage file present (3 > 2 > 1); ``source_stage`` is that stage, or 0
     when the best file is a flat/suffix-less file that does not state its own
     stage (the compatibility shim only *assumes* stage 1, so 0 = "unknown, guessed
     stage 1" stays distinct from a stated stage 1).

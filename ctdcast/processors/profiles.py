@@ -153,7 +153,7 @@ def _select_cast_files(root: Path) -> list[tuple[int, str, Path, int]]:
 
     Each cast is compiled from its **best-available** stage file — stage 3 if
     present, else stage 2, else stage 1 — so a mixed-stage directory early in a
-    cruise compiles honestly, and ``source_stage`` records the rung each profile
+    cruise compiles honestly, and ``source_stage`` records the stage each profile
     came from.  A plain cast ``NNN`` and its lettered sibling ``NNNb`` are
     distinct events; identity is the ``(number, suffix)`` pair.  An old flat
     ``nc_dir`` (unsuffixed files under the root) is read as stage 1 via the shim
@@ -356,7 +356,7 @@ def build_profiles(
     max_pressures = np.full(n_casts, np.nan, dtype=np.float32)
     lats_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
     lons_at_max_p = np.full(n_casts, np.nan, dtype=np.float64)
-    # Which processing rung each cast was compiled from (1/2/3) — casts are at
+    # Which processing stage each cast was compiled from (1/2/3) — casts are at
     # mixed stages early in a cruise, so the compiled file states it per profile.
     source_stages = np.zeros(n_casts, dtype=np.int8)
     # The actual per-cast filename each profile came from — provenance that
@@ -534,7 +534,7 @@ def build_profiles(
                     "flag_values": np.array([0, 1, 2, 3], dtype=np.int8),
                     "flag_meanings": "unknown converted soak_flagged qc_calibrated",
                     "comment": (
-                        "Best-available rung for this cast at compile time: "
+                        "Best-available stage for this cast at compile time: "
                         "1 = raw converted, 2 = soak/deck flagged, 3 = QC and "
                         "calibration. 0 = unknown: an unsuffixed flat file assumed "
                         "to be stage 1 by the compatibility shim, which does not "

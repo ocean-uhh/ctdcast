@@ -42,7 +42,7 @@ def test_empty_contributors_block_is_commented_and_parses():
 
 def test_generated_config_with_contributors_parses_and_validates():
     txt = _build_config_text(
-        nc_dir="/d/nc",
+        ctd_root="/d/nc",
         cnv_dir=None,
         cnv_pattern=None,
         ladcp_dir=None,

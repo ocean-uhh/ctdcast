@@ -32,8 +32,8 @@ profile already belongs to, so it indexes nothing.
 
 ----
 
-The stage ladder
-----------------
+The stages
+----------
 
 Two rules govern what may be a *stage* rather than a *product*:
 
@@ -43,9 +43,9 @@ those scans. This is why a later stage can always be re-run from an earlier one,
 and why the lineage on disk is meaningful rather than lossy.
 
 A sharper form of the same rule is worth stating, because it says exactly where
-in the ladder numbers start moving: **stages 1 and 2 change no measured value.**
+numbers start moving: **stages 1 and 2 change no measured value.**
 Stage 1 renames and normalises units; stage 2 selects and flags. Neither alters a
-temperature, a conductivity or a pressure. **Stage 3 is the first rung where a
+temperature, a conductivity or a pressure. **Stage 3 is the first stage where a
 measured value changes** — calibration adjusts conductivity, and salinity is
 re-derived from it. (Trimming a moored record does shift the ``time`` *coordinate*
 under a clock correction, which is why the rule is about measured values rather
@@ -56,9 +56,9 @@ about *calibration*, and the two are diagnosed differently.
 **Constant in representation.** A stage leaves the sampling representation
 untouched: same scans, same vertical axis. Anything that *changes* the
 representation — binning to a pressure grid, splitting into downcast and upcast
-halves, stacking casts into one array — is a **terminal product**, not a rung.
+halves, stacking casts into one array — is a **terminal product**, not a stage.
 
-**Parameters are found outside the ladder and applied inside it.** A stage never
+**Parameters are found outside the stages and applied inside them.** A stage never
 derives its own correction coefficients. For ctdcast they come from two places:
 
 - the **conductivity slope**, from comparing CTD conductivity against **bottle
@@ -67,11 +67,13 @@ derives its own correction coefficients. For ctdcast they come from two places:
   that use nothing but the CTD data itself.
 
 Both are recorded in config and *applied* at stage 3. A **clock offset** is found
-one rung earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
+one stage earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
 against its GPS (NMEA) clock across the whole cruise, classifies the error
 (constant, step, or drift), and generates a paste-ready ``processing.clock`` block.
-Because a clock correction moves the ``time`` coordinate and no measured value, it
-is *applied* at **stage 2** — the exception noted above. (oceanarray finds the
+Because a clock correction moves the ``time`` coordinate and no measured value,
+stage 2 is where it *belongs* — the exception noted above. Finding the offset is
+implemented; **applying it is not yet**, so today ``ctdcast clock`` reports and
+suggests, and nothing shifts the coordinate. (oceanarray finds the
 analogous offset for a moored instrument at recovery instead; calibration-dip
 processing — `caldip <https://github.com/ocean-uhh/caldip>`_ — is its route for
 moored instruments, and is not part of the CTD workflow.)
@@ -87,7 +89,7 @@ stage? Three reasons the separation is structural rather than incidental:
   silently on every run;
 - **reproducibility.** A stage that re-derived its own parameters could give a
   different answer from the same input as the surrounding casts change, which is
-  exactly what the ladder exists to prevent.
+  exactly what these rules exist to prevent.
 
 The slope has a fourth, simpler reason: bottle salinities are analysed data the
 stage has never seen.
@@ -99,12 +101,13 @@ directories, not inside them.
 
 ----
 
-Before the ladder: what the file already carries
-------------------------------------------------
+What Sea-Bird has already done to the file
+------------------------------------------
 
-ctdcast does not receive raw measurements. A Sea-Bird CNV has usually been through
-two rounds of processing before ctdcast opens it, and **neither of them announces
-itself in a way the ladder can see**:
+ctdcast does not *yet* receive raw measurements — ingesting the 24 Hz ``.hex`` is
+planned, and is the point at which ctdcast would run the full chain itself. Today a
+Sea-Bird CNV has usually been through two rounds of processing before ctdcast opens
+it, and **neither of them announces itself in a way the stages can see**:
 
 - the **deck unit**, at acquisition, in hardware;
 - **SBE Data Processing**, ashore or at sea, as a chain of modules.
@@ -157,7 +160,7 @@ Two consequences follow for the alignment specifically:
 - **The 0.073 s figure is a configuration value, not a constant.** The lag is
   dominated by water transit through the pumped plumbing, so a faster pump or a
   shorter tube shortens it. This is why the align lag is *found* from the data
-  (see the ladder rules above) rather than read from a table — the table value is
+  (see the stage rules above) rather than read from a table — the table value is
   the fallback and the sanity bound.
 - **The advance is recorded per channel**, and older deck units do not always set
   the two conductivity channels alike. Where they differ, the secondary channel
@@ -182,17 +185,17 @@ parameter set, which would let a config value look applied when it was not. In
 practice that means a stage **skips** work already done upstream rather than doing
 it and undoing it later, which is also what keeps the QC flags monotone.
 
-Where a file enters the ladder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Where a file enters the sequence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``binavg`` module is the one that decides this, and its ``bintype`` matters
 more than its size:
 
 - ``bintype = seconds`` — the file is still a time series, decimated. It enters at
-  stage 1 and the whole ladder applies.
+  stage 1 and every stage applies.
 - ``bintype = decibars`` — the file has already been gridded onto a pressure axis.
-  Its sampling representation has changed, which by the second ladder rule makes it
-  a **terminal product** rather than a rung. Time-domain corrections cannot be
+  Its sampling representation has changed, which by the second rule above makes it
+  a **terminal product** rather than a stage. Time-domain corrections cannot be
   applied to it: Sea-Bird states plainly that Align CTD *"cannot be run on files
   that have been averaged into pressure or depth bins"*, and Loop Edit needs three
   successive scans to compute velocity, which a 1 dbar grid has destroyed.
@@ -265,7 +268,7 @@ determines what work is left to do. A typical shipboard chain runs
 Pointed at the first prong, ctdcast receives a file that has *not* been loop-edited,
 so ship-heave reversals are still present and its own compiled product will carry
 them unless it removes them itself. Pointed at the second, it receives a finished
-gridded product and its ladder has nothing left to add. Neither is wrong — but the
+gridded product and the stages have nothing left to add. Neither is wrong — but the
 difference is invisible without reading the header, which is the point.
 
 ----
@@ -289,8 +292,8 @@ One cast in, one cast out, once per cast.
      kinds of work. ``datcnv`` is conversion — hex to engineering units — which is
      stage-0/1 work. But ``wildedit`` (despike), ``wfilter`` (median filter),
      ``filter`` (low-pass), ``alignctd`` (sensor time alignment) and ``celltm``
-     (cell thermal mass) all **change measured values**, which by the ladder's
-     second invariant makes them **stage-3-class corrections applied upstream**,
+     (cell thermal mass) all **change measured values**, which by the second rule
+     above makes them **stage-3-class corrections applied upstream**,
      with per-variable parameters recorded only in the CNV header::
 
          # wfilter_action t090C = median, 10
@@ -301,7 +304,7 @@ One cast in, one cast out, once per cast.
 
      - **Re-run scope is asymmetric.** Changing a ctdcast stage-3 parameter
        invalidates stage 3. Changing a *ctdam* parameter regenerates the CNV and
-       invalidates the ctdcast ladder **from stage 1**, because the corrections
+       invalidates every ctdcast stage **from stage 1**, because the corrections
        sit below it. That is the practical cost of these steps living outside the
        framework.
      - **Stage 3 must know what was already done.** Applying a cell-thermal-mass
@@ -311,7 +314,7 @@ One cast in, one cast out, once per cast.
 
      The longer-term shape is to express these as ctdcast stage-3 modules with
      their parameters in ctdcast's config, ingesting unfiltered ``datcnv`` output
-     — one place for the parameters, and re-runnable within the ladder.
+     — one place for the parameters, and re-runnable within the stages.
      Importantly this needs **no file round-trip**: ctdam is a Python library
      whose appliers (``AlignCTD``, ``WFilter``, ``CellTM``, ``LoopRemoval``)
      accept and return an in-memory ``CTDData``, so ctdcast would call them
@@ -335,14 +338,17 @@ One cast in, one cast out, once per cast.
   becomes ``ctd_temperature`` when there is no second sensor to distinguish it
   from. The backend is pluggable (``CtdBackend``); ``seasenselib`` is the current
   implementation.
-- **Stage 2 — trim.** Decide which scans belong to the real cast: downcast/upcast
-  splitting, soak detection at the start, back-on-deck detection at the end. This
+- **Stage 2 — trim.** Decide which scans belong to the real cast: soak detection at
+  the start and back-on-deck detection at the end. It does **not** split the cast
+  into downcast and upcast — splitting changes the sampling representation, so by
+  the second rule above it belongs to a terminal product, and it happens in the
+  ``profiles`` compile. This
   is the profile analogue of trimming a moored record to its deployment window —
-  same rung, same question, different domain (see the note below).
+  same stage, same question, different domain (see the note below).
   QARTOD flag 4 is set on soak and post-recovery records — **marked, not deleted**,
   per the monotonicity rule — and the detection parameters are recorded in
   ``history``.
-- **Stage 3 — QC and calibration.** Gross-range QC, then any conductivity
+- **Stage 3 — QC and calibration.** Gross-range and spike QC, then any conductivity
   calibration named in the cruise config, then salinity re-derived from the
   calibrated conductivity. Deliberately **iterative**: re-run it as calibration
   improves, which is why it must not consume its own output.
@@ -391,11 +397,11 @@ Summary table
    * - 2
      - cast
      - Trim
-     - Downcast/upcast split; soak and back-on-deck flagged (not removed)
+     - Soak and back-on-deck flagged (not removed); no splitting
    * - 3
      - cast
      - QC and calibration
-     - Gross-range QC; conductivity calibration; salinity re-derived
+     - Gross-range and spike QC; conductivity calibration; salinity re-derived
    * - profiles
      - cruise
      - Compile (CTD)
@@ -407,7 +413,7 @@ Summary table
 
 .. note::
 
-   **The rungs line up with oceanarray's**, which processes moored time series
+   **The stages line up with oceanarray's**, which processes moored time series
    rather than profiles:
 
    .. list-table::
@@ -430,11 +436,11 @@ Summary table
         - gross-range QC, conductivity calibration, salinity
         - QARTOD QC, pressure interpolation, salinity, velocity rotation
 
-   The alignment is not a coincidence of numbering: each rung is a *kind* of
+   The alignment is not a coincidence of numbering: each stage is a *kind* of
    transformation, so the same three appear whether the thing being processed is
    a cast or a mooring record. What differs is the domain — a cast's "real
    measurement" begins after the soak, a mooring's after deployment — and
-   therefore the specific operations, not the intent of the rung.
+   therefore the specific operations, not the intent of the stage.
 
    What genuinely does not transfer is the level above: oceanarray continues to
    mooring- and array-level steps (stack, grid, concatenate, boundary merge)

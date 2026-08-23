@@ -146,7 +146,7 @@ def run(args: argparse.Namespace) -> int:
                     f"or directly: {nc_dir}. Run `ctdcast process --stage 1` first."
                 )
             else:
-                # Report casts and stage files separately: with a stage ladder the
+                # Report casts and stage files separately: with per-stage files the
                 # file count is casts x stages, so a bare "364 cast file(s)" for a
                 # 182-cast cruise reads as twice as many casts as exist.  The
                 # per-stage breakdown is also the answer to "how far has this

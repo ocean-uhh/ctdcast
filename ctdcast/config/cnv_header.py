@@ -609,7 +609,7 @@ def provenance_advisories(header_text: str) -> list[str]:
     ):
         advisories.append(
             "Already binned to a pressure grid before ctdcast read it — a terminal product "
-            "entering mid-ladder. No time-domain correction (conductivity alignment, cell "
+            "entering mid-sequence. No time-domain correction (conductivity alignment, cell "
             "thermal mass, loop edit) can be applied to it, because pressure-binning discarded "
             "the scan-level time series they need."
         )
