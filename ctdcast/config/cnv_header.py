@@ -347,6 +347,16 @@ def parse_start_time(header_text: str) -> StartTime:
     return StartTime(value=None, clock="unknown", anchor="unknown")
 
 
+def start_time_clock(bracket: str) -> str:
+    """Classify a ``time_coordinate_source`` bracket to its clock: ``system``/``nmea``/``unknown``.
+
+    The public single point of truth for "which clock is the time coordinate anchored to", used by
+    the stage-2 clock applier's gate so it does not re-parse the bracket with a fragile substring.
+    An empty or unrecognised bracket resolves to ``"unknown"``.
+    """
+    return _resolve_start_time_bracket(bracket)[0]
+
+
 def _resolve_start_time_bracket(bracket: str) -> tuple[str, str]:
     """Resolve a ``start_time`` bracket ``<clock>, <anchor>`` to ``(clock, anchor)``.
 
@@ -609,7 +619,7 @@ def provenance_advisories(header_text: str) -> list[str]:
     ):
         advisories.append(
             "Already binned to a pressure grid before ctdcast read it — a terminal product "
-            "entering mid-ladder. No time-domain correction (conductivity alignment, cell "
+            "entering mid-sequence. No time-domain correction (conductivity alignment, cell "
             "thermal mass, loop edit) can be applied to it, because pressure-binning discarded "
             "the scan-level time series they need."
         )

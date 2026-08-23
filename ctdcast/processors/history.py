@@ -1,4 +1,4 @@
-"""Stamped ``history`` notes for the processing ladder.
+"""Stamped ``history`` notes for the processing stages.
 
 Every stage records what it did — and the parameters it used — as a line in the
 CF ``history`` global attribute, so the treatment is reconstructable from the

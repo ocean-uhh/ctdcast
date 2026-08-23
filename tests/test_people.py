@@ -58,6 +58,43 @@ def test_delimiter_checked_in_email_too():
     assert any(".email contains" in e for e in errors)
 
 
+# --- malformed config shapes -----------------------------------------------
+
+
+def test_unknown_role_vocabulary_is_rejected():
+    """A role_vocabulary not in the registry is named as unknown, not guessed at."""
+    ci = _cruise_info(role_vocabulary="BOGUS")
+    errors, _ = check_contributors(ci)
+    assert any("role_vocabulary" in e and "unknown" in e for e in errors)
+
+
+def test_contributors_must_be_a_list():
+    """A scalar where a list of mappings is expected is an error, not a crash."""
+    ci = _cruise_info(contributors="Eleanor Frajka-Williams")
+    errors, _ = check_contributors(ci)
+    assert any("must be a list" in e for e in errors)
+
+
+def test_non_mapping_contributor_entry_is_rejected():
+    """A bare string in the contributors list is flagged rather than silently skipped."""
+    ci = _cruise_info(
+        contributors=[{"name": "A Person", "role": "PI"}, "not a mapping"]
+    )
+    errors, _ = check_contributors(ci)
+    assert any("must be a mapping" in e for e in errors)
+
+
+def test_unknown_institution_role_vocabulary_is_reported_not_crashed():
+    """An unknown institution_role_vocabulary is a clean error, not a KeyError from deeper in.
+
+    The later institution checks (and _cf_institution) re-derive this vocabulary, so an unknown
+    value once raised a bare KeyError; check_contributors must report it and stop instead.
+    """
+    ci = _cruise_info(institution_role_vocabulary="BOGUS")
+    errors, _ = check_contributors(ci)
+    assert any("institution_role_vocabulary" in e and "unknown" in e for e in errors)
+
+
 # --- roles ------------------------------------------------------------------
 
 

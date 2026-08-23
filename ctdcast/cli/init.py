@@ -920,7 +920,6 @@ def _run_interactive(args: argparse.Namespace) -> int:
                 "ctd_root": str(_d.get("ctd_root") or _d.get("nc_dir") or ""),
                 "cnv_dir": str(_d.get("cnv_dir", "") or ""),
                 "cnv_pattern": str(_d.get("cnv_pattern", "") or ""),
-                "profiles_nc": str(_d.get("profiles_nc", "") or ""),
                 "ladcp_dir": str(_d.get("ladcp_dir", "") or ""),
                 "ladcp_pattern": str(_d.get("ladcp_pattern", "") or ""),
                 "gebco_nc": str(_d.get("gebco_nc", "") or ""),
@@ -953,36 +952,18 @@ def _run_interactive(args: argparse.Namespace) -> int:
     if config_path is None:
         return 0
 
-    _section_header("Data paths")
-    nc_dir = _prompt(
-        "ctd_root — the CTD root ctdcast owns"
-        " (stage1/ … stage3/ and profiles.nc are created inside it)",
-        default=_ex.get("ctd_root", ""),
-        required=True,
-    )
-    if not nc_dir:
-        print("ERROR: ctd_root is required.", file=sys.stderr)
-        return 1
+    # Asked in the order the data flows: what ctdcast reads, then what it writes.
+    _section_header("Inputs — existing data ctdcast reads, and never writes")
     cnv_dir = _prompt(
-        "cnv_dir — raw CNV files directory (for ctdcast run --ctd)",
+        "cnv_dir — calibrated CNV files, one per cast",
         default=_ex.get("cnv_dir", ""),
     )
     cnv_pattern = _prompt(
         "cnv_pattern — glob to select CNV files",
         default=_ex.get("cnv_pattern", "") or "*.cnv",
     )
-    # Not written to the config: `profiles.nc` is derived as
-    # `<ctd_root>/profiles.nc`.  It is asked for here only because section and
-    # timeseries auto-detection needs to *read* one, and the user may keep an
-    # existing product somewhere else while migrating to the root layout.
-    profiles_nc = _prompt(
-        "profiles.nc to read for section/timeseries detection"
-        " (blank to skip detection)",
-        default=_ex.get("profiles_nc", "")
-        or (str(Path(nc_dir) / "profiles.nc") if nc_dir else ""),
-    )
     ladcp_dir = _prompt(
-        "ladcp_dir — LADCP .mat directory",
+        "ladcp_dir — LADCP .mat files as written by the LDEO software",
         default=_ex.get("ladcp_dir", ""),
     )
     ladcp_pattern = None
@@ -1005,11 +986,25 @@ def _run_interactive(args: argparse.Namespace) -> int:
         default=_ex.get("groupings_yaml", "") or "ctd_groupings.yaml",
     )
 
-    _section_header("Report")
+    _section_header("Outputs — directories ctdcast creates and writes into")
+    ctd_root = _prompt(
+        "ctd_root — the CTD root ctdcast owns"
+        " (stage1/ … stage3/ and profiles.nc are created inside it)",
+        default=_ex.get("ctd_root", ""),
+        required=True,
+    )
+    if not ctd_root:
+        print("ERROR: ctd_root is required.", file=sys.stderr)
+        return 1
     output_dir = (
         _prompt("report dir", default=_ex.get("output_dir", "") or "outputs/ctd_report")
         or "outputs/ctd_report"
     )
+
+    # Derived, never asked and never written to the config: the compiled product
+    # is always `<ctd_root>/profiles.nc`.  Section and timeseries auto-detection
+    # below needs to *read* one, which is the only reason it is resolved here.
+    profiles_nc = str(Path(ctd_root) / "profiles.nc")
 
     _section_header("Cruise info (optional)")
     # The cruise identifier — written to `cruise_id`, which is what the compiled
@@ -1037,115 +1032,111 @@ def _run_interactive(args: argparse.Namespace) -> int:
     contributors = _prompt_contributors()
     institutions = _prompt_institutions()
 
-    # Run detection if profiles.nc is available.
+    # Run detection if the compiled product exists yet.  It usually will not on a
+    # first run, which is expected rather than an error: the config is written
+    # either way and detection can be re-run later with `init --auto-section`.
     _draft_msg: str = ""
-    if not profiles_nc:
+    profiles_path = Path(profiles_nc)
+    if not profiles_path.exists():
         print(
-            "  (no profiles.nc — skipping detection; "
-            "build one with: ctdcast convert --build-profiles)"
+            f"  (no {profiles_path} yet — skipping section detection; build it with:"
+            " ctdcast process <config> --stage profiles, then re-run"
+            " ctdcast init --auto-section)"
         )
     else:
-        profiles_path = Path(profiles_nc)
-        if not profiles_path.exists():
-            print(f"  WARNING: {profiles_path} not found — skipping section detection.")
-        else:
-            _section_header("Section / timeseries detection")
+        _section_header("Section / timeseries detection")
+        try:
+            ans = input("  Run detection from profiles.nc? [Y/n]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            ans = "n"
+        if ans not in {"n", "no"}:
+            dx_sec = args.dx_section
+            dx_diam = args.dx_diameter
+            max_turn = args.max_turn_deg
+            min_run = args.min_run_casts
+            max_sec = args.max_section_casts
+            print(
+                f"\n  Thresholds — section break: {dx_sec} km,"
+                f" repeat-station diameter: {dx_diam} km,"
+                f" max heading change: {max_turn}°, min casts/section: {min_run}"
+                f"\n  (Press Enter to accept each default)"
+            )
             try:
-                ans = input("  Run detection from profiles.nc? [Y/n]: ").strip().lower()
-            except (EOFError, KeyboardInterrupt):
+                v = input(f"  Repeat-station cluster diameter km [{dx_diam}]: ").strip()
+                if v:
+                    dx_diam = float(v)
+                v = input(f"  Section break distance km [{dx_sec}]: ").strip()
+                if v:
+                    dx_sec = float(v)
+                v = input(
+                    f"  Max heading change within section deg [{max_turn}]: "
+                ).strip()
+                if v:
+                    max_turn = float(v)
+                v = input(f"  Min casts per section [{min_run}]: ").strip()
+                if v:
+                    new_min = int(v)
+                    if new_min < 3:
+                        print("  WARNING: --min-run-casts must be >= 3; using 3.")
+                        new_min = 3
+                    min_run = new_min
+            except (EOFError, KeyboardInterrupt, ValueError):
                 print()
-                ans = "n"
-            if ans not in {"n", "no"}:
-                dx_sec = args.dx_section
-                dx_diam = args.dx_diameter
-                max_turn = args.max_turn_deg
-                min_run = args.min_run_casts
-                max_sec = args.max_section_casts
-                print(
-                    f"\n  Thresholds — section break: {dx_sec} km,"
-                    f" repeat-station diameter: {dx_diam} km,"
-                    f" max heading change: {max_turn}°, min casts/section: {min_run}"
-                    f"\n  (Press Enter to accept each default)"
+            print(
+                f"\nDetecting (dx_section={dx_sec} km, dx_diameter={dx_diam} km,"
+                f" max_turn={max_turn}°, min_run={min_run}, max_section_casts={max_sec})..."
+            )
+            try:
+                sections, timeseries = _detect_groups(
+                    profiles_path,
+                    dx_sec,
+                    max_sec,
+                    max_turn,
+                    min_run,
+                    dx_diam,
                 )
-                try:
-                    v = input(
-                        f"  Repeat-station cluster diameter km [{dx_diam}]: "
-                    ).strip()
-                    if v:
-                        dx_diam = float(v)
-                    v = input(f"  Section break distance km [{dx_sec}]: ").strip()
-                    if v:
-                        dx_sec = float(v)
-                    v = input(
-                        f"  Max heading change within section deg [{max_turn}]: "
-                    ).strip()
-                    if v:
-                        max_turn = float(v)
-                    v = input(f"  Min casts per section [{min_run}]: ").strip()
-                    if v:
-                        new_min = int(v)
-                        if new_min < 3:
-                            print("  WARNING: --min-run-casts must be >= 3; using 3.")
-                            new_min = 3
-                        min_run = new_min
-                except (EOFError, KeyboardInterrupt, ValueError):
-                    print()
-                print(
-                    f"\nDetecting (dx_section={dx_sec} km, dx_diameter={dx_diam} km,"
-                    f" max_turn={max_turn}°, min_run={min_run}, max_section_casts={max_sec})..."
+            except Exception as exc:  # noqa: BLE001
+                print(f"  ERROR: {exc}", file=sys.stderr)
+                return 1
+            _print_detection_summary(sections, timeseries)
+            _draft_dir = (
+                Path(groupings_yaml).parent if groupings_yaml else config_path.parent
+            )
+            _draft_initial = _draft_dir / "ctd_groupings_draft.yaml"
+            resolved = _resolve_output_path(_draft_initial, args.force)
+            if resolved is not None:
+                yaml_text = _format_sections_yaml(
+                    sections,
+                    timeseries,
+                    dx_sec,
+                    max_sec,
+                    max_turn,
+                    min_run,
+                    dx_diam,
                 )
-                try:
-                    sections, timeseries = _detect_groups(
-                        profiles_path,
-                        dx_sec,
-                        max_sec,
-                        max_turn,
-                        min_run,
-                        dx_diam,
+                _write_file(resolved, yaml_text)
+                _target = groupings_yaml or "ctd_groupings.yaml"
+                _same = Path(_target).resolve() == resolved.resolve()
+                if _same:
+                    _draft_msg = (
+                        f"  Draft written  : {resolved}"
+                        f"\n  groupings_yaml : {_target}"
+                        f"\n  ↳ Draft is already at the production path — no rename needed."
                     )
-                except Exception as exc:  # noqa: BLE001
-                    print(f"  ERROR: {exc}", file=sys.stderr)
-                    return 1
-                _print_detection_summary(sections, timeseries)
-                _draft_dir = (
-                    Path(groupings_yaml).parent
-                    if groupings_yaml
-                    else config_path.parent
-                )
-                _draft_initial = _draft_dir / "ctd_groupings_draft.yaml"
-                resolved = _resolve_output_path(_draft_initial, args.force)
-                if resolved is not None:
-                    yaml_text = _format_sections_yaml(
-                        sections,
-                        timeseries,
-                        dx_sec,
-                        max_sec,
-                        max_turn,
-                        min_run,
-                        dx_diam,
+                else:
+                    _draft_msg = (
+                        f"  Draft written  : {resolved}"
+                        f"\n  groupings_yaml : {_target}"
+                        f"\n  ↳ Review the draft, then rename to activate:"
+                        f"\n      mv {resolved} {_target}"
                     )
-                    _write_file(resolved, yaml_text)
-                    _target = groupings_yaml or "ctd_groupings.yaml"
-                    _same = Path(_target).resolve() == resolved.resolve()
-                    if _same:
-                        _draft_msg = (
-                            f"  Draft written  : {resolved}"
-                            f"\n  groupings_yaml : {_target}"
-                            f"\n  ↳ Draft is already at the production path — no rename needed."
-                        )
-                    else:
-                        _draft_msg = (
-                            f"  Draft written  : {resolved}"
-                            f"\n  groupings_yaml : {_target}"
-                            f"\n  ↳ Review the draft, then rename to activate:"
-                            f"\n      mv {resolved} {_target}"
-                        )
     # Config always points to the user's intended production path; the draft
     # is a temporary review copy that the user renames to activate.
     effective_groupings_yaml = groupings_yaml
 
     config_text = _build_config_text(
-        nc_dir=nc_dir,
+        ctd_root=ctd_root,
         cnv_dir=cnv_dir,
         cnv_pattern=cnv_pattern,
         ladcp_dir=ladcp_dir,
@@ -1566,7 +1557,7 @@ def _format_sections_yaml(
 
 
 def _build_config_text(
-    nc_dir: str,
+    ctd_root: str,
     cnv_dir: str | None,
     cnv_pattern: str | None,
     ladcp_dir: str | None,
@@ -1632,12 +1623,6 @@ def _build_config_text(
         "# Run 'ctdcast validate config.yaml' to check all paths before the first run.\n"
         "\n"
         "data:\n"
-        "  # Roots ctdcast owns: stage1/ ... stage3/ and the compiled product\n"
-        "  # live inside, so a product cannot drift from the files it was built\n"
-        "  # from. Created for you.\n"
-        f"  ctd_root: {nc_dir}\n"
-        f"{ladcp_root_line}\n"
-        "\n"
         "  # Inputs ctdcast only reads.\n"
         f"{cnv_line}\n"
         f"{cnv_pattern_line}\n"
@@ -1646,6 +1631,12 @@ def _build_config_text(
         f"{sections_line}\n"
         "  # ship_track: /path/to/ship_track.nc\n"
         f"{gebco_line}\n"
+        "\n"
+        "  # Roots ctdcast owns: stage1/ ... stage3/ and the compiled product\n"
+        "  # live inside, so a product cannot drift from the files it was built\n"
+        "  # from. Created for you.\n"
+        f"  ctd_root: {ctd_root}\n"
+        f"{ladcp_root_line}\n"
         "\n"
         "output:\n"
         f"  dir: {output_dir}\n"

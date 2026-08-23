@@ -193,19 +193,21 @@ def _run_stage2(
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
+    cruise_cfg: dict | None = None,
     **kw: object,
 ) -> int:
-    """Apply soak/deck flagging to per-cast CTD netCDF (LADCP has no stage 2)."""
+    """Apply soak/deck flagging and any configured clock offset (LADCP has no stage 2)."""
     if paths.ctd_root is None:
         return 0
-    # stage2.run filters kw to its own accepted keys, so forwarding the full
-    # tuning bag is safe here.
+    # stage2.run filters kw to its own accepted keys, so forwarding the full tuning bag is safe;
+    # cruise_cfg carries processing.clock for the clock applier.
     return (
         _stage2.run(
             paths.ctd_root,
             force=force,
             dry_run=dry_run,
             cast_tags=cast_tags,
+            cruise_cfg=cruise_cfg,
             **kw,
         )
         or 0

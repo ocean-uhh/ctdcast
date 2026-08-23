@@ -158,6 +158,9 @@ class TestSuggestedConfigYaml:
         assert block.count("- casts:") == 3
         assert "clock_offset_seconds: -2" in block  # sign preserved, not abs
         assert "do not hand-compute the sign" in block
+        # each segment carries its evidence so the applier records it, not a re-measurement
+        assert block.count("n_casts:") == 3
+        assert block.count("clock_offset_sd_seconds:") == 3
 
     def test_constant_emits_one_spanning_entry(self) -> None:
         """A constant offset yields a single range spanning the whole cruise."""

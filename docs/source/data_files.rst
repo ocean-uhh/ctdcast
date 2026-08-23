@@ -94,7 +94,10 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``volt{N}_raw``
      - Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. ``N`` is the zero-based voltage channel index.
 
-Global attributes used: ``raw_filename``, ``cruise``.
+Global attributes: cruise identity (``cruise``, ``platform_*``, ``expocode``),
+``raw_filename``, ``raw_metadata``, a stamped ``history``, and the upstream
+correction ledger (``sbe_*``, ``correction_*``, ``time_coordinate_source``,
+``time_clock_offset_seconds``). Each is described in the table below.
 
 Profiles file (``<ctd_root>/profiles.nc``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,10 +122,6 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
        *unknown*. ``0`` means the source was an unsuffixed file read through the
        flat-layout shim, which does not state its own stage — recorded as unknown
        rather than assumed to be 1.
-   * - ``expocode``
-     - The cruise EXPOCODE, per profile. A file may hold more than one cruise, so
-       CCHDO stores this per profile rather than as a global attribute, and
-       ctdcast follows that.
    * - ``cast_direction``
      - ``"down"`` or ``"up"`` (``cast_type`` is a deprecated alias for the same values).
    * - ``latitude``
@@ -160,7 +159,7 @@ variable can be excluded here without its own gross-range or spike test firing.
 Where each attribute is written
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A fact is attached as early in the processing ladder as it is *true*, so a
+A fact is attached at the earliest stage at which it is *true*, so a
 per-cast stage file is self-describing and the compiled product mostly
 **inherits** rather than **originates**. The test is not "is it knowable at stage
 1" but "can it still change after the ship docks" — a value written into 200
@@ -230,8 +229,8 @@ stage 1.
 Where the two sources disagree about identity, **the files win** — a stage file
 records the cruise the cast was actually taken on, and a config can be edited
 years later. The compiled product's ``title`` is built from the same lifted value,
-so a file cannot be titled for one cruise and attributed to another. Re-run stage
-1, or ``ctdcast enrich``, if it is the per-cast files that are wrong.
+so a file cannot be titled for one cruise and attributed to another. Re-run stage 1
+if it is the per-cast files that are wrong.
 
 For everything outside identity, config remains the source of truth: writing
 identity at stage 1 makes the per-cast file *portable*, not the authority on what

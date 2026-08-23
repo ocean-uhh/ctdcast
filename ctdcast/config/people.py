@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -414,17 +413,6 @@ _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 _INSTITUTIONS_YAML = Path(__file__).parent / "institutions.yaml"
 
 
-@dataclass(frozen=True)
-class Person:
-    """One contributor, as resolved from config."""
-
-    name: str
-    role: str
-    institution: str | None = None
-    email: str | None = None
-    orcid: str | None = None
-
-
 def _user_registry_dir() -> Path:
     """Return the per-user config directory ctdcast reads registries from.
 
@@ -753,15 +741,15 @@ def check_contributors(cruise_info: dict[str, Any]) -> tuple[list[str], list[str
     try:
         inst_vocab_name, inst_vocab = institution_role_vocabulary(cruise_info)
     except KeyError:
+        # Report and stop: the later institution checks and _cf_institution all re-derive this
+        # vocabulary, so validating them against a fallback would either crash or emit spurious
+        # role errors. Fix the vocabulary first, then re-run — mirrors the role_vocabulary guard.
         errors.append(
             f"cruise_info.institution_role_vocabulary "
             f"{cruise_info.get('institution_role_vocabulary')!r} is unknown. "
             f"Choose one of {sorted(INSTITUTION_ROLE_VOCABULARIES)}."
         )
-        inst_vocab_name, inst_vocab = (
-            DEFAULT_INSTITUTION_ROLE_VOCABULARY,
-            (INSTITUTION_ROLE_VOCABULARIES[DEFAULT_INSTITUTION_ROLE_VOCABULARY]),
-        )
+        return errors, warnings
     inst_lookup = _role_lookup(inst_vocab)
 
     institutions = cruise_info.get("institutions")
