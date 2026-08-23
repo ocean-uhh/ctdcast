@@ -83,6 +83,8 @@ ctdcast run config.yaml --only 42   # rebuild one cast page
 
 Open `<output.dir>/index.html` in any browser.
 
+Diagnose the acquisition-clock error (System vs GPS clock) for a cruise with `ctdcast clock config.yaml` — it prints a verdict and a paste-ready `processing.clock` block without writing anything.
+
 ---
 
 ## Input data

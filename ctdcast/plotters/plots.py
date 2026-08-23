@@ -10,7 +10,7 @@ import math
 import warnings
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import gsw
 import matplotlib.colors as mcolors
@@ -52,6 +52,9 @@ from ctdcast.plotters.primitives import (
 )
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
+
+if TYPE_CHECKING:
+    from ctdcast.analysis.clock import CastClock, ClockVerdict
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -921,6 +924,47 @@ def draw_station_map_fig(
         label="this cast",
     )
     _finish_map_axes(ax, xl0, xl1, yl0, yl1)
+    return fig
+
+
+def draw_clock_offset_fig(
+    series: list[CastClock],
+    verdict: ClockVerdict,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+) -> plt.Figure | None:
+    """Return a Figure of per-cast clock offset vs cast number, with segment means and changepoints.
+
+    Points, not a line — the offsets are whole-second-quantised, so a line would imply a precision
+    that is not there. Each segment mean is drawn as a horizontal rule over its cast range and each
+    changepoint as a vertical rule. Returns ``None`` when there is nothing to plot (no segments —
+    a ``no_clock_pair`` or ``insufficient`` verdict).
+    """
+    from ctdcast.analysis.clock import cast_number
+
+    if not series or not verdict.segments:
+        return None
+    x = [cast_number(c.cast_id) for c in series]
+    y = [c.offset_seconds for c in series]
+
+    fig, ax = plt.subplots(figsize=(_W_FULL, 4.0))
+    ax.axhline(0, color="0.8", lw=pen("thinner"))  # zero-offset reference
+    for seg in verdict.segments[1:]:  # changepoints (none for constant/drift)
+        ax.axvline(cast_number(seg.first_cast), color="0.6", ls="--", lw=pen("thinner"))
+    for seg in verdict.segments:  # segment means, over the cast range
+        ax.hlines(
+            seg.offset_seconds,
+            cast_number(seg.first_cast),
+            cast_number(seg.last_cast),
+            color="#c1272d",
+            lw=pen("thick"),
+            zorder=2,
+        )
+    ax.plot(x, y, marker="o", linestyle="none", color="k", zorder=3)
+    ax.set_xlabel("cast number")
+    ax.set_ylabel("clock offset (s)   NMEA − System")
+    ax.grid(True)
+    _hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 

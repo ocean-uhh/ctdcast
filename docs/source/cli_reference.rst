@@ -282,3 +282,39 @@ default.)
    ctdcast run config.yaml --force              # rebuild everything
    ctdcast run config.yaml --only 42            # reprocess + rebuild one cast page
    ctdcast run config.yaml --dry-run
+
+----
+
+ctdcast clock
+---------------
+
+Diagnose the acquisition-clock error for a cruise.  Each SBE cast records two
+clocks in its header — the acquisition PC's System clock and the GPS-derived NMEA
+clock — and their difference is the offset by which the recorded ``time`` may be
+wrong.  ``clock`` reads that pair off every stage-1 cast, classifies the cruise,
+and prints a verdict, the coordinate-source line, a per-segment table, and a
+paste-ready ``processing.clock`` block.  It writes nothing — applying a correction
+is a separate stage-2 step.
+
+.. code-block:: text
+
+   ctdcast clock <config> [options]
+
+   positional arguments:
+     config           Path to config.yaml (the CTD root is read from data.ctd_root)
+
+   options:
+     -f, --figure PNG Also write the offset-vs-cast figure to this path
+
+The verdict is one of ``constant``, ``step`` (one row per level, a changepoint at
+each boundary), ``drift`` (only when a rate positively fits — the note quotes
+slope, R² and residual sd), ``no_clock_pair`` or ``insufficient``.  The
+coordinate-source line is orthogonal to the verdict: a cruise can show a real
+offset yet need no correction because its ``time`` coordinate was already anchored
+to GPS.  The suggested block is shown only when the coordinate is on the System
+clock, and its sign is emitted as a comment so it is copied, never hand-computed.
+
+**Examples**::
+
+   ctdcast clock config.yaml                       # print the verdict + suggested config
+   ctdcast clock config.yaml --figure clock.png    # also write the offset-vs-cast figure
