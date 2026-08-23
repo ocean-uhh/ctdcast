@@ -72,6 +72,7 @@ _MODULE_SALIENT = {
     "celltm": ("alpha", "tau"),
     "binavg": ("bintype", "binsize"),
     "filter": ("low_pass_tc_A", "low_pass_tc_B"),
+    "wildedit": ("pass1_nstd", "pass2_nstd", "npoint"),
 }
 _LEDGER_HOUSEKEEPING = frozenset({"date", "in"})
 
@@ -159,6 +160,23 @@ class ProcessingChain:
 
     steps: list[ProcessingStep] = field(default_factory=list)
     verbatim: str = ""
+
+
+@dataclass(frozen=True)
+class Correction:
+    """One correction in the ledger, split into producer, version and parameters.
+
+    The deck-unit alignment and each Sea-Bird Data Processing module become a record.
+    ``label`` is the display name (``"align (deck)"``, ``"celltm"``, ``"celltm (2)"`` for
+    a repeat); ``key`` is the attribute suffix (``"align"``, ``"celltm"``, ``"celltm_2"``).
+    ``parameters`` is the salient parameter string, possibly empty.
+    """
+
+    label: str
+    key: str
+    producer: str
+    version: str
+    parameters: str
 
 
 def _collapse(value: str) -> str:
@@ -407,26 +425,101 @@ def _module_version(params: dict[str, str]) -> str:
     return tail.strip()
 
 
-def _correction_value(step: ProcessingStep) -> str:
-    """Format one ``correction_<module>`` value: producer, version, salient parameters."""
+def _count_phrase(n: int, noun: str) -> str:
+    """Format ``"13 variables"`` / ``"1 variable"`` — a readable count, not the full list."""
+    return f"{n} {noun}{'s' if n != 1 else ''}"
+
+
+def _wfilter_body(step: ProcessingStep) -> str:
+    """Summarise wfilter: collapse the per-variable ``action <var> = ...`` fields.
+
+    Every variable typically gets the same action (e.g. ``median, 10``), so the eight
+    identical lines collapse to ``median, 10 (8 variables)`` rather than one per channel.
+    """
+    counts: dict[str, int] = {}
+    other: list[str] = []
+    for k, v in step.params.items():
+        if k.startswith("action "):
+            counts[v] = counts.get(v, 0) + 1
+        elif k not in _LEDGER_HOUSEKEEPING:
+            other.append(f"{k}={v}")
+    collapsed = [f"{val} ({_count_phrase(n, 'variable')})" for val, n in counts.items()]
+    return " ".join(other + collapsed)
+
+
+def _correction_body(step: ProcessingStep) -> str:
+    """The salient parameter string for a module.
+
+    Salient-listed modules show only those fields (wildedit also gets its variable list
+    summarised as a count); wfilter collapses its per-variable actions; anything else
+    falls back to all non-housekeeping parameters.  The verbatim ``sbe_processing`` block
+    keeps every field regardless, so a trimmed summary loses nothing.
+    """
+    if step.module == "wfilter":
+        return _wfilter_body(step)
     fields = _MODULE_SALIENT.get(step.module)
-    if fields is not None:
-        parts = [f"{k}={step.params[k]}" for k in fields if k in step.params]
-    else:
+    if fields is None:
         parts = [
             f"{k}={v}" for k, v in step.params.items() if k not in _LEDGER_HOUSEKEEPING
         ]
-    version = _module_version(step.params)
-    head = f"SBE Data Processing {version}".rstrip()
-    body = " ".join(parts)
-    return f"{head}: {body}" if body else head
+        return " ".join(parts)
+    parts = [f"{k}={step.params[k]}" for k in fields if k in step.params]
+    if step.module == "wildedit" and "vars" in step.params:
+        parts.append(_count_phrase(len(step.params["vars"].split()), "variable"))
+    return " ".join(parts)
 
 
-def _deck_align_value(deck: DeckUnit) -> str:
-    """Format ``correction_align`` from the deck-unit advance, keeping SBE channel names."""
-    label = " ".join(x for x in (deck.model, deck.firmware) if x)
-    advances = ", ".join(f"{chan} +{sec:.3f} s" for chan, sec in deck.advance.items())
-    return f"{label} deck unit: {advances}".strip()
+def _deck_advances(deck: DeckUnit) -> str:
+    """The deck-unit advance string, keeping SBE channel names (``primary conductivity``)."""
+    return ", ".join(f"{chan} +{sec:.3f} s" for chan, sec in deck.advance.items())
+
+
+def _correction_records(acq: Acquisition, chain: ProcessingChain) -> list[Correction]:
+    """Build the structured corrections from a parsed acquisition and chain, in file order."""
+    records: list[Correction] = []
+    if acq.deck_unit.advance:
+        records.append(
+            Correction(
+                label="align (deck)",
+                key="align",
+                producer=f"{acq.deck_unit.model or 'SBE'} deck unit",
+                version=acq.deck_unit.firmware or "",
+                parameters=_deck_advances(acq.deck_unit),
+            )
+        )
+    run_count: dict[str, int] = {}
+    for step in chain.steps:
+        run_count[step.module] = run_count.get(step.module, 0) + 1
+        n = run_count[step.module]
+        records.append(
+            Correction(
+                label=step.module if n == 1 else f"{step.module} ({n})",
+                key=step.module if n == 1 else f"{step.module}_{n}",
+                producer="SBE Data Processing",
+                version=_module_version(step.params),
+                parameters=_correction_body(step),
+            )
+        )
+    return records
+
+
+def correction_records(header_text: str) -> list[Correction]:
+    """Return the structured corrections (deck-unit align + each module) in file order.
+
+    The display counterpart of the flat ``correction_<key>`` ledger attributes: same
+    records, split into producer / version / parameters instead of one string.
+    """
+    if not header_text:
+        return []
+    return _correction_records(
+        parse_star_block(header_text), parse_processing_chain(header_text)
+    )
+
+
+def _correction_flat(rec: Correction) -> str:
+    """Flatten a :class:`Correction` to its one-line ``correction_<key>`` attribute value."""
+    head = f"{rec.producer} {rec.version}".strip()
+    return f"{head}: {rec.parameters}" if rec.parameters else head
 
 
 def build_correction_ledger(header_text: str) -> dict[str, str | float]:
@@ -456,26 +549,21 @@ def build_correction_ledger(header_text: str) -> dict[str, str | float]:
         ledger["sbe_processing"] = chain.verbatim
 
     order: list[str] = []
-    if acq.deck_unit.advance:
-        # Record the deck unit unconditionally -- "present and set to zero" differs from
-        # "no deck unit" -- but add the align(deck) order token only when it actually
-        # advanced something, so a zero-set unit does not read as an alignment.
-        ledger["correction_align"] = _deck_align_value(acq.deck_unit)
-        if any(sec != 0.0 for sec in acq.deck_unit.advance.values()):
-            order.append("align(deck)")
+    # Record the deck unit unconditionally -- "present and set to zero" differs from
+    # "no deck unit" -- but add the align(deck) order token only when it actually
+    # advanced something, so a zero-set unit does not read as an alignment.
+    if acq.deck_unit.advance and any(
+        sec != 0.0 for sec in acq.deck_unit.advance.values()
+    ):
+        order.append("align(deck)")
     order.extend(step.module for step in chain.steps)
     if order:
         ledger["sbe_processing_order"] = " ".join(order)
 
-    # One correction_<module> per step in the chain; a module that runs more than once
-    # is suffixed (correction_celltm, correction_celltm_2) so a repeat's parameters are
-    # never overwritten -- keying by bare module name would silently lose the first run.
-    run_count: dict[str, int] = {}
-    for step in chain.steps:
-        run_count[step.module] = run_count.get(step.module, 0) + 1
-        n = run_count[step.module]
-        key = f"correction_{step.module}" if n == 1 else f"correction_{step.module}_{n}"
-        ledger[key] = _correction_value(step)
+    # One correction_<key> per record; a module that runs more than once is suffixed
+    # (correction_celltm, correction_celltm_2) so a repeat's parameters are never lost.
+    for rec in _correction_records(acq, chain):
+        ledger[f"correction_{rec.key}"] = _correction_flat(rec)
 
     if start.source:
         # SBE's own phrasing ("System UTC, first data scan."), which round-trips against

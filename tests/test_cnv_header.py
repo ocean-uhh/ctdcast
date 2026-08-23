@@ -12,9 +12,11 @@ from conftest import FIXTURES_CNV, FIXTURES_NC
 
 from ctdcast.config.cnv_header import (
     Acquisition,
+    Correction,
     ProcessingChain,
     StartTime,
     build_correction_ledger,
+    correction_records,
     header_from_raw_metadata,
     parse_processing_chain,
     parse_star_block,
@@ -420,7 +422,7 @@ class TestBuildCorrectionLedger:
             "align(deck) datcnv wildedit wfilter filter celltm Derive binavg"
         )
         assert ledger["correction_align"] == (
-            "SBE 11plus V 5.2 deck unit: "
+            "SBE 11plus deck unit V 5.2: "
             "primary conductivity +0.073 s, secondary conductivity +0.073 s"
         )
         assert ledger["correction_celltm"] == (
@@ -492,6 +494,34 @@ class TestBuildCorrectionLedger:
         assert "pass1_nstd=5.0" in ledger["correction_wildedit_2"]
         assert ledger["sbe_processing_order"] == "wildedit wildedit"
 
+    def test_flat_attr_matches_structured_record(self):
+        """The correction_<key> flat string is the record's producer/version/params joined."""
+        recs = correction_records(_stage1_header())
+        ledger = build_correction_ledger(_stage1_header())
+        rec = next(r for r in recs if r.key == "celltm")
+        assert isinstance(rec, Correction)
+        assert (
+            ledger["correction_celltm"]
+            == f"{rec.producer} {rec.version}: {rec.parameters}"
+        )
+
+    def test_correction_records_empty_header(self):
+        """correction_records('') returns [] (no header, no corrections)."""
+        assert correction_records("") == []
+
+    def test_long_lists_summarised_not_dumped(self):
+        """wildedit's variable list becomes a count, and wfilter collapses its actions."""
+        recs = {r.key: r for r in correction_records(_stage1_header())}
+        assert recs["wildedit"].parameters == (
+            "pass1_nstd=2.0 pass2_nstd=20.0 npoint=100 13 variables"
+        )
+        assert (
+            recs["wfilter"].parameters == "excl_bad_scans=yes median, 10 (8 variables)"
+        )
+        # deck-unit record: producer/version split, not one blob
+        assert recs["align"].producer == "SBE 11plus deck unit"
+        assert recs["align"].version == "V 5.2"
+
     def test_hex_header_has_acquisition_and_offset_but_no_processing(self):
         """A raw HEX: deck/clock come from '*'; no '#' chain, so no correction_ or order."""
         ledger = build_correction_ledger(_text(HEX_PS129))
@@ -511,7 +541,9 @@ class TestBuildCorrectionLedger:
         ledger = build_correction_ledger(
             "* advance primary conductivity  0.073 seconds\n"
         )
-        assert ledger["correction_align"] == "deck unit: primary conductivity +0.073 s"
+        assert (
+            ledger["correction_align"] == "SBE deck unit: primary conductivity +0.073 s"
+        )
         assert ledger["sbe_processing_order"] == "align(deck)"
 
     def test_correction_value_without_version_or_body(self):

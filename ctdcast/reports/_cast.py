@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from ctdcast.config.cnv_header import (
+    Correction,
+    correction_records,
+    header_from_raw_metadata,
+)
 from ctdcast.config.global_attrs import cruise_name
 
 import dataclasses
@@ -345,15 +350,29 @@ def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
     """
     if not sensor_info:
         return None
-    rows = "".join(
-        f"<tr><td>{escape(s.get('sensor_type', ''))}</td>"
-        f"<td>{escape(s.get('serial_number', ''))}</td>"
-        f"<td>{escape(s.get('calibration_date', ''))}</td></tr>"
-        for s in sensor_info
-    )
+    # Mark primary/secondary only for a sensor type that has more than one instance.
+    # SBE puts the primary sensor on the lower channel and parse_sensor_info preserves
+    # channel order, so the first instance of a type is primary, the second secondary.
+    # A type with a single instance leaves the column empty.
+    counts: dict[str, int] = {}
+    for s in sensor_info:
+        counts[s.get("sensor_type", "")] = counts.get(s.get("sensor_type", ""), 0) + 1
+    _ORDINAL = {1: "primary", 2: "secondary"}
+    seen: dict[str, int] = {}
+    rows = ""
+    for s in sensor_info:
+        stype = s.get("sensor_type", "")
+        seen[stype] = seen.get(stype, 0) + 1
+        role = _ORDINAL.get(seen[stype], str(seen[stype])) if counts[stype] > 1 else ""
+        rows += (
+            f"<tr><td>{escape(stype)}</td>"
+            f"<td>{escape(role)}</td>"
+            f"<td>{escape(s.get('serial_number', ''))}</td>"
+            f"<td>{escape(s.get('calibration_date', ''))}</td></tr>"
+        )
     return (
         '<table class="sensor-table">'
-        "<tr><th>Sensor</th><th>S/N</th><th>Cal date</th></tr>"
+        "<tr><th>Sensor</th><th>Primary/secondary</th><th>S/N</th><th>Cal date</th></tr>"
         f"{rows}</table>"
     )
 
@@ -505,6 +524,65 @@ def _render_qc_table(nc_path: Path) -> str | None:
     )
 
 
+def _render_provenance_table(
+    records: list[Correction], attrs: dict[str, Any]
+) -> str | None:
+    """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
+
+    *records* are the structured corrections (deck-unit align first, then each Sea-Bird
+    Data Processing module in file order, a repeat suffixed); *attrs* supplies the time
+    coordinate's source and offset.  The full verbatim blocks stay in the
+    ``sbe_acquisition`` / ``sbe_processing`` attributes.  Values escaped here (emitted
+    ``|safe``).
+    """
+    src = attrs.get("time_coordinate_source")
+    off = attrs.get("time_clock_offset_seconds")
+    if not records and not src and off is None:
+        return None
+
+    # A tight heading-to-table gap reads better than the default h3 margin here.
+    tight = " style='margin-bottom:0.25rem'"
+    corr_html = ""
+    if records:
+        trows = "".join(
+            f"<tr><td class='mono'>{escape(r.label)}</td>"
+            f"<td>{escape(r.producer)}</td>"
+            f"<td class='mono'>{escape(r.version)}</td>"
+            f"<td>{escape(r.parameters)}</td></tr>"
+            for r in records
+        )
+        corr_html = (
+            f"<h3{tight}>Corrections applied before ctdcast</h3>"
+            "<table class='nc' style='margin-top:0'><thead><tr><th>Step</th>"
+            "<th>Producer</th><th>Version</th><th>Parameters</th></tr></thead>"
+            f"<tbody>{trows}</tbody></table>"
+        )
+
+    time_rows: list[tuple[str, str]] = []
+    if src:
+        time_rows.append(("Time coordinate source", str(src)))
+    if off is not None:
+        time_rows.append(("Clock offset (NMEA − system)", f"{off} s"))
+    time_html = ""
+    if time_rows:
+        trows = "".join(
+            f"<tr><td>{escape(k)}</td><td class='mono'>{escape(v)}</td></tr>"
+            for k, v in time_rows
+        )
+        time_html = (
+            f"<h3{tight}>Time coordinate</h3>"
+            "<table class='nc' style='margin-top:0'><thead><tr><th>Property</th>"
+            f"<th>Value</th></tr></thead><tbody>{trows}</tbody></table>"
+        )
+
+    note = (
+        "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
+        "full verbatim blocks are kept in the <code>sbe_acquisition</code> and "
+        "<code>sbe_processing</code> attributes.</p>"
+    )
+    return f"{corr_html}{time_html}{note}"
+
+
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
 # render?".  A None render from an applicable panel is a defect, and shows as a
 # stub with a reason; a section that genuinely cannot exist (no such variable) is
@@ -555,6 +633,17 @@ def _has_qc(c: PageCtx) -> bool:
     while the counts themselves are read from the file on disk in the render.
     """
     return any(str(v).endswith("_qc") for v in c.ds.data_vars)
+
+
+def _has_provenance(c: PageCtx) -> bool:
+    """True when the stage-1 SBE correction ledger was stamped onto the cast file.
+
+    Stage-1 files ingested from a Sea-Bird header carry it (and stage 2/3 inherit it);
+    a LADCP cast or a file with no SBE header does not, so the section is omitted.
+    """
+    return any(
+        k == "sbe_processing_order" or k.startswith("correction_") for k in c.ds.attrs
+    )
 
 
 #: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
@@ -657,6 +746,16 @@ CAST_PANELS: dict[str, Panel] = {
         kind="table",
         render=lambda c: _render_qc_table(c.nc_path),
     ),
+    "provenance": Panel(
+        id="provenance",
+        kind="table",
+        render=lambda c: _render_provenance_table(
+            correction_records(
+                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
+            ),
+            dict(c.ds.attrs),
+        ),
+    ),
 }
 
 
@@ -735,6 +834,17 @@ CAST_DEFAULT: Profile = Profile(
             ("data_ranges",),
             intro="Min · max · valid count for every variable in the cast file on disk.",
             role="appendix",
+        ),
+        Section(
+            "provenance",
+            "Processing provenance",
+            ("provenance",),
+            intro=(
+                "What the SBE deck unit and Sea-Bird Data Processing did to this cast "
+                "before ctdcast read it, recovered from the raw header."
+            ),
+            role="appendix",
+            applies_to=_has_provenance,
         ),
     ),
 )

@@ -198,6 +198,57 @@ more than its size:
 ctdcast still reports on such a file — it simply cannot offer it the corrections
 that require a time axis, and says so rather than pretending.
 
+Sea-Bird's own recommendation, for comparison
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ledger says what *was* done. To judge whether that is ordinary, the useful
+comparison is against Sea-Bird's **published recommendation for the instrument** —
+short, specific and citable, where a list of everything *not* done would be
+unbounded and mostly uninteresting. For an SBE 9plus with a TC duct and a 3000 rpm
+pump (manual rev 7.26.8):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 34 40
+
+   * - Module
+     - Recommended for a 9plus
+     - Reference
+
+   * - Sequence
+     - Data Conversion → Filter → Align CTD → Cell Thermal Mass → Loop Edit →
+       Derive → Bin Average. Wild Edit is deliberately absent and may run at any
+       point.
+     - p.20
+
+   * - Filter
+     - pressure **0.15 s**; temperature and conductivity **not filtered** (the
+       table gives no value for a 9plus). The pressure constant is four times the
+       scan interval, and exists to feed Loop Edit.
+     - p.100
+
+   * - Align CTD
+     - temperature **0**; conductivity **0**, because the deck unit already
+       advances it; oxygen **+2 to +5 s** for an SBE 43.
+     - pp.84–86
+
+   * - Cell Thermal Mass
+     - alpha **0.03**, 1/beta **7.0**
+     - p.92
+
+A departure is **not an error.** Sea-Bird gives these as *typical* values and says
+plainly that judgement is required — a different pump, a different duct, or a
+deliberate choice all produce legitimate departures. What the table is good for is
+reading a cast's provenance by hand: it tells you which of the values in front of
+you are the usual ones, and which were chosen.
+
+Two limits are worth knowing when using it that way. The recommendation is
+**instrument-specific** — a 19plus or a 25 has different values — so it applies
+only once the header has identified the instrument. And it says nothing about
+Window Filter: smoothing temperature and conductivity with ``wfilter`` instead of
+``filter`` is a legitimate alternative the manual neither recommends nor warns
+against.
+
 A worked example
 ~~~~~~~~~~~~~~~~
 
