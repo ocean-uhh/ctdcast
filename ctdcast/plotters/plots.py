@@ -1972,7 +1972,7 @@ def draw_updown_diff_fig(
         ax.set_xlabel(label)
         ax.grid(True)
     axes[0].set_ylabel(vlabel("pressure"))
-    axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
+    axes[0].set_ylim(float(p_grid[-1]), 0)
     _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 

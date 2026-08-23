@@ -403,17 +403,18 @@ def _render_qc_table(nc_path: Path) -> str | None:
     if not summary:
         return None
 
-    # Columns: the flag values present in any variable, plus pass (1), in order.
+    # Columns: always show the core QARTOD flags — pass (1), suspect (3), fail (4),
+    # missing (9) — so a clean cast still reads as a fixed pass/suspect/fail/missing
+    # table (matching oceanarray) rather than collapsing to only the flags that
+    # happen to occur.  Any other declared flag (e.g. not_evaluated, 2) is shown only
+    # when it actually occurs, so a scheme value ctdcast never assigns adds no dead
+    # column.  Zero-count core flags render as "–".
+    _CORE_FLAGS = (1, 3, 4, 9)
     present: dict[int, dict[str, Any]] = {}
     for row in summary:
         for f in row["flags"]:
-            if f["n"] > 0:
+            if f["flag"] in _CORE_FLAGS or f["n"] > 0:
                 present.setdefault(f["flag"], f)
-    # Always show a pass column, if the file declares flag 1 at all.  A file whose
-    # flag_values omits 1 (nonstandard) simply gets no pass column rather than a crash.
-    _pass = next((f for f in summary[0]["flags"] if f["flag"] == 1), None)
-    if _pass is not None:
-        present.setdefault(1, _pass)
     cols = [present[k] for k in sorted(present)]
 
     legend = "".join(
@@ -457,6 +458,7 @@ def _render_qc_table(nc_path: Path) -> str | None:
             for r in thresholds
         )
         thr_html = (
+            "<h3>Thresholds applied (as stored in stage 3 file)</h3>"
             "<table class='nc qc-thresholds'><thead><tr><th>Variable</th>"
             "<th>Test</th><th class='num'>Suspect range / threshold</th>"
             "<th class='num'>Fail range / threshold</th></tr></thead>"
@@ -476,12 +478,28 @@ def _render_qc_table(nc_path: Path) -> str | None:
         "border-radius:2px;vertical-align:middle;margin-right:3px}"
         "</style>"
     )
+    # Provenance caveat: flag 4 (fail) is not solely this variable's own test.
+    # Stage 2 trims the pre-descent soak and post-recovery on-deck scans by setting
+    # flag 4 on EVERY variable at those same scans, so a variable can show flagged
+    # samples its own gross-range/spike thresholds never raised.  Say so, or the
+    # distribution reads as if the variable itself failed those values.
+    note = (
+        "<p class='caption'>Flag 4 (fail) combines two independent exclusions: this "
+        "variable&rsquo;s own gross-range and spike tests, and the whole-cast soak / "
+        "on-deck trim, which flags the same pre-descent and post-recovery scans on "
+        "every variable. A variable can therefore show flagged samples that its own "
+        "thresholds did not raise.</p>"
+    )
+    # Thresholds first (what the pipeline was told to do), then the flag counts
+    # (what that produced) — matching the cause→effect reading order.
     return (
-        f"{style}<div class='qc-legend'>{legend}</div>"
+        f"{style}{thr_html}"
+        "<h3>Flag counts</h3>"
+        f"<div class='qc-legend'>{legend}</div>"
         "<table class='nc qc-counts'><thead><tr><th>Variable</th>"
         f"<th class='num'>N</th>{header}<th>Distribution</th></tr></thead>"
         f"<tbody>{''.join(body)}</tbody></table>"
-        f"{thr_html}"
+        f"{note}"
     )
 
 

@@ -243,7 +243,7 @@ details.attrs td { font-size: var(--fs-xs); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-22 21:11 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-23 06:41 UTC</p>
   
   <div style="margin-top:0.65rem;margin-bottom:0.5rem">
     <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
@@ -290,19 +290,103 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
+
 <div class="jump-nav">
-  <a href="#s-coords">(1) Coordinates</a>
-  <a href="#s-vars">(2) Data variables</a>
-  <a href="#s-sensor-catalog">(3) Sensor catalog</a>
-  <a href="#s-sensor-linkage">(4) Sensor linkage</a>
-  <a href="#s-sensor-channel">(5) Sensor channels</a>
-  <a href="#s-global">(6) Global attributes</a>
+  <a href="#s-qc-drop">(1) QC exclusions</a>
+  <a href="#s-coords">(2) Coordinates</a>
+  <a href="#s-vars">(3) Data variables</a>
+  <a href="#s-sensor-catalog">(4) Sensor catalog</a>
+  <a href="#s-sensor-linkage">(5) Sensor linkage</a>
+  <a href="#s-sensor-channel">(6) Sensor channels</a>
+  <a href="#s-global">(7) Global attributes</a>
   
 </div>
 
 
+<h2 id="s-qc-drop">(1) QC exclusions</h2>
+<p class="dims-line">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
+<p class="dims-line">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
+<table class="nc">
+  <thead><tr><th>Variable</th><th class="num">Excluded</th><th class="num">Input samples</th><th class="num">% excluded</th></tr></thead>
+  <tbody>
+    
+    <tr>
+      <td class="mono">conductivity_1</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">conductivity_2</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_altimeter</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_fluor</td>
+      <td class="num" style="color:var(--warn);font-weight:600">35</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.87%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_oxygen</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_salinity_1</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_salinity_2</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_temperature_1</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_temperature_2</td>
+      <td class="num" style="color:var(--warn);font-weight:600">20</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+    </tr>
+    
+    <tr>
+      <td class="mono">ctd_turbidity</td>
+      <td class="num" style="color:var(--warn);font-weight:600">62</td>
+      <td class="num">4022</td>
+      <td class="num" style="color:var(--warn);font-weight:600">1.54%</td>
+    </tr>
+    
+  </tbody>
+</table>
 
-<h2 id="s-coords">(1) Coordinates</h2>
+
+
+
+<h2 id="s-coords">(2) Coordinates</h2>
 
 <table class="nc">
   <thead>
@@ -385,7 +469,7 @@ details.attrs td { font-size: var(--fs-xs); }
 </table>
 
 
-<h2 id="s-vars">(2) Data variables</h2>
+<h2 id="s-vars">(3) Data variables</h2>
 <p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
 
 <table class="nc">
@@ -494,8 +578,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
         </details>
         
       </td>
@@ -512,8 +596,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
         </details>
         
       </td>
@@ -530,8 +614,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>m</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>m</td></tr></table>
         </details>
         
       </td>
@@ -548,8 +632,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3983 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>mg/m³</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>35</td></tr><tr><td class="mono">label_units</td><td>mg/m³</td></tr></table>
         </details>
         
       </td>
@@ -566,8 +650,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>µmol/kg</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>µmol/kg</td></tr></table>
         </details>
         
       </td>
@@ -584,8 +668,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
         </details>
         
       </td>
@@ -602,8 +686,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
         </details>
         
       </td>
@@ -620,8 +704,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>°C</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>°C</td></tr></table>
         </details>
         
       </td>
@@ -638,8 +722,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>°C</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">label_units</td><td>°C</td></tr></table>
         </details>
         
       </td>
@@ -656,8 +740,8 @@ details.attrs td { font-size: var(--fs-xs); }
       <td class="num" style="color:var(--warn);font-weight:600">3956 / 5744</td>
       <td>
         
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">label_units</td><td>NTU</td></tr></table>
+        <details class="attrs"><summary>3 attrs</summary>
+          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>62</td></tr><tr><td class="mono">label_units</td><td>NTU</td></tr></table>
         </details>
         
       </td>
@@ -768,7 +852,7 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
-<h2 id="s-sensor-catalog">(3) Sensor catalog</h2>
+<h2 id="s-sensor-catalog">(4) Sensor catalog</h2>
 <p class="dims-line">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no type, units, or value range.</p>
 
 <table class="nc">
@@ -984,7 +1068,7 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
-<h2 id="s-sensor-linkage">(4) Sensor linkage</h2>
+<h2 id="s-sensor-linkage">(5) Sensor linkage</h2>
 <p class="dims-line">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
 
 <table class="nc">
@@ -1200,7 +1284,7 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
-<h2 id="s-sensor-channel">(5) Sensor channels</h2>
+<h2 id="s-sensor-channel">(6) Sensor channels</h2>
 <p class="dims-line">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
 
 <table class="nc">
@@ -1416,28 +1500,28 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
-<h2 id="s-global">(6) Global attributes</h2>
+<h2 id="s-global">(7) Global attributes</h2>
 <p class="dims-line">Shown in the file's own write order, split into the canonical groups.</p>
 
-<h3>(6.1) Identity &amp; discovery</h3>
+<h3>(7.1) Identity &amp; discovery</h3>
 <table class="nc">
   <tbody>
     <tr><td class="mono">title</td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr><tr><td class="mono">cruise</td><td>UNK</td></tr>
   </tbody>
 </table>
 
-<h3>(6.2) Spatiotemporal coverage</h3>
+<h3>(7.2) Spatiotemporal coverage</h3>
 <table class="nc">
   <tbody>
     <tr><td class="mono">geospatial_lat_min</td><td>65.58246</td></tr><tr><td class="mono">geospatial_lat_max</td><td>65.86038</td></tr><tr><td class="mono">geospatial_lat_units</td><td>degrees_north</td></tr><tr><td class="mono">geospatial_lon_min</td><td>-29.58836</td></tr><tr><td class="mono">geospatial_lon_max</td><td>-29.43282</td></tr><tr><td class="mono">geospatial_lon_units</td><td>degrees_east</td></tr><tr><td class="mono">geospatial_vertical_min</td><td>1.0</td></tr><tr><td class="mono">geospatial_vertical_max</td><td>718.0</td></tr><tr><td class="mono">geospatial_vertical_units</td><td>dbar</td></tr><tr><td class="mono">geospatial_vertical_positive</td><td>down</td></tr><tr><td class="mono">time_coverage_start</td><td>2026-07-12T02:40:06Z</td></tr><tr><td class="mono">time_coverage_end</td><td>2026-07-22T09:43:02Z</td></tr><tr><td class="mono">time_coverage_duration</td><td>P10DT7H2M56S</td></tr>
   </tbody>
 </table>
 
-<h3>(6.3) Provenance &amp; processing</h3>
+<h3>(7.3) Provenance &amp; processing</h3>
 <table class="nc">
   <tbody>
-    <tr><td class="mono">date_created</td><td>2026-08-22T21:11:07Z</td></tr><tr><td class="mono">date_modified</td><td>2026-08-22T21:11:07Z</td></tr><tr><td class="mono">history</td><td>2026-08-22T21:11:07Z ctdcast 0.1.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
-2026-08-22T21:11:07Z ctdcast 0.1.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 4 (soak/deck) records before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>D</td></tr><tr><td class="mono">data_mode_meaning</td><td>delayed-mode</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
+    <tr><td class="mono">date_created</td><td>2026-08-23T06:41:34Z</td></tr><tr><td class="mono">date_modified</td><td>2026-08-23T06:41:34Z</td></tr><tr><td class="mono">history</td><td>2026-08-23T06:41:34Z ctdcast 0.1.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-08-23T06:41:34Z ctdcast 0.1.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>D</td></tr><tr><td class="mono">data_mode_meaning</td><td>delayed-mode</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
   </tbody>
 </table>
 
@@ -1454,6 +1538,6 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-22 21:11 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-23 06:41 UTC</footer>
 </body>
 </html>
