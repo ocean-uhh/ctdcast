@@ -6,12 +6,15 @@ output file alone.  Because each stage reads its predecessor and copies its
 attributes, ``history`` accumulates: stage 3 inherits the stage 1 and stage 2
 lines and appends its own.
 
-The one format, shared by every call site, is::
+The format, from one helper so it stays consistent, is::
 
-    <ISO-8601 UTC> ctdcast <version> <stage>: <note>
+    <timestamp> <producer> <version> <stage>: <note>
 
-joined with newlines.  Keeping it in one helper means the format cannot drift
-between stages and the package version is recorded on every line.
+joined with newlines.  ctdcast's own stages use the defaults — an ISO-8601 UTC
+timestamp, producer ``ctdcast`` — giving ``<ISO-8601 UTC> ctdcast <version> <stage>``.
+An upstream Sea-Bird step overrides *producer* (``"SBE Data Processing"``), *timestamp*
+(the tool's own verbatim stamp, no ``Z``) and the *stage* field (the module name, e.g.
+``celltm``), so a stage-1 file's history shows Sea-Bird's own lines alongside ctdcast's.
 """
 
 from __future__ import annotations
@@ -50,8 +53,9 @@ def append_history(
         The human-readable record of the operation, including the parameters it
         used (e.g. ``"gross_range: ctd_salinity_1:[2.0,42.0]"``).
     stage:
-        The stage token that did the work (``"stage1"``, ``"stage2"``,
-        ``"stage3"``, ``"profiles"``, ``"ladcp_profiles"``).
+        The stage token that did the work — ``"stage1"``, ``"stage2"``, ``"stage3"``,
+        ``"profiles"``, ``"ladcp_profiles"`` for ctdcast's own stages, or a Sea-Bird
+        module name (``"celltm"``, ``"binavg"``, …) for an upstream step.
     version:
         The version to stamp; defaults to the installed ctdcast package version.
     producer:
@@ -70,9 +74,11 @@ def append_history(
 
     """
     stamp = timestamp if timestamp is not None else _iso_now()
-    # rstrip so a module with no salient parameters (an empty note) does not leave a
-    # dangling "stage: " with trailing whitespace; ctdcast's own notes are never empty.
-    entry = f"{stamp} {producer} {version} {stage}: {note}".rstrip()
+    # Join the prefix fields skipping any empty one (a Sea-Bird module may have a timestamp
+    # but no version), so no double space appears; rstrip drops the trailing space when a
+    # module has no salient parameters (an empty note).  ctdcast's own notes are never empty.
+    prefix = " ".join(field for field in (stamp, producer, version, stage) if field)
+    entry = f"{prefix}: {note}".rstrip()
     prev = str(attrs.get("history", ""))
     if prepend:
         attrs["history"] = f"{entry}\n{prev}".rstrip("\n")

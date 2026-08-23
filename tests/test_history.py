@@ -77,6 +77,19 @@ class TestAppendHistory:
             == "Jul 30 2026 11:10:44 ctdcast " + __version__ + " Derive:"
         )
 
+    def test_empty_version_no_double_space(self):
+        """A module with a timestamp but no version leaves no double space in the line."""
+        attrs: dict = {}
+        append_history(
+            attrs,
+            "x",
+            stage="celltm",
+            version="",
+            producer="SBE Data Processing",
+            timestamp="Jul 30 2026 11:10:35",
+        )
+        assert attrs["history"] == "Jul 30 2026 11:10:35 SBE Data Processing celltm: x"
+
 
 def test_history_accumulates_across_stages():
     """A stage-3 dataset inherits the stage-2 line and appends its own.

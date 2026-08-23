@@ -664,3 +664,23 @@ class TestProvenanceAdvisories:
     def test_empty_header(self):
         """No header -> no advisories."""
         assert provenance_advisories("") == []
+
+    def test_offset_none_suppresses_system_clock_advisory(self):
+        """A system-clock start_time with no parseable System UTC -> no offset -> no advisory.
+
+        Guards against printing 'differed by None s' when the offset cannot be computed.
+        """
+        header = (
+            "* NMEA UTC (Time) = Apr 01 2026 18:02:37\n"  # NMEA present, no System UTC line
+            "# start_time = Apr 01 2026 18:02:37 [System UTC, first data scan.]\n"
+        )
+        assert not any("system clock" in a for a in provenance_advisories(header))
+
+    def test_advance_that_rounds_to_default_not_flagged(self):
+        """An advance that displays as the default (0.0731 -> 0.073) is not called non-default."""
+        header = (
+            "* SBE 11plus V 5.2\n"
+            "* advance primary conductivity  0.0731 seconds\n"
+            "* advance secondary conductivity  0.073 seconds\n"
+        )
+        assert not any("non-default" in a for a in provenance_advisories(header))

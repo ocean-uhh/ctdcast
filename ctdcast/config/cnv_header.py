@@ -611,10 +611,13 @@ def provenance_advisories(header_text: str) -> list[str]:
     # A conductivity advance other than the factory default is worth flagging: the SBE manual
     # allows channels to need different lags (plumbing differs), so a non-default value is not
     # necessarily a residual — but it is a deviation the reader should judge.
+    # Compare rounded to the 3 decimals the message shows, so a value that displays as the
+    # default is never flagged as differing from it.
     nondefault = {
         ch: sec
         for ch, sec in acq.deck_unit.advance.items()
-        if "conductivity" in ch and sec != _DEFAULT_CONDUCTIVITY_ADVANCE
+        if "conductivity" in ch
+        and round(sec, 3) != round(_DEFAULT_CONDUCTIVITY_ADVANCE, 3)
     }
     if nondefault:
         parts = ", ".join(f"{ch} +{sec:.3f} s" for ch, sec in nondefault.items())
@@ -625,7 +628,8 @@ def provenance_advisories(header_text: str) -> list[str]:
             "salinity at sharp temperature steps — confirm from the data."
         )
 
-    if start.clock == "system" and acq.clocks.nmea_utc:
+    # Only claim an offset when both clocks parsed; offset_seconds is None otherwise.
+    if start.clock == "system" and acq.clocks.offset_seconds is not None:
         advisories.append(
             "The time coordinate is on the ship's system clock, not GPS — the two differed by "
             f"{acq.clocks.offset_seconds} s at acquisition."

@@ -542,7 +542,7 @@ def _render_provenance_table(
     advisories = advisories or []
     src = attrs.get("time_coordinate_source")
     off = attrs.get("time_clock_offset_seconds")
-    if not records and not src and off is None:
+    if not records and not src and off is None and not advisories:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
