@@ -59,6 +59,26 @@ class TestStage1:
             assert ds.sizes["time"] > 0
             ds.close()
 
+    def test_correction_ledger_stamped(self, tmp_path):
+        """Stage-1 output carries the SBE correction ledger read from the raw header."""
+        from ctdcast.processors.stage1 import stage1
+
+        nc_dir = tmp_path / "nc"
+        stage1(FIXTURES_CNV, nc_dir)
+        stamped = 0
+        for nc_path in sorted(stage_dir(nc_dir, 1).glob("*.nc")):
+            ds = xr.open_dataset(nc_path, engine="netcdf4")
+            attrs = ds.attrs
+            ds.close()
+            if "sbe_processing_order" not in attrs:
+                continue
+            stamped += 1
+            assert "datcnv" in attrs["sbe_processing_order"]
+            assert "align(deck)" in attrs["sbe_processing_order"]
+            assert attrs["correction_align"].endswith(" s")
+            assert attrs["sbe_acquisition"].startswith("* Sea-Bird SBE 9")
+        assert stamped, "no stage-1 file carried the correction ledger"
+
     def test_conductivity_converted_to_mscm(self, tmp_path):
         """Stage-1 conductivity is in mS/cm (the reader emits it; stage1 guards against double-converting a file already in those units)."""
         import numpy as np

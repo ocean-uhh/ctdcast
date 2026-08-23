@@ -1,0 +1,316 @@
+* Sea-Bird SBE 9 Data File:
+* FileName = C:\Data\MSM121\MSM121_054.hdr
+* Software Version Seasave V 7.22
+* Temperature SN = 4456
+* Conductivity SN = 2646
+* Number of Bytes Per Scan = 38
+* Number of Voltage Words = 3
+* Number of Scans Averaged by the Deck Unit = 1
+* System UpLoad Time = Oct 08 2023 12:26:20
+* NMEA Latitude = 49 42.50 N
+* NMEA Longitude = 045 00.04 W
+* NMEA UTC (Time) = Oct 08 2023 12:26:20
+* Store Lat/Lon Data = Append to Every Scan
+* SBE 11plus V 5.1g
+* number of scans to average = 1
+* pressure baud rate = 19200
+* NMEA baud rate = 4800
+* GPIB address = 1
+* advance primary conductivity  0.073 seconds
+* advance secondary conductivity  0.073 seconds
+* delete word 8 from scan
+* autorun on power up is disabled
+* S>
+** Ship: Maria S. Merian
+** Cruise: MSM121
+** Profile: 54
+** Station: 54
+** WaterDepth: 3550
+* System UTC = Oct 08 2023 12:26:20
+# nquan = 13
+# nvalues = 3593                        
+# units = specified
+# name 0 = timeQ: Time, NMEA [seconds]
+# name 1 = prDM: Pressure, Digiquartz [db]
+# name 2 = t090C: Temperature [ITS-90, deg C]
+# name 3 = c0mS/cm: Conductivity [mS/cm]
+# name 4 = sbeox0ML/L: Oxygen, SBE 43 [ml/l]
+# name 5 = t190C: Temperature, 2 [ITS-90, deg C]
+# name 6 = c1mS/cm: Conductivity, 2 [mS/cm]
+# name 7 = sbeox1ML/L: Oxygen, SBE 43, 2 [ml/l]
+# name 8 = latitude: Latitude [deg]
+# name 9 = longitude: Longitude [deg]
+# name 10 = timeS: Time, Elapsed [seconds]
+# name 11 = sal11: Salinity, Practical, 2 [PSU]
+# name 12 = flag: flag
+# span 0 =  750083314,  750086995       
+# span 1 =      7.000,   3599.000       
+# span 2 =     1.9441,    14.2864       
+# span 3 =  32.109489,  41.580563       
+# span 4 =     4.3448,     6.9701       
+# span 5 =     1.9433,    14.2855       
+# span 6 =  32.108106,  41.579826       
+# span 7 =     4.2256,     6.8076       
+# span 8 =   49.70834,   49.71112       
+# span 9 =  -45.00409,  -45.00073       
+# span 10 =    134.461,   3815.453      
+# span 11 =    33.9944,    34.9173      
+# span 12 = 0.0000e+00, 0.0000e+00      
+# interval = decibars: 1                
+# start_time = Jan 01 2000 12:26:20 [NMEA time, first data scan]
+# bad_flag = -9.990e-29
+# <Sensors count="11" >
+#   <sensor Channel="1" >
+#     <!-- Frequency 0, Temperature -->
+#     <TemperatureSensor SensorID="55" >
+#       <SerialNumber>4456</SerialNumber>
+#       <CalibrationDate>24-Nov-22</CalibrationDate>
+#       <UseG_J>1</UseG_J>
+#       <A>0.00000000e+000</A>
+#       <B>0.00000000e+000</B>
+#       <C>0.00000000e+000</C>
+#       <D>0.00000000e+000</D>
+#       <F0_Old>0.000</F0_Old>
+#       <G>4.42076714e-003</G>
+#       <H>6.43481928e-004</H>
+#       <I>2.23950918e-005</I>
+#       <J>1.98540001e-006</J>
+#       <F0>1000.000</F0>
+#       <Slope>1.00000000</Slope>
+#       <Offset>0.0000</Offset>
+#     </TemperatureSensor>
+#   </sensor>
+#   <sensor Channel="2" >
+#     <!-- Frequency 1, Conductivity -->
+#     <ConductivitySensor SensorID="3" >
+#       <SerialNumber>2646</SerialNumber>
+#       <CalibrationDate>27-Oct-22</CalibrationDate>
+#       <UseG_J>1</UseG_J>
+#       <!-- Cell const and series R are applicable only for wide range sensors. -->
+#       <SeriesR>0.0000</SeriesR>
+#       <CellConst>2000.0000</CellConst>
+#       <ConductivityType>0</ConductivityType>
+#       <Coefficients equation="0" >
+#         <A>0.00000000e+000</A>
+#         <B>0.00000000e+000</B>
+#         <C>0.00000000e+000</C>
+#         <D>0.00000000e+000</D>
+#         <M>0.0</M>
+#         <CPcor>-9.57000000e-008</CPcor>
+#       </Coefficients>
+#       <Coefficients equation="1" >
+#         <G>-1.03188065e+001</G>
+#         <H>1.41430809e+000</H>
+#         <I>-2.24827851e-004</I>
+#         <J>9.29147915e-005</J>
+#         <CPcor>-9.57000000e-008</CPcor>
+#         <CTcor>3.2500e-006</CTcor>
+#         <!-- WBOTC not applicable unless ConductivityType = 1. -->
+#         <WBOTC>0.00000000e+000</WBOTC>
+#       </Coefficients>
+#       <Slope>1.00000000</Slope>
+#       <Offset>0.00000</Offset>
+#     </ConductivitySensor>
+#   </sensor>
+#   <sensor Channel="3" >
+#     <!-- Frequency 2, Pressure, Digiquartz with TC -->
+#     <PressureSensor SensorID="45" >
+#       <SerialNumber>0657</SerialNumber>
+#       <CalibrationDate>15-Sep-22</CalibrationDate>
+#       <C1>-4.123534e+004</C1>
+#       <C2>-1.722041e-001</C2>
+#       <C3>1.093950e-002</C3>
+#       <D1>3.387800e-002</D1>
+#       <D2>0.000000e+000</D2>
+#       <T1>2.994183e+001</T1>
+#       <T2>-3.042465e-004</T2>
+#       <T3>3.248800e-006</T3>
+#       <T4>5.867120e-009</T4>
+#       <Slope>1.00001000</Slope>
+#       <Offset>-0.69840</Offset>
+#       <T5>0.000000e+000</T5>
+#       <AD590M>1.285350e-002</AD590M>
+#       <AD590B>-9.185990e+000</AD590B>
+#     </PressureSensor>
+#   </sensor>
+#   <sensor Channel="4" >
+#     <!-- Frequency 3, Temperature, 2 -->
+#     <TemperatureSensor SensorID="55" >
+#       <SerialNumber>4156</SerialNumber>
+#       <CalibrationDate>07-Oct-22</CalibrationDate>
+#       <UseG_J>1</UseG_J>
+#       <A>0.00000000e+000</A>
+#       <B>0.00000000e+000</B>
+#       <C>0.00000000e+000</C>
+#       <D>0.00000000e+000</D>
+#       <F0_Old>0.000</F0_Old>
+#       <G>4.38528002e-003</G>
+#       <H>6.50520611e-004</H>
+#       <I>2.37762971e-005</I>
+#       <J>2.14313796e-006</J>
+#       <F0>1000.000</F0>
+#       <Slope>1.00000000</Slope>
+#       <Offset>0.0000</Offset>
+#     </TemperatureSensor>
+#   </sensor>
+#   <sensor Channel="5" >
+#     <!-- Frequency 4, Conductivity, 2 -->
+#     <ConductivitySensor SensorID="3" >
+#       <SerialNumber>2643</SerialNumber>
+#       <CalibrationDate>27-Oct-22</CalibrationDate>
+#       <UseG_J>1</UseG_J>
+#       <!-- Cell const and series R are applicable only for wide range sensors. -->
+#       <SeriesR>0.0000</SeriesR>
+#       <CellConst>2000.0000</CellConst>
+#       <ConductivityType>0</ConductivityType>
+#       <Coefficients equation="0" >
+#         <A>0.00000000e+000</A>
+#         <B>0.00000000e+000</B>
+#         <C>0.00000000e+000</C>
+#         <D>0.00000000e+000</D>
+#         <M>0.0</M>
+#         <CPcor>-9.57000000e-008</CPcor>
+#       </Coefficients>
+#       <Coefficients equation="1" >
+#         <G>-9.90089056e+000</G>
+#         <H>1.37876824e+000</H>
+#         <I>-2.09415484e-003</I>
+#         <J>2.10319217e-004</J>
+#         <CPcor>-9.57000000e-008</CPcor>
+#         <CTcor>3.2500e-006</CTcor>
+#         <!-- WBOTC not applicable unless ConductivityType = 1. -->
+#         <WBOTC>0.00000000e+000</WBOTC>
+#       </Coefficients>
+#       <Slope>1.00000000</Slope>
+#       <Offset>0.00000</Offset>
+#     </ConductivitySensor>
+#   </sensor>
+#   <sensor Channel="6" >
+#     <!-- A/D voltage 0, Oxygen, SBE 43 -->
+#     <OxygenSensor SensorID="38" >
+#       <SerialNumber>0547</SerialNumber>
+#       <CalibrationDate>26-Oct-22</CalibrationDate>
+#       <Use2007Equation>1</Use2007Equation>
+#       <CalibrationCoefficients equation="0" >
+#         <!-- Coefficients for Owens-Millard equation. -->
+#         <Boc>0.0000</Boc>
+#         <Soc>0.0000e+000</Soc>
+#         <offset>0.0000</offset>
+#         <Pcor>0.00e+000</Pcor>
+#         <Tcor>0.0000</Tcor>
+#         <Tau>0.0</Tau>
+#       </CalibrationCoefficients>
+#       <CalibrationCoefficients equation="1" >
+#         <!-- Coefficients for Sea-Bird equation - SBE calibration in 2007 and later. -->
+#         <Soc>4.7067e-001</Soc>
+#         <offset>-0.4872</offset>
+#         <A>-4.8884e-003</A>
+#         <B> 2.3084e-004</B>
+#         <C>-3.2714e-006</C>
+#         <D0> 2.5826e+000</D0>
+#         <D1> 1.92634e-004</D1>
+#         <D2>-4.64803e-002</D2>
+#         <E> 3.6000e-002</E>
+#         <Tau20> 1.3400</Tau20>
+#         <H1>-3.3000e-002</H1>
+#         <H2> 5.0000e+003</H2>
+#         <H3> 1.4500e+003</H3>
+#       </CalibrationCoefficients>
+#     </OxygenSensor>
+#   </sensor>
+#   <sensor Channel="7" >
+#     <!-- A/D voltage 1, Free -->
+#   </sensor>
+#   <sensor Channel="8" >
+#     <!-- A/D voltage 2, Altimeter -->
+#     <AltimeterSensor SensorID="0" >
+#       <SerialNumber>79774</SerialNumber>
+#       <CalibrationDate>10/12/2021</CalibrationDate>
+#       <ScaleFactor>15.000</ScaleFactor>
+#       <Offset>0.000</Offset>
+#     </AltimeterSensor>
+#   </sensor>
+#   <sensor Channel="9" >
+#     <!-- A/D voltage 3, Free -->
+#   </sensor>
+#   <sensor Channel="10" >
+#     <!-- A/D voltage 4, Oxygen, SBE 43, 2 -->
+#     <OxygenSensor SensorID="38" >
+#       <SerialNumber>0267</SerialNumber>
+#       <CalibrationDate>11-Oct-22</CalibrationDate>
+#       <Use2007Equation>1</Use2007Equation>
+#       <CalibrationCoefficients equation="0" >
+#         <!-- Coefficients for Owens-Millard equation. -->
+#         <Boc>0.0000</Boc>
+#         <Soc>0.0000e+000</Soc>
+#         <offset>0.0000</offset>
+#         <Pcor>0.00e+000</Pcor>
+#         <Tcor>0.0000</Tcor>
+#         <Tau>0.0</Tau>
+#       </CalibrationCoefficients>
+#       <CalibrationCoefficients equation="1" >
+#         <!-- Coefficients for Sea-Bird equation - SBE calibration in 2007 and later. -->
+#         <Soc>5.2013e-001</Soc>
+#         <offset>-0.5920</offset>
+#         <A>-4.5577e-003</A>
+#         <B> 1.3388e-004</B>
+#         <C>-2.1032e-006</C>
+#         <D0> 2.5826e+000</D0>
+#         <D1> 1.92634e-004</D1>
+#         <D2>-4.64803e-002</D2>
+#         <E> 3.6000e-002</E>
+#         <Tau20> 1.5400</Tau20>
+#         <H1>-3.3000e-002</H1>
+#         <H2> 5.0000e+003</H2>
+#         <H3> 1.4500e+003</H3>
+#       </CalibrationCoefficients>
+#     </OxygenSensor>
+#   </sensor>
+#   <sensor Channel="11" >
+#     <!-- A/D voltage 5, Free -->
+#   </sensor>
+# </Sensors>
+# datcnv_date = Oct 08 2023 14:25:30, 7.22.0 [datcnv_vars = 12]
+# datcnv_in = C:\Data\MSM121\MSM121_054.hex C:\Data\MSM121\MSM121_012.XMLCON
+# datcnv_skipover = 0
+# datcnv_ox_hysteresis_correction = yes
+# datcnv_ox_tau_correction = no
+# filter_date = Oct 09 2023 11:05:09, 7.26.7.129
+# filter_in = C:\Users\rsteinf\daten\msm121\ctdraw\MSM121_054.cnv
+# filter_low_pass_tc_A = 0.150
+# filter_low_pass_tc_B = 0.500
+# filter_low_pass_A_vars = prDM sal11
+# filter_low_pass_B_vars = sbeox0ML/L sbeox1ML/L
+# alignctd_date = Oct 09 2023 11:06:03, 7.26.7.129
+# alignctd_in = C:\Users\rsteinf\daten\msm121\ctd\MSM121_054.cnv
+# alignctd_adv = sbeox0ML/L 4.000, sbeox1ML/L 4.000                                                                                                                                                                                  
+# celltm_date = Oct 09 2023 11:06:32, 7.26.7.129
+# celltm_in = C:\Users\rsteinf\daten\msm121\ctd\MSM121_054.cnv
+# celltm_alpha = 0.0300, 0.0300
+# celltm_tau = 7.0000, 7.0000
+# celltm_temp_sensor_use_for_cond = primary, secondary
+# loopedit_date = Oct 09 2023 11:07:20, 7.26.7.129
+# loopedit_in = C:\Users\rsteinf\daten\msm121\ctd\MSM121_054.cnv
+# loopedit_minVelocity = 0.100                                                                                            
+# loopedit_surfaceSoak: minDepth = 7.0, maxDepth = 24, useDeckPress = 1                                                   
+# loopedit_excl_bad_scans = yes
+# wildedit_date = Oct 09 2023 11:07:53, 7.26.7.129
+# wildedit_in = C:\Users\rsteinf\daten\msm121\ctd\MSM121_054.cnv
+# wildedit_pass1_nstd = 2.0
+# wildedit_pass2_nstd = 20.0
+# wildedit_pass2_mindelta = 0.000e+000
+# wildedit_npoint = 100
+# wildedit_vars = prDM t090C c0mS/cm sbeox0ML/L t190C c1mS/cm sbeox1ML/L sal11
+# wildedit_excl_bad_scans = yes
+# binavg_date = Oct 09 2023 11:08:19, 7.26.7.129
+# binavg_in = C:\Users\rsteinf\daten\msm121\ctd\MSM121_054.cnv
+# binavg_bintype = decibars
+# binavg_binsize = 1
+# binavg_excl_bad_scans = yes
+# binavg_skipover = 0
+# binavg_omit = 0
+# binavg_min_scans_bin = 1
+# binavg_max_scans_bin = 2147483647
+# binavg_surface_bin = yes, min = 0.000, max = 0.000, value = 0.000
+# file_type = ascii
+*END*

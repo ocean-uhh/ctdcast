@@ -196,6 +196,12 @@ frozen stage files and then edited in config is a stale copy in 200 places.
      - **Compile time only.** They describe the gridded artefact, not the
        measurement, so there is nothing earlier to originate them.
 
+   * - **Upstream provenance**
+     - ``sbe_processing_order``, ``correction_*``, ``time_coordinate_source``,
+       ``sbe_acquisition``, ``sbe_processing``
+     - Written at **stage 1**, read from the CNV header. Describes what was done
+       to the cast *before* ctdcast — see the ledger below.
+
    * - **Stage-local**
      - ``history``
      - **Each stage appends.** The model the rest of this table follows.
@@ -230,6 +236,86 @@ so a file cannot be titled for one cruise and attributed to another. Re-run stag
 For everything outside identity, config remains the source of truth: writing
 identity at stage 1 makes the per-cast file *portable*, not the authority on what
 the cruise is called in the report.
+
+The correction ledger
+~~~~~~~~~~~~~~~~~~~~~
+
+A CNV usually arrives already processed — by the deck unit at acquisition and by
+SBE Data Processing afterwards. Stage 1 reads the header and records what it finds,
+so a stage file states not only what ctdcast did to it but what had already been
+done. See :ref:`processing_framework` for why this matters; this section is the
+attribute reference.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Attribute
+     - Meaning
+
+   * - ``sbe_acquisition``
+     - The ``*`` block, **verbatim**, minus the ``<Sensors>`` XML (which is kept
+       separately as ``raw_metadata``). Archival ground truth: no interpretation,
+       so it cannot be wrong, and a key a future SBE release adds is preserved
+       even though this version's parser has never heard of it.
+
+   * - ``sbe_processing``
+     - The ``#`` module block, verbatim, same rationale.
+
+   * - ``sbe_processing_order``
+     - The corrections in the order they were applied, e.g.
+       ``align(deck) datcnv wildedit filter celltm Derive binavg``. Recorded
+       explicitly rather than left to be re-derived: the deck-unit alignment
+       carries no timestamp of its own, and some module writers emit none either,
+       so file order is the only reliable ordering key.
+
+   * - ``correction_align``
+     - The deck-unit advance, per channel, e.g. ``SBE 11plus V 5.0 deck unit:
+       primary conductivity +0.073 s, secondary conductivity +0.043 s,
+       voltage 0 +0.000 s``. Per channel because older deck units do not always
+       set the two conductivity channels alike, and a channel advanced less than
+       the physical lag carries a residual the other does not.
+
+       Written whenever the deck unit stated an advance at all — including one
+       set to ``+0.000`` on every channel, since "present and set to zero" is a
+       different fact from "no deck unit". In that case ``align(deck)`` is
+       **absent** from ``sbe_processing_order``, because nothing was applied.
+
+   * - ``correction_celltm``, ``correction_wildedit``, ``correction_binavg``, …
+     - **One attribute per module in the chain**, naming the agent and the
+       parameters it used. There is no curated subset: deciding which modules
+       "count" as corrections would mean predicting them, and real headers carry
+       modules that were not predicted. A module that ran **more than once** —
+       which Sea-Bird explicitly sanctions for Wild Edit — is suffixed
+       ``correction_wildedit``, ``correction_wildedit_2``, in file order, so no
+       run's parameters are lost.
+
+       **Absence means "not recorded", never "not done"** — a file whose chain
+       ctdcast could not parse has the verbatim blocks and no ``correction_*``
+       entries at all.
+
+   * - ``time_coordinate_source``
+     - Which clock the ``time`` coordinate is anchored to, and to which moment:
+       ``System UTC, first data scan``, ``NMEA time, header``, and so on. SBE
+       records this in a bracket on its ``start_time`` line and it **varies
+       between cruises**, so a file that does not state it leaves the reader
+       unable to tell GPS time from a possibly-drifting acquisition clock.
+
+   * - ``time_clock_offset_seconds``
+     - ``NMEA UTC`` minus ``System UTC``, where the header carries both. Several
+       seconds is normal and the sign varies. It is *reported*, not applied — a
+       single cast cannot distinguish a drifting clock from a stale NMEA sentence;
+       that takes the whole cruise.
+
+The unit of record is the **correction**, not the module — which matters because
+the most consequential one, the deck-unit conductivity alignment, is not a module
+at all and lives in a different part of the header. Every module in the chain then
+contributes a correction of its own, so in practice the ledger is one entry per
+module plus one for the deck unit.
+
+Parameters keep the SBE channel names the header uses (``t090C``, ``c0S/m``) rather
+than being translated to ctdcast's canonical names: the file states what its source
+stated, and translation happens where the mapping is needed.
 
 Sensor provenance
 ~~~~~~~~~~~~~~~~~

@@ -7,13 +7,17 @@ clean_spines, figsizes, map bounds, colormap overrides) live in the frozen
 Section headers mark what kind of constant each block holds, because that determines
 who may change it and what breaks when they do:
 
-  Contract  — changing it makes output wrong or non-conformant.
-              Requires a code review and a version bump.
-  Science   — changing it gives a different but equally valid answer.
-              Per-cruise overrides go in ``display.variables:`` in the cruise
-              ``config.yaml``; use :func:`ctdcast.config.loader.load_display_config`.
-  Derived   — computed from another constant; must live here to avoid drift.
-  Deferred  — belongs in ``oceanvis`` once that package exists.
+Contract
+    Changing it makes output wrong or non-conformant. Requires a code review and a
+    version bump.
+Science
+    Changing it gives a different but equally valid answer. Per-cruise overrides go
+    in ``display.variables:`` in the cruise ``config.yaml``; use
+    :func:`ctdcast.config.loader.load_display_config`.
+Derived
+    Computed from another constant; must live here to avoid drift.
+Deferred
+    Belongs in ``oceanvis`` once that package exists.
 
 """
 
