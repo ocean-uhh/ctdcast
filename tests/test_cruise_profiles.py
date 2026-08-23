@@ -325,18 +325,22 @@ class TestBuildProfilesCruise:
             n1 = int(np.isfinite(d1[var].values).sum())
             # The exclusion is claimed in history only for the file where it
             # actually happened, not the stage-1-only baseline.
-            assert "excluded QARTOD flag 3 (suspect) and flag 4 (fail)" not in (
-                d0.attrs["history"]
+            assert (
+                "excluded QARTOD flag 3 (suspect) and flag 4 (fail)"
+                not in (d0.attrs["history"])
             )
-            assert "excluded QARTOD flag 3 (suspect) and flag 4 (fail)" in (
-                d1.attrs["history"]
+            assert (
+                "excluded QARTOD flag 3 (suspect) and flag 4 (fail)"
+                in (d1.attrs["history"])
             )
             # The per-variable exclusion counts are recorded on the flagged file's
             # variable and match the flagged-sample count; the baseline records zero.
             assert int(d1[var].attrs["qc_excluded_samples"]) == n_bad
             assert int(d0[var].attrs["qc_excluded_samples"]) == 0
             assert int(d1[var].attrs["qc_input_samples"]) > 0
-        assert n1 < n0, f"suspect/fail masking did not reduce finite {var} ({n1} vs {n0})"
+        assert n1 < n0, (
+            f"suspect/fail masking did not reduce finite {var} ({n1} vs {n0})"
+        )
 
     def test_binning_recorded_in_history_not_a_standalone_attr(self, tmp_path):
         """The binning prose lives in `history`; the scalar spacing stays an attr."""
