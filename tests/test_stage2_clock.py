@@ -1,0 +1,221 @@
+"""Tests for the stage-2 clock applier (``apply_clock_offset`` / ``_resolve_clock_application``).
+
+The applier is arithmetic over a time coordinate — no instrument measurement is fabricated — so
+casts are built synthetically. Each carries the ``raw_metadata`` header the finder re-measures from
+and the ``time_coordinate_source`` attribute the gate reads.
+"""
+
+import datetime as dt
+import json
+
+import numpy as np
+import pytest
+import xarray as xr
+
+from ctdcast.processors import stage2
+from ctdcast.processors.stage2 import _resolve_clock_application, apply_clock_offset
+
+
+def _cast_ds(
+    system: dt.datetime,
+    *,
+    source: str = "System UTC, first data scan.",
+    n: int = 6,
+) -> xr.Dataset:
+    """A minimal per-cast dataset with a time coordinate, pressure, temperature and the gate attr."""
+    t0 = np.datetime64(system.strftime("%Y-%m-%dT%H:%M:%S"))
+    time = t0 + np.arange(n) * np.timedelta64(1, "s")
+    return xr.Dataset(
+        {
+            "temperature": ("time", np.linspace(10.0, 4.0, n)),
+            "pressure": ("time", np.linspace(0.0, 100.0, n)),
+        },
+        coords={"time": ("time", time)},
+        attrs={
+            "time_coordinate_source": source,
+            "time_coverage_start": str(np.datetime_as_string(time.min(), unit="s")),
+            "time_coverage_end": str(np.datetime_as_string(time.max(), unit="s")),
+            "raw_metadata": "unused-by-apply",
+        },
+    )
+
+
+class TestApplyClockOffset:
+    def test_shifts_time_and_preserves_original(self) -> None:
+        """time moves by the offset; time_orig keeps the uncorrected values; coverage recomputes."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 23, 55))
+        out = apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.47)
+        assert (out["time"].values - ds["time"].values == np.timedelta64(5, "s")).all()
+        assert (out["time_orig"].values == ds["time"].values).all()
+        assert out.attrs["time_coverage_start"] == str(
+            np.datetime_as_string(out["time"].values.min(), unit="s")
+        )
+
+    def test_records_value_with_n_and_sd(self) -> None:
+        """clock_offset_seconds carries the value and its segment n/sd, per the plan."""
+        out = apply_clock_offset(
+            _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0)),
+            -2.07,
+            n_casts=150,
+            segment_sd=0.69,
+        )
+        assert float(out["clock_offset_seconds"]) == pytest.approx(-2.07)
+        comment = out["clock_offset_seconds"].attrs["comment"]
+        assert "150 casts" in comment and "sd 0.69" in comment
+        assert "clock_offset_seconds=-2.07 applied" in str(out.attrs["history"])
+
+    def test_no_measured_value_changes(self) -> None:
+        """A clock correction moves only the time axis — temperature/pressure are untouched."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0))
+        out = apply_clock_offset(ds, 7.0, n_casts=29, segment_sd=0.57)
+        assert (out["temperature"].values == ds["temperature"].values).all()
+        assert (out["pressure"].values == ds["pressure"].values).all()
+
+    def test_gate_refuses_a_gps_coordinate(self) -> None:
+        """A coordinate already on GPS must not be shifted — refuse loudly."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0), source="NMEA time, header")
+        with pytest.raises(ValueError, match="System clock"):
+            apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+
+    def test_guard_refuses_already_corrected(self) -> None:
+        """A file already carrying time_orig is refused, not shifted a second time."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0))
+        ds = ds.assign_coords(time_orig=ds["time"])
+        with pytest.raises(ValueError, match="time_orig"):
+            apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+
+    def test_acquisition_provenance_attrs_are_untouched(self) -> None:
+        """The record of the acquisition clock must keep reading (wrongly) as acquired — never rewritten."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 23, 55))
+        ds.attrs["cnv_upload_date"] = "Mar 29 2026 20:23:55"
+        ds.attrs["time_clock_offset_seconds"] = 5.0  # the offset *measured* at stage 1
+        out = apply_clock_offset(ds, 7.0, n_casts=3, segment_sd=0.5)
+        for key in (
+            "raw_metadata",
+            "cnv_upload_date",
+            "time_clock_offset_seconds",
+            "time_coordinate_source",
+        ):
+            assert out.attrs[key] == ds.attrs[key]
+
+
+def _write_stage1_cast(
+    stage1, cast_num: int, system: dt.datetime, offset_s: int
+) -> None:
+    """Write a stage-1 cast with header clocks (for the finder) and a time axis (for the applier)."""
+    nmea = system + dt.timedelta(seconds=offset_s)
+    header = (
+        f"* System UTC = {system:%b %d %Y %H:%M:%S}\n"
+        f"* NMEA UTC (Time) = {nmea:%b %d %Y %H:%M:%S}\n"
+        f"# start_time = {system:%b %d %Y %H:%M:%S} [System UTC, first data scan.]"
+    )
+    ds = _cast_ds(system)
+    ds.attrs["raw_metadata"] = json.dumps(
+        {"schema": "test", "raw_format": "sbe-cnv", "blocks": {"header": header}}
+    )
+    ds.to_netcdf(stage1 / f"cast_{cast_num:03d}_stage1.nc", engine="netcdf4")
+
+
+def _cruise(tmp_path, offset_s: int = 5, n_casts: int = 12):
+    stage1 = tmp_path / "stage1"
+    stage1.mkdir(parents=True)
+    base = dt.datetime(2026, 3, 29, 20, 0, 0)
+    for i in range(1, n_casts + 1):
+        _write_stage1_cast(stage1, i, base + dt.timedelta(hours=i), offset_s)
+    return tmp_path
+
+
+class TestResolveClockApplication:
+    def test_builds_lookup_with_measured_n_and_sd(self, tmp_path) -> None:
+        """Each cast in a segment maps to (offset, n, measured sd)."""
+        root = _cruise(tmp_path, offset_s=5)
+        lookup = _resolve_clock_application(
+            root, {"segments": [{"casts": [[1, 12]], "clock_offset_seconds": 5.0}]}
+        )
+        assert lookup[1][0] == 5.0
+        assert lookup[1][1] == 12
+        assert lookup[7][0] == 5.0  # every cast in range present
+
+    def test_warns_when_config_disagrees_with_measured(self, tmp_path) -> None:
+        """A configured offset far from the measured mean warns (config still wins)."""
+        root = _cruise(tmp_path, offset_s=5)  # measured +5
+        with pytest.warns(UserWarning, match="stale or"):
+            lookup = _resolve_clock_application(
+                root, {"segments": [{"casts": [[1, 12]], "clock_offset_seconds": 9.0}]}
+            )
+        assert lookup[1][0] == 9.0  # applied value is the configured one
+
+    def test_no_clock_config_is_empty(self, tmp_path) -> None:
+        """No processing.clock means nothing to apply (and no re-measure is triggered)."""
+        root = _cruise(tmp_path)
+        assert _resolve_clock_application(root, None) == {}
+        assert _resolve_clock_application(root, {}) == {}
+        assert _resolve_clock_application(root, {"segments": []}) == {}
+
+
+class TestRunIntegration:
+    def test_run_applies_offset_and_is_idempotent(self, tmp_path) -> None:
+        """Stage 2 shifts time by the configured offset; a --force re-run gives the same result."""
+        root = _cruise(tmp_path, offset_s=5)
+        cfg = {
+            "clock": {"segments": [{"casts": [[1, 12]], "clock_offset_seconds": 5.0}]}
+        }
+        assert stage2.run(root, cruise_cfg=cfg, force=True) == 12
+
+        out = xr.open_dataset(root / "stage2" / "cast_001_stage2.nc", engine="netcdf4")
+        try:
+            shift = out["time"].values - out["time_orig"].values
+            assert (shift == np.timedelta64(5, "s")).all()
+            first_time = out["time"].values.copy()
+        finally:
+            out.close()
+
+        # Re-run from the (frozen) stage-1 input: same shift, not a doubled one.
+        stage2.run(root, cruise_cfg=cfg, force=True)
+        out2 = xr.open_dataset(root / "stage2" / "cast_001_stage2.nc", engine="netcdf4")
+        try:
+            assert (out2["time"].values == first_time).all()
+        finally:
+            out2.close()
+
+    def test_changed_offset_produces_the_new_value(self, tmp_path) -> None:
+        """Re-running with a changed offset applies the new value, not the old one."""
+        root = _cruise(tmp_path, offset_s=5)
+        stage2.run(
+            root,
+            cruise_cfg={
+                "clock": {
+                    "segments": [{"casts": [[1, 12]], "clock_offset_seconds": 5.0}]
+                }
+            },
+            force=True,
+        )
+        stage2.run(
+            root,
+            cruise_cfg={
+                "clock": {
+                    "segments": [{"casts": [[1, 12]], "clock_offset_seconds": 7.0}]
+                }
+            },
+            force=True,
+        )
+        out = xr.open_dataset(root / "stage2" / "cast_001_stage2.nc", engine="netcdf4")
+        try:
+            assert (
+                out["time"].values - out["time_orig"].values == np.timedelta64(7, "s")
+            ).all()
+        finally:
+            out.close()
+
+    def test_cast_outside_any_segment_is_not_shifted(self, tmp_path) -> None:
+        """A cast in no segment gets no correction and no time_orig."""
+        root = _cruise(tmp_path, offset_s=5)
+        cfg = {
+            "clock": {"segments": [{"casts": [[1, 3]], "clock_offset_seconds": 5.0}]}
+        }
+        stage2.run(root, cruise_cfg=cfg, force=True)
+        out = xr.open_dataset(root / "stage2" / "cast_005_stage2.nc", engine="netcdf4")
+        try:
+            assert "time_orig" not in out.coords  # untouched
+        finally:
+            out.close()

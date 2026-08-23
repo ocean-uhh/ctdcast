@@ -16,12 +16,14 @@ soak/deck algorithms are deliberate — see the individual docstrings.
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
+from statistics import fmean, pstdev
 
 import numpy as np
 import xarray as xr
 
-from ctdcast.identity import format_cast_id
+from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, _qc_attrs
 from ctdcast.processors.stage_layout import (
@@ -141,6 +143,124 @@ def apply_stage2(
     append_history(ds.attrs, note, stage="stage2")
 
     return ds
+
+
+# Seconds by which a configured offset may differ from the freshly measured mean before stage 2
+# warns.  Config still wins (it is the frozen human decision); the warning only catches a config
+# that has drifted from the data — a renumbering, a re-processed cruise, or a stale value.
+_CLOCK_DISAGREE_SECONDS = 2.0
+
+
+def apply_clock_offset(
+    ds: xr.Dataset, offset_seconds: float, *, n_casts: int, segment_sd: float
+) -> xr.Dataset:
+    """Shift a cast's ``time`` coordinate by a clock offset, preserving the uncorrected time.
+
+    A clock correction is a *uniform translation of the time axis* — every channel shifted
+    identically, no measured value recomputed — which is why it belongs at stage 2 and is safe on
+    already-binned data at the current sampling. ``offset_seconds`` is ``NMEA - System`` (the
+    seconds added to acquisition time to obtain corrected time). The uncorrected time is kept as the
+    ``time_orig`` auxiliary coordinate, whose presence also marks the file as corrected;
+    ``clock_offset_seconds`` records the value with its segment ``n``/``sd`` so the per-cast
+    uncertainty travels with it; and ``time_coverage_*`` are recomputed so the file does not
+    contradict its own axis.
+
+    Refuses (raises :class:`ValueError`) when the file already carries ``time_orig`` (already
+    corrected — re-run from stage 1) or when its ``time_coordinate_source`` is not the System clock
+    (the coordinate is already on GPS, so a correction would introduce an error).
+    """
+    if "time_orig" in ds.coords:
+        raise ValueError(
+            "already carries time_orig — a clock correction has been applied to this file; "
+            "stage 2 reads stage-1 input, so re-run from stage 1."
+        )
+    source = str(ds.attrs.get("time_coordinate_source", ""))
+    if "system" not in source.lower():
+        raise ValueError(
+            f"time_coordinate_source is {source!r}, not the System clock — the coordinate is "
+            "already on GPS, so a clock offset must not be applied."
+        )
+
+    ds = ds.copy()
+    time_var = ds["time"]
+    ds = ds.assign_coords(
+        time_orig=(
+            time_var.dims,
+            time_var.values,
+            {
+                "long_name": "acquisition time before clock correction",
+                "standard_name": "time",
+            },
+        )
+    )
+    shifted = time_var.values + np.timedelta64(int(round(offset_seconds * 1e9)), "ns")
+    ds = ds.assign_coords(time=(time_var.dims, shifted, dict(time_var.attrs)))
+
+    ds["clock_offset_seconds"] = offset_seconds
+    ds["clock_offset_seconds"].attrs = {
+        "units": "s",
+        "long_name": "clock offset added to acquisition time",
+        "comment": (
+            f"segment mean of {n_casts} casts, sd {segment_sd:.2f} s; "
+            "convention: corrected = acquisition + offset (NMEA - System)"
+        ),
+    }
+
+    # time_coverage_* are derived from time (config/global_attrs); recompute after the shift.
+    ds.attrs["time_coverage_start"] = str(
+        np.datetime_as_string(shifted.min(), unit="s")
+    )
+    ds.attrs["time_coverage_end"] = str(np.datetime_as_string(shifted.max(), unit="s"))
+    duration_s = int(round((shifted.max() - shifted.min()) / np.timedelta64(1, "s")))
+    ds.attrs["time_coverage_duration"] = f"PT{duration_s}S"
+
+    append_history(
+        ds.attrs,
+        f"clock_offset_seconds={offset_seconds:+.2f} applied "
+        f"(segment mean of {n_casts} casts, sd {segment_sd:.2f} s)",
+        stage="stage2",
+    )
+    return ds
+
+
+def _resolve_clock_application(
+    root: Path, clock_cfg: dict | None
+) -> dict[int, tuple[float, int, float]]:
+    """Map each configured cast number to ``(offset, n, sd)`` for the stage-2 applier.
+
+    Parses ``processing.clock.segments`` and re-measures the offsets once (cruise-scope, via the
+    finder) so each segment's measured ``sd`` and count travel with the applied value, and a
+    configured offset that has drifted from the data is warned about — config still wins, but a
+    silent mismatch is how a stale config outlives what it described. Returns an empty map when no
+    clock is configured.
+    """
+    segments = (clock_cfg or {}).get("segments") or []
+    if not segments:
+        return {}
+
+    from ctdcast.analysis.clock import cast_number, clock_offsets
+
+    series, _scanned, _coord = clock_offsets(root)
+    measured = {cast_number(c.cast_id): c.offset_seconds for c in series}
+
+    lookup: dict[int, tuple[float, int, float]] = {}
+    for seg in segments:
+        offset = float(seg["clock_offset_seconds"])
+        nums = expand_cast_numbers(seg.get("casts") or [])
+        vals = [measured[k] for k in nums if k in measured]
+        n = len(vals) if vals else len(nums)
+        sd = pstdev(vals) if len(vals) > 1 else 0.0
+        if vals and abs(fmean(vals) - offset) > _CLOCK_DISAGREE_SECONDS:
+            lo, hi = min(nums), max(nums)
+            warnings.warn(
+                f"stage2 clock: configured offset {offset:+.2f} s for casts {lo}-{hi} but the "
+                f"measured mean is {fmean(vals):+.2f} s (sd {sd:.2f}) — config may be stale or "
+                "casts renumbered; applying the configured value.",
+                stacklevel=2,
+            )
+        for k in nums:
+            lookup[k] = (offset, n, sd)
+    return lookup
 
 
 def split_cast(ds: xr.Dataset) -> tuple[xr.Dataset, xr.Dataset]:
@@ -328,6 +448,7 @@ def run(
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
+    cruise_cfg: dict | None = None,
     **kw: object,
 ) -> int:
     """Apply stage 2 (soak/deck flagging) across the casts under *root*.
@@ -335,7 +456,7 @@ def run(
     Reads each cast's **stage-1** file, applies :func:`apply_stage2`, and writes a
     new ``stage2/<stem>_stage2.nc`` — never in place, so stage 1 stays frozen and
     the run is re-runnable.  Reads are strict: a cast with no stage-1 file is
-    skipped with a warning, not silently promoted from a lower rung.  Called by
+    skipped with a warning, not silently promoted from a lower stage.  Called by
     :func:`ctdcast.processors.process` with ``stage=2``.
 
     Parameters
@@ -371,6 +492,9 @@ def run(
         raise FileNotFoundError(f"stage root not found: {root}")
 
     stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
+    # Cruise-scope clock resolution once: which cast numbers get which offset, with each segment's
+    # measured n/sd and a drift warning.  Empty unless processing.clock is configured.
+    clock_apply = _resolve_clock_application(root, (cruise_cfg or {}).get("clock"))
 
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
@@ -400,6 +524,11 @@ def run(
         try:
             ds = xr.open_dataset(input_path, engine="netcdf4").load()
             ds_out = apply_stage2(ds, **stage2_kw)
+            if cast_id[0] in clock_apply:  # cast_id is (num, suffix)
+                offset, n_seg, sd_seg = clock_apply[cast_id[0]]
+                ds_out = apply_clock_offset(
+                    ds_out, offset, n_casts=n_seg, segment_sd=sd_seg
+                )
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)
