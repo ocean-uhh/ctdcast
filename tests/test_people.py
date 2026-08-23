@@ -84,6 +84,17 @@ def test_non_mapping_contributor_entry_is_rejected():
     assert any("must be a mapping" in e for e in errors)
 
 
+def test_unknown_institution_role_vocabulary_is_reported_not_crashed():
+    """An unknown institution_role_vocabulary is a clean error, not a KeyError from deeper in.
+
+    The later institution checks (and _cf_institution) re-derive this vocabulary, so an unknown
+    value once raised a bare KeyError; check_contributors must report it and stop instead.
+    """
+    ci = _cruise_info(institution_role_vocabulary="BOGUS")
+    errors, _ = check_contributors(ci)
+    assert any("institution_role_vocabulary" in e and "unknown" in e for e in errors)
+
+
 # --- roles ------------------------------------------------------------------
 
 
