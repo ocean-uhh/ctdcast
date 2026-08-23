@@ -1,0 +1,22 @@
+* Sea-Bird SBE 9 Data File:
+* FileName = C:\CTD\PS129\conf1\raw\PS129_014_01.hex
+* Software Version Seasave V 7.23.1
+* Temperature SN = 1374
+* Conductivity SN = 3590
+* Number of Bytes Per Scan = 41
+* Number of Voltage Words = 4
+* Number of Scans Averaged by the Deck Unit = 1
+* Append System Time to Every Scan
+* System UpLoad Time = Mar 11 2022 10:17:59
+* NMEA Latitude = 55 56.57 S
+* NMEA Longitude = 002 56.13 E
+* NMEA UTC (Time) = Mar 11 2022  10:17:57
+* Store Lat/Lon Data = Append to Every Scan
+** Ship:Polarstern 
+** Cruise: PS129 
+** Operator: OPINNER
+** Station: 14_01
+** LADCP Profile Nr.: 002
+** Test station
+* System UTC = Mar 11 2022 10:17:59
+*END*

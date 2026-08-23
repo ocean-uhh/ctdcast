@@ -23,11 +23,11 @@ from ctdcast.config.cnv_header import (
     parse_start_time,
 )
 
-FIXTURES_HEX = FIXTURES_CNV.parent / "hex"
+# Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw
+# hex/ fixtures are local-only (git-excluded), so tests must not reach into them.
+FIXTURES_HEADERS = FIXTURES_CNV.parent / "cnv_headers"
 NC_MIXSED_011 = FIXTURES_NC / "mixsed2_011.nc"  # stage-1 nc carrying raw_metadata
-CNV_MSM121 = (
-    FIXTURES_CNV.parent / "cnv_headers" / "MSM121_054_1db.cnv"
-)  # wildedit after loopedit
+CNV_MSM121 = FIXTURES_HEADERS / "MSM121_054_1db.cnv"  # wildedit after loopedit
 
 CNV_MSM_017 = (
     FIXTURES_CNV / "msm_142_1_017_1sec.cnv"
@@ -36,9 +36,9 @@ CNV_MIXSED_004 = (
     FIXTURES_CNV / "mixsed2_004.cnv"
 )  # 11plus V 5.2, -5 s, nmea/header, double-space NMEA
 HEX_MSM_021 = (
-    FIXTURES_HEX / "msm_021_1_168_short.hex"
+    FIXTURES_HEADERS / "msm_021_1_168_header.hex.txt"
 )  # 11plus V 5.0, asymmetric advance
-HEX_PS129 = FIXTURES_HEX / "PS129_014_01_short.hex"  # no deck-unit line
+HEX_PS129 = FIXTURES_HEADERS / "PS129_014_01_header.hex.txt"  # no deck-unit line
 
 
 def _text(path) -> str:
