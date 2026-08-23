@@ -23,6 +23,7 @@ from statistics import fmean, pstdev
 import numpy as np
 import xarray as xr
 
+from ctdcast.config.cnv_header import start_time_clock
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, _qc_attrs
@@ -152,7 +153,11 @@ _CLOCK_DISAGREE_SECONDS = 2.0
 
 
 def apply_clock_offset(
-    ds: xr.Dataset, offset_seconds: float, *, n_casts: int, segment_sd: float
+    ds: xr.Dataset,
+    offset_seconds: float,
+    *,
+    n_casts: int | None = None,
+    segment_sd: float | None = None,
 ) -> xr.Dataset:
     """Shift a cast's ``time`` coordinate by a clock offset, preserving the uncorrected time.
 
@@ -160,14 +165,19 @@ def apply_clock_offset(
     identically, no measured value recomputed — which is why it belongs at stage 2 and is safe on
     already-binned data at the current sampling. ``offset_seconds`` is ``NMEA - System`` (the
     seconds added to acquisition time to obtain corrected time). The uncorrected time is kept as the
-    ``time_orig`` auxiliary coordinate, whose presence also marks the file as corrected;
-    ``clock_offset_seconds`` records the value with its segment ``n``/``sd`` so the per-cast
-    uncertainty travels with it; and ``time_coverage_*`` are recomputed so the file does not
-    contradict its own axis.
+    ``time_orig`` auxiliary coordinate, whose presence also marks the file as corrected; and
+    ``time_coverage_*`` are recomputed so the file does not contradict its own axis.
+
+    ``n_casts`` and ``segment_sd`` are the offset's *evidence* — the count and sd of the population
+    that produced it — supplied from the config that recorded the offset. Whichever is given is
+    stamped onto ``clock_offset_seconds`` so the uncertainty travels with the number; when both are
+    absent (a hand-written config), no statistics are recorded rather than a fabricated ``sd 0.00``.
 
     Refuses (raises :class:`ValueError`) when the file already carries ``time_orig`` (already
-    corrected — re-run from stage 1) or when its ``time_coordinate_source`` is not the System clock
-    (the coordinate is already on GPS, so a correction would introduce an error).
+    corrected — re-run from stage 1), when its ``time_coordinate_source`` classifies as GPS/NMEA
+    (the coordinate is already on GPS, so a correction would introduce an error), or when that
+    source cannot be classified as the System clock (unknown or absent — refuse rather than assume).
+    The clock is classified with :func:`ctdcast.config.cnv_header.start_time_clock`, not a substring.
     """
     if "time_orig" in ds.coords:
         raise ValueError(
@@ -175,10 +185,18 @@ def apply_clock_offset(
             "stage 2 reads stage-1 input, so re-run from stage 1."
         )
     source = str(ds.attrs.get("time_coordinate_source", ""))
-    if "system" not in source.lower():
+    clock = start_time_clock(source)
+    if clock == "nmea":
         raise ValueError(
-            f"time_coordinate_source is {source!r}, not the System clock — the coordinate is "
-            "already on GPS, so a clock offset must not be applied."
+            f"time_coordinate_source is {source!r} (GPS/NMEA) — the coordinate is already on GPS, "
+            "so a clock offset must not be applied."
+        )
+    if (
+        clock != "system"
+    ):  # unknown or a missing attr: refuse rather than assume a source
+        raise ValueError(
+            f"cannot verify the coordinate is on the System clock (time_coordinate_source is "
+            f"{source!r}) — refusing to apply a clock offset that cannot be gated."
         )
 
     ds = ds.copy()
@@ -196,14 +214,21 @@ def apply_clock_offset(
     shifted = time_var.values + np.timedelta64(int(round(offset_seconds * 1e9)), "ns")
     ds = ds.assign_coords(time=(time_var.dims, shifted, dict(time_var.attrs)))
 
+    # Record whichever evidence the config supplied — both, either, or (never a fabricated zero) none.
+    if n_casts is not None and segment_sd is not None:
+        evidence = f"segment mean of {n_casts} casts, sd {segment_sd:.2f} s; "
+    elif n_casts is not None:
+        evidence = f"segment mean of {n_casts} casts; "
+    elif segment_sd is not None:
+        evidence = f"segment sd {segment_sd:.2f} s; "
+    else:
+        evidence = ""
     ds["clock_offset_seconds"] = offset_seconds
     ds["clock_offset_seconds"].attrs = {
         "units": "s",
         "long_name": "clock offset added to acquisition time",
-        "comment": (
-            f"segment mean of {n_casts} casts, sd {segment_sd:.2f} s; "
-            "convention: corrected = acquisition + offset (NMEA - System)"
-        ),
+        "comment": evidence
+        + "convention: corrected = acquisition + offset (NMEA - System)",
     }
 
     # time_coverage_* are derived from time (config/global_attrs); recompute after the shift.
@@ -214,25 +239,25 @@ def apply_clock_offset(
     duration_s = int(round((shifted.max() - shifted.min()) / np.timedelta64(1, "s")))
     ds.attrs["time_coverage_duration"] = f"PT{duration_s}S"
 
-    append_history(
-        ds.attrs,
-        f"clock_offset_seconds={offset_seconds:+.2f} applied "
-        f"(segment mean of {n_casts} casts, sd {segment_sd:.2f} s)",
-        stage="stage2",
-    )
+    note = f"clock_offset_seconds={offset_seconds:+.2f} applied"
+    if evidence:
+        note += f" ({evidence.removesuffix('; ')})"
+    append_history(ds.attrs, note, stage="stage2")
     return ds
 
 
 def _resolve_clock_application(
     root: Path, clock_cfg: dict | None
-) -> dict[int, tuple[float, int, float]]:
+) -> dict[int, tuple[float, int | None, float | None]]:
     """Map each configured cast number to ``(offset, n, sd)`` for the stage-2 applier.
 
-    Parses ``processing.clock.segments`` and re-measures the offsets once (cruise-scope, via the
-    finder) so each segment's measured ``sd`` and count travel with the applied value, and a
-    configured offset that has drifted from the data is warned about — config still wins, but a
-    silent mismatch is how a stale config outlives what it described. Returns an empty map when no
-    clock is configured.
+    The offset **and its evidence** (``n_casts``, ``clock_offset_sd_seconds``) both come from the
+    config, so the statistics recorded with the correction describe the population that actually
+    produced the number — ``ctdcast clock`` emits them alongside the offset. A cruise-scope
+    re-measurement is read *only* to warn when the configured offset has drifted from the current
+    data; config still wins, but a silent mismatch is how a stale config outlives what it described.
+    A hand-written segment with no ``n_casts``/``sd`` leaves them ``None``, and the applier records
+    no statistics rather than a fabricated zero. Returns an empty map when no clock is configured.
     """
     segments = (clock_cfg or {}).get("segments") or []
     if not segments:
@@ -243,19 +268,22 @@ def _resolve_clock_application(
     series, _scanned, _coord = clock_offsets(root)
     measured = {cast_number(c.cast_id): c.offset_seconds for c in series}
 
-    lookup: dict[int, tuple[float, int, float]] = {}
+    lookup: dict[int, tuple[float, int | None, float | None]] = {}
     for seg in segments:
         offset = float(seg["clock_offset_seconds"])
         nums = expand_cast_numbers(seg.get("casts") or [])
-        vals = [measured[k] for k in nums if k in measured]
-        n = len(vals) if vals else len(nums)
-        sd = pstdev(vals) if len(vals) > 1 else 0.0
+        n = seg.get("n_casts")  # evidence from config, not re-measured; may be absent
+        sd = seg.get("clock_offset_sd_seconds")
+        vals = [
+            measured[k] for k in nums if k in measured
+        ]  # for the drift warning only
         if vals and abs(fmean(vals) - offset) > _CLOCK_DISAGREE_SECONDS:
             lo, hi = min(nums), max(nums)
+            measured_sd = pstdev(vals) if len(vals) > 1 else 0.0
             warnings.warn(
                 f"stage2 clock: configured offset {offset:+.2f} s for casts {lo}-{hi} but the "
-                f"measured mean is {fmean(vals):+.2f} s (sd {sd:.2f}) — config may be stale or "
-                "casts renumbered; applying the configured value.",
+                f"measured mean is {fmean(vals):+.2f} s (sd {measured_sd:.2f}) — config may be "
+                "stale or casts renumbered; applying the configured value.",
                 stacklevel=2,
             )
         for k in nums:

@@ -143,6 +143,11 @@ def suggested_config_yaml(verdict: ClockVerdict) -> str | None:
     one thing here that is silently catastrophic to get backwards. A ``[[lo, hi]]`` range expands to
     plain casts only, so a segment holding lettered casts (``029b``) or gaps gets a warning comment
     to verify by hand rather than silently mis-scoping the correction.
+
+    Each segment also carries ``n_casts`` and ``clock_offset_sd_seconds`` — the evidence that
+    justified the offset. The applier records these with the correction so the number's uncertainty
+    travels with it; sourcing them here (not from a re-measurement at apply time) keeps the recorded
+    statistics describing the population that actually produced the number.
     """
     if verdict.kind not in ("step", "constant"):
         return None
@@ -163,6 +168,8 @@ def suggested_config_yaml(verdict: ClockVerdict) -> str | None:
                 "plain casts only, so adjust by hand if a lettered cast needs the offset."
             )
         lines.append(f"        clock_offset_seconds: {seg.offset_seconds:.2f}")
+        lines.append(f"        n_casts: {seg.n_casts}")
+        lines.append(f"        clock_offset_sd_seconds: {seg.sd_seconds:.2f}")
     return "\n".join(lines)
 
 

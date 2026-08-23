@@ -7,10 +7,12 @@ and the ``time_coordinate_source`` attribute the gate reads.
 
 import datetime as dt
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
 import xarray as xr
+from conftest import FIXTURES_NC
 
 from ctdcast.processors import stage2
 from ctdcast.processors.stage2 import _resolve_clock_application, apply_clock_offset
@@ -74,8 +76,25 @@ class TestApplyClockOffset:
     def test_gate_refuses_a_gps_coordinate(self) -> None:
         """A coordinate already on GPS must not be shifted — refuse loudly."""
         ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0), source="NMEA time, header")
-        with pytest.raises(ValueError, match="System clock"):
+        with pytest.raises(ValueError, match="already on GPS"):
             apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+
+    def test_gate_refuses_an_unclassifiable_source(self) -> None:
+        """A missing/unknown time_coordinate_source is refused, not assumed to be System."""
+        ds = _cast_ds(
+            dt.datetime(2026, 3, 29, 20, 0, 0), source=""
+        )  # e.g. a legacy file
+        with pytest.raises(ValueError, match="cannot verify"):
+            apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+
+    def test_records_partial_evidence_not_dropped(self) -> None:
+        """When config supplies n_casts but no sd, the count is still recorded (not discarded)."""
+        out = apply_clock_offset(
+            _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0)), 5.0, n_casts=12
+        )
+        comment = out["clock_offset_seconds"].attrs["comment"]
+        assert "12 casts" in comment
+        assert "sd" not in comment  # no sd supplied, so none fabricated
 
     def test_guard_refuses_already_corrected(self) -> None:
         """A file already carrying time_orig is refused, not shifted a second time."""
@@ -83,6 +102,14 @@ class TestApplyClockOffset:
         ds = ds.assign_coords(time_orig=ds["time"])
         with pytest.raises(ValueError, match="time_orig"):
             apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+
+    def test_no_evidence_records_no_statistics(self) -> None:
+        """Without config-supplied n/sd, no 'sd 0.00' is fabricated — the number claims no precision."""
+        out = apply_clock_offset(_cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0)), 5.0)
+        comment = out["clock_offset_seconds"].attrs["comment"]
+        assert "segment mean" not in comment and "sd" not in comment
+        assert "convention" in comment  # the sign convention is still recorded
+        assert "segment mean" not in str(out.attrs["history"])
 
     def test_acquisition_provenance_attrs_are_untouched(self) -> None:
         """The record of the acquisition clock must keep reading (wrongly) as acquired — never rewritten."""
@@ -126,15 +153,32 @@ def _cruise(tmp_path, offset_s: int = 5, n_casts: int = 12):
 
 
 class TestResolveClockApplication:
-    def test_builds_lookup_with_measured_n_and_sd(self, tmp_path) -> None:
-        """Each cast in a segment maps to (offset, n, measured sd)."""
+    def test_builds_lookup_with_config_supplied_evidence(self, tmp_path) -> None:
+        """Each cast maps to the config offset and the config's n/sd — the evidence for that number."""
+        root = _cruise(tmp_path, offset_s=5)
+        lookup = _resolve_clock_application(
+            root,
+            {
+                "segments": [
+                    {
+                        "casts": [[1, 12]],
+                        "clock_offset_seconds": 5.0,
+                        "n_casts": 12,
+                        "clock_offset_sd_seconds": 0.4,
+                    }
+                ]
+            },
+        )
+        assert lookup[1] == (5.0, 12, 0.4)
+        assert lookup[7] == (5.0, 12, 0.4)  # every cast in range present
+
+    def test_missing_evidence_stays_none_not_fabricated(self, tmp_path) -> None:
+        """A hand-written segment with no n/sd yields None — never a fabricated zero."""
         root = _cruise(tmp_path, offset_s=5)
         lookup = _resolve_clock_application(
             root, {"segments": [{"casts": [[1, 12]], "clock_offset_seconds": 5.0}]}
         )
-        assert lookup[1][0] == 5.0
-        assert lookup[1][1] == 12
-        assert lookup[7][0] == 5.0  # every cast in range present
+        assert lookup[1] == (5.0, None, None)
 
     def test_warns_when_config_disagrees_with_measured(self, tmp_path) -> None:
         """A configured offset far from the measured mean warns (config still wins)."""
@@ -219,3 +263,58 @@ class TestRunIntegration:
             assert "time_orig" not in out.coords  # untouched
         finally:
             out.close()
+
+
+class TestDownstreamSeams:
+    """The seams a component test misses: the config that reaches stage 2, and the file profiles reads."""
+
+    def test_process_verb_threads_clock_config_to_stage2(self, tmp_path) -> None:
+        """process(stage=2, cruise_cfg=...) reaches the applier — the wiring cli/run and cli/process rely on."""
+        from ctdcast.processors import process
+
+        root = _cruise(tmp_path, offset_s=5)
+        process(
+            stage=2,
+            ctd_root=root,
+            cruise_cfg={
+                "clock": {
+                    "segments": [{"casts": [[1, 12]], "clock_offset_seconds": 5.0}]
+                }
+            },
+            force=True,
+        )
+        out = xr.open_dataset(root / "stage2" / "cast_001_stage2.nc", engine="netcdf4")
+        try:
+            assert (
+                "time_orig" in out.coords
+            )  # applied via the public pipeline, not just stage2.run
+        finally:
+            out.close()
+
+    def test_profiles_compiles_when_a_cast_carries_the_clock_scalar(
+        self, tmp_path
+    ) -> None:
+        """build_profiles must tolerate the clock applier's scalar var, not grid it (it has no profile dim)."""
+        from ctdcast.processors.profiles import build_profiles
+
+        nc_dir = tmp_path / "nc"
+        nc_dir.mkdir()
+        for i, src in enumerate(sorted(Path(FIXTURES_NC).glob("*.nc"))):
+            ds = xr.open_dataset(src, engine="netcdf4").load()
+            if (
+                i == 0
+            ):  # one clock-corrected cast is enough to trip the scalar-gridding bug
+                ds["clock_offset_seconds"] = 5.0
+            ds.to_netcdf(nc_dir / src.name, engine="netcdf4")
+            ds.close()
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(
+            nc_dir, out, force=True
+        )  # would IndexError on the 0-d scalar before the fix
+        assert out.exists()
+        prof = xr.open_dataset(out, engine="netcdf4")
+        try:
+            assert "clock_offset_seconds" not in prof.data_vars  # skipped, not gridded
+        finally:
+            prof.close()

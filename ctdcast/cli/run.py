@@ -186,6 +186,7 @@ def run(args: argparse.Namespace) -> int:
                 pattern=_data.get("cnv_pattern") or "*.cnv",
                 ladcp_pattern=_data.get("ladcp_pattern"),
                 profiles_dbar=int(_processing.get("profiles_dbar", 1)),
+                cruise_cfg=_processing,  # carries processing.clock for the stage-2 applier
                 sensor_overrides=SensorOverrides.from_cruise_config(_cfg),
                 cruise_info=_cfg.get("cruise_info") or {},
             )

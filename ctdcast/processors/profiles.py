@@ -35,8 +35,12 @@ from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
-# seasenselib time-bookkeeping columns that are not physical data
-_SKIP_VARS: frozenset[str] = frozenset({"timeJ", "timeS", "pressure"})
+# Non-profile columns: seasenselib time-bookkeeping, and per-cast provenance scalars a stage
+# may add (``clock_offset_seconds`` from the stage-2 clock applier).  These carry no profile
+# dimension, so they must not be treated as griddable channels.
+_SKIP_VARS: frozenset[str] = frozenset(
+    {"timeJ", "timeS", "pressure", "clock_offset_seconds"}
+)
 
 
 def _build_sensor_catalog(
