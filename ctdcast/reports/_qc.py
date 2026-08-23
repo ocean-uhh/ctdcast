@@ -90,16 +90,18 @@ def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
                 total = int(flags.size)
                 if total == 0:
                     continue
-                flag_rows = [
-                    {
-                        "flag": val,
-                        "label": label,
-                        "color": QC_FLAG_COLORS.get(val, _DEFAULT_COLOR),
-                        "n": int(np.sum(flags == val)),
-                        "pct": round(100.0 * int(np.sum(flags == val)) / total, 1),
-                    }
-                    for val, label in _flag_vocab(ds[v])
-                ]
+                flag_rows = []
+                for val, label in _flag_vocab(ds[v]):
+                    n = int(np.sum(flags == val))
+                    flag_rows.append(
+                        {
+                            "flag": val,
+                            "label": label,
+                            "color": QC_FLAG_COLORS.get(val, _DEFAULT_COLOR),
+                            "n": n,
+                            "pct": round(100.0 * n / total, 1),
+                        }
+                    )
                 rows.append({"var": base, "total": total, "flags": flag_rows})
             return rows
     except (OSError, ValueError, KeyError):
@@ -187,6 +189,6 @@ def qc_thresholds(nc_path: Path) -> list[dict[str, Any]]:
                             "fail": f"|Δ| > {sp_f}" if sp_f is not None else "–",
                         }
                     )
-            return rows
+            return _collapse_siblings(rows)
     except (OSError, ValueError, KeyError):
         return []

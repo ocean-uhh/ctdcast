@@ -409,7 +409,11 @@ def _render_qc_table(nc_path: Path) -> str | None:
         for f in row["flags"]:
             if f["n"] > 0:
                 present.setdefault(f["flag"], f)
-    present.setdefault(1, next(f for f in summary[0]["flags"] if f["flag"] == 1))
+    # Always show a pass column, if the file declares flag 1 at all.  A file whose
+    # flag_values omits 1 (nonstandard) simply gets no pass column rather than a crash.
+    _pass = next((f for f in summary[0]["flags"] if f["flag"] == 1), None)
+    if _pass is not None:
+        present.setdefault(1, _pass)
     cols = [present[k] for k in sorted(present)]
 
     legend = "".join(

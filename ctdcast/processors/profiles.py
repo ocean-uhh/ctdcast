@@ -371,11 +371,12 @@ def build_profiles(
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
         cast_sensor_records.append(parse_sensor_channels(ds))
-        # Honour QARTOD flag 4 (soak/deck) from stage 2: NaN the flagged samples
-        # so they do not enter the bin means.  pressure is in _SKIP_VARS and
-        # carries no _qc, so the binning coordinate is untouched; stage-1-only
-        # files have no _qc and are unaffected — flag4_masked stays False and the
-        # history line does not claim an exclusion that never happened.
+        # Honour QARTOD flag 4 (fail) from stage 2 (soak/deck) AND stage 3
+        # (gross-range and spike fails): NaN the flagged samples so they do not
+        # enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so
+        # the binning coordinate is untouched; stage-1-only files have no _qc and
+        # are unaffected — flag4_masked stays False and the history line does not
+        # claim an exclusion that never happened.
         for _v in var_names:
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
@@ -672,7 +673,10 @@ def build_profiles(
         "bin, pressure coordinate is the bin centre"
     )
     if flag4_masked:
-        _note += "; excluded QARTOD flag 4 (soak/deck) records before binning"
+        _note += (
+            "; excluded QARTOD flag 4 (fail: soak/deck and gross-range/spike) "
+            "records before binning"
+        )
     append_history(attrs, _note, stage="profiles")
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)

@@ -2025,11 +2025,12 @@ def draw_qc_histogram_fig(
     """Return a per-variable data-value distribution Figure, or None.
 
     One histogram panel per science variable that carries a ``{var}_qc``
-    companion.  Grey bars are all finite data; coloured bars are the kept data
-    (soak/deck fail flag 4 and missing flag 9 excluded), on **shared bin edges**
-    so the two are directly comparable.  The gross-range suspect thresholds
-    recorded on the ``_qc`` companion are drawn as orange dashed lines when they
-    fall within the plotted range.  Reads *nc_path* directly, so the distribution
+    companion.  Grey bars are all finite data; coloured bars are the **good** data
+    (QARTOD pass, flag 1 only — so suspect, fail and missing all show as grey
+    above the colour), on **shared bin edges** so the two are directly comparable.
+    The gross-range suspect and fail thresholds recorded on the ``_qc`` companion
+    are drawn as dashed/dotted lines when they fall within the plotted range.
+    Reads *nc_path* directly, so the distribution
     is the file's own — untrimmed — data and flags.  Ports the logic of
     oceanarray's ``draw_data_histogram``.
 

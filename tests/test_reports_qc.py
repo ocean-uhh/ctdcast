@@ -64,6 +64,13 @@ class TestQCThresholds:
     def test_empty_for_a_file_without_qc(self):
         assert qc_thresholds(CAST_011) == []
 
+    def test_dual_sensors_collapse_when_thresholds_match(self, tmp_path):
+        """conductivity_1 and _2 share thresholds → one 'conductivity_*' row."""
+        rows = qc_thresholds(_qc_file(tmp_path))
+        names = {r["var"] for r in rows}
+        assert "conductivity_*" in names
+        assert "conductivity_1" not in names and "conductivity_2" not in names
+
 
 class TestRenderQCTable:
     """_render_qc_table turns the readers into the cast-page panel markup."""
