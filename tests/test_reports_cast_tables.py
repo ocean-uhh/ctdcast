@@ -43,6 +43,31 @@ class TestRenderProvenanceTable:
             html.index("align (deck)") < html.index(">datcnv<") < html.index(">celltm<")
         )
 
+    def test_advisories_rendered_as_list(self):
+        """Structural advisories render as an escaped bullet list under an Advisories heading."""
+        html = _render_provenance_table(
+            self._records(),
+            {},
+            ["Already binned to a pressure grid", "Deck-unit advance is asymmetric"],
+        )
+        assert "<h3 style='margin-bottom:0.25rem'>Advisories</h3>" in html
+        assert "<li>Already binned to a pressure grid</li>" in html
+        assert "<li>Deck-unit advance is asymmetric</li>" in html
+
+    def test_no_advisories_no_heading(self):
+        """With no advisories, no Advisories section is emitted."""
+        html = _render_provenance_table(self._records(), {}, [])
+        assert "Advisories" not in html
+
+    def test_advisories_only_still_renders(self):
+        """A cast with only advisories (no records, no time attrs) still renders the note."""
+        html = _render_provenance_table(
+            [], {}, ["Time coordinate is on the system clock"]
+        )
+        assert html is not None
+        assert "Advisories" in html
+        assert "Time coordinate is on the system clock" in html
+
     def test_time_coordinate_rendered(self):
         """The time source (SBE phrasing) and the clock offset both appear."""
         html = _render_provenance_table([], self._TIME)

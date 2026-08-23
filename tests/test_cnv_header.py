@@ -15,12 +15,15 @@ from ctdcast.config.cnv_header import (
     Correction,
     ProcessingChain,
     StartTime,
+    SbeHistoryNote,
     build_correction_ledger,
     correction_records,
     header_from_raw_metadata,
     parse_processing_chain,
     parse_star_block,
     parse_start_time,
+    provenance_advisories,
+    sbe_history_notes,
 )
 
 # Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw
@@ -573,3 +576,111 @@ class TestBuildCorrectionLedger:
             ledger["correction_celltm"]
             == "SBE Data Processing 7.26.7.129: alpha=0.0300"
         )
+
+
+class TestSbeHistoryNotes:
+    """sbe_history_notes yields one note per timestamped SBE module, attributed to SBE."""
+
+    def test_one_note_per_timestamped_module(self):
+        """Every module in the real chain has a date, so each yields a note in file order."""
+        notes = sbe_history_notes(_stage1_header())
+        assert [n.stage for n in notes] == [
+            "datcnv",
+            "wildedit",
+            "wfilter",
+            "filter",
+            "celltm",
+            "Derive",
+            "binavg",
+        ]
+        celltm = next(n for n in notes if n.stage == "celltm")
+        assert isinstance(celltm, SbeHistoryNote)
+        assert celltm.version == "7.26.7.129"
+        assert celltm.note == "alpha=0.0300, 0.0300 tau=7.0000, 7.0000"
+        # timestamp is the verbatim SBE stamp — no ISO 'Z'
+        assert "Z" not in celltm.timestamp
+        assert celltm.timestamp and celltm.timestamp[0].isalpha()
+
+    def test_module_without_date_is_skipped(self):
+        """A module with no _date line yields no note (a history line needs a stamp)."""
+        header = (
+            "# bad_flag = -9.990e-29\n"
+            "# celltm_date = Jul 18 2026 15:40:38, 7.26.7.129\n"
+            "# celltm_alpha = 0.0300\n"
+            "# loopedit_in = C:/x.cnv\n"  # loopedit present but has no _date
+            "# file_type = ascii\n"
+        )
+        assert [n.stage for n in sbe_history_notes(header)] == ["celltm"]
+
+    def test_empty_header(self):
+        """No header -> no notes."""
+        assert sbe_history_notes("") == []
+
+
+class TestProvenanceAdvisories:
+    """provenance_advisories reports the structural implications of the ledger."""
+
+    def test_pressure_gridded(self):
+        """OdB binned to decibars -> the terminal-product advisory, and only that."""
+        adv = provenance_advisories(_stage1_header())
+        assert any("pressure grid" in a and "time-domain" in a for a in adv)
+        assert not any("non-default" in a for a in adv)  # both channels at the default
+        assert not any("system clock" in a for a in adv)  # nmea/header, not system
+
+    def test_nondefault_advance_flagged_without_claiming_residual(self):
+        """The V 5.0 deck's non-default secondary advance is flagged; primary (default) is not.
+
+        The message must not assert a residual — a non-default advance may be intentional
+        plumbing — so it hedges and points to the salinity-spike test.
+        """
+        adv = provenance_advisories(_text(HEX_MSM_021))
+        a = next(x for x in adv if "non-default" in x)
+        assert "secondary conductivity +0.043 s" in a
+        assert "+0.073 s" in a  # names the factory default
+        assert "primary conductivity +0.073" not in a  # primary is default, not flagged
+        assert "may be deliberate or may leave a residual" in a  # hedged, not asserted
+
+    def test_system_clock(self):
+        """MSM142's system-clock start_time (with NMEA present) -> the system-clock advisory."""
+        adv = provenance_advisories(_text(CNV_MSM_017))
+        assert any("system clock" in a for a in adv)
+        assert not any(
+            "pressure grid" in a for a in adv
+        )  # binavg seconds, not decibars
+
+    def test_clean_cast_no_advisories(self):
+        """A symmetric deck, seconds bin, NMEA clock -> nothing to advise."""
+        header = (
+            "* SBE 11plus V 5.2\n"
+            "* advance primary conductivity  0.073 seconds\n"
+            "* advance secondary conductivity  0.073 seconds\n"
+            "# start_time = Jul 10 2026 08:12:49 [NMEA time, header]\n"
+            "# bad_flag = -9.990e-29\n"
+            "# binavg_bintype = seconds\n"
+            "# file_type = ascii\n"
+        )
+        assert provenance_advisories(header) == []
+
+    def test_empty_header(self):
+        """No header -> no advisories."""
+        assert provenance_advisories("") == []
+
+    def test_offset_none_suppresses_system_clock_advisory(self):
+        """A system-clock start_time with no parseable System UTC -> no offset -> no advisory.
+
+        Guards against printing 'differed by None s' when the offset cannot be computed.
+        """
+        header = (
+            "* NMEA UTC (Time) = Apr 01 2026 18:02:37\n"  # NMEA present, no System UTC line
+            "# start_time = Apr 01 2026 18:02:37 [System UTC, first data scan.]\n"
+        )
+        assert not any("system clock" in a for a in provenance_advisories(header))
+
+    def test_advance_that_rounds_to_default_not_flagged(self):
+        """An advance that displays as the default (0.0731 -> 0.073) is not called non-default."""
+        header = (
+            "* SBE 11plus V 5.2\n"
+            "* advance primary conductivity  0.0731 seconds\n"
+            "* advance secondary conductivity  0.073 seconds\n"
+        )
+        assert not any("non-default" in a for a in provenance_advisories(header))

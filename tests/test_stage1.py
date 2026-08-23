@@ -79,6 +79,37 @@ class TestStage1:
             assert attrs["sbe_acquisition"].startswith("* Sea-Bird SBE 9")
         assert stamped, "no stage-1 file carried the correction ledger"
 
+    def test_sbe_history_prepended_before_ctdcast(self, tmp_path):
+        """SBE steps appear in history, oldest-first, attributed to SBE and ahead of ctdcast."""
+        from ctdcast.processors.stage1 import stage1
+
+        nc_dir = tmp_path / "nc"
+        stage1(FIXTURES_CNV, nc_dir)
+        checked = 0
+        for nc_path in sorted(stage_dir(nc_dir, 1).glob("*.nc")):
+            ds = xr.open_dataset(nc_path, engine="netcdf4")
+            history = ds.attrs.get("history", "")
+            ds.close()
+            if "SBE Data Processing" not in history:
+                continue
+            checked += 1
+            lines = history.split("\n")
+            # the first line is an SBE step (upstream steps prepended, oldest-first)
+            assert "SBE Data Processing" in lines[0]
+            # every SBE line precedes ctdcast's stage-1 line
+            first_sbe = next(
+                i for i, ln in enumerate(lines) if "SBE Data Processing" in ln
+            )
+            ctdcast_line = next(
+                i for i, ln in enumerate(lines) if "ctdcast" in ln and "stage1:" in ln
+            )
+            assert first_sbe < ctdcast_line
+            # SBE timestamps are verbatim — no ISO 'Z' before the producer
+            for ln in lines:
+                if "SBE Data Processing" in ln:
+                    assert "Z" not in ln.split("SBE Data Processing")[0]
+        assert checked, "no stage-1 file carried SBE history"
+
     def test_conductivity_converted_to_mscm(self, tmp_path):
         """Stage-1 conductivity is in mS/cm (the reader emits it; stage1 guards against double-converting a file already in those units)."""
         import numpy as np

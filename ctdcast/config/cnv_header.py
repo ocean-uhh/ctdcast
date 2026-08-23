@@ -76,6 +76,11 @@ _MODULE_SALIENT = {
 }
 _LEDGER_HOUSEKEEPING = frozenset({"date", "in"})
 
+# SBE 11plus factory-default conductivity advance: +1.75 scans at 24 Hz = 0.073 s (manual
+# p.85), the value that cancels the typical TC-duct / 3000-rpm lag. A conductivity channel
+# advanced by anything else is flagged by provenance_advisories.
+_DEFAULT_CONDUCTIVITY_ADVANCE = 0.073
+
 
 @dataclass(frozen=True)
 class DeckUnit:
@@ -177,6 +182,21 @@ class Correction:
     producer: str
     version: str
     parameters: str
+
+
+@dataclass(frozen=True)
+class SbeHistoryNote:
+    """One SBE Data Processing module rendered as a ``history`` line's components.
+
+    ``timestamp`` is the module's verbatim SBE stamp (no ``Z``); ``stage`` is the module
+    name as spelled; ``note`` is its salient-parameter body. The deck-unit align has no
+    timestamp and is not a history note (it is ``correction_align``).
+    """
+
+    timestamp: str
+    version: str
+    stage: str
+    note: str
 
 
 def _collapse(value: str) -> str:
@@ -412,17 +432,24 @@ def parse_processing_chain(header_text: str) -> ProcessingChain:
     return ProcessingChain(steps=steps, verbatim="\n".join(region))
 
 
-def _module_version(params: dict[str, str]) -> str:
-    """Extract the SBE Data Processing version from a module's ``date`` value.
+def _module_date_parts(params: dict[str, str]) -> tuple[str, str]:
+    """Split a module's ``date`` value into ``(timestamp, version)``.
 
-    The date is ``<timestamp>, <version> [<module>_vars = N]``; return the version
-    between the comma and any trailing bracket, or ``""`` if there is no date line. The
-    bracket is stripped *before* splitting on the comma, so a comma inside the bracket
-    cannot corrupt the version.
+    The date is ``<timestamp>, <version> [<module>_vars = N]``; the bracket is stripped
+    *before* the comma split so a comma inside it cannot corrupt either half. A date with
+    no comma (no version recorded) is all timestamp; an absent date gives ``("", "")``.
+    :func:`_module_version` and :func:`_module_timestamp` share this so they cannot drift.
     """
     date = re.sub(r"\[.*\]", "", params.get("date", ""))
-    tail = date.rsplit(",", 1)[-1] if "," in date else ""
-    return tail.strip()
+    if "," not in date:
+        return date.strip(), ""
+    timestamp, version = date.rsplit(",", 1)
+    return timestamp.strip(), version.strip()
+
+
+def _module_version(params: dict[str, str]) -> str:
+    """The SBE Data Processing version from a module's ``date`` value, or ``""``."""
+    return _module_date_parts(params)[1]
 
 
 def _count_phrase(n: int, noun: str) -> str:
@@ -514,6 +541,101 @@ def correction_records(header_text: str) -> list[Correction]:
     return _correction_records(
         parse_star_block(header_text), parse_processing_chain(header_text)
     )
+
+
+def sbe_history_notes(header_text: str) -> list[SbeHistoryNote]:
+    """Return one history note per **timestamped** SBE Data Processing module, file order.
+
+    Attributed to Sea-Bird so a stage-1 file's ``history`` shows what SBE did before
+    ctdcast, oldest-first. A module with no ``_date`` line — the third-party dialect that
+    emits none — is skipped, because a history line needs a stamp and it has none: such a
+    module still appears in ``correction_<module>`` and ``sbe_processing_order`` but not in
+    ``history``. The deck-unit align has no timestamp either and is recorded only as
+    ``correction_align``. The note body is the same summary the ledger uses.
+    """
+    if not header_text:
+        return []
+    notes: list[SbeHistoryNote] = []
+    for step in parse_processing_chain(header_text).steps:
+        timestamp, version = _module_date_parts(step.params)
+        if not timestamp:  # no date -> no stamp -> no history line
+            continue
+        notes.append(
+            SbeHistoryNote(
+                timestamp=timestamp,
+                version=version,
+                stage=step.module,
+                note=_correction_body(step),
+            )
+        )
+    return notes
+
+
+def _is_pressure_bin(bintype: str) -> bool:
+    """True when a ``binavg`` bin type is a pressure axis.
+
+    Only ``decibars`` is confirmed in the corpus. SBE's Bin Average also offers depth and
+    scan-number bins; do not match a guessed ``meters`` string — verify what SBE writes for
+    a depth bin before adding it here.
+    """
+    return bintype.strip().casefold() == "decibars"
+
+
+def provenance_advisories(header_text: str) -> list[str]:
+    """Structural implications of the SBE ledger — what the file *is* and what was done.
+
+    Each is a fact about the cast and its consequence, not a comparison to any
+    recommendation. The single source for both a stage-1 warning and the note under the
+    cast-page provenance table, so the two never drift. (The SBE-conformance check — where a
+    cast deviates from Sea-Bird's *published* recommendation — is a separate, later concern
+    and deliberately not here.)
+    """
+    if not header_text:
+        return []
+    acq = parse_star_block(header_text)
+    start = parse_start_time(header_text)
+    chain = parse_processing_chain(header_text)
+    advisories: list[str] = []
+
+    if any(
+        step.module == "binavg" and _is_pressure_bin(step.params.get("bintype", ""))
+        for step in chain.steps
+    ):
+        advisories.append(
+            "Already binned to a pressure grid before ctdcast read it — a terminal product "
+            "entering mid-ladder. No time-domain correction (conductivity alignment, cell "
+            "thermal mass, loop edit) can be applied to it, because pressure-binning discarded "
+            "the scan-level time series they need."
+        )
+
+    # A conductivity advance other than the factory default is worth flagging: the SBE manual
+    # allows channels to need different lags (plumbing differs), so a non-default value is not
+    # necessarily a residual — but it is a deviation the reader should judge.
+    # Compare rounded to the 3 decimals the message shows, so a value that displays as the
+    # default is never flagged as differing from it.
+    nondefault = {
+        ch: sec
+        for ch, sec in acq.deck_unit.advance.items()
+        if "conductivity" in ch
+        and round(sec, 3) != round(_DEFAULT_CONDUCTIVITY_ADVANCE, 3)
+    }
+    if nondefault:
+        parts = ", ".join(f"{ch} +{sec:.3f} s" for ch, sec in nondefault.items())
+        advisories.append(
+            f"Deck-unit conductivity advance is non-default ({parts}; SBE's factory value is "
+            f"+{_DEFAULT_CONDUCTIVITY_ADVANCE:.3f} s). The correct advance depends on the "
+            "channel's plumbing, so this may be deliberate or may leave a residual that spikes "
+            "salinity at sharp temperature steps — confirm from the data."
+        )
+
+    # Only claim an offset when both clocks parsed; offset_seconds is None otherwise.
+    if start.clock == "system" and acq.clocks.offset_seconds is not None:
+        advisories.append(
+            "The time coordinate is on the ship's system clock, not GPS — the two differed by "
+            f"{acq.clocks.offset_seconds} s at acquisition."
+        )
+
+    return advisories
 
 
 def _correction_flat(rec: Correction) -> str:
