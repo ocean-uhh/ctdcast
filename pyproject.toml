@@ -124,6 +124,12 @@ include = ["ctdcast*"]
 # the seed, not an aspiration -- the deck-unit advance it recovers is the load-bearing
 # finding of the upstream-provenance work, so no branch may go untested.
 "ctdcast/config/cnv_header.py"       = 100
+# Recursive clock-offset segmentation plus a small file reader, measured 100% in CI from
+# synthetic series and a tmp_path reader test. The real MSM142 regression is local-only and skips
+# on CI, but every branch it would touch is covered synthetically. Same shape as cnv_header.py:
+# the recursive step detection is load-bearing (a missed changepoint corrupts a whole segment's
+# correction), so no branch may go untested.
+"ctdcast/analysis/clock.py"          = 100
 # One floor is still deferred: enrich.py does not exist yet, and a floor for a
 # file that is not in the coverage report fails as MISSING (verified by running
 # the checker) rather than passing quietly -- an unguarded module is the one

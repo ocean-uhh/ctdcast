@@ -66,13 +66,15 @@ derives its own correction coefficients. For ctdcast they come from two places:
 - the **align lags** and **cell-thermal-mass coefficients**, from finder tools
   that use nothing but the CTD data itself.
 
-Both are recorded in config and *applied* at stage 3. oceanarray does the same
-thing one rung earlier: a clock offset is *found* by comparing the computer and
-instrument clocks at recovery, recorded in YAML as
-``computer_clock_at_recovery`` / ``instrument_clock_at_recovery``, and *applied*
-at its stage 2. (Calibration-dip processing —
-`caldip <https://github.com/ocean-uhh/caldip>`_ — is oceanarray's route for moored
-instruments, and is not part of the CTD workflow.)
+Both are recorded in config and *applied* at stage 3. A **clock offset** is found
+one rung earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
+against its GPS (NMEA) clock across the whole cruise, classifies the error
+(constant, step, or drift), and generates a paste-ready ``processing.clock`` block.
+Because a clock correction moves the ``time`` coordinate and no measured value, it
+is *applied* at **stage 2** — the exception noted above. (oceanarray finds the
+analogous offset for a moored instrument at recovery instead; calibration-dip
+processing — `caldip <https://github.com/ocean-uhh/caldip>`_ — is its route for
+moored instruments, and is not part of the CTD workflow.)
 
 The align and cell-thermal-mass finders are the interesting case, because they
 read the very data the stage is processing — so why not derive them inside the

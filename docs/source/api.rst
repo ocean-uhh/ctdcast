@@ -95,6 +95,22 @@ no files — the header travels on every stage-1 file in ``raw_metadata``.
 
 ----
 
+Acquisition-clock diagnostic
+----------------------------
+
+:mod:`~ctdcast.analysis.clock` reads each cast's System/NMEA clock pair off the
+header and classifies the cruise's clock error (constant, step, drift, or too
+little to tell), recursively segmenting the whole-second offsets into levels and
+claiming a drift only when a rate positively fits.  It is read-only — it finds the
+error and generates a paste-ready ``processing.clock`` block; applying the
+correction is a stage-2 step.
+
+.. automodule:: ctdcast.analysis.clock
+   :members:
+   :undoc-members:
+
+----
+
 Section manifest
 ----------------
 

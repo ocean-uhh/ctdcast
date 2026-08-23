@@ -29,6 +29,9 @@ tbody tr:hover td { background: var(--seafoam); }
   .pill-btn:hover { opacity: 0.85; }
   .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--ok); color:#fff; }
   .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--error); color:#fff; }
+  .clock-configs { display:flex; flex-wrap:wrap; gap:1rem; margin:0.5rem 0; }
+  .clock-configs > div { flex:1 1 22rem; }
+  .clock-configs pre { background:var(--seafoam); padding:0.5rem 0.7rem; border-radius:4px; overflow-x:auto; white-space:pre; }
 </style>
 {% endblock %}
 
@@ -99,6 +102,59 @@ tbody tr:hover td { background: var(--seafoam); }
     {% endfor %}
     </tbody>
   </table>
+
+{% if clock %}
+<h2 id="s-clock">{{ m.heading_text(3, "Acquisition clock") }}</h2>
+{% if clock.caption.start_line %}
+<p>Time coordinate built from{% if clock.caption.source_variable %} <code>{{ clock.caption.source_variable }}</code>;{% endif %} the header start line reads <code>{{ clock.caption.start_line }}</code>.</p>
+{% endif %}
+<p><strong>{{ clock.coordinate_line }}</strong></p>
+<p><strong>Verdict:</strong> {{ clock.kind }} — {{ clock.note }}</p>
+{% if clock.caveat %}<p class="warn">Caveat: {{ clock.caveat }}</p>{% endif %}
+
+{% if clock.kind in ["step", "constant", "drift"] %}
+{% if clock.figure_b64 %}
+<div class="fig-row center">
+  <figure class="slot-full">
+    <img src="data:image/png;base64,{{ clock.figure_b64 }}" alt="Clock offset (NMEA − System) per cast">
+    {{- m.dbg(clock.figure_b64, "slot-full") }}
+  </figure>
+</div>
+{% endif %}
+
+{% if clock.suggested_yaml %}
+<div class="clock-configs">
+  <div><strong>Suggested</strong> — paste into your <code>config.yaml</code>, then re-run <code>ctdcast process config.yaml --stage 2 --force</code><pre>{{ clock.suggested_yaml }}</pre></div>
+</div>
+{% elif clock.kind in ["step", "constant"] and clock.correction_status == "on_gps" %}
+<p>No correction suggested — the coordinate is already on GPS (NMEA); the measured offset is a comparison artefact, not applied.</p>
+{% elif clock.kind in ["step", "constant"] and clock.correction_status == "undetermined" %}
+<p>No correction suggested — the time-coordinate source could not be determined from the headers (no start_time bracket), so whether a correction applies is unknown.</p>
+{% endif %}
+
+<h3>Segments</h3>
+<table>
+  <thead><tr><th>Casts</th><th>First cast (UTC)</th><th class="num">Offset (s)</th><th class="num">sd (s)</th><th class="num">n</th></tr></thead>
+  <tbody>
+  {% for s in clock.segments %}
+    <tr><td>{{ s.cast_range }}</td><td>{{ s.first_utc }}</td><td class="num">{{ s.offset }}</td><td class="num">{{ s.sd }}</td><td class="num">{{ s.n }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<details>
+  <summary>Per-cast clocks ({{ clock.casts|length }}) — both raw times, so the sign is checkable</summary>
+  <table>
+    <thead><tr><th>Cast</th><th>Start (UTC)</th><th>System</th><th>NMEA</th><th class="num">Offset (s)</th></tr></thead>
+    <tbody>
+    {% for c in clock.casts %}
+      <tr><td>{{ c.cast_id }}</td><td>{{ c.start }}</td><td>{{ c.system }}</td><td>{{ c.nmea }}</td><td class="num">{{ c.offset }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+{% endif %}
+{% endif %}
 
 {{ js_top_links | safe }}
 {% endblock %}

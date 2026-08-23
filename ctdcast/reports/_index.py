@@ -617,6 +617,7 @@ def report(
             ladcp_pattern=ladcp_pattern,
             cruise_info=cruise_info,
             no_station_pages=not have_per_cast,
+            nc_dir=nc_dir,
             cfg=cfg,
         )
         print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
@@ -1039,6 +1040,104 @@ def _round_max_depth(max_depth: float) -> float:
     return float(np.ceil(max_depth / 1000) * 1000)
 
 
+def _make_clock_section(
+    nc_dir: Path, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> dict[str, Any] | None:
+    """Build the acquisition-clock section for casts.html, or ``None`` when there is no stage-1 tree.
+
+    Reads each stage-1 header's System/NMEA clock pair, classifies the cruise, and returns the
+    caption facts, the segment and per-cast tables, the offset figure, and the paste-ready config
+    block. Returns ``None`` when no stage-1 files exist (e.g. a profiles-only report), so the
+    section is simply absent rather than reporting "not checked".
+    """
+    from ctdcast.analysis.clock import (
+        classify_offsets,
+        clock_offsets,
+        coordinate_summary,
+        correction_status,
+        suggested_config_yaml,
+    )
+    from ctdcast.config.cnv_header import header_from_raw_metadata, parse_start_time
+    from ctdcast.plotters.plots import draw_clock_offset_fig
+    from ctdcast.processors.stage_layout import group_by_cast
+    from ctdcast.reports._encode import render_b64
+
+    # Discover casts the same way clock_offsets does (nested, flat, or stage-2/3-only trees); absent
+    # only when there are no casts at all, in which case the section is simply not shown.
+    groups = group_by_cast(nc_dir)
+    if not groups:
+        return None
+
+    series, scanned, coordinate_counts = clock_offsets(nc_dir)
+    verdict = classify_offsets(series, n_scanned=scanned)
+
+    # Caption facts: cruise-constant.  Read from the first cast's start_time bracket (present on
+    # every file via raw_metadata) rather than a global attr, so this works on trees predating the
+    # attr.  The bracket names which clock the coordinate is anchored to — the fact that decides
+    # whether the offsets below are a defect or a curiosity.
+    first_stages = groups[sorted(groups)[0]]
+    caption_path = first_stages.get(1, first_stages[min(first_stages)])
+    caption: dict[str, Any] = {}
+    ds = xr.open_dataset(caption_path, engine="netcdf4")
+    try:
+        start = parse_start_time(
+            header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
+        )
+        if start.source:
+            caption["start_line"] = f"{start.value} [{start.source}]"
+        source_var = ds.attrs.get("cnv_time_source_variable")
+        if source_var:
+            caption["source_variable"] = str(source_var)
+    finally:
+        ds.close()
+
+    segments = [
+        {
+            "cast_range": s.cast_range,
+            "first_utc": f"{s.start:%Y-%m-%d %H:%M}",
+            "offset": f"{s.offset_seconds:+.2f}",
+            "sd": f"{s.sd_seconds:.2f}",
+            "n": s.n_casts,
+        }
+        for s in verdict.segments
+    ]
+    casts = [
+        {
+            "cast_id": c.cast_id,
+            "start": f"{c.system_utc:%Y-%m-%d}",
+            "system": f"{c.system_utc:%H:%M:%S}",
+            "nmea": f"{c.nmea_utc:%H:%M:%S}",
+            "offset": f"{c.offset_seconds:+.0f}",
+        }
+        for c in series
+    ]
+
+    suggested = suggested_config_yaml(verdict)
+    # A coordinate already on GPS (or of undetermined source) gets no paste-ready block, so the
+    # section never contradicts the coordinate line, nor asserts a source that was not measured.
+    # The one gate both the CLI and this page read, so they cannot disagree.
+    status = correction_status(coordinate_counts)
+    figure_b64 = (
+        render_b64(draw_clock_offset_fig, series, verdict, cfg=cfg, optional=True)
+        if verdict.segments
+        else None
+    )
+    return {
+        "kind": verdict.kind,
+        "note": verdict.note,
+        "caveat": verdict.resolution_caveat,
+        "scanned": scanned,
+        "n_pairs": len(series),
+        "coordinate_line": coordinate_summary(coordinate_counts, scanned),
+        "caption": caption,
+        "segments": segments,
+        "casts": casts,
+        "figure_b64": figure_b64,
+        "suggested_yaml": suggested if status == "apply" else None,
+        "correction_status": status,
+    }
+
+
 def _write_stations_list(
     all_meta: list[dict[str, Any]],
     cruise: str,
@@ -1049,6 +1148,7 @@ def _write_stations_list(
     ladcp_pattern: str | None = None,
     cruise_info: dict[str, Any] | None = None,
     no_station_pages: bool = False,
+    nc_dir: Path | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write casts.html with cruise map, depth pills, and section/timeseries links.
@@ -1151,6 +1251,7 @@ def _write_stations_list(
         "stations": stations,
         "no_station_pages": no_station_pages,
         "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0, cfg=cfg),
+        "clock": _make_clock_section(nc_dir, cfg=cfg) if nc_dir is not None else None,
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
