@@ -53,6 +53,17 @@ class TestApplyClockOffset:
             np.datetime_as_string(out["time"].values.min(), unit="s")
         )
 
+    def test_time_orig_preserves_original_coordinate_attrs(self) -> None:
+        """time_orig keeps the original time coord's own attrs, not just the clock-correction label."""
+        ds = _cast_ds(dt.datetime(2026, 3, 29, 20, 0, 0))
+        ds["time"].attrs["axis"] = "T"  # a coord annotation that must survive
+        out = apply_clock_offset(ds, 5.0, n_casts=3, segment_sd=0.5)
+        assert out["time_orig"].attrs["axis"] == "T"
+        assert (
+            out["time_orig"].attrs["long_name"]
+            == "acquisition time before clock correction"
+        )
+
     def test_records_value_with_n_and_sd(self) -> None:
         """clock_offset_seconds carries the value and its segment n/sd, per the plan."""
         out = apply_clock_offset(
@@ -171,6 +182,24 @@ class TestResolveClockApplication:
         )
         assert lookup[1] == (5.0, 12, 0.4)
         assert lookup[7] == (5.0, 12, 0.4)  # every cast in range present
+
+    def test_string_evidence_from_yaml_is_coerced(self, tmp_path) -> None:
+        """Quoted YAML values (strings) are coerced so the applier never crashes on {sd:.2f}."""
+        root = _cruise(tmp_path, offset_s=5)
+        lookup = _resolve_clock_application(
+            root,
+            {
+                "segments": [
+                    {
+                        "casts": [[1, 12]],
+                        "clock_offset_seconds": 5.0,
+                        "n_casts": "12",
+                        "clock_offset_sd_seconds": "0.4",
+                    }
+                ]
+            },
+        )
+        assert lookup[1] == (5.0, 12, 0.4)
 
     def test_missing_evidence_stays_none_not_fabricated(self, tmp_path) -> None:
         """A hand-written segment with no n/sd yields None — never a fabricated zero."""

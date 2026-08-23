@@ -201,16 +201,14 @@ def apply_clock_offset(
 
     ds = ds.copy()
     time_var = ds["time"]
-    ds = ds.assign_coords(
-        time_orig=(
-            time_var.dims,
-            time_var.values,
-            {
-                "long_name": "acquisition time before clock correction",
-                "standard_name": "time",
-            },
-        )
-    )
+    # Preserve the original coordinate's own attrs (axis, calendar annotations, ...); override only
+    # long_name so time_orig reads as the pre-correction time.
+    time_orig_attrs = {
+        **dict(time_var.attrs),
+        "long_name": "acquisition time before clock correction",
+        "standard_name": "time",
+    }
+    ds = ds.assign_coords(time_orig=(time_var.dims, time_var.values, time_orig_attrs))
     shifted = time_var.values + np.timedelta64(int(round(offset_seconds * 1e9)), "ns")
     ds = ds.assign_coords(time=(time_var.dims, shifted, dict(time_var.attrs)))
 
@@ -272,8 +270,12 @@ def _resolve_clock_application(
     for seg in segments:
         offset = float(seg["clock_offset_seconds"])
         nums = expand_cast_numbers(seg.get("casts") or [])
-        n = seg.get("n_casts")  # evidence from config, not re-measured; may be absent
-        sd = seg.get("clock_offset_sd_seconds")
+        # Evidence from config (not re-measured); coerce so a quoted YAML value ("12") still
+        # reaches the applier as the number it is, rather than crashing on {sd:.2f}.
+        raw_n = seg.get("n_casts")
+        n = int(raw_n) if raw_n is not None else None
+        raw_sd = seg.get("clock_offset_sd_seconds")
+        sd = float(raw_sd) if raw_sd is not None else None
         vals = [
             measured[k] for k in nums if k in measured
         ]  # for the drift warning only
