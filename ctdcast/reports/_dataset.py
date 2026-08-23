@@ -92,9 +92,11 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     """Read *nc_path* into a plain-data inventory (dims, coords, vars, attrs).
 
     Returns a dict with ``filename``, ``filesize``, ``dims``, ``coords``,
-    ``data_vars`` (each a :func:`_var_meta` row), and ``global_attrs``.  On any
-    read error returns ``{"error": <message>, ...}`` so the page can report it
-    rather than failing to generate.
+    ``data_vars`` (each a :func:`_var_meta` row), ``qc_exclusion`` (per-variable
+    QC drop counts, from the ``qc_input_samples``/``qc_excluded_samples`` attrs a
+    compiled profiles file carries), and ``global_attrs``.  On any read error
+    returns ``{"error": <message>, ...}`` so the page can report it rather than
+    failing to generate.
     """
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")

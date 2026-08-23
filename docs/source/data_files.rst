@@ -148,6 +148,15 @@ rather than by index.
 The pressure coordinate is the **bin centre**, so a binned value sits at the mean
 depth of the samples it averages rather than at the bin's shallow edge.
 
+Samples flagged QARTOD suspect (``3``) or fail (``4``) — from the stage-2 soak /
+back-on-deck trim and the stage-3 gross-range and spike tests — are dropped before
+binning, so flagged data does not enter the bin means. Each science variable
+records ``qc_input_samples`` (finite input samples) and ``qc_excluded_samples``
+(dropped); the netCDF inventory page reports these per variable as a percentage of
+pre-binning samples, so the figure is not confounded by binning's own reduction in
+point count. Note the soak/deck trim flags the same scans on *every* variable, so a
+variable can be excluded here without its own gross-range or spike test firing.
+
 Where each attribute is written
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

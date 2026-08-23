@@ -250,6 +250,11 @@ def build_profiles(
     The ``altimeter`` channel (when present in the input files) is binned onto
     the 1-dbar grid as a standard 2-D variable.
 
+    Samples carrying a QARTOD suspect (3) or fail (4) flag on their ``{var}_qc``
+    companion are NaN-masked before binning, so flagged data does not enter the bin
+    means.  Each science variable records how many finite input samples it carried
+    (``qc_input_samples``) and how many were excluded (``qc_excluded_samples``).
+
     Parameters
     ----------
     nc_dir:

@@ -392,11 +392,13 @@ def _render_data_ranges_table(nc_path: Path) -> str | None:
 def _render_qc_table(nc_path: Path) -> str | None:
     """Return the per-cast QC panel markup, or None when the file has no flags.
 
-    Two tables: the gross-range thresholds recorded on each ``{var}_qc`` companion
-    and, per variable, the QARTOD flag-count breakdown with a coloured
-    distribution bar.  Reads the file on disk — the flags the pipeline recorded —
-    not the trimmed, derived dataset plotted above.  Columns cover only the flag
-    values actually present (plus pass), read from each file's own
+    Two tables in cause→effect order: the two-tier (suspect/fail) gross-range and
+    spike thresholds recorded on each ``{var}_qc`` companion, then per variable the
+    QARTOD flag-count breakdown with a coloured distribution bar.  Reads the file on
+    disk — the flags the pipeline recorded — not the trimmed, derived dataset
+    plotted above.  Count columns always show the core QARTOD flags (pass, suspect,
+    fail, missing) so a clean cast reads as a fixed table; any other declared flag
+    shows only when it occurs.  Labels come from each file's own
     ``flag_values``/``flag_meanings``.  Values escaped here (emitted ``|safe``).
     """
     summary = qc_summary(nc_path)
