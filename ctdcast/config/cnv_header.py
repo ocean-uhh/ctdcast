@@ -76,6 +76,11 @@ _MODULE_SALIENT = {
 }
 _LEDGER_HOUSEKEEPING = frozenset({"date", "in"})
 
+# SBE 11plus factory-default conductivity advance: +1.75 scans at 24 Hz = 0.073 s (manual
+# p.85), the value that cancels the typical TC-duct / 3000-rpm lag. A conductivity channel
+# advanced by anything else is flagged by provenance_advisories.
+_DEFAULT_CONDUCTIVITY_ADVANCE = 0.073
+
 
 @dataclass(frozen=True)
 class DeckUnit:
@@ -598,23 +603,32 @@ def provenance_advisories(header_text: str) -> list[str]:
     ):
         advisories.append(
             "Already binned to a pressure grid before ctdcast read it — a terminal product "
-            "entering mid-ladder; deck-unit alignment and loop-edit corrections cannot be "
-            "applied to it."
+            "entering mid-ladder. No time-domain correction (conductivity alignment, cell "
+            "thermal mass, loop edit) can be applied to it, because pressure-binning discarded "
+            "the scan-level time series they need."
         )
 
-    c0 = acq.deck_unit.advance.get("primary conductivity")
-    c1 = acq.deck_unit.advance.get("secondary conductivity")
-    if c0 is not None and c1 is not None and c0 != c1:
+    # A conductivity advance other than the factory default is worth flagging: the SBE manual
+    # allows channels to need different lags (plumbing differs), so a non-default value is not
+    # necessarily a residual — but it is a deviation the reader should judge.
+    nondefault = {
+        ch: sec
+        for ch, sec in acq.deck_unit.advance.items()
+        if "conductivity" in ch and sec != _DEFAULT_CONDUCTIVITY_ADVANCE
+    }
+    if nondefault:
+        parts = ", ".join(f"{ch} +{sec:.3f} s" for ch, sec in nondefault.items())
         advisories.append(
-            f"Deck-unit advance is asymmetric (primary conductivity +{c0:.3f} s, secondary "
-            f"+{c1:.3f} s) — the secondary channel carries a residual the primary does not, so "
-            "its salinity may spike where the primary's does not."
+            f"Deck-unit conductivity advance is non-default ({parts}; SBE's factory value is "
+            f"+{_DEFAULT_CONDUCTIVITY_ADVANCE:.3f} s). The correct advance depends on the "
+            "channel's plumbing, so this may be deliberate or may leave a residual that spikes "
+            "salinity at sharp temperature steps — confirm from the data."
         )
 
     if start.clock == "system" and acq.clocks.nmea_utc:
         advisories.append(
-            "The time coordinate is on the system clock, which differs from GPS (NMEA) by "
-            f"{acq.clocks.offset_seconds} s."
+            "The time coordinate is on the ship's system clock, not GPS — the two differed by "
+            f"{acq.clocks.offset_seconds} s at acquisition."
         )
 
     return advisories

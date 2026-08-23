@@ -623,16 +623,22 @@ class TestProvenanceAdvisories:
     def test_pressure_gridded(self):
         """OdB binned to decibars -> the terminal-product advisory, and only that."""
         adv = provenance_advisories(_stage1_header())
-        assert any("pressure grid" in a for a in adv)
-        assert not any("asymmetric" in a for a in adv)  # V 5.2 is symmetric
+        assert any("pressure grid" in a and "time-domain" in a for a in adv)
+        assert not any("non-default" in a for a in adv)  # both channels at the default
         assert not any("system clock" in a for a in adv)  # nmea/header, not system
 
-    def test_asymmetric_advance(self):
-        """The V 5.0 deck (0.073 / 0.043) -> the asymmetric-advance advisory."""
+    def test_nondefault_advance_flagged_without_claiming_residual(self):
+        """The V 5.0 deck's non-default secondary advance is flagged; primary (default) is not.
+
+        The message must not assert a residual — a non-default advance may be intentional
+        plumbing — so it hedges and points to the salinity-spike test.
+        """
         adv = provenance_advisories(_text(HEX_MSM_021))
-        assert any(
-            "asymmetric" in a and "+0.073 s" in a and "+0.043 s" in a for a in adv
-        )
+        a = next(x for x in adv if "non-default" in x)
+        assert "secondary conductivity +0.043 s" in a
+        assert "+0.073 s" in a  # names the factory default
+        assert "primary conductivity +0.073" not in a  # primary is default, not flagged
+        assert "may be deliberate or may leave a residual" in a  # hedged, not asserted
 
     def test_system_clock(self):
         """MSM142's system-clock start_time (with NMEA present) -> the system-clock advisory."""
