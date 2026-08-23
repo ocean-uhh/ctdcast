@@ -92,9 +92,11 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     """Read *nc_path* into a plain-data inventory (dims, coords, vars, attrs).
 
     Returns a dict with ``filename``, ``filesize``, ``dims``, ``coords``,
-    ``data_vars`` (each a :func:`_var_meta` row), and ``global_attrs``.  On any
-    read error returns ``{"error": <message>, ...}`` so the page can report it
-    rather than failing to generate.
+    ``data_vars`` (each a :func:`_var_meta` row), ``qc_exclusion`` (per-variable
+    QC drop counts, from the ``qc_input_samples``/``qc_excluded_samples`` attrs a
+    compiled profiles file carries), and ``global_attrs``.  On any read error
+    returns ``{"error": <message>, ...}`` so the page can report it rather than
+    failing to generate.
     """
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
@@ -129,6 +131,28 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
                 or _is_linkage(v["name"])
             )
         ]
+        # QC-exclusion summary: how many finite input samples each science
+        # variable carried and how many were dropped (QARTOD suspect/fail) before
+        # binning.  The denominator is pre-binning samples, so the fraction is not
+        # confounded by binning's own reduction in point count.  Only variables
+        # that recorded the counts (a compiled profiles file) contribute a row.
+        qc_exclusion = []
+        for v in data_vars:
+            name = v["name"]
+            attrs = ds[name].attrs
+            if "qc_input_samples" not in attrs or "qc_excluded_samples" not in attrs:
+                continue
+            n_in = int(attrs["qc_input_samples"])
+            n_drop = int(attrs["qc_excluded_samples"])
+            qc_exclusion.append(
+                {
+                    "name": name,
+                    "n_input": n_in,
+                    "n_excluded": n_drop,
+                    "pct": (100.0 * n_drop / n_in) if n_in else 0.0,
+                }
+            )
+
         # Build the source→canonical rename table from each variable's recorded
         # source name (written by the reader), keeping only variables whose raw
         # source name actually differs from the canonical name.
@@ -157,6 +181,7 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "dims": dict(ds.sizes),
             "coords": coords,
             "data_vars": data_vars,
+            "qc_exclusion": qc_exclusion,
             "sensor_catalog": sensor_catalog,
             "sensor_linkage": sensor_linkage,
             "sensor_channel": sensor_channel,

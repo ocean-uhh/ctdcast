@@ -163,6 +163,24 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     assert "mS cm⁻¹" in html  # a populated label_units value (conductivity)
 
 
+def test_cast_page_shows_source_provenance(tmp_path):
+    """The cast page names the source file (stage in the name) and a Processed date."""
+    import shutil
+
+    from ctdcast.reports._cast import generate_station_page
+    from ctdcast.reports._index import _read_cast_meta
+
+    src = tmp_path / "mixsed2_011_stage2.nc"
+    shutil.copy(CAST_011, src)
+    out = generate_station_page(
+        src, tmp_path / "out", all_meta=[_read_cast_meta(src)], force=True
+    )
+    html = out.read_text(encoding="utf-8")
+    assert "<dt>Source</dt>" in html
+    assert "mixsed2_011_stage2.nc" in html  # the stage is encoded in the filename
+    assert "<dt>Processed</dt>" in html  # separate date field, not crammed in Source
+
+
 def test_var_meta_label_units_from_registry():
     """label_units falls back to the VARIABLES registry by canonical name."""
     meta = read_dataset_meta(CAST_011)

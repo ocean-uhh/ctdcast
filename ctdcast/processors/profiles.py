@@ -30,7 +30,7 @@ from ctdcast.config.sensors import (
 )
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
-from ctdcast.processors.qc import QARTOD_FAIL
+from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
@@ -250,6 +250,11 @@ def build_profiles(
     The ``altimeter`` channel (when present in the input files) is binned onto
     the 1-dbar grid as a standard 2-D variable.
 
+    Samples carrying a QARTOD suspect (3) or fail (4) flag on their ``{var}_qc``
+    companion are NaN-masked before binning, so flagged data does not enter the bin
+    means.  Each science variable records how many finite input samples it carried
+    (``qc_input_samples``) and how many were excluded (``qc_excluded_samples``).
+
     Parameters
     ----------
     nc_dir:
@@ -366,23 +371,35 @@ def build_profiles(
     per_cast_attrs: list[dict[str, str]] = []
 
     # Pass 2: split and bin each cast
-    flag4_masked = False  # did any input actually carry flag-4 records to exclude?
+    qc_excluded = False  # did any input carry suspect/fail records to exclude?
+    # Per-variable tally of pre-binning samples excluded and the finite-sample
+    # denominator they were drawn from, reported at the top of the inventory page.
+    # The denominator is the count of finite input samples (not binned points), so
+    # the fraction is not distorted by binning's own reduction in point count.
+    qc_input_counts: dict[str, int] = {v: 0 for v in var_names}
+    qc_dropped_counts: dict[str, int] = {v: 0 for v in var_names}
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
         cast_sensor_records.append(parse_sensor_channels(ds))
-        # Honour QARTOD flag 4 (soak/deck) from stage 2: NaN the flagged samples
-        # so they do not enter the bin means.  pressure is in _SKIP_VARS and
-        # carries no _qc, so the binning coordinate is untouched; stage-1-only
-        # files have no _qc and are unaffected — flag4_masked stays False and the
-        # history line does not claim an exclusion that never happened.
+        # Honour QARTOD flags 3 (suspect) and 4 (fail) from stage 2 (soak/deck) AND
+        # stage 3 (gross-range and spike): NaN the flagged samples so they do not
+        # enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so the
+        # binning coordinate is untouched; stage-1-only files have no _qc and are
+        # unaffected — qc_excluded stays False and the history line does not claim
+        # an exclusion that never happened.  Suspect/fail flags are only raised on
+        # finite samples, so the excluded count is a subset of the finite count.
         for _v in var_names:
+            if _v in ds:
+                qc_input_counts[_v] += int(np.isfinite(ds[_v].values).sum())
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
-                _is_fail = ds[_qc] == QARTOD_FAIL
-                if bool(_is_fail.any()):
-                    flag4_masked = True
-                ds[_v] = ds[_v].where(~_is_fail)
+                _is_bad = (ds[_qc] == QARTOD_SUSPECT) | (ds[_qc] == QARTOD_FAIL)
+                _n_bad = int(_is_bad.values.sum())
+                if _n_bad:
+                    qc_excluded = True
+                    qc_dropped_counts[_v] += _n_bad
+                ds[_v] = ds[_v].where(~_is_bad)
         source_stages[rank] = source_stage
         source_files[rank] = path.name
         pressure = ds["pressure"].values
@@ -442,9 +459,19 @@ def build_profiles(
         v: (
             ["N_PROF", "pressure"],
             data_2d[v],
-            {"coordinates": "latitude longitude"}
-            if v in VARIABLES
-            else {"long_name": v, "coordinates": "latitude longitude"},
+            {
+                **(
+                    {"coordinates": "latitude longitude"}
+                    if v in VARIABLES
+                    else {"long_name": v, "coordinates": "latitude longitude"}
+                ),
+                # Provenance of the soak/deck + gross-range/spike exclusion: how many
+                # finite input samples this variable carried and how many were dropped
+                # (flag 3 or 4) before binning.  Denominator is pre-binning samples so
+                # the fraction is not confounded by binning's own point reduction.
+                "qc_input_samples": np.int64(qc_input_counts[v]),
+                "qc_excluded_samples": np.int64(qc_dropped_counts[v]),
+            },
         )
         for v in var_names
     }
@@ -671,8 +698,11 @@ def build_profiles(
         f"compiled {len(cast_list)} casts; mean of raw samples per {dbar}-dbar "
         "bin, pressure coordinate is the bin centre"
     )
-    if flag4_masked:
-        _note += "; excluded QARTOD flag 4 (soak/deck) records before binning"
+    if qc_excluded:
+        _note += (
+            "; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records "
+            "(soak/deck and gross-range/spike) before binning"
+        )
     append_history(attrs, _note, stage="profiles")
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)

@@ -82,6 +82,7 @@ details.attrs td { font-size: var(--fs-xs); }
 {# Build the numbered section list once, so the jump-nav and each heading share
    one "(N) Title" numbering (present sections only). #}
 {% set secs = [] %}
+{% if meta.qc_exclusion %}{% set _ = secs.append(("s-qc-drop", "QC exclusions")) %}{% endif %}
 {% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
 {% set _ = secs.append(("s-coords", "Coordinates")) %}
 {% set _ = secs.append(("s-vars", "Data variables")) %}
@@ -95,6 +96,25 @@ details.attrs td { font-size: var(--fs-xs); }
   {% for sid, title in secs %}<a href="#{{ sid }}">{{ m.heading_text(loop.index, title) }}</a>
   {% endfor %}
 </div>
+
+{% if meta.qc_exclusion %}
+<h2 id="s-qc-drop">{{ m.heading_text(nums["s-qc-drop"], "QC exclusions") }}</h2>
+<p class="dims-line">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
+<p class="dims-line">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
+<table class="nc">
+  <thead><tr><th>Variable</th><th class="num">Excluded</th><th class="num">Input samples</th><th class="num">% excluded</th></tr></thead>
+  <tbody>
+    {% for r in meta.qc_exclusion %}
+    <tr>
+      <td class="mono">{{ r.name }}</td>
+      <td class="num" {% if r.n_excluded %}style="color:var(--warn);font-weight:600"{% endif %}>{{ r.n_excluded }}</td>
+      <td class="num">{{ r.n_input }}</td>
+      <td class="num" {% if r.n_excluded %}style="color:var(--warn);font-weight:600"{% endif %}>{{ "%.2f"|format(r.pct) }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
 
 {% if meta.rename_map %}
 <h2 id="s-rename">{{ m.heading_text(nums["s-rename"], "Variable renaming") }}</h2>

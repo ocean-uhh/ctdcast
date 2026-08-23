@@ -91,6 +91,48 @@ config.yaml
      - ``false``
      - If ``true``, regenerate all pages even if they already exist.
 
+``processing`` block (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Per-cruise overrides for the pipeline stages.  Every key is optional and falls
+back to a built-in default.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 74
+
+   * - Key
+     - Description
+   * - ``profiles_dbar``
+     - Vertical bin size (dbar) for the compiled ``profiles.nc`` grid.  Default ``1``.
+   * - ``trim.near_surface_dbar``
+     - Pressure threshold for stage-2 soak detection (dbar).  Default ``10``.
+   * - ``qc.gross_range.{suspect,fail}.<var>``
+     - Stage-3 gross-range bounds ``[min, max]`` per variable, in two tiers:
+       ``suspect`` (QARTOD flag 3) and ``fail`` (flag 4).  Anything not listed
+       keeps its built-in default; the cast page's QC panel shows the tiers
+       actually applied.  Bounds are in the variable's **stored units** —
+       conductivity mS/cm, salinity PSU, temperature deg C, oxygen umol/kg,
+       pressure dbar.
+   * - ``qc.spike.{suspect,fail}.<var>``
+     - Stage-3 spike thresholds on ``|v[i] - (v[i-1]+v[i+1])/2|``, in two tiers
+       (flag 3 / flag 4), same units.  Fluorescence and turbidity have no spike
+       test by default (natural fine-scale variability).
+   * - ``calibration.conductivity_slope``
+     - Multiplicative conductivity calibration applied at stage 3; salinity is
+       re-derived from the calibrated conductivity.
+
+.. code-block:: yaml
+
+   processing:
+     qc:
+       gross_range:
+         suspect: { ctd_salinity_1: [30.0, 38.0] }   # tighten for a cruise
+         fail:    { ctd_salinity_1: [0.0, 42.0] }
+       spike:
+         suspect: { pressure: 10.0 }                 # dbar
+         fail:    { pressure: 50.0 }
+
 ``sensors`` block (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

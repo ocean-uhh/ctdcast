@@ -1972,7 +1972,7 @@ def draw_updown_diff_fig(
         ax.set_xlabel(label)
         ax.grid(True)
     axes[0].set_ylabel(vlabel("pressure"))
-    axes[0].set_ylim(float(p_grid[-1]), float(p_grid[0]))
+    axes[0].set_ylim(float(p_grid[-1]), 0)
     _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
@@ -2017,3 +2017,124 @@ def draw_ladcp_bottomtrack_fig(
         ax.set_xlim(-xlim, xlim)
     _hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
+
+
+def draw_qc_histogram_fig(
+    nc_path: Path, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+) -> plt.Figure | None:
+    """Return a per-variable data-value distribution Figure, or None.
+
+    One histogram panel per science variable that carries a ``{var}_qc``
+    companion.  Grey bars are all finite data; coloured bars are the **good** data
+    (QARTOD pass, flag 1 only — so suspect, fail and missing all show as grey
+    above the colour), on **shared bin edges** so the two are directly comparable.
+    The gross-range suspect and fail thresholds recorded on the ``_qc`` companion
+    are drawn as dashed/dotted lines when they fall within the plotted range.
+    Reads *nc_path* directly, so the distribution
+    is the file's own — untrimmed — data and flags.  Ports the logic of
+    oceanarray's ``draw_data_histogram``.
+
+    Parameters
+    ----------
+    nc_path:
+        Path to a per-cast stage file (stage 2 or 3, i.e. one carrying ``_qc``).
+    cfg:
+        The frozen report configuration; ``clean_spines`` drives the despine.
+    """
+    with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:
+        ds.load()
+        panels = [
+            v
+            for v in sorted(ds.data_vars)
+            if not str(v).endswith("_qc")
+            and f"{v}_qc" in ds
+            and ds[v].dims == ds[f"{v}_qc"].dims
+            and np.isfinite(ds[v].values.astype(float)).any()
+        ]
+        if not panels:
+            return None
+
+        ncols = min(3, len(panels))
+        nrows = math.ceil(len(panels) / ncols)
+        fig, axs_grid = plt.subplots(
+            nrows, ncols, figsize=(_W_FULL, 2.4 * nrows), squeeze=False, sharey=True
+        )
+        axs = axs_grid.ravel()
+        for k in range(len(panels), len(axs)):
+            axs[k].set_visible(False)
+
+        for ax, vname in zip(axs, panels, strict=False):
+            data = ds[vname].values.astype(float).ravel()
+            flags = ds[f"{vname}_qc"].values.astype(int).ravel()
+            all_mask = np.isfinite(data)
+            good_mask = all_mask & (flags == 1)  # QARTOD pass only
+            all_data = data[all_mask]
+            if all_data.size == 0:
+                ax.set_visible(False)
+                continue
+
+            # Grey = all finite data; colour = only the good (pass) data, on the
+            # SAME bin edges (computed once from all data) so they overlay exactly.
+            # Grey showing above the colour is data flagged for any reason — a
+            # gross-range suspect cluster or a mis-set threshold is then visible.
+            bin_edges = np.histogram_bin_edges(all_data, bins=60)
+            ax.hist(all_data, bins=bin_edges, color="#aaaaaa", alpha=0.6, label="all")
+            good = data[good_mask]
+            if good.size:
+                ax.hist(
+                    good,
+                    bins=bin_edges,
+                    color=VAR_COLORS.get(vname, "#2c7fb8"),
+                    alpha=0.85,
+                    label="good",
+                )
+            ax.set_yscale("log")
+            ax.set_xlabel(vlabel(vname))
+            if ax.get_subplotspec().is_first_col():
+                ax.set_ylabel(r"$\log_{10}$(count)")
+
+            all_lo, all_hi = float(all_data.min()), float(all_data.max())
+            pad = max(0.03 * (all_hi - all_lo), 1e-6)
+            xlim_lo, xlim_hi = all_lo - pad, all_hi + pad
+            ax.set_xlim(xlim_lo, xlim_hi)
+
+            # Gross-range bounds: suspect orange dashed, fail red dotted, labelled,
+            # drawn only when they fall within the plotted range (a far-off bound
+            # would just clip).  Spike thresholds are on the difference metric, not
+            # the value, so they are not drawn here.
+            qattrs = ds[f"{vname}_qc"].attrs
+            handles, labels = [], []
+            for key, tag, color, ls in (
+                ("qc_gross_range_suspect_min", "suspect min", "#f39c12", "--"),
+                ("qc_gross_range_suspect_max", "suspect max", "#f39c12", "--"),
+                ("qc_gross_range_fail_min", "fail min", "#e74c3c", ":"),
+                ("qc_gross_range_fail_max", "fail max", "#e74c3c", ":"),
+            ):
+                bound = qattrs.get(key)
+                if bound is not None and xlim_lo <= float(bound) <= xlim_hi:
+                    line = ax.axvline(
+                        float(bound),
+                        color=color,
+                        linestyle=ls,
+                        linewidth=pen("thin"),
+                    )
+                    handles.append(line)
+                    labels.append(f"{tag} ({bound})")
+            if handles:
+                ax.legend(handles, labels, loc="upper left")
+
+            ax.grid(True)
+            _hide_outer_spines(ax, clean=cfg.clean_spines)
+
+            n_flagged = int(all_mask.sum()) - int(good_mask.sum())
+            if n_flagged:
+                ax.text(
+                    0.97,
+                    0.95,
+                    f"{n_flagged} flagged",
+                    transform=ax.transAxes,
+                    ha="right",
+                    va="top",
+                    color="#e74c3c",
+                )
+        return fig

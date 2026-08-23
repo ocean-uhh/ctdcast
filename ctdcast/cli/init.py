@@ -136,6 +136,34 @@ display:
   #   CT: 0
   # vmax:
   #   CT: 30
+
+# Pipeline processing options.  All optional — sensible defaults are used unless
+# you set these to override per cruise.
+processing:
+  # profiles_dbar: 1        # vertical bin size for the compiled profiles.nc grid
+
+  # Stage 2 (trim): soak / back-on-deck detection.  Records are flagged
+  # (QARTOD flag 4), not deleted, and excluded from the compiled product.
+  # trim:
+  #   near_surface_dbar: 10.0
+
+  # Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
+  # gross_range bounds are [min, max]; spike thresholds are on
+  # |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
+  # default, and the report's QC panel shows the tiers actually applied.  Values
+  # are in each variable's stored units: conductivity mS/cm, salinity PSU,
+  # temperature deg C, oxygen umol/kg, pressure dbar.
+  # qc:
+  #   gross_range:
+  #     suspect: { ctd_salinity_1: [30.0, 38.0] }
+  #     fail:    { ctd_salinity_1: [0.0, 42.0] }
+  #   spike:
+  #     suspect: { pressure: 10.0 }
+  #     fail:    { pressure: 50.0 }
+
+  # Stage 3 calibration.
+  # calibration:
+  #   conductivity_slope: 1.0002
 """
 
 _SECTIONS_TEMPLATE = """\
