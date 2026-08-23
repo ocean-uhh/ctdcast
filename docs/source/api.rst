@@ -84,6 +84,15 @@ list into the semicolon-delimited ACDD strings.
    :members:
    :undoc-members:
 
+:mod:`~ctdcast.config.cnv_header` is the counterpart that reads *inwards* rather
+than composing outwards: pure functions over a CNV header's text, recovering what
+the deck unit and SBE Data Processing did to a cast before ctdcast saw it. It opens
+no files — the header travels on every stage-1 file in ``raw_metadata``.
+
+.. automodule:: ctdcast.config.cnv_header
+   :members:
+   :undoc-members:
+
 ----
 
 Section manifest

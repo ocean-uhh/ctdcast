@@ -12,6 +12,7 @@ import re
 
 import xarray as xr
 
+from ctdcast.config.cnv_header import header_from_raw_metadata
 from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
 
 
@@ -178,12 +179,8 @@ def parse_sensor_channels(ds: xr.Dataset) -> list[dict[str, str]]:
     Each dict has keys ``channel``, ``element``, ``sensor_id``, ``serial``,
     ``calibration_date`` (normalised) and ``role`` (canonical role or ``None``).
     """
-    raw = ds.attrs.get("raw_metadata", "")
-    if not raw:
-        return []
-    try:
-        header = json.loads(raw)["blocks"].get("header", "")
-    except (json.JSONDecodeError, KeyError, TypeError):
+    header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
+    if not header:
         return []
 
     text = re.sub(r"(?m)^#\s?", "", header)  # drop CNV comment prefixes

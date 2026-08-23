@@ -120,6 +120,10 @@ include = ["ctdcast*"]
 # first pass -- so 100 is the seed, not an aspiration. 95 would have licensed an
 # untested branch in the module every other step of the stack rests on.
 "ctdcast/processors/stage_layout.py" = 100
+# Pure functions over header text, no I/O, measured 100% (93 stmts, 0 missing). 100 is
+# the seed, not an aspiration -- the deck-unit advance it recovers is the load-bearing
+# finding of the upstream-provenance work, so no branch may go untested.
+"ctdcast/config/cnv_header.py"       = 100
 # One floor is still deferred: enrich.py does not exist yet, and a floor for a
 # file that is not in the coverage report fails as MISSING (verified by running
 # the checker) rather than passing quietly -- an unguarded module is the one

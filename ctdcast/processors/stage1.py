@@ -20,6 +20,7 @@ from typing import Protocol
 
 import xarray as xr
 
+from ctdcast.config.cnv_header import build_correction_ledger, header_from_raw_metadata
 from ctdcast.config.global_attrs import identity_attrs
 from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
 from ctdcast.processors._warnings import summarise_warnings
@@ -80,6 +81,11 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     6. Stamp the cruise identity (``cruise`` + ``platform_*`` + ``expocode``)
        when *cruise_info* supplies it, so a per-cast stage file is
        self-describing when copied out of its directory.
+    7. Stamp the SBE upstream-provenance ledger (``sbe_acquisition``,
+       ``sbe_processing``, ``sbe_processing_order``, ``correction_*``,
+       ``time_*``) from the verbatim header in ``raw_metadata``, recording
+       what the deck unit and SBE Data Processing did before ctdcast. A no-op
+       when there is no SBE header (e.g. a LADCP file).
 
     Parameters
     ----------
@@ -210,6 +216,14 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     # re-applies it and warns on disagreement, so this is a portability snapshot,
     # not a second authority.
     ds.attrs.update(identity_attrs(cruise_info))
+
+    # Step 7: stamp the SBE upstream-provenance ledger, read from the verbatim header
+    # the reader left in raw_metadata.  Records what the deck unit and SBE Data
+    # Processing did before ctdcast, so a later stage cannot re-apply a correction
+    # already made.  Empty (no-op) when there is no SBE header, e.g. a LADCP file.
+    header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
+    if header:
+        ds.attrs.update(build_correction_ledger(header))
 
     return ds
 
