@@ -633,8 +633,8 @@ def build_profiles(
             f"the per-cast files say this is cruise {str(_lifted_cruise)!r}, but "
             f"cruise_info says {str(_cfg_cruise)!r}; using the files' value, "
             f"because a stage file records the cruise the cast was actually taken "
-            f"on. If the config is the correct one, re-run stage 1, or "
-            f"`ctdcast enrich`, to restamp the per-cast files.",
+            f"on. If the config is the correct one, re-run stage 1 to restamp "
+            f"the per-cast files.",
             stacklevel=2,
         )
     cruise = str(_lifted_cruise or _cfg_cruise or "UNK")

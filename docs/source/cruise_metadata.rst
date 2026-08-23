@@ -108,7 +108,9 @@ Field reference:
              ices_code: "XXXX"
              platform_vocabulary: "https://vocab.nerc.ac.uk/collection/L06/current/31/"
 
-       Never the free-text ``ship`` name — name lookup is ambiguous.
+       Never the free-text ``ship`` name — name lookup is ambiguous. Run
+       ``ctdcast list platforms`` to see the shipped slugs and the refused ones
+       (see :doc:`registries`).
    * - ``start_date`` / ``end_date``
      - Cruise dates. ``start_date`` is the **departure from port** (feeds the
        EXPOCODE ``<ICES code><YYYYMMDD>``), which may precede the first cast.

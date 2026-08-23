@@ -498,6 +498,51 @@ def load_institutions(extra: Path | str | None = None) -> dict[str, dict[str, An
     return merged
 
 
+def institutions_with_source(
+    extra: Path | str | None = None,
+    inline: list[Any] | None = None,
+) -> list[dict[str, str]]:
+    """Return every resolvable institution with the source that supplies it, for ``ctdcast list``.
+
+    Follows :func:`load_institutions`' merge order (packaged < user directory < config file, later
+    winning slug by slug) but keeps the *winning* source per slug instead of discarding it, then
+    appends the inline ``cruise_info.institutions`` entries that carry their own ``name``/``id`` and
+    bypass the registry entirely. Keeping the merge here rather than re-walking the paths in the CLI
+    means the precedence lives in one place.
+
+    Each item is ``{slug, name, id, source}``; ``source`` is ``"packaged"``, ``"user"``, the config
+    file's path, or ``"inline"``. Inline entries have an empty ``slug`` — they are named, not keyed.
+    """
+    labels = {
+        _INSTITUTIONS_YAML: "packaged",
+        _user_registry_dir() / "institutions.yaml": "user",
+    }
+    by_slug: dict[str, dict[str, str]] = {}
+    for path in institution_registry_paths(extra):
+        source = labels.get(path, str(path))
+        for slug, entry in _load_registry_file(path).items():
+            by_slug[slug] = {
+                "slug": slug,
+                "name": str(entry.get("name") or ""),
+                "id": str(entry.get("edmo_uri") or ""),
+                "source": source,
+            }
+    rows = sorted(by_slug.values(), key=lambda e: e["slug"])
+    for item in inline or []:
+        # An inline entry carries its own name and no slug; a bare slug string or a {slug: ...}
+        # dict just references a registry entry already listed above.
+        if isinstance(item, dict) and item.get("name") and not item.get("slug"):
+            rows.append(
+                {
+                    "slug": "",
+                    "name": str(item["name"]),
+                    "id": str(item.get("id") or ""),
+                    "source": "inline",
+                }
+            )
+    return rows
+
+
 def orcid_uri(orcid: str) -> str:
     """Return the resolvable URI for an ORCID given in either accepted form.
 

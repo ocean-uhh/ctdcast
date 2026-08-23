@@ -10,6 +10,7 @@ from ctdcast._version import __version__
 from . import clock as _clock
 from . import convert as _convert
 from . import draft as _draft
+from . import list as _list
 from . import init as _init
 from . import inspect as _inspect
 from . import process as _process
@@ -61,6 +62,7 @@ def main() -> None:
     _validate.build_parser(subparsers)
     _inspect.build_parser(subparsers)
     _clock.build_parser(subparsers)
+    _list.build_parser(subparsers)
 
     args = parser.parse_args()
     sys.exit(args.func(args))

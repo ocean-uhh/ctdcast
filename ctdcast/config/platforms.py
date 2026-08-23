@@ -75,6 +75,16 @@ def _forbidden_codes() -> dict[str, str]:
     return _load_raw().get("forbidden_codes") or {}
 
 
+def ambiguous_slugs() -> dict[str, str]:
+    """Return the ``ambiguous_slugs`` traps (slug → why it is refused), for ``ctdcast list``."""
+    return _ambiguous_slugs()
+
+
+def forbidden_codes() -> dict[str, str]:
+    """Return the ``forbidden_codes`` traps (ICES code → why it is refused), for ``ctdcast list``."""
+    return _forbidden_codes()
+
+
 def resolve_platform(slug: str) -> dict[str, Any]:
     """Return the registry record for *slug*.
 
