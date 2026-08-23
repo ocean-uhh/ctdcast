@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -412,17 +411,6 @@ _ORCID_RE = re.compile(
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 _INSTITUTIONS_YAML = Path(__file__).parent / "institutions.yaml"
-
-
-@dataclass(frozen=True)
-class Person:
-    """One contributor, as resolved from config."""
-
-    name: str
-    role: str
-    institution: str | None = None
-    email: str | None = None
-    orcid: str | None = None
 
 
 def _user_registry_dir() -> Path:
