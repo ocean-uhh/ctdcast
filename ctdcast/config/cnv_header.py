@@ -1134,9 +1134,7 @@ def conformance_ticks(header_text: str) -> list[ConformanceTick]:
         elif step.module == "wildedit":
             ticks.extend(_wildedit_ticks(key, step))
         else:
-            ticks.append(
-                _no_ref_tick(key, step.module, variables=_step_channels(step))
-            )
+            ticks.append(_no_ref_tick(key, step.module, variables=_step_channels(step)))
     return ticks
 
 
