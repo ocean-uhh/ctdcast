@@ -26,6 +26,17 @@ from ctdcast.config.cnv_header import (
     sbe_history_notes,
     sensor_calibrations,
 )
+from ctdcast.config.cnv_header import (
+    CONFORMANCE_DIFFER,
+    CONFORMANCE_MATCH,
+    CONFORMANCE_NO_REFERENCE,
+    _channel_kind,
+    _conf_close,
+    conformance_advisories,
+    conformance_supported,
+    conformance_ticks,
+    detect_instrument,
+)
 
 # Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw
 # hex/ fixtures are local-only (git-excluded), so tests must not reach into them.
@@ -514,14 +525,16 @@ class TestBuildCorrectionLedger:
         assert correction_records("") == []
 
     def test_long_lists_summarised_not_dumped(self):
-        """wildedit's variable list becomes a count, and wfilter collapses its actions."""
+        """wildedit shows only its thresholds and wfilter collapses its repeated actions.
+
+        The channels each step touched are named in the Variables column, so the parameter
+        string no longer carries a variable count.
+        """
         recs = {r.key: r for r in correction_records(_stage1_header())}
         assert recs["wildedit"].parameters == (
-            "pass1_nstd=2.0 pass2_nstd=20.0 npoint=100 13 variables"
+            "pass1_nstd=2.0 pass2_nstd=20.0 npoint=100"
         )
-        assert (
-            recs["wfilter"].parameters == "excl_bad_scans=yes median, 10 (8 variables)"
-        )
+        assert recs["wfilter"].parameters == "excl_bad_scans=yes median, 10"
         # deck-unit record: producer/version split, not one blob
         assert recs["align"].producer == "SBE 11plus deck unit"
         assert recs["align"].version == "V 5.2"
@@ -808,3 +821,225 @@ class TestSensorCalibrations:
             "# </SensorsExtra>\n"
         )
         assert sensor_calibrations(header) == []
+
+
+# Synthetic processing-chain fragments for the conformance branches the real corpus does
+# not contain (celltm differ, filter with no pressure, wfilter smoother vs median).  These
+# are unit-test inputs for a text parser, not fabricated instrument data.  Each carries the
+# SBE 9 model line so conformance (gated to the SBE 9 family) is not short-circuited.
+_SBE9 = "* Sea-Bird SBE 9 Data File:\n"
+_SYNTH_CELLTM_DIFFER = (
+    _SBE9 + "# celltm_alpha = 0.0500, 0.0300\n# celltm_tau = 7.0000, 7.0000\n"
+)
+_SYNTH_FILTER_NO_P = (
+    _SBE9 + "# filter_low_pass_tc_A = 0.030\n# filter_low_pass_A_vars = t090C c0S/m\n"
+)
+_SYNTH_WFILTER_BOXCAR = _SBE9 + "# wfilter_action t090C = boxcar, 5\n"
+_SYNTH_WFILTER_MEDIAN = _SBE9 + "# wfilter_action t090C = median, 5\n"
+
+
+class TestChannelKind:
+    """_channel_kind classifies SBE column names by naming convention, not CNV_ALIASES."""
+
+    @pytest.mark.parametrize(
+        ("col", "kind"),
+        [
+            ("t090C", "temperature"),
+            ("tv290C", "temperature"),
+            ("c0S/m", "conductivity"),
+            ("c0mS/cm", "conductivity"),  # the MSM spelling CNV_ALIASES misses
+            ("sbeox0V", "oxygen"),
+            ("sbox0Mm/Kg", "oxygen"),
+            ("prDM", "pressure"),
+            ("sal11", None),  # salinity is not conductivity
+            ("flECO-AFL", None),
+            ("turbWETntu0", None),
+        ],
+    )
+    def test_classification(self, col, kind):
+        """Temperature/conductivity/oxygen/pressure are recognised; others are None."""
+        assert _channel_kind(col) == kind
+
+
+class TestConfClose:
+    """_conf_close compares a string value to a reference within a tolerance."""
+
+    def test_close_and_far(self):
+        """A value within tol matches; outside tol does not."""
+        assert _conf_close("0.152", 0.15, 0.02) is True
+        assert _conf_close("0.030", 0.15, 0.02) is False
+
+    def test_non_numeric_is_false(self):
+        """An unparseable value is not close (the defensive branch)."""
+        assert _conf_close("n/a", 0.15, 0.02) is False
+
+
+class TestInstrumentGate:
+    """detect_instrument reads the model line; conformance is gated to the SBE 9 family."""
+
+    def test_detects_sbe9_from_real_header(self):
+        """The mixsed/MSM headers name an SBE 9 on their first line."""
+        assert detect_instrument(_text(CNV_MIXSED_004)) == "SBE 9"
+        assert detect_instrument(_text(CNV_MSM_017)) == "SBE 9"
+
+    def test_normalises_19plus_spacing(self):
+        """``SBE19plus`` (no space) normalises to ``SBE 19plus``."""
+        assert detect_instrument("* Sea-Bird SBE19plus  Data File:") == "SBE 19plus"
+
+    def test_none_when_no_model_line(self):
+        """A header with no ``* Sea-Bird`` line has no detectable instrument."""
+        assert detect_instrument("# start_time = Aug 01 2026 22:05:00\n") is None
+        assert detect_instrument("") is None
+
+    def test_supported_only_for_sbe9_family(self):
+        """References exist for the SBE 9 family; a 19plus is unsupported."""
+        assert conformance_supported(_text(CNV_MIXSED_004)) is True
+        assert conformance_supported("* Sea-Bird SBE19plus  Data File:") is False
+
+    def test_unsupported_instrument_yields_no_conformance(self):
+        """A 19plus header with a celltm block still produces no ticks or advisories."""
+        header = "* Sea-Bird SBE19plus  Data File:\n# celltm_alpha = 0.0500\n"
+        assert conformance_ticks(header) == []
+        assert conformance_advisories(header) == []
+
+
+class TestConformanceTicks:
+    """conformance_ticks compares parsed parameters against documented references."""
+
+    def test_empty_header(self):
+        """An empty header yields no ticks."""
+        assert conformance_ticks("") == []
+
+    def test_deck_conductivity_matches(self):
+        """A 0.073 s conductivity advance matches, and names conductivity_1 as modified."""
+        ticks = {
+            t.variables: t
+            for t in conformance_ticks(_text(CNV_MSM_017))
+            if t.label == "align"
+        }
+        assert ticks["conductivity_1"].state == CONFORMANCE_MATCH
+
+    def test_deck_asymmetric_advance_differs(self):
+        """The V 5.0 secondary conductivity advance (0.043 s) differs from 0.073 s."""
+        align = [t for t in conformance_ticks(_text(HEX_MSM_021)) if t.label == "align"]
+        by_var = {t.variables: t for t in align}
+        assert by_var["conductivity_2"].state == CONFORMANCE_DIFFER
+        # the voltage advance has no conductivity variable and no reference
+        voltage = [t for t in align if not t.variables]
+        assert voltage and voltage[0].state == CONFORMANCE_NO_REFERENCE
+
+    def test_celltm_matches_per_cell(self):
+        """celltm 0.03/7.0 matches on both cells, naming conductivity_1/_2 as modified."""
+        ticks = {
+            t.variables: t
+            for t in conformance_ticks(_text(CNV_MIXSED_004))
+            if t.label == "celltm"
+        }
+        assert ticks["conductivity_1"].state == CONFORMANCE_MATCH
+        assert ticks["conductivity_2"].state == CONFORMANCE_MATCH
+
+    def test_celltm_differs_per_cell_in_order(self):
+        """A cell whose alpha departs differs; cells keep file order (cell 1 then cell 2)."""
+        cells = [
+            t for t in conformance_ticks(_SYNTH_CELLTM_DIFFER) if t.label == "celltm"
+        ]
+        assert cells[0].state == CONFORMANCE_DIFFER
+        assert cells[1].state == CONFORMANCE_MATCH
+
+    def test_filter_splits_and_checks_the_pressure_group(self):
+        """Filter splits per low-pass group; the pressure group is checked (OdB ✓, MSM142 ✗)."""
+        odb_pressure = next(
+            t
+            for t in conformance_ticks(_text(CNV_MIXSED_004))
+            if t.label == "filter" and t.state != CONFORMANCE_NO_REFERENCE
+        )
+        msm_pressure = next(
+            t
+            for t in conformance_ticks(_text(CNV_MSM_017))
+            if t.label == "filter" and t.state != CONFORMANCE_NO_REFERENCE
+        )
+        assert odb_pressure.state == CONFORMANCE_MATCH
+        assert "pressure" in odb_pressure.variables  # prDM renamed to canonical
+        assert msm_pressure.state == CONFORMANCE_DIFFER
+
+    def test_filter_no_pressure_is_no_reference(self):
+        """A filter group that does not touch pressure cannot be checked against 0.15 s."""
+        ticks = conformance_ticks(_SYNTH_FILTER_NO_P)
+        assert ticks[0].state == CONFORMANCE_NO_REFERENCE
+
+    def test_wildedit_is_no_reference_with_suggested_defaults(self):
+        """Wild Edit has no authoritative reference: a dash, with example defaults shown."""
+        real = {t.label: t for t in conformance_ticks(_text(CNV_MIXSED_004))}
+        tick = real["wildedit"]
+        assert tick.state == CONFORMANCE_NO_REFERENCE
+        assert "2/20/100" in tick.reference  # SBE example, shown as a suggestion
+        assert "3/10/50" in tick.reference  # GEOMAR example
+        assert "pass1 2.0" in tick.detail  # the cast's own values
+
+    def test_unreferenced_module_is_dash(self):
+        """A module with no documented reference (datcnv) is no_reference, never differ."""
+        ticks = {t.label: t for t in conformance_ticks(_text(CNV_MIXSED_004))}
+        assert ticks["datcnv"].state == CONFORMANCE_NO_REFERENCE
+        assert ticks["datcnv"].variables == "all channels: raw→physical"
+
+    def test_unparseable_celltm_value_is_no_reference(self):
+        """A celltm cell whose alpha will not parse is a dash, not a differ — absent ≠ wrong."""
+        cells = [
+            t
+            for t in conformance_ticks(
+                _SBE9 + "# celltm_alpha = abc, 0.0300\n# celltm_tau = 7.0, 7.0\n"
+            )
+            if t.label == "celltm"
+        ]
+        assert cells[0].state == CONFORMANCE_NO_REFERENCE
+        assert cells[1].state == CONFORMANCE_MATCH
+
+    def test_celltm_missing_tau_is_no_reference(self):
+        """A celltm cell with alpha but no tau cannot be checked: a dash, never a differ."""
+        cells = [
+            t
+            for t in conformance_ticks(_SBE9 + "# celltm_alpha = 0.0300\n")
+            if t.label == "celltm"
+        ]
+        assert cells[0].state == CONFORMANCE_NO_REFERENCE
+
+
+class TestConformanceAdvisories:
+    """conformance_advisories reports deviations as hedged, source-citing prose."""
+
+    def test_empty_header(self):
+        """An empty header yields no advisories."""
+        assert conformance_advisories("") == []
+
+    def test_odb_flags_oxygen_and_loopedit_but_not_tc_smoothing(self):
+        """OdB: oxygen not aligned + no loop edit fire; wfilter median is NOT a T/C smooth."""
+        adv = " ".join(conformance_advisories(_text(CNV_MIXSED_004)))
+        assert "oxygen" in adv.lower()
+        assert "Loop Edit" in adv
+        assert "smoothed" not in adv  # median despiking must not read as smoothing
+
+    def test_msm142_flags_tc_smoothing(self):
+        """MSM142's low-pass filter on t090C/c0mS/cm is a real T/C smoothing flag."""
+        adv = " ".join(conformance_advisories(_text(CNV_MSM_017)))
+        assert "smoothed" in adv
+        assert "pressure only" in adv
+
+    def test_msm121_oxygen_aligned_and_loopedit_present(self):
+        """MSM121 aligns oxygen and runs loop edit, so neither advisory fires."""
+        adv = " ".join(conformance_advisories(_text(CNV_MSM121)))
+        assert "oxygen" not in adv.lower()
+        assert "Loop Edit" not in adv
+
+    def test_wfilter_smoother_flags_tc(self):
+        """A wfilter boxcar (a smoother) on temperature does trip the T/C-smoothing flag."""
+        adv = conformance_advisories(_SYNTH_WFILTER_BOXCAR)
+        assert any("smoothed" in a for a in adv)
+
+    def test_wfilter_median_does_not_flag(self):
+        """A wfilter median (spike removal) on temperature does not trip the flag."""
+        assert conformance_advisories(_SYNTH_WFILTER_MEDIAN) == []
+
+    def test_differing_tick_becomes_prose(self):
+        """A differing parameter tick is surfaced as a hedged sentence citing its source."""
+        adv = conformance_advisories(_text(CNV_MSM_017))
+        assert any("confirm against this cast's configuration" in a for a in adv)

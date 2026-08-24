@@ -28,7 +28,20 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from ctdcast.config.parameters import CNV_ALIASES
+
 _SBE_TIME_FMT = "%b %d %Y %H:%M:%S"
+
+
+def _canonical_var(channel: str) -> str:
+    """Rename an SBE channel to its ctdcast canonical name, or keep it if unmapped.
+
+    The rename map is :data:`ctdcast.config.parameters.CNV_ALIASES`; a channel it does not
+    cover (an aux spelling, ``c0mS/cm``) keeps its header name — a shown raw name is safer
+    than a wrong rename.
+    """
+    return CNV_ALIASES.get(channel.strip().lower(), channel.strip())
+
 
 # One compiled pattern per recognised '*'-line shape. The '*' block is NOT
 # ``key = value`` -- advance lines have no '=' at all -- so match by shape, never
@@ -234,6 +247,35 @@ class SensorCalibration:
     def drift_applied(self) -> bool:
         """True when a drift or span correction is baked into either value."""
         return self.slope_nondefault or self.offset_nondefault
+
+
+@dataclass(frozen=True)
+class ConformanceTick:
+    """One correction row's agreement with a documented reference value.
+
+    ``state`` is :data:`CONFORMANCE_MATCH` / :data:`CONFORMANCE_DIFFER` /
+    :data:`CONFORMANCE_NO_REFERENCE`, rendered ✓ / ✗ / — and never conflated: a dash means
+    "no reference to check against", not "differs". A *match* means the value equals a
+    documented **typical** value, NOT that it is "correct"; a *differ* is a deviation to
+    judge, NOT "wrong" — every reference is configuration-dependent, so ``source`` names
+    where the reference came from and the tick is a match indicator, not a verdict. ``key``
+    aligns the tick to the :class:`Correction` it belongs to (``"celltm"``, ``"align"``,
+    a suffixed ``"wildedit_2"``); several ticks share one key when a correction expands
+    per sensor/channel (``label`` disambiguates the sub-rows). ``detail`` is the
+    parsed-vs-reference text; ``variables`` names the variable(s) the step *modified*, for a
+    display column (``conductivity_1`` for a cell-thermal-mass row, the smoothed channels for
+    a filter row, ``all channels: raw→physical`` for datcnv). The comparison is
+    producer-agnostic: it checks the parameters, not who applied them, so the same references
+    serve a future stage-3 correction ledger.
+    """
+
+    key: str
+    label: str
+    state: str
+    reference: str
+    source: str
+    detail: str
+    variables: str = ""
 
 
 def _collapse(value: str) -> str:
@@ -501,35 +543,31 @@ def _module_version(params: dict[str, str]) -> str:
     return _module_date_parts(params)[1]
 
 
-def _count_phrase(n: int, noun: str) -> str:
-    """Format ``"13 variables"`` / ``"1 variable"`` — a readable count, not the full list."""
-    return f"{n} {noun}{'s' if n != 1 else ''}"
-
-
 def _wfilter_body(step: ProcessingStep) -> str:
     """Summarise wfilter: collapse the per-variable ``action <var> = ...`` fields.
 
     Every variable typically gets the same action (e.g. ``median, 10``), so the eight
-    identical lines collapse to ``median, 10 (8 variables)`` rather than one per channel.
+    identical lines collapse to a single ``median, 10`` — the channels each action touched
+    are named in the Variables column, not repeated here.
     """
-    counts: dict[str, int] = {}
+    actions: list[str] = []
     other: list[str] = []
     for k, v in step.params.items():
         if k.startswith("action "):
-            counts[v] = counts.get(v, 0) + 1
+            if v not in actions:
+                actions.append(v)
         elif k not in _LEDGER_HOUSEKEEPING:
             other.append(f"{k}={v}")
-    collapsed = [f"{val} ({_count_phrase(n, 'variable')})" for val, n in counts.items()]
-    return " ".join(other + collapsed)
+    return " ".join(other + actions)
 
 
 def _correction_body(step: ProcessingStep) -> str:
     """The salient parameter string for a module.
 
-    Salient-listed modules show only those fields (wildedit also gets its variable list
-    summarised as a count); wfilter collapses its per-variable actions; anything else
-    falls back to all non-housekeeping parameters.  The verbatim ``sbe_processing`` block
-    keeps every field regardless, so a trimmed summary loses nothing.
+    Salient-listed modules show only those fields; wfilter collapses its per-variable
+    actions to one; anything else falls back to all non-housekeeping parameters.  The
+    channels a step touched are named in the Variables column, not here.  The verbatim
+    ``sbe_processing`` block keeps every field regardless, so a trimmed summary loses nothing.
     """
     if step.module == "wfilter":
         return _wfilter_body(step)
@@ -540,8 +578,6 @@ def _correction_body(step: ProcessingStep) -> str:
         ]
         return " ".join(parts)
     parts = [f"{k}={step.params[k]}" for k in fields if k in step.params]
-    if step.module == "wildedit" and "vars" in step.params:
-        parts.append(_count_phrase(len(step.params["vars"].split()), "variable"))
     return " ".join(parts)
 
 
@@ -556,7 +592,7 @@ def _correction_records(acq: Acquisition, chain: ProcessingChain) -> list[Correc
     if acq.deck_unit.advance:
         records.append(
             Correction(
-                label="align (deck)",
+                label="align",
                 key="align",
                 producer=f"{acq.deck_unit.model or 'SBE'} deck unit",
                 version=acq.deck_unit.firmware or "",
@@ -789,6 +825,473 @@ def sensor_calibrations(header_text: str) -> list[SensorCalibration]:
             )
         )
     return calibrations
+
+
+#: Conformance-tick states for the "Matches reference" column. Three states, never two:
+#: a dash (no reference) must never read as a cross (differs).
+CONFORMANCE_MATCH = "match"
+CONFORMANCE_DIFFER = "differ"
+CONFORMANCE_NO_REFERENCE = "no_reference"
+
+#: Documented reference values a cast's processing is compared against, each ``(value,
+#: source)``. A *match* means "equals this typical value", not "correct"; every reference
+#: is configuration-dependent, so the source is cited on every tick. One place, so the tick
+#: column and the emitted advisory can never cite different numbers. Wild Edit is absent on
+#: purpose: SBE publishes no default (only example dialog values) and the manual says the
+#: right thresholds are data-dependent, so its tick is a dash with example defaults shown,
+#: never a comparison. Field names mirror the salient params in :data:`_MODULE_SALIENT`.
+_CONFORMANCE_REFS: dict[str, tuple[float, str]] = {
+    "celltm_alpha": (0.03, "SBE manual p.92 (TC duct, 3000-rpm pump)"),
+    "celltm_tau": (7.0, "SBE manual p.92"),
+    "filter_pressure_tc": (0.15, "SBE manual p.100 (= 4 / scan-rate)"),
+    "deck_conductivity_advance": (_DEFAULT_CONDUCTIVITY_ADVANCE, "SBE manual p.85"),
+}
+
+#: Wild Edit's example dialog values (SBE) and GEOMAR's reimplementation default, shown as
+#: *suggested* thresholds a first-pass processing choice could adopt — never a reference to
+#: tick against (see :data:`_CONFORMANCE_REFS`).
+_WILDEDIT_SUGGESTED = "SBE example 2/20/100 · GEOMAR 3/10/50"
+
+#: `wfilter` window types that SMOOTH (weighted averages). `median` is spike removal, NOT
+#: smoothing (SBE manual, Window Filter section), so it never trips the T/C-smoothing flag.
+_WFILTER_SMOOTHERS = frozenset({"boxcar", "cosine", "triangle", "gaussian"})
+
+_RE_TEMPERATURE_CH = re.compile(r"^tv?\d")  # t090C, t190C, tv290C
+_RE_CONDUCTIVITY_CH = re.compile(r"^c\d")  # c0S/m, c1S/m, c0mS/cm
+
+#: The instrument model on the header's first ``* Sea-Bird …`` line (``SBE 9``, ``SBE19plus``).
+_RE_INSTRUMENT = re.compile(
+    r"^\*\s*Sea-Bird\s+(SBE\s*\w+)", re.IGNORECASE | re.MULTILINE
+)
+
+
+def _channel_kind(col: str) -> str | None:
+    """Classify an SBE data-channel column name as temperature/conductivity/oxygen/pressure.
+
+    Uses Sea-Bird column-name conventions, not ``CNV_ALIASES``: the alias map does not cover
+    every conductivity unit spelling in the corpus (``c0S/m`` vs ``c0mS/cm``), so an
+    alias-only classifier would miss a real T/C smoothing. An unrecognised column returns
+    None and is never flagged — a false negative is safer than a false "wrong".
+    """
+    c = col.strip().lower()
+    if _RE_TEMPERATURE_CH.match(c):
+        return "temperature"
+    if _RE_CONDUCTIVITY_CH.match(c):
+        return "conductivity"
+    if c.startswith(("sbeox", "sbox")):
+        return "oxygen"
+    if c.startswith("pr"):
+        return "pressure"
+    return None
+
+
+def _conductivity_cell(descriptor: str) -> str:
+    """Map a ``primary``/``secondary`` cell or channel descriptor to ``conductivity_1``/``_2``.
+
+    Both the deck conductivity advance and cell thermal mass modify a conductivity cell; the
+    cell is named ``primary``/``secondary`` in the header, so the modified variable is
+    ``conductivity_1`` / ``conductivity_2``. An unrecognised descriptor yields ``""``.
+    """
+    d = descriptor.lower()
+    if "secondary" in d:
+        return "conductivity_2"
+    if "primary" in d:
+        return "conductivity_1"
+    return ""
+
+
+def _conf_close(value: str, reference: float, tol: float) -> bool:
+    """True when *value* parses and lies within *tol* of *reference*."""
+    try:
+        return abs(float(value) - reference) <= tol
+    except (ValueError, TypeError):
+        return False
+
+
+def _is_numeric(value: str) -> bool:
+    """True when *value* parses as a float, so a comparison against it is meaningful."""
+    try:
+        float(value)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
+def _celltm_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
+    """One tick per conductivity cell: the coupled (alpha, tau) pair vs the reference.
+
+    A cell's pair *differs* if either alpha or tau departs from its reference; the detail
+    shows the whole pair. A cell whose alpha or tau is missing or non-numeric is
+    :data:`CONFORMANCE_NO_REFERENCE` (a dash), never a differ — an unrecorded value is not a
+    measured deviation. Cell labels come from ``temp_sensor_use_for_cond``.
+    """
+    alphas = [a.strip() for a in step.params.get("alpha", "").split(",")]
+    taus = [t.strip() for t in step.params.get("tau", "").split(",")]
+    cells = [
+        c.strip() for c in step.params.get("temp_sensor_use_for_cond", "").split(",")
+    ]
+    a_ref, source = _CONFORMANCE_REFS["celltm_alpha"]
+    t_ref, _ = _CONFORMANCE_REFS["celltm_tau"]
+    ticks: list[ConformanceTick] = []
+    for i in range(max(len(alphas), len(taus))):
+        alpha = alphas[i] if i < len(alphas) else ""
+        tau = taus[i] if i < len(taus) else ""
+        cell = cells[i] if i < len(cells) and cells[i] else f"cell {i + 1}"
+        if not (_is_numeric(alpha) and _is_numeric(tau)):
+            state = CONFORMANCE_NO_REFERENCE
+        elif _conf_close(alpha, a_ref, 0.005) and _conf_close(tau, t_ref, 0.5):
+            state = CONFORMANCE_MATCH
+        else:
+            state = CONFORMANCE_DIFFER
+        ticks.append(
+            ConformanceTick(
+                key=key,
+                label="celltm",
+                state=state,
+                reference=f"(α,τ)=({a_ref:g},{t_ref:g})",
+                source=source,
+                detail=f"alpha={alpha} tau={tau}",
+                variables=_conductivity_cell(cell),
+            )
+        )
+    return ticks
+
+
+def _filter_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
+    """One tick per low-pass group (A and B): the group containing pressure is checked vs 0.15 s.
+
+    A low-pass filter runs two channel groups at two time constants; splitting them into a
+    row each shows what was filtered at what constant — so a ✓ against the pressure reference
+    sits next to the pressure channel, not next to an unrelated aux time constant. The group
+    without a pressure channel has no reference (a dash).
+    """
+    ref, source = _CONFORMANCE_REFS["filter_pressure_tc"]
+    ticks: list[ConformanceTick] = []
+    for vars_key, tc_key in (
+        ("low_pass_A_vars", "low_pass_tc_A"),
+        ("low_pass_B_vars", "low_pass_tc_B"),
+    ):
+        chans = step.params.get(vars_key, "").split()
+        if not chans:
+            continue
+        tc = step.params.get(tc_key, "")
+        variables = ", ".join(_canonical_var(c) for c in chans)
+        detail = f"filtered at {tc} s"
+        if any(_channel_kind(c) == "pressure" for c in chans) and _is_numeric(tc):
+            state = (
+                CONFORMANCE_MATCH if _conf_close(tc, ref, 0.02) else CONFORMANCE_DIFFER
+            )
+            ticks.append(
+                ConformanceTick(
+                    key,
+                    "filter",
+                    state,
+                    f"pressure {ref:g} s",
+                    source,
+                    detail,
+                    variables,
+                )
+            )
+        else:
+            ticks.append(
+                ConformanceTick(
+                    key, "filter", CONFORMANCE_NO_REFERENCE, "", "", detail, variables
+                )
+            )
+    if not ticks:
+        ticks.append(
+            ConformanceTick(
+                key,
+                "filter",
+                CONFORMANCE_NO_REFERENCE,
+                f"{ref:g} s",
+                source,
+                "no low-pass channels",
+                "",
+            )
+        )
+    return ticks
+
+
+def _wildedit_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
+    """One tick for Wild Edit: a dash, with example thresholds shown as suggested defaults.
+
+    Wild Edit is the most configuration-dependent module — SBE publishes no hard default
+    (only example dialog values) and states the right thresholds are data-dependent — so
+    there is nothing authoritative to tick against. The state is
+    :data:`CONFORMANCE_NO_REFERENCE` (a dash, never a cross); ``reference`` carries SBE's and
+    GEOMAR's example thresholds as *suggested* starting points, and ``detail`` shows the
+    cast's own values.
+    """
+    parts = [
+        f"{label} {step.params.get(name, '')}"
+        for label, name in (
+            ("pass1", "pass1_nstd"),
+            ("pass2", "pass2_nstd"),
+            ("npoint", "npoint"),
+        )
+    ]
+    variables = ", ".join(
+        _canonical_var(v) for v in step.params.get("vars", "").split()
+    )
+    return [
+        ConformanceTick(
+            key,
+            "wildedit",
+            CONFORMANCE_NO_REFERENCE,
+            _WILDEDIT_SUGGESTED,
+            "SBE Data Processing example; ctdam wildedit_geomar default",
+            " / ".join(parts),
+            variables,
+        )
+    ]
+
+
+def _deck_align_ticks(deck: DeckUnit) -> list[ConformanceTick]:
+    """One tick per advanced channel: each conductivity advance vs 0.073 s; voltage → dash.
+
+    The step is just ``align`` (the deck unit is already named in the Producer column); the
+    detail echoes the header's own wording, ``advance primary conductivity 0.073 s``.
+    """
+    ref, source = _CONFORMANCE_REFS["deck_conductivity_advance"]
+    ticks: list[ConformanceTick] = []
+    for chan, sec in deck.advance.items():
+        detail = f"advance {chan} {sec:.3f} s"
+        variables = _conductivity_cell(chan)
+        if "conductivity" in chan:
+            # Tight tolerance so the tick agrees with provenance_advisories' non-default
+            # check (round to 3 dp): a value it calls non-default must not read here as ✓.
+            state = (
+                CONFORMANCE_MATCH if abs(sec - ref) <= 0.0005 else CONFORMANCE_DIFFER
+            )
+            ticks.append(
+                ConformanceTick(
+                    "align",
+                    "align",
+                    state,
+                    f"{ref:.3f} s",
+                    source,
+                    detail,
+                    variables,
+                )
+            )
+        else:
+            ticks.append(
+                ConformanceTick(
+                    "align",
+                    "align",
+                    CONFORMANCE_NO_REFERENCE,
+                    "",
+                    "",
+                    detail,
+                    variables,
+                )
+            )
+    return ticks
+
+
+def detect_instrument(header_text: str) -> str | None:
+    """Return the CTD model from the header's first ``* Sea-Bird …`` line, or None.
+
+    The spelling's spacing is inconsistent across firmware (``SBE 9`` vs ``SBE19plus``), so
+    it is normalised to a single space after ``SBE`` (``SBE19plus`` → ``SBE 19plus``).
+    Returns None for a header with no such line (a bare hex, a LADCP file, an empty header).
+    """
+    match = _RE_INSTRUMENT.search(header_text or "")
+    if match is None:
+        return None
+    return re.sub(r"^SBE\s*", "SBE ", _collapse(match.group(1)), flags=re.IGNORECASE)
+
+
+def conformance_supported(header_text: str) -> bool:
+    """True when documented references exist for this cast's instrument (the SBE 9 family).
+
+    The values in :data:`_CONFORMANCE_REFS` (celltm α/τ, filter-pressure tc, deck
+    conductivity advance) are the SBE 9 / 11plus defaults. Other instruments (SBE 19plus,
+    25, …) have different documented defaults that are not yet encoded, so conformance is
+    reported only for the SBE 9 family; every other instrument yields no ticks and, on the
+    report, a note naming it. An unrecognised header is unsupported.
+    """
+    instrument = detect_instrument(header_text)
+    return instrument is not None and instrument.upper().startswith("SBE 9")
+
+
+def conformance_ticks(header_text: str) -> list[ConformanceTick]:
+    """Compare a cast's processing parameters against documented references, one tick per row.
+
+    A sibling of :func:`correction_records`: the ticks align to those records by ``key``,
+    and a correction whose parameters are per-sensor/per-channel lists (deck align, cell
+    thermal mass) expands into one tick per channel/cell. Modules with no documented
+    reference (datcnv, binavg, loop edit, wfilter, Derive, …) get a single
+    :data:`CONFORMANCE_NO_REFERENCE` tick — a dash, never a cross. The comparison reads the
+    structured :class:`ProcessingStep` parameters and is producer-agnostic, so the same
+    references serve a future stage-3 ledger. Returns an empty list for an empty header, or
+    for an instrument outside the SBE 9 family (see :func:`conformance_supported`).
+    """
+    if not header_text or not conformance_supported(header_text):
+        return []
+    acq = parse_star_block(header_text)
+    chain = parse_processing_chain(header_text)
+    ticks: list[ConformanceTick] = []
+    if acq.deck_unit.advance:
+        ticks.extend(_deck_align_ticks(acq.deck_unit))
+    run_count: dict[str, int] = {}
+    for step in chain.steps:
+        run_count[step.module] = run_count.get(step.module, 0) + 1
+        n = run_count[step.module]
+        key = step.module if n == 1 else f"{step.module}_{n}"
+        if step.module == "celltm":
+            ticks.extend(_celltm_ticks(key, step))
+        elif step.module == "filter":
+            ticks.extend(_filter_ticks(key, step))
+        elif step.module == "wildedit":
+            ticks.extend(_wildedit_ticks(key, step))
+        else:
+            ticks.append(
+                ConformanceTick(
+                    key,
+                    step.module,
+                    CONFORMANCE_NO_REFERENCE,
+                    "",
+                    "",
+                    "",
+                    _step_channels(step),
+                )
+            )
+    return ticks
+
+
+def _all_channels(chain: ProcessingChain) -> set[str]:
+    """Every data-channel name mentioned across the chain's var/action/adv fields."""
+    channels: set[str] = set()
+    for step in chain.steps:
+        for vars_key in ("low_pass_A_vars", "low_pass_B_vars", "vars"):
+            channels.update(step.params.get(vars_key, "").split())
+        for param, value in step.params.items():
+            if param.startswith("action "):
+                channels.add(param[len("action ") :].strip())
+            if param == "adv":
+                channels.update(
+                    pair.split()[0] for pair in value.split(",") if pair.split()
+                )
+    return channels
+
+
+def _oxygen_aligned(chain: ProcessingChain) -> bool:
+    """True when an ``alignctd`` step advances an oxygen channel."""
+    for step in chain.steps:
+        if step.module != "alignctd":
+            continue
+        for pair in step.params.get("adv", "").split(","):
+            tokens = pair.split()
+            if tokens and _channel_kind(tokens[0]) == "oxygen":
+                return True
+    return False
+
+
+def _smoothed_tc_kinds(chain: ProcessingChain) -> set[str]:
+    """Which of {temperature, conductivity} were low-pass SMOOTHED (median excluded)."""
+    kinds: set[str] = set()
+    for step in chain.steps:
+        if step.module == "filter":
+            for vars_key in ("low_pass_A_vars", "low_pass_B_vars"):
+                for ch in step.params.get(vars_key, "").split():
+                    kind = _channel_kind(ch)
+                    if kind in ("temperature", "conductivity"):
+                        kinds.add(kind)
+        if step.module == "wfilter":
+            for param, value in step.params.items():
+                if not param.startswith("action "):
+                    continue
+                window = value.split(",")[0].strip().lower()
+                kind = _channel_kind(param[len("action ") :].strip())
+                if window in _WFILTER_SMOOTHERS and kind in (
+                    "temperature",
+                    "conductivity",
+                ):
+                    kinds.add(kind)
+    return kinds
+
+
+def conformance_advisories(header_text: str) -> list[str]:
+    """Where a cast's processing deviates from a documented reference, as hedged prose.
+
+    A sibling of :func:`provenance_advisories` (which reports *structural facts*); this
+    reports *comparisons to a recommendation*. Two sources, one list: every parameter tick
+    that :data:`CONFORMANCE_DIFFER`s becomes a sentence, plus three structural checks —
+    oxygen present but not aligned (SBE p.86), a temperature/conductivity channel low-pass
+    smoothed when SBE smooths pressure only (p.100), and Bin Average without a preceding
+    Loop Edit. Every string cites its source and hedges: a deviation is a value to judge,
+    never asserted "wrong", because each reference is configuration-dependent. Empty header,
+    or an instrument outside the SBE 9 family (see :func:`conformance_supported`) → ``[]``.
+    """
+    if not header_text or not conformance_supported(header_text):
+        return []
+    chain = parse_processing_chain(header_text)
+    advisories: list[str] = []
+
+    for tick in conformance_ticks(header_text):
+        if tick.state == CONFORMANCE_DIFFER:
+            advisories.append(
+                f"{tick.label}: {tick.detail} differs from {tick.reference} "
+                f"({tick.source}) — a deviation from a documented typical value; confirm "
+                "against this cast's configuration."
+            )
+
+    modules = [step.module for step in chain.steps]
+    if any(_channel_kind(ch) == "oxygen" for ch in _all_channels(chain)) and not (
+        _oxygen_aligned(chain)
+    ):
+        advisories.append(
+            "An oxygen channel is present but no Align CTD step advances it; SBE recommends "
+            "aligning SBE 43 oxygen by +2 to +5 s (p.86)."
+        )
+    smoothed = _smoothed_tc_kinds(chain)
+    if smoothed:
+        advisories.append(
+            f"The {' and '.join(sorted(smoothed))} channel(s) were low-pass smoothed; SBE "
+            "recommends low-pass filtering pressure only (p.100). (A median wfilter is spike "
+            "removal, not smoothing, and is not counted here.)"
+        )
+    if "binavg" in modules and "loopedit" not in modules:
+        advisories.append(
+            "Bin Average was run without a preceding Loop Edit; SBE's published order runs "
+            "Loop Edit before Bin Average."
+        )
+    return advisories
+
+
+def _step_channels(step: ProcessingStep) -> str:
+    """The variable(s) a scalar step modified, for the "Variables" column, or ''.
+
+    Filter, Wild Edit, cell thermal mass and the deck advance carry their modified variable
+    on their own tick; this covers the rest: a window filter names its per-channel actions,
+    an alignment its advances, Derive its derived-variable count, and datcnv/binavg touch
+    every channel (converted to physical units, or binned).
+    """
+    m = step.module
+    if m == "wfilter":
+        return ", ".join(
+            _canonical_var(param[len("action ") :].strip())
+            for param in step.params
+            if param.startswith("action ")
+        )
+    if m == "alignctd":
+        adv = step.params.get("adv", "")
+        return ", ".join(
+            _canonical_var(pair.split()[0]) for pair in adv.split(",") if pair.split()
+        )
+    if m == "Derive":
+        for value in step.params.values():
+            match = re.search(r"derive_vars\s*=\s*(\d+)", value)
+            if match:
+                return f"{match.group(1)} variables derived"
+        return ""
+    if m == "datcnv":
+        return "all channels: raw→physical"
+    if m == "binavg":
+        return "all channels: binned"
+    return ""
 
 
 def _correction_flat(rec: Correction) -> str:

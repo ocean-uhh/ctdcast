@@ -171,6 +171,19 @@ h2 + .caption {{ margin-top: -0.5rem; max-width: none; }}
 }}
 .fig-col {{ display: flex; flex-direction: column; gap: 0.75rem; }}
 .fig-row.center {{ justify-content: center; }}
+/* A multi-table panel (processing provenance) is one full-width flex item so its
+   headings and tables stack instead of tiling across the row. */
+.prov-panel {{ flex: 1 1 100%; }}
+/* Conformance status pips — a green ✓ (matches), a red ✗ (differs) and a neutral
+   ringed dash (no reference), matching the LADCP-present/absent badges. */
+.conf {{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.4em; height: 1.4em; border-radius: 50%;
+  font-size: var(--fs-xs); font-weight: 700; line-height: 1;
+}}
+.conf-match {{ background: var(--ok); color: #fff; }}
+.conf-differ {{ background: var(--error); color: #fff; }}
+.conf-none {{ background: #fff; color: #000; border: 1px solid #000; }}
 figure {{ margin: 0; }}
 figure img {{
   border: 1px solid var(--rule); border-radius: var(--radius-btn);

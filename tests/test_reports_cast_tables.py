@@ -4,7 +4,14 @@ These exercise the HTML builders over their display inputs (an attribute mapping
 sensor-info list) — the rendering logic, not instrument data.
 """
 
-from ctdcast.config.cnv_header import Correction, SensorCalibration
+from ctdcast.config.cnv_header import (
+    CONFORMANCE_DIFFER,
+    CONFORMANCE_MATCH,
+    CONFORMANCE_NO_REFERENCE,
+    ConformanceTick,
+    Correction,
+    SensorCalibration,
+)
 from ctdcast.reports._cast import (
     _render_provenance_table,
     _render_sensor_calibration_table,
@@ -158,6 +165,119 @@ class TestRenderProvenanceTable:
         assert "pass1_nstd=2.0" in html
         assert "wildedit (2)" in html
         assert "pass1_nstd=9.9" in html
+
+
+class TestConformanceColumn:
+    """A "Matches reference" column, deck/celltm split and Conformance note when ticks pass."""
+
+    def _records(self):
+        return [
+            Correction(
+                "align (deck)", "align", "SBE 11plus deck unit", "V 5.0", "c0 +0.073 s"
+            ),
+            Correction("celltm", "celltm", "SBE Data Processing", "7.26", "alpha=0.03"),
+        ]
+
+    def _ticks(self):
+        return [
+            ConformanceTick(
+                "align",
+                "align",
+                CONFORMANCE_MATCH,
+                "0.073 s",
+                "SBE manual p.85",
+                "advance primary conductivity 0.073 s",
+                "conductivity_1",
+            ),
+            ConformanceTick(
+                "align",
+                "align",
+                CONFORMANCE_DIFFER,
+                "0.073 s",
+                "SBE manual p.85",
+                "advance secondary conductivity 0.043 s",
+                "conductivity_2",
+            ),
+            ConformanceTick(
+                "celltm",
+                "celltm",
+                CONFORMANCE_NO_REFERENCE,
+                "(α,τ)=(0.03,7)",
+                "SBE manual p.92",
+                "alpha=0.03 tau=7",
+                "conductivity_1",
+            ),
+        ]
+
+    def test_no_ticks_keeps_four_column_table(self):
+        """Without ticks the corrections table has no Matches column (unchanged behaviour)."""
+        html = _render_provenance_table(self._records(), {})
+        assert "Matches reference" not in html
+
+    def test_ticks_add_matches_column_with_status_pips(self):
+        """Ticks add the column and render a coloured pip for match / differ / no-reference."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "<th>Matches reference</th>" in html
+        assert "conf-match" in html  # green ✓ (matches)
+        assert "conf-differ" in html  # red ✗ (differs)
+        assert "conf-none" in html  # neutral ringed dash (no reference)
+
+    def test_references_move_to_a_caption(self):
+        """Reference values and their sources are listed once in a caption, not per pip."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "Reference values" in html
+        assert "SBE manual p.85" in html  # source cited in the caption
+
+    def test_deck_row_splits_per_channel(self):
+        """The single deck-align record becomes one display row per advanced channel."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "advance primary conductivity 0.073 s" in html
+        assert "advance secondary conductivity 0.043 s" in html
+
+    def test_variables_column_names_modified_variable(self):
+        """The Variables column names the variable each step modified."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "<th>Variables</th>" in html
+        assert "conductivity_1" in html and "conductivity_2" in html
+
+    def test_split_row_shows_its_own_value_not_the_aggregate(self):
+        """Each split row shows its own channel value; the aggregate never lands on row one."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        # The secondary row shows its own advance; the record's aggregate "c0 +0.073 s"
+        # string is not stuck on the first split row.
+        assert "advance secondary conductivity 0.043 s" in html
+        assert "c0 +0.073 s" not in html
+
+    def test_differing_row_is_amber(self):
+        """A differing (✗) conformance row is tinted with the vendored warn background."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "background:var(--warn-bg)" in html
+
+    def test_reference_and_source_are_visible(self):
+        """The reference and its source are shown in the match cell, not hidden in a tooltip."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "SBE manual p.85" in html
+        assert "title=" not in html  # not tucked away in a hover tooltip
+
+    def test_conformance_note_rendered(self):
+        """Conformance deviation sentences render under their own heading, not Advisories."""
+        html = _render_provenance_table(
+            self._records(),
+            {},
+            ticks=self._ticks(),
+            conformance=["celltm alpha 0.05 differs from 0.03 (p.92)"],
+        )
+        assert "<h3 style='margin-bottom:0.25rem'>Conformance</h3>" in html
+        assert "celltm alpha 0.05 differs" in html
+
+    def test_instrument_note_rendered(self):
+        """An instrument note (no encoded references) appears under the corrections table."""
+        html = _render_provenance_table(
+            self._records(),
+            {},
+            instrument_note="Conformance references are not yet available for SBE 19plus.",
+        )
+        assert "not yet available for SBE 19plus" in html
 
 
 class TestRenderSensorTablePrimarySecondary:
