@@ -25,6 +25,7 @@ from ctdcast.config.cnv_header import (
     provenance_advisories,
     sbe_history_notes,
     sensor_calibrations,
+    start_time_clock,
 )
 from ctdcast.config.cnv_header import (
     CONFORMANCE_DIFFER,
@@ -210,6 +211,12 @@ class TestParseStartTime:
         st = parse_start_time("# start_time = Jul 10 2026 08:12:49 [NMEA time, header]")
         assert st.source == "NMEA time, header"
         assert (st.clock, st.anchor) == ("nmea", "header")
+
+    def test_start_time_clock_classifies_the_bracket(self):
+        """start_time_clock resolves a source bracket to its clock; unknown when unparsed."""
+        assert start_time_clock("System UTC, first data scan.") == "system"
+        assert start_time_clock("NMEA time, header") == "nmea"
+        assert start_time_clock("") == "unknown"
 
 
 class TestHeaderFromRawMetadata:
