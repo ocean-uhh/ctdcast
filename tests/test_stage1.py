@@ -2,7 +2,7 @@
 
 import pytest
 import xarray as xr
-from conftest import FIXTURES_CNV
+from conftest import FIXTURES_CNV, FIXTURES_NC
 
 from ctdcast.processors.stage_layout import parse_stage, stage_dir
 
@@ -78,6 +78,22 @@ class TestStage1:
             assert attrs["correction_align"].endswith(" s")
             assert attrs["sbe_acquisition"].startswith("* Sea-Bird SBE 9")
         assert stamped, "no stage-1 file carried the correction ledger"
+
+    def test_conformance_advisories_warn_at_stage1(self):
+        """A cast whose SBE processing deviates from a documented reference warns at stage 1.
+
+        The conformance advisories #32 surfaces on the cast page are also raised as warnings
+        during processing, alongside (and separate from) the structural provenance ones.
+        """
+        from ctdcast.processors.stage1 import _normalise
+
+        ds = xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4")
+        with pytest.warns(UserWarning) as record:
+            _normalise(ds)
+        messages = " ".join(str(w.message) for w in record)
+        # OdB: an oxygen channel is present but no Align CTD step advances it — a conformance
+        # advisory (would not appear before this loop was added).
+        assert "no Align CTD step advances it" in messages
 
     def test_sbe_history_prepended_before_ctdcast(self, tmp_path):
         """SBE steps appear in history, oldest-first, attributed to SBE and ahead of ctdcast."""
