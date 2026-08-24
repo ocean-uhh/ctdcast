@@ -648,12 +648,19 @@ def _render_provenance_table(
 def _render_provenance_panel(c: PageCtx) -> str | None:
     """Parse the SBE header once and render the upstream-provenance tables for a cast."""
     header = header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
-    return _render_provenance_table(
+    table = _render_provenance_table(
         correction_records(header),
         dict(c.ds.attrs),
         provenance_advisories(header),
         sensor_calibrations(header),
     )
+    if table is not None:
+        return table
+    if header:
+        return (
+            "<p class='caption'>No SBE processing steps recorded in the raw header.</p>"
+        )
+    return None
 
 
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
@@ -709,14 +716,15 @@ def _has_qc(c: PageCtx) -> bool:
 
 
 def _has_provenance(c: PageCtx) -> bool:
-    """True when the stage-1 SBE correction ledger was stamped onto the cast file.
+    """True when the cast carries a raw Sea-Bird header to recover provenance from.
 
-    Stage-1 files ingested from a Sea-Bird header carry it (and stage 2/3 inherit it);
-    a LADCP cast or a file with no SBE header does not, so the section is omitted.
+    The provenance panel renders from the verbatim SBE header in ``raw_metadata``
+    (corrections, sensor calibrations, advisories, time coordinate) -- not from the
+    stage-1 ``correction_*`` attrs, which not every stage-1 build stamps. Gate on the
+    header so any CTD cast with an SBE header shows the panel; a LADCP cast, which has
+    no ``raw_metadata``, does not.
     """
-    return any(
-        k == "sbe_processing_order" or k.startswith("correction_") for k in c.ds.attrs
-    )
+    return header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) is not None
 
 
 #: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
