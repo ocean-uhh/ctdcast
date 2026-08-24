@@ -706,17 +706,23 @@ def _sensors_region(header_text: str) -> str | None:
     The block is embedded in the CNV header as ``#``-commented XML. Stripping the leading
     ``#`` yields a well-formed element that :mod:`xml.etree` can parse. Returns None when
     no block is present (a header that carries no embedded configuration).
+
+    The open tag is matched exactly -- ``<Sensors>`` or ``<Sensors ...>`` -- not by a bare
+    ``<Sensors`` prefix, so a sibling element such as ``<SensorsExtra>`` cannot open a
+    phantom block. Matching is case-insensitive, mirroring the lowercase ``<sensors>``
+    variant the sibling ``_processing_region`` already guards against.
     """
     region: list[str] = []
     in_block = False
     for raw in header_text.splitlines():
         stripped = raw.strip()
         body = stripped[1:].strip() if stripped.startswith("#") else stripped
-        if body.startswith("<Sensors"):
+        low = body.lower()
+        if low.startswith("<sensors>") or low.startswith("<sensors "):
             in_block = True
         if in_block:
             region.append(body)
-        if body.startswith("</Sensors"):
+        if low.startswith("</sensors"):
             break
     return "\n".join(region) if in_block else None
 

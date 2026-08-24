@@ -796,3 +796,15 @@ class TestSensorCalibrations:
         """An unparseable <Sensors> block degrades to no calibrations, not a raise."""
         header = "# <Sensors >\n#   <TemperatureSensor>\n# </Sensors>\n"
         assert sensor_calibrations(header) == []
+
+    def test_sibling_tag_does_not_open_a_phantom_block(self):
+        """A <SensorsExtra>-style sibling tag must not be read as the sensor config block."""
+        header = (
+            '# <SensorsExtra count="1" >\n'
+            '#   <TemperatureSensor SensorID="55" >\n'
+            "#     <SerialNumber>9</SerialNumber>\n"
+            "#     <Slope>2.00000000</Slope>\n"
+            "#   </TemperatureSensor>\n"
+            "# </SensorsExtra>\n"
+        )
+        assert sensor_calibrations(header) == []

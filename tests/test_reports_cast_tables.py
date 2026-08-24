@@ -22,7 +22,13 @@ class TestRenderSensorCalibrationTable:
             "temperature", "temperature_1", "6435", "1.00000000", "0.0000", False, False
         ),
         SensorCalibration(
-            "conductivity", "conductivity_1", "4922", "1.00000452", "0.00000", True, False
+            "conductivity",
+            "conductivity_1",
+            "4922",
+            "1.00000452",
+            "0.00000",
+            True,
+            False,
         ),
         SensorCalibration(
             "pressure", "pressure", "0814", "1.00004096", "0.27440", True, True
