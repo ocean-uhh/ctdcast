@@ -967,6 +967,31 @@ class TestConformanceTicks:
         ticks = conformance_ticks(_SYNTH_FILTER_NO_P)
         assert ticks[0].state == CONFORMANCE_NO_REFERENCE
 
+    def test_filter_with_no_lowpass_channels_is_a_single_dash(self):
+        """A filter step listing no low-pass channels yields one no-reference tick."""
+        filt = [
+            t
+            for t in conformance_ticks(_SBE9 + "# filter_low_pass_tc_A = 0.5\n")
+            if t.label == "filter"
+        ]
+        assert len(filt) == 1
+        assert filt[0].state == CONFORMANCE_NO_REFERENCE
+
+    def test_module_without_a_channel_list_has_no_variables(self):
+        """A step with no per-channel field (loop edit) reports an empty Variables summary."""
+        ticks = {t.label: t for t in conformance_ticks(_text(CNV_MSM121))}
+        assert ticks["loopedit"].variables == ""
+
+    def test_derive_without_a_count_has_no_variables(self):
+        """A Derive step whose header omits the derived-variable count reports no Variables."""
+        ticks = {
+            t.label: t
+            for t in conformance_ticks(
+                _SBE9 + "# Derive_date = Jul 30 2026 10:33:27, 7.26.7.129\n"
+            )
+        }
+        assert ticks["Derive"].variables == ""
+
     def test_wildedit_is_no_reference_with_suggested_defaults(self):
         """Wild Edit has no authoritative reference: a dash, with example defaults shown."""
         real = {t.label: t for t in conformance_ticks(_text(CNV_MIXSED_004))}

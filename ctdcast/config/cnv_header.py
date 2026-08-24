@@ -900,21 +900,32 @@ def _conductivity_cell(descriptor: str) -> str:
     return ""
 
 
+def _as_float(value: str) -> float | None:
+    """Parse *value* to a float, or None when it does not parse."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 def _conf_close(value: str, reference: float, tol: float) -> bool:
     """True when *value* parses and lies within *tol* of *reference*."""
-    try:
-        return abs(float(value) - reference) <= tol
-    except (ValueError, TypeError):
-        return False
+    number = _as_float(value)
+    return number is not None and abs(number - reference) <= tol
 
 
 def _is_numeric(value: str) -> bool:
     """True when *value* parses as a float, so a comparison against it is meaningful."""
-    try:
-        float(value)
-    except (ValueError, TypeError):
-        return False
-    return True
+    return _as_float(value) is not None
+
+
+def _no_ref_tick(
+    key: str, label: str, detail: str = "", variables: str = ""
+) -> ConformanceTick:
+    """A tick for a step with no documented reference: a dash, no reference or source."""
+    return ConformanceTick(
+        key, label, CONFORMANCE_NO_REFERENCE, "", "", detail, variables
+    )
 
 
 def _celltm_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
@@ -983,33 +994,19 @@ def _filter_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
             )
             ticks.append(
                 ConformanceTick(
-                    key,
-                    "filter",
-                    state,
-                    f"pressure {ref:g} s",
-                    source,
-                    detail,
-                    variables,
+                    key=key,
+                    label="filter",
+                    state=state,
+                    reference=f"pressure {ref:g} s",
+                    source=source,
+                    detail=detail,
+                    variables=variables,
                 )
             )
         else:
-            ticks.append(
-                ConformanceTick(
-                    key, "filter", CONFORMANCE_NO_REFERENCE, "", "", detail, variables
-                )
-            )
+            ticks.append(_no_ref_tick(key, "filter", detail, variables))
     if not ticks:
-        ticks.append(
-            ConformanceTick(
-                key,
-                "filter",
-                CONFORMANCE_NO_REFERENCE,
-                f"{ref:g} s",
-                source,
-                "no low-pass channels",
-                "",
-            )
-        )
+        ticks.append(_no_ref_tick(key, "filter", "no low-pass channels"))
     return ticks
 
 
@@ -1036,13 +1033,13 @@ def _wildedit_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
     )
     return [
         ConformanceTick(
-            key,
-            "wildedit",
-            CONFORMANCE_NO_REFERENCE,
-            _WILDEDIT_SUGGESTED,
-            "SBE Data Processing example; ctdam wildedit_geomar default",
-            " / ".join(parts),
-            variables,
+            key=key,
+            label="wildedit",
+            state=CONFORMANCE_NO_REFERENCE,
+            reference=_WILDEDIT_SUGGESTED,
+            source="SBE Data Processing example; ctdam wildedit_geomar default",
+            detail=" / ".join(parts),
+            variables=variables,
         )
     ]
 
@@ -1066,27 +1063,17 @@ def _deck_align_ticks(deck: DeckUnit) -> list[ConformanceTick]:
             )
             ticks.append(
                 ConformanceTick(
-                    "align",
-                    "align",
-                    state,
-                    f"{ref:.3f} s",
-                    source,
-                    detail,
-                    variables,
+                    key="align",
+                    label="align",
+                    state=state,
+                    reference=f"{ref:.3f} s",
+                    source=source,
+                    detail=detail,
+                    variables=variables,
                 )
             )
         else:
-            ticks.append(
-                ConformanceTick(
-                    "align",
-                    "align",
-                    CONFORMANCE_NO_REFERENCE,
-                    "",
-                    "",
-                    detail,
-                    variables,
-                )
-            )
+            ticks.append(_no_ref_tick("align", "align", detail, variables))
     return ticks
 
 
@@ -1148,15 +1135,7 @@ def conformance_ticks(header_text: str) -> list[ConformanceTick]:
             ticks.extend(_wildedit_ticks(key, step))
         else:
             ticks.append(
-                ConformanceTick(
-                    key,
-                    step.module,
-                    CONFORMANCE_NO_REFERENCE,
-                    "",
-                    "",
-                    "",
-                    _step_channels(step),
-                )
+                _no_ref_tick(key, step.module, variables=_step_channels(step))
             )
     return ticks
 
