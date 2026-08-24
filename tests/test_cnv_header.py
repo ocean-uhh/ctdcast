@@ -24,6 +24,7 @@ from ctdcast.config.cnv_header import (
     parse_start_time,
     provenance_advisories,
     sbe_history_notes,
+    sensor_calibrations,
 )
 
 # Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw
@@ -684,3 +685,114 @@ class TestProvenanceAdvisories:
             "* advance secondary conductivity  0.073 seconds\n"
         )
         assert not any("non-default" in a for a in provenance_advisories(header))
+
+
+class TestSensorCalibrations:
+    """sensor_calibrations reads frequency-sensor drift Slope/Offset from <Sensors>."""
+
+    def test_five_frequency_sensors_in_config_order(self):
+        """Temperature/conductivity/pressure are returned in config order, dual suffixed."""
+        cals = sensor_calibrations(_text(CNV_MIXSED_004))
+        assert [c.label for c in cals] == [
+            "temperature_1",
+            "conductivity_1",
+            "pressure",
+            "temperature_2",
+            "conductivity_2",
+        ]
+
+    def test_voltage_sensors_excluded(self):
+        """pH/oxygen/altimeter carry their own Slope/Offset but are not drift knobs."""
+        kinds = {c.kind for c in sensor_calibrations(_text(CNV_MIXSED_004))}
+        assert kinds == {"temperature", "conductivity", "pressure"}
+
+    def test_applied_conductivity_drift_is_flagged(self):
+        """mixsed2_004 carries a real bottle-derived conductivity slope on both cells."""
+        cals = {c.label: c for c in sensor_calibrations(_text(CNV_MIXSED_004))}
+        assert cals["conductivity_1"].slope == "1.00000452"
+        assert cals["conductivity_1"].drift_applied is True
+        assert cals["conductivity_2"].slope == "0.99993682"
+        assert cals["conductivity_2"].drift_applied is True
+
+    def test_identity_reads_as_no_drift(self):
+        """An identity slope/offset (1.0 / 0.0) is not a drift correction."""
+        cals = {c.label: c for c in sensor_calibrations(_text(CNV_MSM_017))}
+        assert cals["temperature_1"].slope == "1.00000000"
+        assert cals["temperature_1"].drift_applied is False
+        assert cals["conductivity_1"].drift_applied is False
+
+    def test_pressure_offset_flagged_and_kept_verbatim(self):
+        """A pressure offset is flagged; the value is kept verbatim, no precision lost."""
+        cals = {c.label: c for c in sensor_calibrations(_text(CNV_MSM_017))}
+        assert cals["pressure"].offset == "-0.16438"
+        assert cals["pressure"].drift_applied is True
+
+    def test_serial_captured(self):
+        """The sensor serial number is captured."""
+        cals = {c.label: c for c in sensor_calibrations(_text(CNV_MIXSED_004))}
+        assert cals["temperature_1"].serial == "4798"
+
+    def test_reads_through_nc_raw_metadata(self):
+        """Production path: the <Sensors> block travels in the nc raw_metadata attribute."""
+        import xarray as xr
+
+        ds = xr.open_dataset(NC_MIXSED_011, engine="netcdf4")
+        try:
+            header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
+        finally:
+            ds.close()
+        cals = {c.label: c for c in sensor_calibrations(header)}
+        assert cals["pressure"].drift_applied is True
+        assert cals["temperature_1"].drift_applied is False
+
+    def test_empty_and_missing_block_return_empty(self):
+        """An empty header, or one with no <Sensors> block, yields no calibrations."""
+        assert sensor_calibrations("") == []
+        assert sensor_calibrations("# * System UpLoad Time = x\n# start_time = y") == []
+
+    def test_single_sensor_keeps_bare_label(self):
+        """A lone sensor of a kind keeps the bare kind label, no _1 suffix."""
+        header = (
+            '# <Sensors count="1" >\n'
+            '#   <sensor Channel="1" >\n'
+            '#     <TemperatureSensor SensorID="55" >\n'
+            "#       <SerialNumber>1234</SerialNumber>\n"
+            "#       <Slope>1.00000000</Slope>\n"
+            "#       <Offset>0.0000</Offset>\n"
+            "#     </TemperatureSensor>\n"
+            "#   </sensor>\n"
+            "# </Sensors>\n"
+        )
+        assert [c.label for c in sensor_calibrations(header)] == ["temperature"]
+
+    def test_missing_slope_offset_defaults_to_identity(self):
+        """A sensor without Slope/Offset elements reads as identity (no drift)."""
+        header = (
+            '# <Sensors count="1" >\n'
+            '#   <PressureSensor SensorID="45" >\n'
+            "#     <SerialNumber>9</SerialNumber>\n"
+            "#   </PressureSensor>\n"
+            "# </Sensors>\n"
+        )
+        cal = sensor_calibrations(header)[0]
+        assert cal.slope == "1.0"
+        assert cal.offset == "0.0"
+        assert cal.drift_applied is False
+
+    def test_unreadable_slope_is_not_claimed_as_drift(self):
+        """A slope that will not parse to a float is treated as identity, not a drift."""
+        header = (
+            '# <Sensors count="1" >\n'
+            '#   <ConductivitySensor SensorID="3" >\n'
+            "#     <SerialNumber>9</SerialNumber>\n"
+            "#     <Slope>abc</Slope>\n"
+            "#     <Offset>0.0</Offset>\n"
+            "#   </ConductivitySensor>\n"
+            "# </Sensors>\n"
+        )
+        assert sensor_calibrations(header)[0].drift_applied is False
+
+    def test_malformed_xml_returns_empty(self):
+        """An unparseable <Sensors> block degrades to no calibrations, not a raise."""
+        header = "# <Sensors >\n#   <TemperatureSensor>\n# </Sensors>\n"
+        assert sensor_calibrations(header) == []

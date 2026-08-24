@@ -4,8 +4,68 @@ These exercise the HTML builders over their display inputs (an attribute mapping
 sensor-info list) — the rendering logic, not instrument data.
 """
 
-from ctdcast.config.cnv_header import Correction
-from ctdcast.reports._cast import _render_provenance_table, _render_sensor_table
+from ctdcast.config.cnv_header import Correction, SensorCalibration
+from ctdcast.reports._cast import (
+    _render_provenance_table,
+    _render_sensor_calibration_table,
+    _render_sensor_table,
+)
+
+
+class TestRenderSensorCalibrationTable:
+    """_render_sensor_calibration_table shows each sensor's drift Slope/Offset and state."""
+
+    _CALS = [
+        # temperature_1: identity -> no drift.  conductivity_1: slope only differs.
+        # pressure: both slope AND offset differ.
+        SensorCalibration(
+            "temperature", "temperature_1", "6435", "1.00000000", "0.0000", False, False
+        ),
+        SensorCalibration(
+            "conductivity", "conductivity_1", "4922", "1.00000452", "0.00000", True, False
+        ),
+        SensorCalibration(
+            "pressure", "pressure", "0814", "1.00004096", "0.27440", True, True
+        ),
+    ]
+
+    def test_empty_returns_blank(self):
+        """No sensors yields an empty string, not a table."""
+        assert _render_sensor_calibration_table([]) == ""
+
+    def test_rows_state_and_verbatim_values(self):
+        """Each sensor is a row; state distinguishes drift from pre-cruise; values verbatim."""
+        html = _render_sensor_calibration_table(self._CALS)
+        assert "Sensor calibration state" in html
+        assert "conductivity_1" in html and "1.00000452" in html
+        assert "drift/span correction applied" in html
+        assert "pre-cruise coefficients" in html
+
+    def test_drift_row_is_amber(self):
+        """A row carrying a correction is tinted with the vendored warn background."""
+        html = _render_sensor_calibration_table(self._CALS)
+        # the identity temperature_1 row is not tinted; the pressure row is
+        assert "background:var(--warn-bg)" in html
+        assert html.count("background:var(--warn-bg)") == 10  # 2 drift rows x 5 cells
+
+    def test_only_the_differing_value_is_bolded(self):
+        """The specific slope/offset that departs from default is bolded, not the other."""
+        html = _render_sensor_calibration_table(self._CALS)
+        # conductivity_1: slope differs (bold), offset is default (not bold)
+        assert "<strong>1.00000452</strong>" in html
+        assert "<strong>0.00000</strong>" not in html
+        # pressure: both differ -> both bold
+        assert "<strong>1.00004096</strong>" in html
+        assert "<strong>0.27440</strong>" in html
+        # identity temperature_1 slope is never bolded
+        assert "<strong>1.00000000</strong>" not in html
+
+    def test_provenance_table_includes_calibration(self):
+        """The calibration table is embedded in the provenance panel output."""
+        html = _render_provenance_table([], {}, [], self._CALS)
+        assert html is not None
+        assert "Sensor calibration state" in html
+        assert "0814" in html
 
 
 class TestRenderProvenanceTable:

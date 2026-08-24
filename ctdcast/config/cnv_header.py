@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -201,6 +202,38 @@ class SbeHistoryNote:
     version: str
     stage: str
     note: str
+
+
+@dataclass(frozen=True)
+class SensorCalibration:
+    """A frequency sensor's drift Slope/Offset, read from the CNV ``<Sensors>`` config.
+
+    Answers "was a calibration correction already applied before ctdcast read the cast?"
+    Sea-Bird applies ``corrected = slope * computed + offset`` at ``datcnv`` to the
+    *derived physical value* (not the raw frequency), so a non-identity slope/offset means
+    a drift or span correction is already baked into the data. ``kind`` is
+    ``"temperature"``/``"conductivity"``/``"pressure"``; ``label`` disambiguates dual
+    sensors (``"temperature_1"``, ``"temperature_2"``), or is the bare kind when a sensor
+    is single. ``slope`` and ``offset`` are kept verbatim as the config spells them, so no
+    precision is lost. ``slope_nondefault`` / ``offset_nondefault`` flag each value that
+    departs from its identity (slope 1.0, offset 0.0) independently, so the display can
+    mark exactly which one carries a correction; ``drift_applied`` is True when either
+    does. Only the frequency sensors are read: a voltage sensor's Slope/Offset (pH,
+    transmissometer) is a native calibration, not a drift knob.
+    """
+
+    kind: str
+    label: str
+    serial: str
+    slope: str
+    offset: str
+    slope_nondefault: bool
+    offset_nondefault: bool
+
+    @property
+    def drift_applied(self) -> bool:
+        """True when a drift or span correction is baked into either value."""
+        return self.slope_nondefault or self.offset_nondefault
 
 
 def _collapse(value: str) -> str:
@@ -652,6 +685,104 @@ def provenance_advisories(header_text: str) -> list[str]:
         )
 
     return advisories
+
+
+#: Config ``<Sensors>`` element tag -> frequency-sensor kind. Voltage sensors (pH,
+#: oxygen, altimeter, transmissometer…) are absent by design: their Slope/Offset is a
+#: native calibration, not the datcnv drift knob this reads.
+_FREQUENCY_SENSOR_TAGS = {
+    "TemperatureSensor": "temperature",
+    "ConductivitySensor": "conductivity",
+    "PressureSensor": "pressure",
+}
+#: Slope/offset within this tolerance of the identity (slope 1, offset 0) read as "no
+#: drift correction applied" -- sub-ppm departures are calibration noise, not a correction.
+_CAL_IDENTITY_TOL = 5e-7
+
+
+def _sensors_region(header_text: str) -> str | None:
+    """Return the ``<Sensors>…</Sensors>`` config block, ``#`` prefixes stripped, or None.
+
+    The block is embedded in the CNV header as ``#``-commented XML. Stripping the leading
+    ``#`` yields a well-formed element that :mod:`xml.etree` can parse. Returns None when
+    no block is present (a header that carries no embedded configuration).
+    """
+    region: list[str] = []
+    in_block = False
+    for raw in header_text.splitlines():
+        stripped = raw.strip()
+        body = stripped[1:].strip() if stripped.startswith("#") else stripped
+        if body.startswith("<Sensors"):
+            in_block = True
+        if in_block:
+            region.append(body)
+        if body.startswith("</Sensors"):
+            break
+    return "\n".join(region) if in_block else None
+
+
+def _cal_value_nondefault(value: str, default: float) -> bool:
+    """True when *value* departs from *default* beyond the identity tolerance.
+
+    An unparseable value reads as default: a drift that cannot be read is not claimed.
+    """
+    try:
+        return abs(float(value) - default) > _CAL_IDENTITY_TOL
+    except ValueError:
+        return False
+
+
+def sensor_calibrations(header_text: str) -> list[SensorCalibration]:
+    """Read each frequency sensor's drift Slope/Offset from the CNV ``<Sensors>`` config.
+
+    Surfaces whether a drift or span correction is already baked into the data before
+    ctdcast read it (see :class:`SensorCalibration`). Only temperature, conductivity and
+    pressure sensors are returned, in config order; voltage sensors are skipped because
+    their Slope/Offset is a native calibration rather than a datcnv drift knob. Dual
+    sensors are labelled ``<kind>_1``/``<kind>_2`` and a lone sensor keeps the bare kind.
+    Returns an empty list for an empty header, a header with no ``<Sensors>`` block, or an
+    unparseable block (the block is a convenience read over the verbatim header).
+    """
+    if not header_text:
+        return []
+    region = _sensors_region(header_text)
+    if region is None:
+        return []
+    try:
+        root = ET.fromstring(region)
+    except ET.ParseError:
+        return []
+
+    found: list[tuple[str, str, str, str]] = []
+    for elem in root.iter():
+        kind = _FREQUENCY_SENSOR_TAGS.get(elem.tag)
+        if kind is None:
+            continue
+        serial = (elem.findtext("SerialNumber") or "").strip()
+        slope = (elem.findtext("Slope") or "1.0").strip()
+        offset = (elem.findtext("Offset") or "0.0").strip()
+        found.append((kind, serial, slope, offset))
+
+    totals: dict[str, int] = {}
+    for kind, *_ in found:
+        totals[kind] = totals.get(kind, 0) + 1
+    seen: dict[str, int] = {}
+    calibrations: list[SensorCalibration] = []
+    for kind, serial, slope, offset in found:
+        seen[kind] = seen.get(kind, 0) + 1
+        label = kind if totals[kind] == 1 else f"{kind}_{seen[kind]}"
+        calibrations.append(
+            SensorCalibration(
+                kind=kind,
+                label=label,
+                serial=serial,
+                slope=slope,
+                offset=offset,
+                slope_nondefault=_cal_value_nondefault(slope, 1.0),
+                offset_nondefault=_cal_value_nondefault(offset, 0.0),
+            )
+        )
+    return calibrations
 
 
 def _correction_flat(rec: Correction) -> str:

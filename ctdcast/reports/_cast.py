@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from ctdcast.config.cnv_header import (
     Correction,
+    SensorCalibration,
     correction_records,
     header_from_raw_metadata,
     provenance_advisories,
+    sensor_calibrations,
 )
 from ctdcast.config.global_attrs import cruise_name
 
@@ -525,10 +527,55 @@ def _render_qc_table(nc_path: Path) -> str | None:
     )
 
 
+def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
+    """Return the sensor calibration-state table, or ``""`` when no sensors were read.
+
+    Reports each frequency sensor's drift Slope/Offset (:func:`sensor_calibrations`) so a
+    reader can see whether a correction is already baked in before ctdcast: a non-identity
+    slope/offset means ``datcnv`` applied ``corrected = slope * computed + offset``.  This
+    is provenance, not a conformance verdict -- there is no universal reference slope.
+    """
+    if not cals:
+        return ""
+    tight = " style='margin-bottom:0.25rem'"
+
+    def _value(text: str, *, nondefault: bool) -> str:
+        """Bold a value that departs from its default, so the eye finds the correction."""
+        cell = escape(text)
+        return f"<strong>{cell}</strong>" if nondefault else cell
+
+    row_items = []
+    for c in cals:
+        # A row carrying any drift/span correction is tinted amber (the vendored --warn-bg,
+        # applied per-cell so it beats the even-row zebra rule); the specific value that
+        # differs is bolded.
+        bg = " style='background:var(--warn-bg)'" if c.drift_applied else ""
+        state = (
+            "drift/span correction applied"
+            if c.drift_applied
+            else "pre-cruise coefficients — no drift correction"
+        )
+        row_items.append(
+            f"<tr><td class='mono'{bg}>{escape(c.label)}</td>"
+            f"<td class='mono'{bg}>{escape(c.serial)}</td>"
+            f"<td class='mono'{bg}>{_value(c.slope, nondefault=c.slope_nondefault)}</td>"
+            f"<td class='mono'{bg}>{_value(c.offset, nondefault=c.offset_nondefault)}</td>"
+            f"<td{bg}>{state}</td></tr>"
+        )
+    rows = "".join(row_items)
+    return (
+        f"<h3{tight}>Sensor calibration state</h3>"
+        "<table class='nc' style='margin-top:0'><thead><tr><th>Sensor</th>"
+        "<th>Serial</th><th>Slope</th><th>Offset</th><th>State</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
+    )
+
+
 def _render_provenance_table(
     records: list[Correction],
     attrs: dict[str, Any],
     advisories: list[str] | None = None,
+    sensor_cals: list[SensorCalibration] | None = None,
 ) -> str | None:
     """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
 
@@ -536,13 +583,16 @@ def _render_provenance_table(
     Data Processing module in file order, a repeat suffixed); *attrs* supplies the time
     coordinate's source and offset; *advisories* are the structural implications
     (:func:`~ctdcast.config.cnv_header.provenance_advisories`) drawn as a note beneath the
-    tables.  The full verbatim blocks stay in the ``sbe_acquisition`` / ``sbe_processing``
+    tables; *sensor_cals* are the per-sensor drift Slope/Offset
+    (:func:`~ctdcast.config.cnv_header.sensor_calibrations`) drawn as a calibration-state
+    table.  The full verbatim blocks stay in the ``sbe_acquisition`` / ``sbe_processing``
     attributes.  Values escaped here (emitted ``|safe``).
     """
     advisories = advisories or []
+    sensor_cals = sensor_cals or []
     src = attrs.get("time_coordinate_source")
     off = attrs.get("time_clock_offset_seconds")
-    if not records and not src and off is None and not advisories:
+    if not records and not src and off is None and not advisories and not sensor_cals:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
@@ -585,12 +635,25 @@ def _render_provenance_table(
         items = "".join(f"<li>{escape(a)}</li>" for a in advisories)
         advisory_html = f"<h3{tight}>Advisories</h3><ul class='caption' style='margin-top:0'>{items}</ul>"
 
+    sensor_html = _render_sensor_calibration_table(sensor_cals)
+
     note = (
         "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
         "full verbatim blocks are kept in the <code>sbe_acquisition</code> and "
         "<code>sbe_processing</code> attributes.</p>"
     )
-    return f"{corr_html}{time_html}{advisory_html}{note}"
+    return f"{corr_html}{sensor_html}{time_html}{advisory_html}{note}"
+
+
+def _render_provenance_panel(c: PageCtx) -> str | None:
+    """Parse the SBE header once and render the upstream-provenance tables for a cast."""
+    header = header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
+    return _render_provenance_table(
+        correction_records(header),
+        dict(c.ds.attrs),
+        provenance_advisories(header),
+        sensor_calibrations(header),
+    )
 
 
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
@@ -759,15 +822,7 @@ CAST_PANELS: dict[str, Panel] = {
     "provenance": Panel(
         id="provenance",
         kind="table",
-        render=lambda c: _render_provenance_table(
-            correction_records(
-                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
-            ),
-            dict(c.ds.attrs),
-            provenance_advisories(
-                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
-            ),
-        ),
+        render=_render_provenance_panel,
     ),
 }
 
