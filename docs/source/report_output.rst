@@ -91,6 +91,55 @@ One page per cast.  Panels shown:
      - Eastward and northward velocity vs pressure (shown when LADCP data are
        present).
 
+Processing provenance
+~~~~~~~~~~~~~~~~~~~~~~~
+
+An appendix on each cast page reports what the Sea-Bird deck unit and Sea-Bird Data
+Processing did to the cast **before** ctdcast read it.  ctdcast does not re-derive this;
+it recovers it from the raw instrument header, which every stage-1 file carries verbatim
+in its ``raw_metadata`` attribute and passes forward unchanged through stages 2 and 3.  A
+cast with no Sea-Bird header (a LADCP cast, or a file converted without its header) has no
+provenance appendix.
+
+The **Corrections applied before ctdcast** table lists each step in file order — the deck
+conductivity advance first, then each Data Processing module.  Its columns are:
+
+- **Step** / **Producer** / **Version** — the module and who ran it.
+- **Parameters** — the salient settings, close to the header's own wording.
+- **Variables** — the variable(s) the step modified, in ctdcast's canonical names (the
+  rename map is ``CNV_ALIASES`` in ``config/parameters.py``); a name it does not cover
+  keeps its header spelling.
+- **Matches reference** — a conformance check (see below), shown only for the SBE 9 / 11plus
+  family, whose reference values are documented.
+
+A step whose parameters differ per channel or per sensor — the deck advance (per
+conductivity cell), cell thermal mass (per cell), the low-pass filter (per time-constant
+group) — is split into one row each, so a check that passes on one channel and fails on
+another is not hidden behind a single verdict.
+
+Conformance
+~~~~~~~~~~~
+
+The **Matches reference** column compares each step's parameters against a *documented
+typical value* and shows one of three states, **never conflated**:
+
+- **✓** — matches the documented value.
+- **✗** — differs from it.
+- **—** — no reference exists to check against (an em dash, never a blank and never a
+  cross).
+
+A ✓ means "matches a documented typical value," **not** "correct"; a ✗ means "differs,"
+**not** "wrong."  Every reference is configuration-dependent (a cell-thermal-mass α assumes
+a pump and duct; the deck advance assumes standard plumbing), so each cell names the source
+it compared against (e.g. *SBE manual p.92*), and the check is a match indicator, not a
+verdict.  Some modules have no documented reference at all — Wild Edit, for instance, has
+only *example* dialog values, so it shows **—** with those examples offered as suggested
+starting points, not as a deviation.
+
+A separate **Conformance** note collects the deviations as hedged, source-citing sentences,
+kept distinct from the structural **Advisories** note (which reports what the file *is* —
+e.g. already pressure-binned — rather than how its parameters compare).
+
 ----
 
 Section pages — ``sections/section_NAME.html``

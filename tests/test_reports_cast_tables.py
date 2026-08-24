@@ -4,8 +4,81 @@ These exercise the HTML builders over their display inputs (an attribute mapping
 sensor-info list) — the rendering logic, not instrument data.
 """
 
-from ctdcast.config.cnv_header import Correction
-from ctdcast.reports._cast import _render_provenance_table, _render_sensor_table
+from ctdcast.config.cnv_header import (
+    CONFORMANCE_DIFFER,
+    CONFORMANCE_MATCH,
+    CONFORMANCE_NO_REFERENCE,
+    ConformanceTick,
+    Correction,
+    SensorCalibration,
+)
+from ctdcast.reports._cast import (
+    _render_provenance_table,
+    _render_sensor_calibration_table,
+    _render_sensor_table,
+)
+
+
+class TestRenderSensorCalibrationTable:
+    """_render_sensor_calibration_table shows each sensor's drift Slope/Offset and state."""
+
+    _CALS = [
+        # temperature_1: identity -> no drift.  conductivity_1: slope only differs.
+        # pressure: both slope AND offset differ.
+        SensorCalibration(
+            "temperature", "temperature_1", "6435", "1.00000000", "0.0000", False, False
+        ),
+        SensorCalibration(
+            "conductivity",
+            "conductivity_1",
+            "4922",
+            "1.00000452",
+            "0.00000",
+            True,
+            False,
+        ),
+        SensorCalibration(
+            "pressure", "pressure", "0814", "1.00004096", "0.27440", True, True
+        ),
+    ]
+
+    def test_empty_returns_blank(self):
+        """No sensors yields an empty string, not a table."""
+        assert _render_sensor_calibration_table([]) == ""
+
+    def test_rows_state_and_verbatim_values(self):
+        """Each sensor is a row; state distinguishes drift from pre-cruise; values verbatim."""
+        html = _render_sensor_calibration_table(self._CALS)
+        assert "Sensor calibration state" in html
+        assert "conductivity_1" in html and "1.00000452" in html
+        assert "drift/span correction applied" in html
+        assert "pre-cruise coefficients" in html
+
+    def test_drift_row_is_amber(self):
+        """A row carrying a correction is tinted with the vendored warn background."""
+        html = _render_sensor_calibration_table(self._CALS)
+        # the identity temperature_1 row is not tinted; the pressure row is
+        assert "background:var(--warn-bg)" in html
+        assert html.count("background:var(--warn-bg)") == 10  # 2 drift rows x 5 cells
+
+    def test_only_the_differing_value_is_bolded(self):
+        """The specific slope/offset that departs from default is bolded, not the other."""
+        html = _render_sensor_calibration_table(self._CALS)
+        # conductivity_1: slope differs (bold), offset is default (not bold)
+        assert "<strong>1.00000452</strong>" in html
+        assert "<strong>0.00000</strong>" not in html
+        # pressure: both differ -> both bold
+        assert "<strong>1.00004096</strong>" in html
+        assert "<strong>0.27440</strong>" in html
+        # identity temperature_1 slope is never bolded
+        assert "<strong>1.00000000</strong>" not in html
+
+    def test_provenance_table_includes_calibration(self):
+        """The calibration table is embedded in the provenance panel output."""
+        html = _render_provenance_table([], {}, [], self._CALS)
+        assert html is not None
+        assert "Sensor calibration state" in html
+        assert "0814" in html
 
 
 class TestRenderProvenanceTable:
@@ -92,6 +165,119 @@ class TestRenderProvenanceTable:
         assert "pass1_nstd=2.0" in html
         assert "wildedit (2)" in html
         assert "pass1_nstd=9.9" in html
+
+
+class TestConformanceColumn:
+    """A "Matches reference" column, deck/celltm split and Conformance note when ticks pass."""
+
+    def _records(self):
+        return [
+            Correction(
+                "align (deck)", "align", "SBE 11plus deck unit", "V 5.0", "c0 +0.073 s"
+            ),
+            Correction("celltm", "celltm", "SBE Data Processing", "7.26", "alpha=0.03"),
+        ]
+
+    def _ticks(self):
+        return [
+            ConformanceTick(
+                "align",
+                "align",
+                CONFORMANCE_MATCH,
+                "0.073 s",
+                "SBE manual p.85",
+                "advance primary conductivity 0.073 s",
+                "conductivity_1",
+            ),
+            ConformanceTick(
+                "align",
+                "align",
+                CONFORMANCE_DIFFER,
+                "0.073 s",
+                "SBE manual p.85",
+                "advance secondary conductivity 0.043 s",
+                "conductivity_2",
+            ),
+            ConformanceTick(
+                "celltm",
+                "celltm",
+                CONFORMANCE_NO_REFERENCE,
+                "(α,τ)=(0.03,7)",
+                "SBE manual p.92",
+                "alpha=0.03 tau=7",
+                "conductivity_1",
+            ),
+        ]
+
+    def test_no_ticks_keeps_four_column_table(self):
+        """Without ticks the corrections table has no Matches column (unchanged behaviour)."""
+        html = _render_provenance_table(self._records(), {})
+        assert "Matches reference" not in html
+
+    def test_ticks_add_matches_column_with_status_pips(self):
+        """Ticks add the column and render a coloured pip for match / differ / no-reference."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "<th>Matches reference</th>" in html
+        assert "conf-match" in html  # green ✓ (matches)
+        assert "conf-differ" in html  # red ✗ (differs)
+        assert "conf-none" in html  # neutral ringed dash (no reference)
+
+    def test_references_move_to_a_caption(self):
+        """Reference values and their sources are listed once in a caption, not per pip."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "Reference values" in html
+        assert "SBE manual p.85" in html  # source cited in the caption
+
+    def test_deck_row_splits_per_channel(self):
+        """The single deck-align record becomes one display row per advanced channel."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "advance primary conductivity 0.073 s" in html
+        assert "advance secondary conductivity 0.043 s" in html
+
+    def test_variables_column_names_modified_variable(self):
+        """The Variables column names the variable each step modified."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "<th>Variables</th>" in html
+        assert "conductivity_1" in html and "conductivity_2" in html
+
+    def test_split_row_shows_its_own_value_not_the_aggregate(self):
+        """Each split row shows its own channel value; the aggregate never lands on row one."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        # The secondary row shows its own advance; the record's aggregate "c0 +0.073 s"
+        # string is not stuck on the first split row.
+        assert "advance secondary conductivity 0.043 s" in html
+        assert "c0 +0.073 s" not in html
+
+    def test_differing_row_is_amber(self):
+        """A differing (✗) conformance row is tinted with the vendored warn background."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "background:var(--warn-bg)" in html
+
+    def test_reference_and_source_are_visible(self):
+        """The reference and its source are shown in the match cell, not hidden in a tooltip."""
+        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        assert "SBE manual p.85" in html
+        assert "title=" not in html  # not tucked away in a hover tooltip
+
+    def test_conformance_note_rendered(self):
+        """Conformance deviation sentences render under their own heading, not Advisories."""
+        html = _render_provenance_table(
+            self._records(),
+            {},
+            ticks=self._ticks(),
+            conformance=["celltm alpha 0.05 differs from 0.03 (p.92)"],
+        )
+        assert "<h3 style='margin-bottom:0.25rem'>Conformance</h3>" in html
+        assert "celltm alpha 0.05 differs" in html
+
+    def test_instrument_note_rendered(self):
+        """An instrument note (no encoded references) appears under the corrections table."""
+        html = _render_provenance_table(
+            self._records(),
+            {},
+            instrument_note="Conformance references are not yet available for SBE 19plus.",
+        )
+        assert "not yet available for SBE 19plus" in html
 
 
 class TestRenderSensorTablePrimarySecondary:

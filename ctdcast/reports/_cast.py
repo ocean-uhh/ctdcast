@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 from ctdcast.config.cnv_header import (
+    CONFORMANCE_DIFFER,
+    CONFORMANCE_MATCH,
+    CONFORMANCE_NO_REFERENCE,
+    ConformanceTick,
     Correction,
+    SensorCalibration,
+    conformance_advisories,
+    conformance_supported,
+    conformance_ticks,
     correction_records,
+    detect_instrument,
     header_from_raw_metadata,
     provenance_advisories,
+    sensor_calibrations,
 )
 from ctdcast.config.global_attrs import cruise_name
 
@@ -525,10 +535,173 @@ def _render_qc_table(nc_path: Path) -> str | None:
     )
 
 
+def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
+    """Return the sensor calibration-state table, or ``""`` when no sensors were read.
+
+    Reports each frequency sensor's drift Slope/Offset (:func:`sensor_calibrations`) so a
+    reader can see whether a correction is already baked in before ctdcast: a non-identity
+    slope/offset means ``datcnv`` applied ``corrected = slope * computed + offset``.  This
+    is provenance, not a conformance verdict -- there is no universal reference slope.
+    """
+    if not cals:
+        return ""
+    tight = " style='margin-bottom:0.25rem'"
+
+    def _value(text: str, *, nondefault: bool) -> str:
+        """Bold a value that departs from its default, so the eye finds the correction."""
+        cell = escape(text)
+        return f"<strong>{cell}</strong>" if nondefault else cell
+
+    row_items = []
+    for c in cals:
+        # A row carrying any drift/span correction is tinted amber (the vendored --warn-bg,
+        # applied per-cell so it beats the even-row zebra rule); the specific value that
+        # differs is bolded.
+        bg = " style='background:var(--warn-bg)'" if c.drift_applied else ""
+        state = (
+            "drift/span correction applied"
+            if c.drift_applied
+            else "pre-cruise coefficients — no drift correction"
+        )
+        row_items.append(
+            f"<tr><td class='mono'{bg}>{escape(c.label)}</td>"
+            f"<td class='mono'{bg}>{escape(c.serial)}</td>"
+            f"<td class='mono'{bg}>{_value(c.slope, nondefault=c.slope_nondefault)}</td>"
+            f"<td class='mono'{bg}>{_value(c.offset, nondefault=c.offset_nondefault)}</td>"
+            f"<td{bg}>{state}</td></tr>"
+        )
+    rows = "".join(row_items)
+    return (
+        f"<h3{tight}>Sensor calibration state</h3>"
+        "<table class='nc' style='margin-top:0'><thead><tr><th>Sensor</th>"
+        "<th>Serial</th><th>Slope</th><th>Offset</th><th>State</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table>"
+    )
+
+
+#: The status pip (CSS class, glyph) each conformance state renders as in the match column:
+#: a green ✓, a red ✗, a neutral ringed dash (no reference — no match, no warning).
+_TICK_BADGE = {
+    CONFORMANCE_MATCH: ("conf-match", "✓"),
+    CONFORMANCE_DIFFER: ("conf-differ", "✗"),
+    CONFORMANCE_NO_REFERENCE: ("conf-none", "–"),
+}
+
+
+def _match_cell(tick: ConformanceTick, bg: str) -> str:
+    """The "Matches reference" cell: a coloured status pip (the reference is in a caption)."""
+    cls, glyph = _TICK_BADGE.get(tick.state, _TICK_BADGE[CONFORMANCE_NO_REFERENCE])
+    return f"<td{bg}><span class='conf {cls}'>{glyph}</span></td>"
+
+
+def _references_caption(ticks: list[ConformanceTick]) -> str:
+    """A caption listing each documented reference value and its source, under the table.
+
+    Collects the distinct (step, reference, source) triples from the ticks, so the match
+    pips stay uncluttered and the reader still sees what each was checked against and where
+    it came from (e.g. the SBE-manual page).
+    """
+    seen: list[tuple[str, str, str]] = []
+    for t in ticks:
+        # Only the checked (✓/✗) references — the documented values with a source. A
+        # no-reference row (e.g. Wild Edit's example thresholds) is not a reference to cite.
+        if t.state not in (CONFORMANCE_MATCH, CONFORMANCE_DIFFER):
+            continue
+        triple = (t.label, t.reference, t.source)
+        if t.reference and t.source and triple not in seen:
+            seen.append(triple)
+    if not seen:
+        return ""
+    items = "; ".join(
+        f"{escape(label)} {escape(ref)} — {escape(src)}" for label, ref, src in seen
+    )
+    return f"<p class='caption'>Reference values: {items}.</p>"
+
+
+def _variables_cell(text: str, bg: str) -> str:
+    """The "Variables" cell: the channels a step touched; a long list collapses behind a disclosure."""
+    if not text:
+        return f"<td{bg}></td>"
+    if len(text) > 60:
+        return (
+            f"<td{bg}><details><summary class='caption'>channels</summary>"
+            f"<span class='caption'>{escape(text)}</span></details></td>"
+        )
+    return f"<td{bg}><span class='caption'>{escape(text)}</span></td>"
+
+
+def _corrections_rows_with_ticks(
+    records: list[Correction], ticks: list[ConformanceTick]
+) -> str:
+    """One row per conformance tick, so a per-channel deck advance or per-cell celltm splits.
+
+    Ticks are grouped to their :class:`Correction` by ``key``; a record with several ticks
+    (the deck advance, cell thermal mass, the filter's two low-pass groups) becomes several
+    rows, each showing its own value, modified variable and match, and repeating the shared
+    producer/version. A differing (✗) row is tinted amber.
+    """
+    by_key: dict[str, list[ConformanceTick]] = {}
+    for tick in ticks:
+        by_key.setdefault(tick.key, []).append(tick)
+    rows: list[str] = []
+    for r in records:
+        rec_ticks = by_key.get(r.key) or [None]
+        split = len(rec_ticks) > 1  # a per-channel/per-cell/per-group expansion
+        for tick in rec_ticks:
+            step = escape(tick.label) if tick else escape(r.label)
+            differ = tick is not None and tick.state == CONFORMANCE_DIFFER
+            bg = " style='background:var(--warn-bg)'" if differ else ""
+            match = _match_cell(tick, bg) if tick else f"<td{bg}>—</td>"
+            # A split row shows its own channel/cell value (the tick detail); a plain row
+            # keeps the record's file parameters. Each row names the variable it modified.
+            params = tick.detail if (split and tick and tick.detail) else r.parameters
+            var_cell = _variables_cell(tick.variables if tick else "", bg)
+            rows.append(
+                f"<tr><td class='mono'{bg}>{step}</td>"
+                f"<td{bg}>{escape(r.producer)}</td>"
+                f"<td class='mono'{bg}>{escape(r.version)}</td>"
+                f"<td{bg}>{escape(params)}</td>"
+                f"{var_cell}{match}</tr>"
+            )
+    return "".join(rows)
+
+
+def _corrections_table_html(
+    records: list[Correction], ticks: list[ConformanceTick] | None, tight: str
+) -> str:
+    """The corrections table, with Variables and match columns when *ticks* are supplied."""
+    if not records:
+        return ""
+    if ticks:
+        body = _corrections_rows_with_ticks(records, ticks)
+        head = (
+            "<th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+            "<th>Variables</th><th>Matches reference</th>"
+        )
+    else:
+        body = "".join(
+            f"<tr><td class='mono'>{escape(r.label)}</td>"
+            f"<td>{escape(r.producer)}</td>"
+            f"<td class='mono'>{escape(r.version)}</td>"
+            f"<td>{escape(r.parameters)}</td></tr>"
+            for r in records
+        )
+        head = "<th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+    return (
+        f"<h3{tight}>Corrections applied before ctdcast</h3>"
+        f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
+        f"<tbody>{body}</tbody></table>"
+    )
+
+
 def _render_provenance_table(
     records: list[Correction],
     attrs: dict[str, Any],
     advisories: list[str] | None = None,
+    sensor_cals: list[SensorCalibration] | None = None,
+    ticks: list[ConformanceTick] | None = None,
+    conformance: list[str] | None = None,
+    instrument_note: str | None = None,
 ) -> str | None:
     """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
 
@@ -536,32 +709,33 @@ def _render_provenance_table(
     Data Processing module in file order, a repeat suffixed); *attrs* supplies the time
     coordinate's source and offset; *advisories* are the structural implications
     (:func:`~ctdcast.config.cnv_header.provenance_advisories`) drawn as a note beneath the
-    tables.  The full verbatim blocks stay in the ``sbe_acquisition`` / ``sbe_processing``
-    attributes.  Values escaped here (emitted ``|safe``).
+    tables; *sensor_cals* are the per-sensor drift Slope/Offset
+    (:func:`~ctdcast.config.cnv_header.sensor_calibrations`) drawn as a calibration-state
+    table.  *ticks* are the conformance comparisons
+    (:func:`~ctdcast.config.cnv_header.conformance_ticks`); when present they add a
+    "Matches reference" column to the corrections table, splitting a per-channel/per-cell
+    correction into one row each.  *conformance* are the deviation sentences
+    (:func:`~ctdcast.config.cnv_header.conformance_advisories`) drawn as a "Conformance"
+    note.  *instrument_note* is a caption shown under the corrections table (e.g. when the
+    instrument has no encoded references).  The full verbatim blocks stay in the
+    ``sbe_acquisition`` / ``sbe_processing`` attributes.  Values escaped here (emitted
+    ``|safe``).
     """
     advisories = advisories or []
+    sensor_cals = sensor_cals or []
+    conformance = conformance or []
     src = attrs.get("time_coordinate_source")
     off = attrs.get("time_clock_offset_seconds")
-    if not records and not src and off is None and not advisories:
+    if not records and not src and off is None and not advisories and not sensor_cals:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
     tight = " style='margin-bottom:0.25rem'"
-    corr_html = ""
-    if records:
-        trows = "".join(
-            f"<tr><td class='mono'>{escape(r.label)}</td>"
-            f"<td>{escape(r.producer)}</td>"
-            f"<td class='mono'>{escape(r.version)}</td>"
-            f"<td>{escape(r.parameters)}</td></tr>"
-            for r in records
-        )
-        corr_html = (
-            f"<h3{tight}>Corrections applied before ctdcast</h3>"
-            "<table class='nc' style='margin-top:0'><thead><tr><th>Step</th>"
-            "<th>Producer</th><th>Version</th><th>Parameters</th></tr></thead>"
-            f"<tbody>{trows}</tbody></table>"
-        )
+    corr_html = _corrections_table_html(records, ticks, tight)
+    if corr_html and ticks:
+        corr_html += _references_caption(ticks)
+    if corr_html and instrument_note:
+        corr_html += f"<p class='caption'>{escape(instrument_note)}</p>"
 
     time_rows: list[tuple[str, str]] = []
     if src:
@@ -585,12 +759,57 @@ def _render_provenance_table(
         items = "".join(f"<li>{escape(a)}</li>" for a in advisories)
         advisory_html = f"<h3{tight}>Advisories</h3><ul class='caption' style='margin-top:0'>{items}</ul>"
 
+    conformance_html = ""
+    if conformance:
+        items = "".join(f"<li>{escape(a)}</li>" for a in conformance)
+        conformance_html = (
+            f"<h3{tight}>Conformance</h3>"
+            f"<ul class='caption' style='margin-top:0'>{items}</ul>"
+        )
+
+    sensor_html = _render_sensor_calibration_table(sensor_cals)
+
     note = (
         "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
         "full verbatim blocks are kept in the <code>sbe_acquisition</code> and "
         "<code>sbe_processing</code> attributes.</p>"
     )
-    return f"{corr_html}{time_html}{advisory_html}{note}"
+    # Wrap in one block (`.prov-panel` is a full-width flex item) so the panel's headings
+    # and tables stack instead of tiling across the section's `.fig-row`.
+    return (
+        "<div class='prov-panel'>"
+        f"{corr_html}{sensor_html}{time_html}{advisory_html}{conformance_html}{note}"
+        "</div>"
+    )
+
+
+def _render_provenance_panel(c: PageCtx) -> str | None:
+    """Parse the SBE header once and render the upstream-provenance tables for a cast."""
+    header = header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
+    supported = conformance_supported(header)
+    instrument = detect_instrument(header)
+    instrument_note = (
+        f"Conformance references are not yet available for {instrument}; the corrections "
+        "above are shown without a match check."
+        if header and instrument and not supported
+        else None
+    )
+    table = _render_provenance_table(
+        correction_records(header),
+        dict(c.ds.attrs),
+        provenance_advisories(header),
+        sensor_calibrations(header),
+        ticks=conformance_ticks(header),
+        conformance=conformance_advisories(header),
+        instrument_note=instrument_note,
+    )
+    if table is not None:
+        return table
+    if header:
+        return (
+            "<p class='caption'>No SBE processing steps recorded in the raw header.</p>"
+        )
+    return None
 
 
 # applies_to answers "could this section/panel exist for this cast?" — NOT "did it
@@ -646,14 +865,15 @@ def _has_qc(c: PageCtx) -> bool:
 
 
 def _has_provenance(c: PageCtx) -> bool:
-    """True when the stage-1 SBE correction ledger was stamped onto the cast file.
+    """True when the cast carries a raw Sea-Bird header to recover provenance from.
 
-    Stage-1 files ingested from a Sea-Bird header carry it (and stage 2/3 inherit it);
-    a LADCP cast or a file with no SBE header does not, so the section is omitted.
+    The provenance panel renders from the verbatim SBE header in ``raw_metadata``
+    (corrections, sensor calibrations, advisories, time coordinate) -- not from the
+    stage-1 ``correction_*`` attrs, which not every stage-1 build stamps. Gate on the
+    header so any CTD cast with an SBE header shows the panel; a LADCP cast, which has
+    no ``raw_metadata``, does not.
     """
-    return any(
-        k == "sbe_processing_order" or k.startswith("correction_") for k in c.ds.attrs
-    )
+    return header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) is not None
 
 
 #: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
@@ -759,15 +979,7 @@ CAST_PANELS: dict[str, Panel] = {
     "provenance": Panel(
         id="provenance",
         kind="table",
-        render=lambda c: _render_provenance_table(
-            correction_records(
-                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
-            ),
-            dict(c.ds.attrs),
-            provenance_advisories(
-                header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
-            ),
-        ),
+        render=_render_provenance_panel,
     ),
 }
 
