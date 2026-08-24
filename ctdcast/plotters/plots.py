@@ -960,7 +960,19 @@ def draw_clock_offset_fig(
             lw=pen("thick"),
             zorder=2,
         )
-    ax.plot(x, y, marker="o", linestyle="none", color="k", zorder=3)
+    # Translucent dark-grey dots (not solid black) so overlapping casts read as denser;
+    # ~30% smaller than the style default for the same reason.
+    ax.plot(
+        x,
+        y,
+        marker="o",
+        linestyle="none",
+        color="0.3",
+        alpha=0.5,
+        markersize=plt.rcParams["lines.markersize"] * 0.7,
+        markeredgecolor="none",
+        zorder=3,
+    )
     ax.set_xlabel("cast number")
     ax.set_ylabel("clock offset (s)   NMEA − System")
     ax.grid(True)
