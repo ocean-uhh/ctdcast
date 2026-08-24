@@ -643,8 +643,8 @@ def aggregate_identity(
             f"per-cast files disagree about the ship: {'; '.join(disputed)}. "
             f"These describe the platform, not which cruise this is, so the "
             f"compile continues -- taking cruise_info's value where it states "
-            f"one and omitting the attribute where it does not. Re-run stage 1, "
-            f"or `ctdcast enrich`, to make the per-cast files agree.",
+            f"one and omitting the attribute where it does not. Re-run stage 1 "
+            f"to make the per-cast files agree.",
             stacklevel=2,
         )
 
@@ -656,8 +656,7 @@ def aggregate_identity(
         warnings.warn(
             f"per-cast files state no cruise identity ({', '.join(fell_back)}); "
             f"taking it from cruise_info. These files predate identity being "
-            f"recorded at stage 1 — re-run stage 1, or `ctdcast enrich`, to "
-            f"stamp it on them.",
+            f"recorded at stage 1 — re-run stage 1 to stamp it on them.",
             stacklevel=2,
         )
     return lifted

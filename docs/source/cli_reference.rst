@@ -392,3 +392,39 @@ clock, and its sign is emitted as a comment so it is copied, never hand-computed
 
    ctdcast clock config.yaml                       # print the verdict + suggested config
    ctdcast clock config.yaml --figure clock.png    # also write the offset-vs-cast figure
+
+----
+
+ctdcast list
+--------------
+
+Show what the institution, platform and role registries hold, so you do not have to
+open a YAML file inside ``site-packages`` to find a slug.
+
+.. code-block:: text
+
+   ctdcast list {institutions|platforms|roles} [CONFIG] [options]
+
+   positional arguments:
+     registry         Which registry to list; omit to see the three names.
+     config           Optional config.yaml — also shows what this cruise adds.
+
+   options:
+     --search TEXT    Case-insensitive filter across slug and name.
+     --vocabulary N   For `roles`: show one vocabulary only (C89, G04, C59, W08).
+
+Give a ``CONFIG`` to see what *your* cruise adds on top of the shipped defaults: a
+``cruise_info.institutions_file`` and inline ``cruise_info.institutions`` entries, and an
+inline ``cruise_info.platform`` vessel.  The ``Source`` column says where each entry came
+from (``packaged``, ``user``, the config file, or ``inline``), so you can tell "my entry did
+not load" from "you did not give me a config".  ``list platforms`` also prints the
+``ambiguous_slugs`` and ``forbidden_codes`` traps with the reason each is refused; ``list
+roles`` groups the four vocabularies by axis (person vs institution) and marks each axis's
+default.
+
+**Examples**::
+
+   ctdcast list                              # the three registries
+   ctdcast list institutions config.yaml     # shipped + user + this config's entries
+   ctdcast list platforms --search meteor    # filter by slug or name
+   ctdcast list roles --vocabulary W08        # one vocabulary

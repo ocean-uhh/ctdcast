@@ -42,6 +42,7 @@ Contents
    processing_framework
    config_yaml
    cruise_metadata
+   registries
    ctd_groupings
    data_files
    report_output
