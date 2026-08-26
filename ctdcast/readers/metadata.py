@@ -15,6 +15,35 @@ import xarray as xr
 from ctdcast.config.cnv_header import header_from_raw_metadata
 from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
 
+#: Per-variable attributes holding the raw source name a reader recorded at read
+#: time: ``cnv_original_name`` (seasenselib CTD) or ``source_variable`` (LADCP
+#: ``.mat`` field).  The source→canonical rename a reader applied is reconstructed
+#: from whichever is present, so provenance lives on each variable rather than a
+#: parallel global mapping that could drift.
+_SOURCE_NAME_ATTRS = ("cnv_original_name", "source_variable")
+
+
+def source_to_canonical(ds: xr.Dataset, *, lower_keys: bool = False) -> dict[str, str]:
+    """Reconstruct a reader's ``{source_name: canonical_name}`` rename table from *ds*.
+
+    Reads each coordinate and data variable's recorded source name
+    (:data:`_SOURCE_NAME_ATTRS`) and maps it to the variable's canonical name, keeping only
+    variables whose source name actually differs.  This is the authoritative, per-cast rename
+    the reader applied — more complete than the static ``CNV_ALIASES``, which misses unit
+    spellings such as ``c0mS/cm``.  *lower_keys* lower-cases the keys, for case-insensitive
+    lookup against header channel names.
+    """
+    rename: dict[str, str] = {}
+    for name in list(ds.coords) + list(ds.data_vars):
+        source = next(
+            (ds[name].attrs[a] for a in _SOURCE_NAME_ATTRS if ds[name].attrs.get(a)),
+            None,
+        )
+        if source and str(source) != str(name):
+            key = str(source).strip().lower() if lower_keys else str(source)
+            rename[key] = str(name)
+    return rename
+
 
 # Calibration-date formats seen across real SBE config files (XMLCON, CON, CNV).
 # Day-first is the SeaBird convention; month-first is deliberately NOT included,

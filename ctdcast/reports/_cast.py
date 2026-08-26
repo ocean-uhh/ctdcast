@@ -41,7 +41,7 @@ from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
-from ctdcast.readers.metadata import parse_sensor_info
+from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
 from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._qc import qc_summary, qc_thresholds
@@ -794,12 +794,17 @@ def _render_provenance_panel(c: PageCtx) -> str | None:
         if header and instrument and not supported
         else None
     )
+    # The reader stamped each variable's source SBE column; that is the authoritative rename
+    # this cast used, so the Variables column canonicalises through it (it covers unit
+    # spellings CNV_ALIASES misses, e.g. c0mS/cm → conductivity_1).  Lower-cased keys so the
+    # lookup is case-insensitive against the header channel names.
+    rename_map = source_to_canonical(c.ds, lower_keys=True)
     table = _render_provenance_table(
         correction_records(header),
         dict(c.ds.attrs),
         provenance_advisories(header),
         sensor_calibrations(header),
-        ticks=conformance_ticks(header),
+        ticks=conformance_ticks(header, rename_map),
         conformance=conformance_advisories(header),
         instrument_note=instrument_note,
     )

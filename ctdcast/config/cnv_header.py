@@ -33,14 +33,19 @@ from ctdcast.config.parameters import CNV_ALIASES
 _SBE_TIME_FMT = "%b %d %Y %H:%M:%S"
 
 
-def _canonical_var(channel: str) -> str:
+def _canonical_var(channel: str, rename_map: dict[str, str] | None = None) -> str:
     """Rename an SBE channel to its ctdcast canonical name, or keep it if unmapped.
 
-    The rename map is :data:`ctdcast.config.parameters.CNV_ALIASES`; a channel it does not
-    cover (an aux spelling, ``c0mS/cm``) keeps its header name — a shown raw name is safer
-    than a wrong rename.
+    *rename_map* is the cast's own ``{sbe_column_name: variable_name}`` built from the
+    reader's ``cnv_original_name`` provenance — the authoritative, cast-specific rename that
+    the reader actually applied. It wins over the static :data:`CNV_ALIASES` fallback, which
+    does not cover every unit spelling (``c0mS/cm`` vs ``c0S/m``). A channel neither knows
+    keeps its header name — a shown raw name is safer than a wrong rename.
     """
-    return CNV_ALIASES.get(channel.strip().lower(), channel.strip())
+    key = channel.strip().lower()
+    if rename_map and key in rename_map:
+        return rename_map[key]
+    return CNV_ALIASES.get(key, channel.strip())
 
 
 # One compiled pattern per recognised '*'-line shape. The '*' block is NOT
@@ -968,7 +973,9 @@ def _celltm_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
     return ticks
 
 
-def _filter_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
+def _filter_ticks(
+    key: str, step: ProcessingStep, rename_map: dict[str, str] | None = None
+) -> list[ConformanceTick]:
     """One tick per low-pass group (A and B): the group containing pressure is checked vs 0.15 s.
 
     A low-pass filter runs two channel groups at two time constants; splitting them into a
@@ -986,7 +993,7 @@ def _filter_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
         if not chans:
             continue
         tc = step.params.get(tc_key, "")
-        variables = ", ".join(_canonical_var(c) for c in chans)
+        variables = ", ".join(_canonical_var(c, rename_map) for c in chans)
         detail = f"filtered at {tc} s"
         if any(_channel_kind(c) == "pressure" for c in chans) and _is_numeric(tc):
             state = (
@@ -1010,7 +1017,9 @@ def _filter_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
     return ticks
 
 
-def _wildedit_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
+def _wildedit_ticks(
+    key: str, step: ProcessingStep, rename_map: dict[str, str] | None = None
+) -> list[ConformanceTick]:
     """One tick for Wild Edit: a dash, with example thresholds shown as suggested defaults.
 
     Wild Edit is the most configuration-dependent module — SBE publishes no hard default
@@ -1029,7 +1038,7 @@ def _wildedit_ticks(key: str, step: ProcessingStep) -> list[ConformanceTick]:
         )
     ]
     variables = ", ".join(
-        _canonical_var(v) for v in step.params.get("vars", "").split()
+        _canonical_var(v, rename_map) for v in step.params.get("vars", "").split()
     )
     return [
         ConformanceTick(
@@ -1103,7 +1112,9 @@ def conformance_supported(header_text: str) -> bool:
     return instrument is not None and instrument.upper().startswith("SBE 9")
 
 
-def conformance_ticks(header_text: str) -> list[ConformanceTick]:
+def conformance_ticks(
+    header_text: str, rename_map: dict[str, str] | None = None
+) -> list[ConformanceTick]:
     """Compare a cast's processing parameters against documented references, one tick per row.
 
     A sibling of :func:`correction_records`: the ticks align to those records by ``key``,
@@ -1112,8 +1123,11 @@ def conformance_ticks(header_text: str) -> list[ConformanceTick]:
     reference (datcnv, binavg, loop edit, wfilter, Derive, …) get a single
     :data:`CONFORMANCE_NO_REFERENCE` tick — a dash, never a cross. The comparison reads the
     structured :class:`ProcessingStep` parameters and is producer-agnostic, so the same
-    references serve a future stage-3 ledger. Returns an empty list for an empty header, or
-    for an instrument outside the SBE 9 family (see :func:`conformance_supported`).
+    references serve a future stage-3 ledger. *rename_map* is the cast's
+    ``{sbe_column_name: variable_name}`` (from the reader's ``cnv_original_name``), used to
+    canonicalise the Variables column to the names the reader actually applied — see
+    :func:`_canonical_var`. Returns an empty list for an empty header, or for an instrument
+    outside the SBE 9 family (see :func:`conformance_supported`).
     """
     if not header_text or not conformance_supported(header_text):
         return []
@@ -1130,11 +1144,15 @@ def conformance_ticks(header_text: str) -> list[ConformanceTick]:
         if step.module == "celltm":
             ticks.extend(_celltm_ticks(key, step))
         elif step.module == "filter":
-            ticks.extend(_filter_ticks(key, step))
+            ticks.extend(_filter_ticks(key, step, rename_map))
         elif step.module == "wildedit":
-            ticks.extend(_wildedit_ticks(key, step))
+            ticks.extend(_wildedit_ticks(key, step, rename_map))
         else:
-            ticks.append(_no_ref_tick(key, step.module, variables=_step_channels(step)))
+            ticks.append(
+                _no_ref_tick(
+                    key, step.module, variables=_step_channels(step, rename_map)
+                )
+            )
     return ticks
 
 
@@ -1238,7 +1256,9 @@ def conformance_advisories(header_text: str) -> list[str]:
     return advisories
 
 
-def _step_channels(step: ProcessingStep) -> str:
+def _step_channels(
+    step: ProcessingStep, rename_map: dict[str, str] | None = None
+) -> str:
     """The variable(s) a scalar step modified, for the "Variables" column, or ''.
 
     Filter, Wild Edit, cell thermal mass and the deck advance carry their modified variable
@@ -1249,14 +1269,16 @@ def _step_channels(step: ProcessingStep) -> str:
     m = step.module
     if m == "wfilter":
         return ", ".join(
-            _canonical_var(param[len("action ") :].strip())
+            _canonical_var(param[len("action ") :].strip(), rename_map)
             for param in step.params
             if param.startswith("action ")
         )
     if m == "alignctd":
         adv = step.params.get("adv", "")
         return ", ".join(
-            _canonical_var(pair.split()[0]) for pair in adv.split(",") if pair.split()
+            _canonical_var(pair.split()[0], rename_map)
+            for pair in adv.split(",")
+            if pair.split()
         )
     if m == "Derive":
         for value in step.params.values():
