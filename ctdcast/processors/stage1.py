@@ -22,6 +22,7 @@ import xarray as xr
 
 from ctdcast.config.cnv_header import (
     build_correction_ledger,
+    conformance_advisories,
     header_from_raw_metadata,
     provenance_advisories,
     sbe_history_notes,
@@ -240,9 +241,14 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     # a later stage cannot re-apply a correction already made.  No-op with no SBE header.
     # Structural advisories (pressure-gridded, asymmetric advance, system clock) are also
     # raised as warnings; the batch collapses identical ones via summarise_warnings.
+    # Conformance advisories (parameters that deviate from a documented reference) are a
+    # separate loop so summarise_warnings collapses each class on its own; a no-op for an
+    # empty header or an instrument outside the SBE 9 family.
     if header:
         ds.attrs.update(build_correction_ledger(header))
         for advisory in provenance_advisories(header):
+            warnings.warn(advisory, stacklevel=2)
+        for advisory in conformance_advisories(header):
             warnings.warn(advisory, stacklevel=2)
 
     return ds

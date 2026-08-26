@@ -974,6 +974,19 @@ class TestConformanceTicks:
         ticks = conformance_ticks(_SYNTH_FILTER_NO_P)
         assert ticks[0].state == CONFORMANCE_NO_REFERENCE
 
+    def test_rename_map_canonicalises_variables_where_aliases_miss(self):
+        """The cast's cnv_original_name map renames a channel CNV_ALIASES does not cover."""
+        header = (
+            _SBE9 + "# filter_low_pass_tc_A = 0.030\n# filter_low_pass_A_vars = c0mS/cm\n"
+        )
+        rename_map = {"c0ms/cm": "conductivity_1"}
+        without = next(t for t in conformance_ticks(header) if t.label == "filter")
+        with_map = next(
+            t for t in conformance_ticks(header, rename_map) if t.label == "filter"
+        )
+        assert without.variables == "c0mS/cm"  # CNV_ALIASES has no mS/cm spelling
+        assert with_map.variables == "conductivity_1"  # cast's own rename wins
+
     def test_filter_with_no_lowpass_channels_is_a_single_dash(self):
         """A filter step listing no low-pass channels yields one no-reference tick."""
         filt = [

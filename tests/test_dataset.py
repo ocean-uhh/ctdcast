@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from conftest import CAST_011, FIXTURES_NC
 
+from ctdcast.readers.metadata import _SOURCE_NAME_ATTRS
 from ctdcast.reports._dataset import (
-    _SOURCE_NAME_ATTRS,
     generate_dataset_page,
     read_dataset_meta,
 )
