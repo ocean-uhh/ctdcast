@@ -789,9 +789,12 @@ class TestSensorCalibrations:
         """A sensor without Slope/Offset elements reads as identity (no drift)."""
         header = (
             '# <Sensors count="1" >\n'
-            '#   <PressureSensor SensorID="45" >\n'
-            "#     <SerialNumber>9</SerialNumber>\n"
-            "#   </PressureSensor>\n"
+            '#   <sensor Channel="1" >\n'
+            "#     <!-- Frequency 2, Pressure -->\n"
+            '#     <PressureSensor SensorID="45" >\n'
+            "#       <SerialNumber>9</SerialNumber>\n"
+            "#     </PressureSensor>\n"
+            "#   </sensor>\n"
             "# </Sensors>\n"
         )
         cal = sensor_calibrations(header)[0]
@@ -803,11 +806,14 @@ class TestSensorCalibrations:
         """A slope that will not parse to a float is treated as identity, not a drift."""
         header = (
             '# <Sensors count="1" >\n'
-            '#   <ConductivitySensor SensorID="3" >\n'
-            "#     <SerialNumber>9</SerialNumber>\n"
-            "#     <Slope>abc</Slope>\n"
-            "#     <Offset>0.0</Offset>\n"
-            "#   </ConductivitySensor>\n"
+            '#   <sensor Channel="1" >\n'
+            "#     <!-- Frequency 1, Conductivity -->\n"
+            '#     <ConductivitySensor SensorID="3" >\n'
+            "#       <SerialNumber>9</SerialNumber>\n"
+            "#       <Slope>abc</Slope>\n"
+            "#       <Offset>0.0</Offset>\n"
+            "#     </ConductivitySensor>\n"
+            "#   </sensor>\n"
             "# </Sensors>\n"
         )
         assert sensor_calibrations(header)[0].drift_applied is False
@@ -977,7 +983,8 @@ class TestConformanceTicks:
     def test_rename_map_canonicalises_variables_where_aliases_miss(self):
         """The cast's cnv_original_name map renames a channel CNV_ALIASES does not cover."""
         header = (
-            _SBE9 + "# filter_low_pass_tc_A = 0.030\n# filter_low_pass_A_vars = c0mS/cm\n"
+            _SBE9
+            + "# filter_low_pass_tc_A = 0.030\n# filter_low_pass_A_vars = c0mS/cm\n"
         )
         rename_map = {"c0ms/cm": "conductivity_1"}
         without = next(t for t in conformance_ticks(header) if t.label == "filter")

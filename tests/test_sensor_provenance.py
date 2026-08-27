@@ -49,6 +49,22 @@ def test_turbidity_serial_recovered_from_header() -> None:
     assert turb["sensor_id"] == "67"
 
 
+def test_records_carry_slope_and_offset() -> None:
+    """Each channel record carries its Slope/Offset, read from the same block as the role.
+
+    This is what lets the stage-1 catalog stamp calibration without a second parse: the
+    pressure sensor in this fixture has an applied span correction (slope 1.00004096), the
+    temperature sensors are identity. The pH channel shows the raw parse keeps every
+    channel's native Slope (0.3368) — the frequency-only drift filtering is the consumer's
+    job (:func:`sensor_calibrations`), not this reader's.
+    """
+    by_role = {r["role"]: r for r in _fixture_records() if r["role"]}
+    assert by_role["pressure"]["slope"] == "1.00004096"
+    assert by_role["pressure"]["offset"] == "0.27440"
+    assert by_role["temperature_1"]["slope"] == "1.00000000"
+    assert by_role["ph"]["slope"] == "0.3368"  # native cal, carried verbatim
+
+
 def test_profiles_carry_sensor_catalog(tmp_path) -> None:
     """build_profiles emits SENSOR_* catalog vars and sensor_<role> linkage."""
     out = tmp_path / "profiles.nc"

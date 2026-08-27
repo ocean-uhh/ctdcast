@@ -12,7 +12,7 @@ import re
 
 import xarray as xr
 
-from ctdcast.config.cnv_header import header_from_raw_metadata
+from ctdcast.config.cnv_header import header_from_raw_metadata, parse_sensor_block
 from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
 
 #: Per-variable attributes holding the raw source name a reader recorded at read
@@ -159,20 +159,6 @@ def parse_sensor_info(ds: xr.Dataset) -> list[dict[str, str]]:
     return results
 
 
-_COMMENT_RE = re.compile(
-    r"<!--\s*(?:Frequency|A/D voltage)\s+\d+,\s*(?P<rest>.*?)\s*-->"
-)
-
-# Parse the raw CNV <Sensors> block directly: seasenselib's per-channel
-# cnv_sensor_N dicts are lossy (e.g. MSM142's turbidity channel keeps only the
-# channel number), whereas the header block carries every field.
-_SENSORS_BLOCK_RE = re.compile(r"<Sensors count.*?</Sensors>", re.DOTALL)
-_SENSOR_ENTRY_RE = re.compile(r'<sensor Channel="(\d+)"\s*>(.*?)</sensor>', re.DOTALL)
-_ELEM_RE = re.compile(r'<([A-Za-z_]\w*)\s+SensorID="(\d+)"')
-_SERIAL_RE = re.compile(r"<SerialNumber>\s*([^<\s]*)\s*</SerialNumber>")
-_CAL_RE = re.compile(r"<CalibrationDate>\s*([^<]*?)\s*</CalibrationDate>")
-
-
 def _role_from_comment(rest: str) -> str | None:
     """Return the canonical role for a CNV sensor-block comment body, or None.
 
@@ -193,49 +179,27 @@ def _role_from_comment(rest: str) -> str | None:
     return f"{base}_{index}" if base in INDEXED_ROLES else base
 
 
-def parse_sensor_channels(ds: xr.Dataset) -> list[dict[str, str]]:
+def parse_sensor_channels(ds: xr.Dataset) -> list[dict]:
     """Return one full descriptor per sensor channel in *ds*, from the raw header.
 
-    Parses the CNV ``<Sensors>`` block embedded in ``raw_metadata``'s
-    ``blocks.header`` — the authoritative source, since seasenselib's per-channel
-    ``cnv_sensor_N`` dicts are lossy for some channels.  For each
-    ``<sensor Channel="N">`` entry it reads the block comment (role), the type
-    element and its ``SensorID``, the ``SerialNumber`` and the
-    ``CalibrationDate``.  ``Free`` (unused) channels get ``role = None`` and an
-    empty serial.
+    A thin reader over :func:`ctdcast.config.cnv_header.parse_sensor_block` (the single
+    parser of the ``<Sensors>`` block, authoritative because seasenselib's per-channel
+    ``cnv_sensor_N`` dicts are lossy for some channels): it resolves the block comment to a
+    canonical ``role`` and normalises the ``calibration_date``. ``Free`` (unused) channels
+    get ``role = None`` and an empty serial.
 
-    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent.
-    Each dict has keys ``channel``, ``element``, ``sensor_id``, ``serial``,
-    ``calibration_date`` (normalised) and ``role`` (canonical role or ``None``).
+    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent. Each dict has
+    ``channel``, ``element``, ``sensor_id``, ``serial``, ``calibration_date`` (normalised),
+    ``slope``, ``offset`` and ``role`` (canonical role or ``None``).
     """
     header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
-    if not header:
-        return []
-
-    text = re.sub(r"(?m)^#\s?", "", header)  # drop CNV comment prefixes
-    block = _SENSORS_BLOCK_RE.search(text)
-    if block is None:
-        return []
-
-    records: list[dict[str, str]] = []
-    for m in _SENSOR_ENTRY_RE.finditer(block.group(0)):
-        channel = int(m.group(1))
-        body = m.group(2)
-        comment = _COMMENT_RE.search(body)
-        elem = _ELEM_RE.search(body)
-        serial = _SERIAL_RE.search(body)
-        cal = _CAL_RE.search(body)
-        records.append(
-            {
-                "channel": channel,
-                "element": elem.group(1) if elem else "",
-                "sensor_id": elem.group(2) if elem else "",
-                "serial": serial.group(1) if serial and serial.group(1) else "",
-                "calibration_date": (
-                    _normalise_calibration_date(cal.group(1)) if cal else ""
-                ),
-                "role": _role_from_comment(comment.group("rest")) if comment else None,
-            }
+    records = parse_sensor_block(header or "")
+    for r in records:
+        comment = r.pop("comment")
+        r["role"] = _role_from_comment(comment) if comment else None
+        r["calibration_date"] = (
+            _normalise_calibration_date(r["calibration_date"])
+            if r["calibration_date"]
+            else ""
         )
-    records.sort(key=lambda r: r["channel"])
     return records
