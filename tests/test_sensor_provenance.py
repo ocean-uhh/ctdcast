@@ -65,6 +65,114 @@ def test_records_carry_slope_and_offset() -> None:
     assert by_role["ph"]["slope"] == "0.3368"  # native cal, carried verbatim
 
 
+def _cast_catalog() -> xr.Dataset:
+    """The mixsed2_011 fixture with its per-cast sensor catalog built (stage-1 step)."""
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
+    ds = xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4")
+    return _build_cast_sensor_catalog(ds, SensorOverrides())
+
+
+def test_cast_catalog_links_variables_to_existing_sensors() -> None:
+    """Each data variable's ``sensor`` names a SENSOR_* variable present in the cast."""
+    out = _cast_catalog()
+    linked = {
+        v: out[v].attrs["sensor"] for v in out.data_vars if "sensor" in out[v].attrs
+    }
+    assert linked, "no data variable was linked to a sensor"
+    for var, sensor in linked.items():
+        assert sensor in out.variables, f"{var}.sensor={sensor} is a dangling reference"
+        assert out[var].attrs["sensor_role"]  # role stamped alongside the link
+        assert isinstance(out[var].attrs["sensor_channel"], int)
+
+
+def test_cast_catalog_data_values_unchanged() -> None:
+    """Building the catalog stamps attributes only; no data value changes."""
+    import numpy as np
+
+    before = xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4")
+    after = _cast_catalog()
+    for v in before.data_vars:
+        assert np.array_equal(after[v].values, before[v].values, equal_nan=True)
+
+
+def test_frequency_sensor_carries_slope_offset_voltage_does_not() -> None:
+    """A T/C/P sensor carries its drift Slope/Offset; a voltage sensor does not."""
+    out = _cast_catalog()
+    pres = out["SENSOR_PRESSURE_0814"].attrs
+    assert pres["sensor_calibration_slope"] == "1.00004096"
+    assert pres["sensor_calibration_offset"] == "0.27440"
+    # oxygen is a voltage sensor: its native Slope is not a datcnv drift knob, so absent
+    assert "sensor_calibration_slope" not in out["SENSOR_OXYGEN_0707"].attrs
+
+
+def test_single_sensor_role_survives_suffix_stripping() -> None:
+    """A single-oxygen cast stores ``ctd_oxygen`` but keeps ``sensor_role='oxygen_1'``.
+
+    ``_normalise`` strips the ``_1`` from the variable name, so the role — which Phase-2
+    aggregation rebuilds the linkage from — must be stored, not re-derived from the name.
+    """
+    out = _cast_catalog()
+    assert "ctd_oxygen" in out and "ctd_oxygen_1" not in out
+    assert out["ctd_oxygen"].attrs["sensor_role"] == "oxygen_1"
+
+
+def test_slope_offset_applied_only_on_frequency_variables() -> None:
+    """The applied-flag marks frequency variables (T/C/P), not aux ones."""
+    out = _cast_catalog()
+    assert out["pressure"].attrs["slope_offset_applied"] == 1
+    assert out["conductivity_1"].attrs["slope_offset_applied"] == 1
+    assert "slope_offset_applied" not in out["ctd_fluor"].attrs
+
+
+def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
+    """A pH/transmissometer sensor gets a catalog entry, but no variable links to it.
+
+    These have no stored ctdcast variable, so nothing carries ``sensor=`` to them and no
+    "dropped a channel" warning fires for them (that warning is only for a role whose
+    variable ctdcast *does* define but the reader dropped).
+    """
+    import warnings
+
+    ds = xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4")
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        out = _build_cast_sensor_catalog(ds, SensorOverrides())
+    assert "SENSOR_PH_339" in out.variables  # catalogued
+    assert not [v for v in out.data_vars if out[v].attrs.get("sensor_role") == "ph"]
+    assert not [
+        w for w in caught if "ph" in str(w.message) and "dropped" in str(w.message)
+    ]
+
+
+def test_build_profiles_compiles_catalog_bearing_casts(tmp_path) -> None:
+    """build_profiles handles per-cast files that carry the stage-1 sensor catalog.
+
+    The ``SENSOR_*`` scalars are not griddable columns: build_profiles must skip them (a
+    regression guard — they previously crashed ``_bin_to_grid``) and must not leak the
+    per-cast ``sensor=`` link onto the compiled variables (that is a per-profile fact, held
+    by the linkage variables, never a file-level attribute).
+    """
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
+    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
+        ds = xr.open_dataset(f, engine="netcdf4")
+        _build_cast_sensor_catalog(ds, SensorOverrides()).to_netcdf(tmp_path / f.name)
+    out = tmp_path / "profiles.nc"
+    build_profiles(tmp_path, out, force=True)
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds["ctd_temperature_1"].dims == (
+            "N_PROF",
+            "pressure",
+        )  # binned, not scalar
+        assert "sensor" not in ds["ctd_temperature_1"].attrs  # no per-cast link leaked
+    finally:
+        ds.close()
+
+
 def test_profiles_carry_sensor_catalog(tmp_path) -> None:
     """build_profiles emits SENSOR_* catalog vars and sensor_<role> linkage."""
     out = tmp_path / "profiles.nc"

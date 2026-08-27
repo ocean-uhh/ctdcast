@@ -18,6 +18,7 @@ import warnings
 from pathlib import Path
 from typing import Protocol
 
+import numpy as np
 import xarray as xr
 
 from ctdcast.config.cnv_header import (
@@ -28,10 +29,25 @@ from ctdcast.config.cnv_header import (
     sbe_history_notes,
 )
 from ctdcast.config.global_attrs import identity_attrs
-from ctdcast.config.parameters import CAST_TAG_WIDTH, CNV_ALIASES, VARIABLES
+from ctdcast.config.parameters import (
+    CAST_TAG_WIDTH,
+    CNV_ALIASES,
+    VARIABLES,
+    resolve_sensor_var,
+)
+from ctdcast.config.sensors import (
+    FREQUENCY_ROLES,
+    ROLE_VARIABLE,
+    SensorOverrides,
+    SensorRegistry,
+    catalog_var_name,
+    resolve_sensor,
+    role_base,
+)
 from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import stage_dir, stage_path
+from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as write_nc
 
 
@@ -254,6 +270,93 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     return ds
 
 
+def _sensor_variable(role: str, ds: xr.Dataset) -> str | None:
+    """The data variable a sensor *role* maps to in *ds*, or None if it stores none.
+
+    Joins the header's role vocabulary to ctdcast's variable names via
+    :data:`~ctdcast.config.sensors.ROLE_VARIABLE`, then resolves the single-vs-dual spelling
+    the dataset actually holds (``_normalise`` step 4 strips ``_1`` on a single-sensor cast).
+    A role absent from ``ROLE_VARIABLE`` (transmissometer, pH, SPAR/PAR) stores no variable
+    and returns None.
+    """
+    base = role_base(role)
+    var_base = ROLE_VARIABLE.get(base)
+    if var_base is None:
+        return None
+    suffix = role[len(base) :] if role != base else ""  # "_1"/"_2" for an indexed role
+    return resolve_sensor_var(ds, f"{var_base}{suffix}")
+
+
+def _build_cast_sensor_catalog(
+    ds: xr.Dataset, overrides: SensorOverrides
+) -> xr.Dataset:
+    """Add this cast's ``SENSOR_<TYPE>_<SERIAL>`` catalog and link each data variable to it.
+
+    One dimensionless ``SENSOR_*`` variable per physical sensor carries its identity
+    (resolved from the SensorID registry + cruise overrides) and, for a frequency sensor, its
+    drift Slope/Offset. Each data variable that maps to a sensor gains ``sensor`` (the catalog
+    variable name), ``sensor_role``, ``sensor_channel`` and — for a frequency sensor —
+    ``slope_offset_applied=1`` (the ``.xmlcon`` correction is applied at datcnv, so it is baked
+    in). Must run after :func:`_normalise` so ``sensor=`` lands on the final variable names.
+    A no-op for a cast with no ``<Sensors>`` block.
+    """
+    records = parse_sensor_channels(ds)
+    if not records:
+        return ds
+    ds = ds.copy()
+    registry = SensorRegistry.load()
+    catalog: dict[str, dict[str, str]] = {}
+    serial_to_names: dict[str, set[str]] = {}
+    for rec in records:
+        role, serial = rec["role"], rec["serial"]
+        if not role or not serial:  # a Free/unused or serial-less slot
+            continue
+        canon = overrides.canonical_serial(serial)
+        name = catalog_var_name(role, canon)
+        is_freq = role_base(role) in FREQUENCY_ROLES
+        if name not in catalog:
+            attrs = resolve_sensor(
+                sensor_id=rec["sensor_id"],
+                serial=serial,
+                role=role,
+                calibration_date=rec["calibration_date"],
+                element=rec["element"],
+                registry=registry,
+                overrides=overrides,
+            )
+            if is_freq:
+                attrs["sensor_calibration_slope"] = rec["slope"]
+                attrs["sensor_calibration_offset"] = rec["offset"]
+            catalog[name] = attrs
+            serial_to_names.setdefault(canon, set()).add(name)
+        var = _sensor_variable(role, ds)
+        if var is not None and var in ds:
+            ds[var].attrs["sensor"] = name
+            ds[var].attrs["sensor_role"] = role
+            ds[var].attrs["sensor_channel"] = int(rec["channel"])
+            if is_freq:
+                ds[var].attrs["slope_offset_applied"] = 1
+        elif var is not None:
+            # A role ctdcast knows how to store, whose variable is absent: the reader dropped
+            # a channel it could have kept.  (A role with no stored variable at all — e.g. a
+            # transmissometer — returns None above and is silent by design.)
+            warnings.warn(
+                f"sensor role {role!r} maps to variable {var!r}, which is not in the cast "
+                "— the reader dropped a channel it can store.",
+                stacklevel=2,
+            )
+    # Cross-link entries sharing one physical serial (an FLNTU as fluorometer + turbidity).
+    for names in serial_to_names.values():
+        if len(names) > 1:
+            for name in names:
+                catalog[name]["sensor_shared_with"] = " ".join(sorted(names - {name}))
+    for name, attrs in catalog.items():
+        ds[name] = xr.DataArray(
+            np.int32(0), attrs={k: v for k, v in attrs.items() if v != ""}
+        )
+    return ds
+
+
 class CtdBackend(Protocol):
     """Protocol for per-cast CNV-to-netCDF converters."""
 
@@ -264,6 +367,7 @@ class CtdBackend(Protocol):
         *,
         force: bool = False,
         cruise_info: dict | None = None,
+        sensor_overrides: SensorOverrides | None = None,
     ) -> bool:
         """Convert one CNV file to netCDF.
 
@@ -278,6 +382,9 @@ class CtdBackend(Protocol):
         cruise_info:
             The config ``cruise_info:`` mapping, stamped as cruise identity on
             the output; ``None`` writes none.
+        sensor_overrides:
+            The config ``sensors:`` overrides, used to resolve the per-cast sensor
+            catalog; ``None`` uses an empty :class:`SensorOverrides`.
 
         Returns
         -------
@@ -311,6 +418,7 @@ class _SeasenselibBackend:
         *,
         force: bool = False,
         cruise_info: dict | None = None,
+        sensor_overrides: SensorOverrides | None = None,
     ) -> bool:
         """Convert one CNV file using seasenselib.
 
@@ -325,6 +433,9 @@ class _SeasenselibBackend:
         cruise_info:
             The config ``cruise_info:`` mapping, stamped as cruise identity on
             the output; ``None`` writes none.
+        sensor_overrides:
+            The config ``sensors:`` overrides, used to resolve the per-cast sensor
+            catalog; ``None`` uses an empty :class:`SensorOverrides`.
 
         Returns
         -------
@@ -336,6 +447,7 @@ class _SeasenselibBackend:
         with contextlib.redirect_stdout(io.StringIO()):
             ds = self._sl.read(str(cnv_path))
         ds = _normalise(ds, cruise_info=cruise_info)
+        ds = _build_cast_sensor_catalog(ds, sensor_overrides or SensorOverrides())
         write_nc(ds, nc_path)
         return True
 
@@ -375,6 +487,7 @@ def stage1(
     cast_filter: int | list[int] | None = None,
     pattern: str = "*.cnv",
     cruise_info: dict | None = None,
+    sensor_overrides: SensorOverrides | None = None,
 ) -> int:
     """Convert per-cast CNV files to netCDF using the specified backend.
 
@@ -398,6 +511,9 @@ def stage1(
         The config ``cruise_info:`` mapping, stamped as cruise identity on each
         per-cast file; ``None`` writes none (the default, so bare conversions are
         unchanged).
+    sensor_overrides:
+        The config ``sensors:`` overrides, used to resolve the per-cast sensor
+        catalog; ``None`` uses an empty :class:`SensorOverrides`.
 
     Returns
     -------
@@ -433,7 +549,11 @@ def stage1(
             nc_path = stage_path(nc_dir, cnv_path.stem, 1)
             try:
                 written = b.convert_cast(
-                    cnv_path, nc_path, force=force, cruise_info=cruise_info
+                    cnv_path,
+                    nc_path,
+                    force=force,
+                    cruise_info=cruise_info,
+                    sensor_overrides=sensor_overrides,
                 )
             except Exception as exc:  # noqa: BLE001
                 print(

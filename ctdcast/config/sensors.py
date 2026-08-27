@@ -94,6 +94,39 @@ ROLE_QUANTITY: dict[str, str] = {
 }
 
 
+#: Role base -> the canonical data-variable base it measures.  Roles are the header's
+#: vocabulary (a device's job); variables are ctdcast's (a stored quantity), so the two
+#: legitimately differ -- ``fluorometer`` is the instrument, ``ctd_fluor`` the fluorescence.
+#: A role absent here has no stored variable (transmissometer, pH, SPAR/PAR today): it still
+#: gets a catalog entry, and nothing links to it.  The single source of truth for the
+#: sensor->variable join; nothing else re-derives a variable name from a role.
+ROLE_VARIABLE: dict[str, str] = {
+    "temperature": "ctd_temperature",
+    "conductivity": "conductivity",  # no ctd_ prefix -- see VARIABLES / CCHDO naming
+    "pressure": "pressure",
+    "oxygen": "ctd_oxygen",
+    "fluorometer": "ctd_fluor",
+    "turbidity": "ctd_turbidity",
+    "altimeter": "ctd_altimeter",
+}
+
+#: Frequency-sensor role bases: their datcnv Slope/Offset is a drift knob applied to the
+#: derived value, so they carry ``sensor_calibration_slope``/``_offset``.  Voltage sensors
+#: (oxygen, fluorometer, …) have a native Slope/Offset that is not a drift knob and is
+#: excluded (see :func:`ctdcast.config.cnv_header.sensor_calibrations`).
+FREQUENCY_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "pressure"})
+
+
+def role_base(role: str) -> str:
+    """Strip a dual-sensor index from *role* (``temperature_1`` -> ``temperature``).
+
+    Only an :data:`INDEXED_ROLES` role carries the index, so a non-indexed role
+    (``pressure``, ``user_polynomial``) is returned unchanged.
+    """
+    base = re.sub(r"_\d+$", "", role)
+    return base if base in INDEXED_ROLES else role
+
+
 def role_sort_key(role: str) -> tuple[int, str]:
     """Sort roles by :data:`ROLE_ORDER`, unlisted ones last (alphabetical)."""
     return (ROLE_ORDER.index(role) if role in ROLE_ORDER else len(ROLE_ORDER), role)

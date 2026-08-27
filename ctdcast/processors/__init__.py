@@ -149,12 +149,15 @@ def _run_stage1(
     pattern: str = "*.cnv",
     ladcp_pattern: str | None = None,
     cruise_info: dict | None = None,
+    sensor_overrides: object = None,
     **_kw: object,
 ) -> int:
     """Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP).
 
     ``cruise_info`` (the config ``cruise_info:`` block) is stamped as the cruise
     identity on each per-cast file, so a stage-1 file is self-describing.
+    ``sensor_overrides`` (the config ``sensors:`` block) resolves each cast's
+    sensor catalog at stage 1.
     """
     total = 0
     if paths.cnv_dir is not None and paths.ctd_root is not None:
@@ -168,6 +171,7 @@ def _run_stage1(
                 backend=backend,
                 pattern=pattern,
                 cruise_info=cruise_info,
+                sensor_overrides=sensor_overrides,
             )
             or 0
         )

@@ -199,6 +199,8 @@ def _bin_to_grid(
     for v in ds_half.data_vars:
         if v in _SKIP_VARS or v.endswith("_qc"):
             continue
+        if ds_half[v].shape != ds_half["pressure"].shape:
+            continue  # not a per-sample column (e.g. a SENSOR_<type>_<serial> scalar)
         vals = ds_half[v].values.astype(float)
         out = np.full(n, np.nan, dtype=np.float32)
         in_range = (idx >= 0) & (idx < n) & ~np.isnan(vals)
