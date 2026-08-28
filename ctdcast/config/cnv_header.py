@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import json
 import re
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -741,31 +740,64 @@ _FREQUENCY_SENSOR_TAGS = {
 _CAL_IDENTITY_TOL = 5e-7
 
 
-def _sensors_region(header_text: str) -> str | None:
-    """Return the ``<Sensors>…</Sensors>`` config block, ``#`` prefixes stripped, or None.
+# The CNV ``<Sensors>`` config block, parsed per ``<sensor Channel="N">`` entry with regex
+# rather than ElementTree: the role lives in an XML *comment* (``<!-- Frequency 0,
+# Temperature -->``), which ElementTree discards. One reader for the block; both
+# :func:`sensor_calibrations` and :func:`readers.metadata.parse_sensor_channels` project it.
+_RE_SENSORS_BLOCK = re.compile(r"<Sensors count.*?</Sensors>", re.DOTALL)
+_RE_SENSOR_ENTRY = re.compile(r'<sensor Channel="(\d+)"\s*>(.*?)</sensor>', re.DOTALL)
+_RE_SENSOR_ELEM = re.compile(r'<([A-Za-z_]\w*)\s+SensorID="(\d+)"')
+_RE_SENSOR_SERIAL = re.compile(r"<SerialNumber>\s*([^<\s]*)\s*</SerialNumber>")
+_RE_SENSOR_CALDATE = re.compile(r"<CalibrationDate>\s*([^<]*?)\s*</CalibrationDate>")
+# Slope/Offset are the sensor-level drift knobs, one per sensor body in an SBE config (a
+# frequency sensor's <Coefficients> hold G/H/I/J/CPcor/CTcor, never a Slope), so the first
+# match per entry is the right one -- verified across the corpus.
+_RE_SENSOR_SLOPE = re.compile(r"<Slope>\s*([^<]*?)\s*</Slope>")
+_RE_SENSOR_OFFSET = re.compile(r"<Offset>\s*([^<]*?)\s*</Offset>")
+_RE_SENSOR_COMMENT = re.compile(
+    r"<!--\s*(?:Frequency|A/D voltage)\s+\d+,\s*(.*?)\s*-->"
+)
 
-    The block is embedded in the CNV header as ``#``-commented XML. Stripping the leading
-    ``#`` yields a well-formed element that :mod:`xml.etree` can parse. Returns None when
-    no block is present (a header that carries no embedded configuration).
 
-    The open tag is matched exactly -- ``<Sensors>`` or ``<Sensors ...>`` -- not by a bare
-    ``<Sensors`` prefix, so a sibling element such as ``<SensorsExtra>`` cannot open a
-    phantom block. Matching is case-insensitive, mirroring the lowercase ``<sensors>``
-    variant the sibling ``_processing_region`` already guards against.
+def parse_sensor_block(header_text: str) -> list[dict]:
+    """Parse the CNV ``<Sensors>`` config block into one raw record per channel.
+
+    The single reader of the block. Each record has ``channel`` (int), ``element`` (the
+    type tag, e.g. ``"TemperatureSensor"``), ``sensor_id``, ``serial``, ``calibration_date``
+    (verbatim), ``slope`` and ``offset`` (defaulting ``"1.0"`` / ``"0.0"`` when absent), and
+    ``comment`` (the sensor-comment body, e.g. ``"Temperature, 2"`` or ``"Free"``) for the
+    caller to resolve to a role. Returns ``[]`` for an empty header or one with no
+    ``<Sensors>`` block. Role interpretation and calibration-date normalisation are the
+    reader's concern (see :func:`ctdcast.readers.metadata.parse_sensor_channels`), so they
+    stay out of here to keep the parser free of the sensor-role vocabulary.
     """
-    region: list[str] = []
-    in_block = False
-    for raw in header_text.splitlines():
-        stripped = raw.strip()
-        body = stripped[1:].strip() if stripped.startswith("#") else stripped
-        low = body.lower()
-        if low.startswith("<sensors>") or low.startswith("<sensors "):
-            in_block = True
-        if in_block:
-            region.append(body)
-        if low.startswith("</sensors"):
-            break
-    return "\n".join(region) if in_block else None
+    text = re.sub(r"(?m)^#\s?", "", header_text or "")  # drop CNV comment prefixes
+    block = _RE_SENSORS_BLOCK.search(text)
+    if block is None:
+        return []
+    records: list[dict] = []
+    for m in _RE_SENSOR_ENTRY.finditer(block.group(0)):
+        body = m.group(2)
+        elem = _RE_SENSOR_ELEM.search(body)
+        serial = _RE_SENSOR_SERIAL.search(body)
+        cal = _RE_SENSOR_CALDATE.search(body)
+        slope = _RE_SENSOR_SLOPE.search(body)
+        offset = _RE_SENSOR_OFFSET.search(body)
+        comment = _RE_SENSOR_COMMENT.search(body)
+        records.append(
+            {
+                "channel": int(m.group(1)),
+                "element": elem.group(1) if elem else "",
+                "sensor_id": elem.group(2) if elem else "",
+                "serial": serial.group(1) if serial and serial.group(1) else "",
+                "calibration_date": cal.group(1) if cal else "",
+                "slope": slope.group(1) if slope else "1.0",
+                "offset": offset.group(1) if offset else "0.0",
+                "comment": comment.group(1) if comment else "",
+            }
+        )
+    records.sort(key=lambda r: r["channel"])
+    return records
 
 
 def _cal_value_nondefault(value: str, default: float) -> bool:
@@ -783,39 +815,24 @@ def sensor_calibrations(header_text: str) -> list[SensorCalibration]:
     """Read each frequency sensor's drift Slope/Offset from the CNV ``<Sensors>`` config.
 
     Surfaces whether a drift or span correction is already baked into the data before
-    ctdcast read it (see :class:`SensorCalibration`). Only temperature, conductivity and
-    pressure sensors are returned, in config order; voltage sensors are skipped because
-    their Slope/Offset is a native calibration rather than a datcnv drift knob. Dual
-    sensors are labelled ``<kind>_1``/``<kind>_2`` and a lone sensor keeps the bare kind.
-    Returns an empty list for an empty header, a header with no ``<Sensors>`` block, or an
-    unparseable block (the block is a convenience read over the verbatim header).
+    ctdcast read it (see :class:`SensorCalibration`). A projection over
+    :func:`parse_sensor_block`: only temperature, conductivity and pressure sensors are
+    returned, in config order; voltage sensors are skipped because their Slope/Offset is a
+    native calibration rather than a datcnv drift knob. Dual sensors are labelled
+    ``<kind>_1``/``<kind>_2`` and a lone sensor keeps the bare kind. Returns an empty list
+    for an empty header or a header with no ``<Sensors>`` block.
     """
-    if not header_text:
-        return []
-    region = _sensors_region(header_text)
-    if region is None:
-        return []
-    try:
-        root = ET.fromstring(region)
-    except ET.ParseError:
-        return []
-
-    found: list[tuple[str, str, str, str]] = []
-    for elem in root.iter():
-        kind = _FREQUENCY_SENSOR_TAGS.get(elem.tag)
-        if kind is None:
-            continue
-        serial = (elem.findtext("SerialNumber") or "").strip()
-        slope = (elem.findtext("Slope") or "1.0").strip()
-        offset = (elem.findtext("Offset") or "0.0").strip()
-        found.append((kind, serial, slope, offset))
-
+    freq = [
+        (_FREQUENCY_SENSOR_TAGS[r["element"]], r["serial"], r["slope"], r["offset"])
+        for r in parse_sensor_block(header_text)
+        if r["element"] in _FREQUENCY_SENSOR_TAGS
+    ]
     totals: dict[str, int] = {}
-    for kind, *_ in found:
+    for kind, *_ in freq:
         totals[kind] = totals.get(kind, 0) + 1
     seen: dict[str, int] = {}
     calibrations: list[SensorCalibration] = []
-    for kind, serial, slope, offset in found:
+    for kind, serial, slope, offset in freq:
         seen[kind] = seen.get(kind, 0) + 1
         label = kind if totals[kind] == 1 else f"{kind}_{seen[kind]}"
         calibrations.append(
