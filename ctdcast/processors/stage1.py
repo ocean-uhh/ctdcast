@@ -295,10 +295,9 @@ def _build_cast_sensor_catalog(
     One dimensionless ``SENSOR_*`` variable per physical sensor carries its identity
     (resolved from the SensorID registry + cruise overrides) and, for a frequency sensor, its
     drift Slope/Offset. Each data variable that maps to a sensor gains ``sensor`` (the catalog
-    variable name), ``sensor_role``, ``sensor_channel`` and — for a frequency sensor —
-    ``slope_offset_applied=1`` (the ``.xmlcon`` correction is applied at datcnv, so it is baked
-    in). Must run after :func:`_normalise` so ``sensor=`` lands on the final variable names.
-    A no-op for a cast with no ``<Sensors>`` block.
+    variable name), ``sensor_role`` and ``sensor_channel``. Must run after :func:`_normalise`
+    so ``sensor=`` lands on the final variable names. A no-op for a cast with no ``<Sensors>``
+    block.
     """
     records = parse_sensor_channels(ds)
     if not records:
@@ -334,8 +333,6 @@ def _build_cast_sensor_catalog(
             ds[var].attrs["sensor"] = name
             ds[var].attrs["sensor_role"] = role
             ds[var].attrs["sensor_channel"] = int(rec["channel"])
-            if is_freq:
-                ds[var].attrs["slope_offset_applied"] = 1
         elif var is not None:
             # A role ctdcast knows how to store, whose variable is absent: the reader dropped
             # a channel it could have kept.  (A role with no stored variable at all — e.g. a
@@ -345,7 +342,9 @@ def _build_cast_sensor_catalog(
                 "— the reader dropped a channel it can store.",
                 stacklevel=2,
             )
-    # Cross-link entries sharing one physical serial (an FLNTU as fluorometer + turbidity).
+    # Cross-link entries that resolve to one physical serial (e.g. an FLNTU as fluorometer +
+    # turbidity).  Fires only when both channels report the same canonical serial: a device
+    # recorded under two spellings needs a config ``sensors.aliases`` entry to be seen as one.
     for names in serial_to_names.values():
         if len(names) > 1:
             for name in names:

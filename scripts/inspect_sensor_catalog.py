@@ -52,10 +52,20 @@ def main(path: str) -> int:
         print("  (no variable carries a sensor link)")
     for v in linked:
         a = ds[v].attrs
-        applied = " [drift applied]" if a.get("slope_offset_applied") == 1 else ""
+        # Mark variables whose linked sensor carries a non-identity drift correction.
+        sattrs = ds[a["sensor"]].attrs if a["sensor"] in ds else {}
+        drift = ""
+        try:
+            if (
+                float(sattrs.get("sensor_calibration_slope", 1.0)) != 1.0
+                or float(sattrs.get("sensor_calibration_offset", 0.0)) != 0.0
+            ):
+                drift = " [non-identity drift]"
+        except (TypeError, ValueError):
+            pass
         print(
             f"  {v:20} role={a['sensor_role']:16} "
-            f"ch{a['sensor_channel']:<3} → {a['sensor']}{applied}"
+            f"ch{a['sensor_channel']:<3} → {a['sensor']}{drift}"
         )
     ds.close()
     return 0

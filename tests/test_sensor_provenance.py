@@ -117,14 +117,6 @@ def test_single_sensor_role_survives_suffix_stripping() -> None:
     assert out["ctd_oxygen"].attrs["sensor_role"] == "oxygen_1"
 
 
-def test_slope_offset_applied_only_on_frequency_variables() -> None:
-    """The applied-flag marks frequency variables (T/C/P), not aux ones."""
-    out = _cast_catalog()
-    assert out["pressure"].attrs["slope_offset_applied"] == 1
-    assert out["conductivity_1"].attrs["slope_offset_applied"] == 1
-    assert "slope_offset_applied" not in out["ctd_fluor"].attrs
-
-
 def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
     """A pH/transmissometer sensor gets a catalog entry, but no variable links to it.
 
@@ -169,6 +161,37 @@ def test_build_profiles_compiles_catalog_bearing_casts(tmp_path) -> None:
             "pressure",
         )  # binned, not scalar
         assert "sensor" not in ds["ctd_temperature_1"].attrs  # no per-cast link leaked
+        # Every catalog entry in profiles.nc is a dimensionless scalar; a >0-d SENSOR_*
+        # would be a leaked all-NaN column (a per-cast scalar that reached the binning grid).
+        for v in ds.variables:
+            if str(v).startswith("SENSOR_"):
+                assert ds[v].ndim == 0, f"{v} leaked into the profile grid"
+    finally:
+        ds.close()
+
+
+def test_build_profiles_does_not_leak_alias_mismatched_catalog(tmp_path) -> None:
+    """A SENSOR_* whose stage-1 name the compile path does not reproduce is not written.
+
+    When stage 1 resolves a serial alias that ``build_profiles`` is not given, the per-cast
+    ``SENSOR_<aliased>`` name differs from the compile-time ``SENSOR_<raw>``. The stage-1
+    scalar must still be excluded by shape, not silently written as a bogus gridded variable.
+    """
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
+    # Build the per-cast catalogs with an alias so their SENSOR_ names differ from the
+    # names build_profiles (given no alias) will re-derive from the headers.
+    aliased = SensorOverrides(aliases={"3508": "ZZZ9999"})
+    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
+        ds = xr.open_dataset(f, engine="netcdf4")
+        _build_cast_sensor_catalog(ds, aliased).to_netcdf(tmp_path / f.name)
+    out = tmp_path / "profiles.nc"
+    build_profiles(tmp_path, out, force=True)  # no aliases here → names diverge
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        for v in ds.variables:
+            if str(v).startswith("SENSOR_"):
+                assert ds[v].ndim == 0, f"{v} leaked as a gridded variable"
     finally:
         ds.close()
 

@@ -330,8 +330,18 @@ def build_profiles(
     # carries no _qc today; this keeps that true now that best-available can pick a
     # stage-3 file.  Flag 4 (soak/deck) is honoured per cast in the binning loop
     # below, where the flagged samples are NaN-masked before the bin means.
+    # Exclude non-per-sample columns by shape as well as by name: the stage-1
+    # SENSOR_<type>_<serial> scalars are dynamic (serial-keyed) so _SKIP_VARS cannot list
+    # them.  Without this they would be allocated an (N_PROF, pressure) all-NaN array and
+    # written to profiles.nc as bogus variables (only masked today by the catalog being
+    # rebuilt under the same names — a coincidence that breaks if stage-1 and compile-time
+    # serial-alias resolution disagree).  The compiled catalog is built separately below.
     var_names = [
-        v for v in ds0.data_vars if v not in _SKIP_VARS and not v.endswith("_qc")
+        v
+        for v in ds0.data_vars
+        if v not in _SKIP_VARS
+        and not v.endswith("_qc")
+        and ds0[v].shape == ds0["pressure"].shape
     ]
     _ci = cruise_info or {}
     # The cruise name is resolved later, from the aggregated identity — not here
