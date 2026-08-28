@@ -292,12 +292,15 @@ def _build_cast_sensor_catalog(
 ) -> xr.Dataset:
     """Add this cast's ``SENSOR_<TYPE>_<SERIAL>`` catalog and link each data variable to it.
 
-    One dimensionless ``SENSOR_*`` variable per physical sensor carries its identity
-    (resolved from the SensorID registry + cruise overrides) and, for a frequency sensor, its
-    drift Slope/Offset. Each data variable that maps to a sensor gains ``sensor`` (the catalog
-    variable name), ``sensor_role`` and ``sensor_channel``. Must run after :func:`_normalise`
-    so ``sensor=`` lands on the final variable names. A no-op for a cast with no ``<Sensors>``
-    block.
+    One link out, everything else on the entry: a data variable that maps to a sensor carries
+    exactly ``sensor`` (the catalog variable name) and nothing else, while the ``SENSOR_*``
+    entry carries the identity (resolved from the SensorID registry + cruise overrides),
+    ``sensor_role``, ``sensor_channel``, and — for a frequency sensor — its drift Slope/Offset.
+    Role and channel live on the entry, not the variable, so a sensor with no stored variable
+    (transmissometer, pH) still records both; that is what lets :func:`build_profiles` aggregate
+    the catalog from the per-cast files without re-parsing the header. Must run after
+    :func:`_normalise` so ``sensor=`` lands on the final variable names. A no-op for a cast with
+    no ``<Sensors>`` block.
     """
     records = parse_sensor_channels(ds)
     if not records:
@@ -323,6 +326,8 @@ def _build_cast_sensor_catalog(
                 registry=registry,
                 overrides=overrides,
             )
+            attrs["sensor_role"] = role
+            attrs["sensor_channel"] = int(rec["channel"])
             if is_freq:
                 attrs["sensor_calibration_slope"] = rec["slope"]
                 attrs["sensor_calibration_offset"] = rec["offset"]
@@ -331,8 +336,6 @@ def _build_cast_sensor_catalog(
         var = _sensor_variable(role, ds)
         if var is not None and var in ds:
             ds[var].attrs["sensor"] = name
-            ds[var].attrs["sensor_role"] = role
-            ds[var].attrs["sensor_channel"] = int(rec["channel"])
         elif var is not None:
             # A role ctdcast knows how to store, whose variable is absent: the reader dropped
             # a channel it could have kept.  (A role with no stored variable at all — e.g. a

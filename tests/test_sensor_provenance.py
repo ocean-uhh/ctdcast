@@ -74,7 +74,7 @@ def _cast_catalog() -> xr.Dataset:
 
 
 def test_cast_catalog_links_variables_to_existing_sensors() -> None:
-    """Each data variable's ``sensor`` names a SENSOR_* variable present in the cast."""
+    """Each data variable's ``sensor`` names a SENSOR_* variable, which holds role and channel."""
     out = _cast_catalog()
     linked = {
         v: out[v].attrs["sensor"] for v in out.data_vars if "sensor" in out[v].attrs
@@ -82,8 +82,23 @@ def test_cast_catalog_links_variables_to_existing_sensors() -> None:
     assert linked, "no data variable was linked to a sensor"
     for var, sensor in linked.items():
         assert sensor in out.variables, f"{var}.sensor={sensor} is a dangling reference"
-        assert out[var].attrs["sensor_role"]  # role stamped alongside the link
-        assert isinstance(out[var].attrs["sensor_channel"], int)
+        # Role and channel live on the catalog entry, not the variable.
+        assert out[sensor].attrs["sensor_role"]
+        assert isinstance(out[sensor].attrs["sensor_channel"], int)
+
+
+def test_linked_variable_carries_only_the_sensor_link() -> None:
+    """One link out: a mapped data variable carries ``sensor`` and no other ``sensor*`` attr.
+
+    Asserts the absence so the old placement — ``sensor_role``/``sensor_channel`` on the data
+    variable — cannot creep back. Those facts belong on the SENSOR_* entry.
+    """
+    out = _cast_catalog()
+    linked = [v for v in out.data_vars if "sensor" in out[v].attrs]
+    assert linked, "no data variable was linked to a sensor"
+    for var in linked:
+        extra = [k for k in out[var].attrs if k.startswith("sensor") and k != "sensor"]
+        assert not extra, f"{var} carries stray sensor attrs {extra}"
 
 
 def test_cast_catalog_data_values_unchanged() -> None:
@@ -107,22 +122,26 @@ def test_frequency_sensor_carries_slope_offset_voltage_does_not() -> None:
 
 
 def test_single_sensor_role_survives_suffix_stripping() -> None:
-    """A single-oxygen cast stores ``ctd_oxygen`` but keeps ``sensor_role='oxygen_1'``.
+    """A single-oxygen cast stores ``ctd_oxygen`` but the entry keeps ``sensor_role='oxygen_1'``.
 
     ``_normalise`` strips the ``_1`` from the variable name, so the role — which Phase-2
-    aggregation rebuilds the linkage from — must be stored, not re-derived from the name.
+    aggregation rebuilds the linkage from — must be stored on the SENSOR_* entry, not
+    re-derived from the (now suffix-stripped) variable name.
     """
     out = _cast_catalog()
     assert "ctd_oxygen" in out and "ctd_oxygen_1" not in out
-    assert out["ctd_oxygen"].attrs["sensor_role"] == "oxygen_1"
+    assert out["ctd_oxygen"].attrs["sensor"] == "SENSOR_OXYGEN_0707"
+    assert out["SENSOR_OXYGEN_0707"].attrs["sensor_role"] == "oxygen_1"
 
 
-def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
-    """A pH/transmissometer sensor gets a catalog entry, but no variable links to it.
+def test_role_without_a_variable_is_catalogued_with_role_and_channel() -> None:
+    """A pH/transmissometer sensor gets a full catalog entry, but no variable links to it.
 
-    These have no stored ctdcast variable, so nothing carries ``sensor=`` to them and no
-    "dropped a channel" warning fires for them (that warning is only for a role whose
-    variable ctdcast *does* define but the reader dropped).
+    These have no stored ctdcast variable, so nothing carries ``sensor=`` to them. Because role
+    and channel live on the entry — not on a data variable that here does not exist — the entry
+    still records both; this is the regression that motivated moving them off the variable. No
+    "dropped a channel" warning fires (that warning is only for a role whose variable ctdcast
+    *does* define but the reader dropped).
     """
     import warnings
 
@@ -133,7 +152,13 @@ def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
         warnings.simplefilter("always")
         out = _build_cast_sensor_catalog(ds, SensorOverrides())
     assert "SENSOR_PH_339" in out.variables  # catalogued
-    assert not [v for v in out.data_vars if out[v].attrs.get("sensor_role") == "ph"]
+    assert out["SENSOR_PH_339"].attrs["sensor_role"] == "ph"
+    assert isinstance(out["SENSOR_PH_339"].attrs["sensor_channel"], int)
+    assert not [
+        v
+        for v in out.data_vars
+        if "sensor" in out[v].attrs and out[v].attrs["sensor"] == "SENSOR_PH_339"
+    ]
     assert not [
         w for w in caught if "ph" in str(w.message) and "dropped" in str(w.message)
     ]
