@@ -160,7 +160,7 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     assert 'id="data_ranges"' in html  # appendix section anchor
     assert "(B) netCDF data ranges" in html  # lettered appendix in heading + jump-nav
     assert "Label units" in html  # the label-units column
-    assert "mS cm⁻¹" in html  # a populated label_units value (conductivity)
+    assert "mS/cm" in html  # a populated label_units value (conductivity)
 
 
 def test_cast_page_shows_source_provenance(tmp_path):

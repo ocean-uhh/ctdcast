@@ -36,7 +36,9 @@ class TestWrite:
         out = tmp_path / "test.nc"
         write(ds, out)
         ds_back = xr.open_dataset(out, engine="netcdf4")
-        assert ds_back.attrs.get("Conventions") == "CF-1.13"
+        # The writer preserves the input Conventions; stage 1 now declares ACDD
+        # alongside CF, so assert CF is present rather than pinning the exact list.
+        assert "CF-1.13" in ds_back.attrs.get("Conventions", "")
         ds_back.close()
 
     def test_known_variable_gets_units(self, tmp_path):
