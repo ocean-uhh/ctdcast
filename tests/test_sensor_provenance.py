@@ -74,7 +74,7 @@ def _cast_catalog() -> xr.Dataset:
 
 
 def test_cast_catalog_links_variables_to_existing_sensors() -> None:
-    """Each data variable's ``sensor`` names a SENSOR_* variable present in the cast."""
+    """Each data variable's ``sensor`` names a SENSOR_* variable, which holds role and channel."""
     out = _cast_catalog()
     linked = {
         v: out[v].attrs["sensor"] for v in out.data_vars if "sensor" in out[v].attrs
@@ -82,8 +82,23 @@ def test_cast_catalog_links_variables_to_existing_sensors() -> None:
     assert linked, "no data variable was linked to a sensor"
     for var, sensor in linked.items():
         assert sensor in out.variables, f"{var}.sensor={sensor} is a dangling reference"
-        assert out[var].attrs["sensor_role"]  # role stamped alongside the link
-        assert isinstance(out[var].attrs["sensor_channel"], int)
+        # Role and channel live on the catalog entry, not the variable.
+        assert out[sensor].attrs["sensor_role"]
+        assert isinstance(out[sensor].attrs["sensor_channel"], int)
+
+
+def test_linked_variable_carries_only_the_sensor_link() -> None:
+    """One link out: a mapped data variable carries ``sensor`` and no other ``sensor*`` attr.
+
+    Asserts the absence so the old placement — ``sensor_role``/``sensor_channel`` on the data
+    variable — cannot creep back. Those facts belong on the SENSOR_* entry.
+    """
+    out = _cast_catalog()
+    linked = [v for v in out.data_vars if "sensor" in out[v].attrs]
+    assert linked, "no data variable was linked to a sensor"
+    for var in linked:
+        extra = [k for k in out[var].attrs if k.startswith("sensor") and k != "sensor"]
+        assert not extra, f"{var} carries stray sensor attrs {extra}"
 
 
 def test_cast_catalog_data_values_unchanged() -> None:
@@ -107,22 +122,26 @@ def test_frequency_sensor_carries_slope_offset_voltage_does_not() -> None:
 
 
 def test_single_sensor_role_survives_suffix_stripping() -> None:
-    """A single-oxygen cast stores ``ctd_oxygen`` but keeps ``sensor_role='oxygen_1'``.
+    """A single-oxygen cast stores ``ctd_oxygen`` but the entry keeps ``sensor_role='oxygen_1'``.
 
     ``_normalise`` strips the ``_1`` from the variable name, so the role — which Phase-2
-    aggregation rebuilds the linkage from — must be stored, not re-derived from the name.
+    aggregation rebuilds the linkage from — must be stored on the SENSOR_* entry, not
+    re-derived from the (now suffix-stripped) variable name.
     """
     out = _cast_catalog()
     assert "ctd_oxygen" in out and "ctd_oxygen_1" not in out
-    assert out["ctd_oxygen"].attrs["sensor_role"] == "oxygen_1"
+    assert out["ctd_oxygen"].attrs["sensor"] == "SENSOR_OXYGEN_0707"
+    assert out["SENSOR_OXYGEN_0707"].attrs["sensor_role"] == "oxygen_1"
 
 
-def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
-    """A pH/transmissometer sensor gets a catalog entry, but no variable links to it.
+def test_role_without_a_variable_is_catalogued_with_role_and_channel() -> None:
+    """A pH/transmissometer sensor gets a full catalog entry, but no variable links to it.
 
-    These have no stored ctdcast variable, so nothing carries ``sensor=`` to them and no
-    "dropped a channel" warning fires for them (that warning is only for a role whose
-    variable ctdcast *does* define but the reader dropped).
+    These have no stored ctdcast variable, so nothing carries ``sensor=`` to them. Because role
+    and channel live on the entry — not on a data variable that here does not exist — the entry
+    still records both; this is the regression that motivated moving them off the variable. No
+    "dropped a channel" warning fires (that warning is only for a role whose variable ctdcast
+    *does* define but the reader dropped).
     """
     import warnings
 
@@ -133,7 +152,13 @@ def test_role_without_a_variable_is_catalogued_but_links_nothing() -> None:
         warnings.simplefilter("always")
         out = _build_cast_sensor_catalog(ds, SensorOverrides())
     assert "SENSOR_PH_339" in out.variables  # catalogued
-    assert not [v for v in out.data_vars if out[v].attrs.get("sensor_role") == "ph"]
+    assert out["SENSOR_PH_339"].attrs["sensor_role"] == "ph"
+    assert isinstance(out["SENSOR_PH_339"].attrs["sensor_channel"], int)
+    assert not [
+        v
+        for v in out.data_vars
+        if "sensor" in out[v].attrs and out[v].attrs["sensor"] == "SENSOR_PH_339"
+    ]
     assert not [
         w for w in caught if "ph" in str(w.message) and "dropped" in str(w.message)
     ]
@@ -170,32 +195,6 @@ def test_build_profiles_compiles_catalog_bearing_casts(tmp_path) -> None:
         ds.close()
 
 
-def test_build_profiles_does_not_leak_alias_mismatched_catalog(tmp_path) -> None:
-    """A SENSOR_* whose stage-1 name the compile path does not reproduce is not written.
-
-    When stage 1 resolves a serial alias that ``build_profiles`` is not given, the per-cast
-    ``SENSOR_<aliased>`` name differs from the compile-time ``SENSOR_<raw>``. The stage-1
-    scalar must still be excluded by shape, not silently written as a bogus gridded variable.
-    """
-    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
-
-    # Build the per-cast catalogs with an alias so their SENSOR_ names differ from the
-    # names build_profiles (given no alias) will re-derive from the headers.
-    aliased = SensorOverrides(aliases={"3508": "ZZZ9999"})
-    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
-        ds = xr.open_dataset(f, engine="netcdf4")
-        _build_cast_sensor_catalog(ds, aliased).to_netcdf(tmp_path / f.name)
-    out = tmp_path / "profiles.nc"
-    build_profiles(tmp_path, out, force=True)  # no aliases here → names diverge
-    ds = xr.open_dataset(out, engine="netcdf4")
-    try:
-        for v in ds.variables:
-            if str(v).startswith("SENSOR_"):
-                assert ds[v].ndim == 0, f"{v} leaked as a gridded variable"
-    finally:
-        ds.close()
-
-
 def test_profiles_carry_sensor_catalog(tmp_path) -> None:
     """build_profiles emits SENSOR_* catalog vars and sensor_<role> linkage."""
     out = tmp_path / "profiles.nc"
@@ -217,22 +216,33 @@ def test_profiles_carry_sensor_catalog(tmp_path) -> None:
 
 
 def test_serial_alias_collapses_shared_flntu(tmp_path) -> None:
-    """With an alias, the FLNTU's two spellings resolve to one shared device.
+    """A stage-1 alias makes the FLNTU's two spellings resolve to one shared device.
 
     The fixture records the FLNTU as ``FLNTURTD-3508`` (fluorometer) and ``3508``
-    (turbidity).  A cruise alias makes both roles cross-link via
-    ``sensor_shared_with``.
+    (turbidity).  Sensor identity is resolved at stage 1 now, so the alias is
+    applied there (not passed to the compile): it collapses both spellings to one
+    canonical serial and cross-links the two roles via ``sensor_shared_with``.
+    ``build_profiles`` then aggregates that linkage verbatim.
     """
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
     ov = SensorOverrides.from_cruise_config(
         {"sensors": {"aliases": {"3508": "FLNTURTD-3508"}}}
     )
+    # Rebuild each per-cast catalog under the alias, dropping the fixtures'
+    # no-alias catalog first so only the aliased entries are written.
+    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
+        ds = xr.open_dataset(f, engine="netcdf4")
+        ds = ds.drop_vars([v for v in ds.variables if str(v).startswith("SENSOR_")])
+        _build_cast_sensor_catalog(ds, ov).to_netcdf(tmp_path / f.name)
     out = tmp_path / "profiles.nc"
-    build_profiles(FIXTURES_NC, out, force=True, sensor_overrides=ov)
+    build_profiles(tmp_path, out, force=True)
     ds = xr.open_dataset(out, engine="netcdf4")
     try:
         fl = "SENSOR_FLUOROMETER_FLNTURTD_3508"
         tu = "SENSOR_TURBIDITY_FLNTURTD_3508"
         assert fl in ds.variables and tu in ds.variables
+        assert "SENSOR_TURBIDITY_3508" not in ds.variables  # collapsed, not duplicated
         assert ds[fl].attrs.get("sensor_shared_with") == tu
         assert ds[tu].attrs.get("sensor_shared_with") == fl
     finally:

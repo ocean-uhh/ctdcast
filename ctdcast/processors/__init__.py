@@ -249,7 +249,6 @@ def _run_profiles(
     dry_run: bool = False,
     gebco_path: Path | None = None,
     profiles_dbar: int = 1,
-    sensor_overrides: object = None,
     cruise_info: dict | None = None,
     **_kw: object,
 ) -> bool:
@@ -259,6 +258,12 @@ def _run_profiles(
     True if any product was written.  ``cruise_info`` (the config ``cruise_info:``
     block) supplies the cruise id, discovery metadata, people, embargo, and the
     ship/date from which the EXPOCODE is derived; it is threaded to both builders.
+
+    Sensor provenance is resolved at stage 1, so ``sensor_overrides`` is not
+    forwarded here (it arrives in ``**_kw`` from the shared tuning bag and is
+    ignored).  ``build_profiles`` is called with ``refuse_catalog_less=True``: as
+    the pipeline driver, ``process``/``run`` refuse to compile a product from a
+    cast that predates the catalog rather than shipping it with a gap.
     """
     wrote = False
     if paths.ctd_root is not None and paths.profiles_path is not None:
@@ -271,8 +276,8 @@ def _run_profiles(
                     dry_run=dry_run,
                     gebco_path=gebco_path,
                     dbar=profiles_dbar,
-                    sensor_overrides=sensor_overrides,
                     cruise_info=cruise_info,
+                    refuse_catalog_less=True,
                 )
             )
             or wrote
