@@ -195,32 +195,6 @@ def test_build_profiles_compiles_catalog_bearing_casts(tmp_path) -> None:
         ds.close()
 
 
-def test_build_profiles_does_not_leak_alias_mismatched_catalog(tmp_path) -> None:
-    """A SENSOR_* whose stage-1 name the compile path does not reproduce is not written.
-
-    When stage 1 resolves a serial alias that ``build_profiles`` is not given, the per-cast
-    ``SENSOR_<aliased>`` name differs from the compile-time ``SENSOR_<raw>``. The stage-1
-    scalar must still be excluded by shape, not silently written as a bogus gridded variable.
-    """
-    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
-
-    # Build the per-cast catalogs with an alias so their SENSOR_ names differ from the
-    # names build_profiles (given no alias) will re-derive from the headers.
-    aliased = SensorOverrides(aliases={"3508": "ZZZ9999"})
-    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
-        ds = xr.open_dataset(f, engine="netcdf4")
-        _build_cast_sensor_catalog(ds, aliased).to_netcdf(tmp_path / f.name)
-    out = tmp_path / "profiles.nc"
-    build_profiles(tmp_path, out, force=True)  # no aliases here → names diverge
-    ds = xr.open_dataset(out, engine="netcdf4")
-    try:
-        for v in ds.variables:
-            if str(v).startswith("SENSOR_"):
-                assert ds[v].ndim == 0, f"{v} leaked as a gridded variable"
-    finally:
-        ds.close()
-
-
 def test_profiles_carry_sensor_catalog(tmp_path) -> None:
     """build_profiles emits SENSOR_* catalog vars and sensor_<role> linkage."""
     out = tmp_path / "profiles.nc"
@@ -242,22 +216,33 @@ def test_profiles_carry_sensor_catalog(tmp_path) -> None:
 
 
 def test_serial_alias_collapses_shared_flntu(tmp_path) -> None:
-    """With an alias, the FLNTU's two spellings resolve to one shared device.
+    """A stage-1 alias makes the FLNTU's two spellings resolve to one shared device.
 
     The fixture records the FLNTU as ``FLNTURTD-3508`` (fluorometer) and ``3508``
-    (turbidity).  A cruise alias makes both roles cross-link via
-    ``sensor_shared_with``.
+    (turbidity).  Sensor identity is resolved at stage 1 now, so the alias is
+    applied there (not passed to the compile): it collapses both spellings to one
+    canonical serial and cross-links the two roles via ``sensor_shared_with``.
+    ``build_profiles`` then aggregates that linkage verbatim.
     """
+    from ctdcast.processors.stage1 import _build_cast_sensor_catalog
+
     ov = SensorOverrides.from_cruise_config(
         {"sensors": {"aliases": {"3508": "FLNTURTD-3508"}}}
     )
+    # Rebuild each per-cast catalog under the alias, dropping the fixtures'
+    # no-alias catalog first so only the aliased entries are written.
+    for f in sorted(FIXTURES_NC.glob("mixsed2_*.nc")):
+        ds = xr.open_dataset(f, engine="netcdf4")
+        ds = ds.drop_vars([v for v in ds.variables if str(v).startswith("SENSOR_")])
+        _build_cast_sensor_catalog(ds, ov).to_netcdf(tmp_path / f.name)
     out = tmp_path / "profiles.nc"
-    build_profiles(FIXTURES_NC, out, force=True, sensor_overrides=ov)
+    build_profiles(tmp_path, out, force=True)
     ds = xr.open_dataset(out, engine="netcdf4")
     try:
         fl = "SENSOR_FLUOROMETER_FLNTURTD_3508"
         tu = "SENSOR_TURBIDITY_FLNTURTD_3508"
         assert fl in ds.variables and tu in ds.variables
+        assert "SENSOR_TURBIDITY_3508" not in ds.variables  # collapsed, not duplicated
         assert ds[fl].attrs.get("sensor_shared_with") == tu
         assert ds[tu].attrs.get("sensor_shared_with") == fl
     finally:

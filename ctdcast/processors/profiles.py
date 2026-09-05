@@ -22,17 +22,10 @@ from ctdcast.config.global_attrs import (
     cruise_name,
 )
 from ctdcast.config.parameters import VARIABLES
-from ctdcast.config.sensors import (
-    SensorOverrides,
-    SensorRegistry,
-    catalog_var_name,
-    resolve_sensor,
-)
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
-from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as _write_nc
 
 # Non-profile columns: seasenselib time-bookkeeping, and per-cast provenance scalars a stage
@@ -43,72 +36,142 @@ _SKIP_VARS: frozenset[str] = frozenset(
 )
 
 
+def _read_cast_sensor_catalog(ds: xr.Dataset) -> list[dict]:
+    """Return one record per ``SENSOR_*`` catalog entry in a per-cast dataset.
+
+    Reads the catalog stage 1 built: each dimensionless ``SENSOR_<TYPE>_<SERIAL>``
+    variable, taking its ``sensor_role`` and ``sensor_channel`` off the entry itself
+    (not off the data variables). A sensor with no stored variable — pH, a
+    transmissometer — is therefore read exactly like one that has a variable, which
+    is what lets the compile aggregate without re-parsing the CNV header. Returns
+    ``[]`` when the cast carries no catalog.
+
+    Each record has ``name`` (the catalog variable name, already resolved at stage
+    1), ``role``, ``channel`` (int, or ``-1`` if unstated) and ``attrs`` (the full
+    entry attributes, verbatim).
+    """
+    records: list[dict] = []
+    for name in ds.variables:
+        if not str(name).startswith("SENSOR_"):
+            continue
+        attrs = dict(ds[name].attrs)
+        records.append(
+            {
+                "name": str(name),
+                "role": attrs.get("sensor_role", ""),
+                "channel": (
+                    int(attrs["sensor_channel"]) if "sensor_channel" in attrs else -1
+                ),
+                "attrs": attrs,
+            }
+        )
+    return records
+
+
+# Header-native attributes are physically fixed for a serial: a mismatch across
+# casts is a parsing or data error (a serial cannot be recalibrated at sea).
+_HEADER_NATIVE_ATTRS: tuple[str, ...] = (
+    "sensor_calibration_date",
+    "sensor_calibration_slope",
+    "sensor_calibration_offset",
+)
+# Config-resolved attributes are filled from the SensorID registry + overrides at
+# stage 1: a mismatch across casts means the casts were stamped under different
+# config versions — expected, and fixed by re-running stage 1 or `enrich`, not a
+# data error.
+_CONFIG_RESOLVED_ATTRS: tuple[str, ...] = (
+    "sensor_model",
+    "sensor_maker",
+    "sensor_model_vocabulary",
+    "sensor_maker_vocabulary",
+    "sensor_type_vocabulary",
+)
+
+
+def _warn_on_catalog_conflict(
+    name: str, prior: dict, attrs: dict, cast_num: int, warned: set
+) -> None:
+    """Warn when a later cast disagrees with the first on a catalog entry's attributes.
+
+    Two provenances, two meanings: a header-native mismatch (calibration date,
+    slope, offset) is a data error; a config-resolved mismatch (model, maker,
+    vocabularies) means the casts were stamped under different config versions and
+    points at a re-stamp. Each ``(name, attr)`` conflict warns once via *warned*, so
+    a persistent disagreement does not re-warn on every cast.
+    """
+    for a in _HEADER_NATIVE_ATTRS:
+        if prior.get(a, "") != attrs.get(a, "") and (name, a) not in warned:
+            warned.add((name, a))
+            warnings.warn(
+                f"Sensor catalog conflict for {name}: {a} {prior.get(a, '')!r} then "
+                f"{attrs.get(a, '')!r} (cast {cast_num}); a serial's calibration "
+                "cannot change at sea — check CNV parsing.",
+                stacklevel=2,
+            )
+    for a in _CONFIG_RESOLVED_ATTRS:
+        if prior.get(a, "") != attrs.get(a, "") and (name, a) not in warned:
+            warned.add((name, a))
+            warnings.warn(
+                f"Sensor catalog for {name}: {a} differs across casts "
+                f"({prior.get(a, '')!r} then {attrs.get(a, '')!r}, cast {cast_num}); "
+                "casts were stamped under different config versions — re-run stage 1 "
+                "or enrich to restamp. Keeping the first cast's value.",
+                stacklevel=2,
+            )
+
+
 def _build_sensor_catalog(
-    cast_sensor_records: list[list[dict[str, str]]],
+    cast_catalogs: list[list[dict]],
     cast_list: list[tuple[int, str, Path, int]],
     n_profiles: int,
-    overrides: SensorOverrides,
 ) -> tuple[dict, dict]:
-    """Build the sensor catalog and per-profile linkage variables.
+    """Aggregate per-cast sensor catalogs into the compiled catalog and linkage.
 
     Attribute names follow OG1 conventions for interoperability, but this is
     shipboard CTD data and the per-profile linkage has no OG1 equivalent.
 
-    *cast_sensor_records* is one :func:`parse_sensor_channels` result per cast,
-    in the same rank order as *cast_list*.  Each cast contributes to two profiles
-    (down, up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``.
+    *cast_catalogs* is one :func:`_read_cast_sensor_catalog` result per cast, in the
+    same rank order as *cast_list*. Each cast contributes to two profiles (down,
+    up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``. Sensor
+    identity, model and calibration were all resolved at stage 1, so this is a merge
+    — not a resolver: it reads role and channel off each entry, needs no SensorID
+    registry or overrides, and aggregates a variable-less sensor (pH, a
+    transmissometer) exactly like one with a variable.
 
     Returns ``(catalog_vars, linkage_vars)`` as xarray-style
     ``{name: (dims, data, attrs)}`` mappings:
 
-    - **catalog** — one dimensionless ``SENSOR_<TYPE>_<INDEX>_<SERIAL>`` variable
-      per distinct physical sensor, carrying its resolved attributes.
+    - **catalog** — one dimensionless ``SENSOR_<TYPE>_<SERIAL>`` variable per
+      distinct physical sensor, carrying the entry's attributes (role and channel
+      excepted — those become the linkage below).
     - **linkage** — ``sensor_<role>(N_PROF)`` naming the catalog variable in that
       role for each profile, and ``sensor_channel_<role>(N_PROF)`` recording the
       raw acquisition channel.
     """
-    registry = SensorRegistry.load()
-    catalog: dict[str, dict[str, str]] = {}
-    serial_to_vars: dict[str, set[str]] = {}
+    catalog: dict[str, dict] = {}
     roles: list[str] = []  # first-appearance order
     link: dict[str, np.ndarray] = {}
     chan: dict[str, np.ndarray] = {}
+    warned: set = set()  # (name, attr) conflicts already reported
 
-    for rank, records in enumerate(cast_sensor_records):
+    for rank, records in enumerate(cast_catalogs):
         cast_num = cast_list[rank][0]
         for rec in records:
-            role, serial = rec["role"], rec["serial"]
-            if not role or not serial:  # skip Free/unused and serial-less slots
+            name, role = rec["name"], rec["role"]
+            if not role:  # an entry with no role cannot fill a linkage slot
                 continue
-            canon = overrides.canonical_serial(serial)
-            name = catalog_var_name(role, canon)
+            attrs = rec["attrs"]
             prior = catalog.get(name)
             if prior is None:
-                # Resolve (and warn on an unresolved model) once per distinct
-                # device — not once per cast, which floods the log for a device
-                # present on every cast (e.g. an un-overridden UVP6).
-                catalog[name] = resolve_sensor(
-                    sensor_id=rec["sensor_id"],
-                    serial=serial,
-                    role=role,
-                    calibration_date=rec["calibration_date"],
-                    element=rec["element"],
-                    cast=cast_num,
-                    registry=registry,
-                    overrides=overrides,
-                )
-                serial_to_vars.setdefault(canon, set()).add(name)
-            elif prior.get("sensor_calibration_date") != rec["calibration_date"]:
-                # A serial cannot be recalibrated mid-cruise (that needs a return
-                # to the manufacturer), so two calibration dates for one device
-                # mean a parsing/data error — surface it rather than overwrite.
-                warnings.warn(
-                    f"Sensor catalog conflict for {name}: calibration date "
-                    f"{prior.get('sensor_calibration_date')!r} then "
-                    f"{rec['calibration_date']!r} (cast {cast_num}); a serial "
-                    "cannot be recalibrated at sea — check CNV parsing.",
-                    stacklevel=2,
-                )
+                # role and channel become linkage variables, not entry attributes;
+                # sensor_shared_with was cross-linked at stage 1 and is preserved.
+                catalog[name] = {
+                    k: v
+                    for k, v in attrs.items()
+                    if k not in ("sensor_role", "sensor_channel")
+                }
+            else:
+                _warn_on_catalog_conflict(name, prior, attrs, cast_num, warned)
             if role not in link:
                 roles.append(role)
                 link[role] = np.array([""] * n_profiles, dtype=object)
@@ -116,13 +179,6 @@ def _build_sensor_catalog(
             for k in (rank * 2, rank * 2 + 1):
                 link[role][k] = name
                 chan[role][k] = rec["channel"]
-
-    # Cross-link catalog entries that resolve to the same physical serial
-    # (e.g. one FLNTU serving both fluorometer and turbidity roles).
-    for names in serial_to_vars.values():
-        if len(names) > 1:
-            for name in names:
-                catalog[name]["sensor_shared_with"] = " ".join(sorted(names - {name}))
 
     catalog_vars: dict = {
         name: ((), np.int32(0), {k: v for k, v in attrs.items() if v != ""})
@@ -233,8 +289,8 @@ def build_profiles(
     force: bool = False,
     gebco_path: Path | None = None,
     dbar: int = 1,
-    sensor_overrides: SensorOverrides | None = None,
     cruise_info: dict | None = None,
+    refuse_catalog_less: bool = False,
 ) -> bool:
     """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
 
@@ -283,6 +339,14 @@ def build_profiles(
         fields, people, embargo, and the ``ship``/``start_date`` from which the
         EXPOCODE coordinate is derived.  Coverage bounds and creation time are
         computed from the data, not taken from here.
+    refuse_catalog_less:
+        Policy for a CTD cast whose per-cast file carries no ``SENSOR_*`` catalog
+        (it predates sensor provenance).  The default ``False`` is the library
+        behaviour: warn once, name the files, and stamp the admission into the
+        output so the gap is visible in the file itself.  The pipeline driver
+        (``ctdcast process --stage profiles`` and ``ctdcast run``) passes ``True``
+        so the compile refuses instead — at the point a product is shipped,
+        re-running stage 1 to build the catalog is the actionable fix.
 
     Returns
     -------
@@ -292,7 +356,8 @@ def build_profiles(
     Raises
     ------
     ValueError
-        If no recognised cast files are found in nc_dir.
+        If no recognised cast files are found in nc_dir, or if
+        *refuse_catalog_less* is True and any cast carries no sensor catalog.
     """
     if not isinstance(dbar, int) or dbar < 1:
         raise ValueError(f"dbar must be an integer >= 1, got {dbar!r}.")
@@ -380,8 +445,10 @@ def build_profiles(
     # distinguishes casts sharing a number (a plain cast vs its lettered sibling).
     source_files: list[str] = [""] * n_casts
 
-    # Per-cast sensor descriptors, in rank order, for the sensor catalog below.
-    cast_sensor_records: list[list[dict[str, str]]] = []
+    # Per-cast sensor catalogs, in rank order, aggregated by _build_sensor_catalog.
+    cast_catalogs: list[list[dict]] = []
+    # CTD casts whose per-cast file carries no SENSOR_* catalog (predate the catalog).
+    catalog_less: list[str] = []
 
     # Per-cast global attrs, for lifting cruise identity strictly (§4d).
     per_cast_attrs: list[dict[str, str]] = []
@@ -397,7 +464,10 @@ def build_profiles(
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
-        cast_sensor_records.append(parse_sensor_channels(ds))
+        cast_catalog = _read_cast_sensor_catalog(ds)
+        cast_catalogs.append(cast_catalog)
+        if not cast_catalog:
+            catalog_less.append(path.name)
         # Honour QARTOD flags 3 (suspect) and 4 (fail) from stage 2 (soak/deck) AND
         # stage 3 (gross-range and spike): NaN the flagged samples so they do not
         # enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so the
@@ -448,6 +518,18 @@ def build_profiles(
             time_ends[prof_idx] = t1
 
         ds.close()
+
+    # Refuse early (before the GEBCO lookup and grid expansion) when the caller is
+    # the pipeline driver and any cast predates the sensor catalog.  The library
+    # default (refuse_catalog_less=False) instead warns and stamps the admission
+    # into the output further below; the two paths share the same file list.
+    if catalog_less and refuse_catalog_less:
+        raise ValueError(
+            f"{len(catalog_less)} of {len(cast_list)} cast file(s) carry no sensor "
+            f"catalog ({', '.join(catalog_less)}); re-run stage 1 for this cruise "
+            "before compiling profiles, so the compiled file records sensor "
+            "provenance for every cast."
+        )
 
     # Expand per-cast scalars to per-profile (same value for down and up of each cast)
     max_pressure_prof = np.repeat(max_pressures, 2)
@@ -620,12 +702,13 @@ def build_profiles(
         }
     )
     # Sensor catalog + per-profile linkage (dimensionless SENSOR_* variables
-    # and sensor_<role>/sensor_channel_<role> on N_PROF).
+    # and sensor_<role>/sensor_channel_<role> on N_PROF).  Sensor provenance is
+    # resolved at stage 1 now, so this aggregates the per-cast catalogs rather
+    # than re-resolving from headers.
     catalog_vars, linkage_vars = _build_sensor_catalog(
-        cast_sensor_records,
+        cast_catalogs,
         cast_list,
         n_profiles,
-        sensor_overrides or SensorOverrides(),
     )
     data_vars.update(catalog_vars)
     data_vars.update(linkage_vars)
@@ -720,6 +803,24 @@ def build_profiles(
             "(soak/deck and gross-range/spike) before binning"
         )
     append_history(attrs, _note, stage="profiles")
+
+    # A per-cast file with no SENSOR_* catalog predates sensor provenance.  With
+    # refuse_catalog_less=False (the library default) build_profiles does not
+    # refuse — it warns once, names the files, and stamps the admission into the
+    # output so the gap is visible in the file itself, not only in a log.  The
+    # process/run CLI passes refuse_catalog_less=True and so raised above instead:
+    # re-running stage 1 is the actionable fix at the point a product is shipped.
+    if catalog_less:
+        warnings.warn(
+            f"{len(catalog_less)} of {len(cast_list)} cast file(s) carry no sensor "
+            f"catalog ({', '.join(catalog_less)}); their sensor provenance is absent "
+            "from profiles.nc. Re-run stage 1 for this cruise to build it.",
+            stacklevel=2,
+        )
+        attrs["sensor_catalog"] = (
+            f"absent for {len(catalog_less)} of {len(cast_list)} casts — those "
+            "per-cast files predate the catalog; re-run stage 1"
+        )
 
     ds_out = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     ds_out["pressure"].attrs = {
