@@ -121,6 +121,25 @@ class TestStationLadcp:
         html = out.read_text(encoding="utf-8")
         assert _no_external_resources(html) == []
 
+
+class TestStationSensorTable:
+    """The cast page renders the merged catalog sensor table, not a header re-parse."""
+
+    def test_merged_catalog_table_replaces_header_calibration_table(
+        self, tmp_path, all_meta
+    ):
+        """A catalog-bearing cast shows the variable-grouped table; the header table is gone."""
+        out = generate_station_page(
+            _CAST_011, tmp_path, all_meta=all_meta, force=True, ladcp_dir=None
+        )
+        html = out.read_text(encoding="utf-8")
+        # the merged, variable-grouped table (Phase 3, in the Sensors appendix) is present —
+        # identified by its Cal date / Device columns — and its variable -> device join
+        assert "<th>Cal date</th>" in html and "<th>Device</th>" in html
+        assert "ctd_temperature_1" in html and "SN 6435" in html
+        # the header-parsed "Sensor calibration state" fallback table is not rendered
+        assert "Sensor calibration state" not in html
+
     def test_deep_cast_with_ladcp(self, tmp_path, all_meta):
         """Cast 128 (~680 dbar) with LADCP should also produce a valid page."""
         out = generate_station_page(

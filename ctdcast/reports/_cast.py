@@ -9,6 +9,7 @@ from ctdcast.config.cnv_header import (
     ConformanceTick,
     Correction,
     SensorCalibration,
+    cal_value_nondefault,
     conformance_advisories,
     conformance_supported,
     conformance_ticks,
@@ -579,6 +580,110 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
     )
 
 
+def _is_sensor_catalog_var(name: str) -> bool:
+    """True for a ``SENSOR_*`` catalog entry, excluding any ``_qc`` companion.
+
+    QC can stamp a ``{var}_qc`` companion on the dimensionless ``SENSOR_*`` scalars; those
+    are not catalog entries and must not be read as sensors.
+    """
+    return name.startswith("SENSOR_") and not name.endswith("_qc")
+
+
+def _has_sensor_catalog(ds: xr.Dataset) -> bool:
+    """True when the cast carries the stage-1 ``SENSOR_*`` sensor catalog."""
+    return any(_is_sensor_catalog_var(str(v)) for v in ds.variables)
+
+
+def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
+    """Return the per-cast sensor table built from the ``SENSOR_*`` catalog, or ``""``.
+
+    One row per catalogued device, joined to the science variable it produced via that
+    variable's ``sensor=`` link, so a reader sees in one row what measured each number, on
+    which channel, and whether a correction was baked in.  Reads the catalog stage 1 built,
+    not the CNV header — the same facts without a third parse.  Frequency sensors (T/C/P)
+    carry a drift Slope/Offset; a non-identity value is amber-tinted and bolded, matching the
+    calibration-state convention.  A sensor with no stored variable (pH, transmissometer)
+    still lists, with an empty Variable/Channel.  Rows are ordered by acquisition channel.
+    Returns ``""`` for a cast with no catalog, so the caller falls back to the header parse.
+    """
+    catalog = [str(v) for v in ds.variables if _is_sensor_catalog_var(str(v))]
+    if not catalog:
+        return ""
+    # Invert the per-variable ``sensor=`` links so each catalog entry names its variable(s);
+    # pressure is a coordinate, so iterate every variable, not only data_vars.
+    var_by_sensor: dict[str, list[str]] = {}
+    for v in ds.variables:
+        linked = ds[v].attrs.get("sensor")
+        if linked:
+            var_by_sensor.setdefault(str(linked), []).append(str(v))
+
+    def _channel(name: str) -> int:
+        """Sort key: acquisition channel, unstated channels last."""
+        try:
+            return int(ds[name].attrs.get("sensor_channel", 9999))
+        except (TypeError, ValueError):
+            return 9999
+
+    def _value(text: str, *, nondefault: bool) -> str:
+        """Bold a slope/offset that departs from its default, so the eye finds the correction."""
+        cell = escape(text)
+        return f"<strong>{cell}</strong>" if nondefault else cell
+
+    rows = []
+    for name in sorted(catalog, key=_channel):
+        a = ds[name].attrs
+        slope = str(a.get("sensor_calibration_slope", ""))
+        offset = str(a.get("sensor_calibration_offset", ""))
+        slope_nd = bool(slope) and cal_value_nondefault(slope, 1.0)
+        offset_nd = bool(offset) and cal_value_nondefault(offset, 0.0)
+        # A row carrying any drift/span correction is tinted amber (the vendored --warn-bg,
+        # per-cell so it beats the even-row zebra rule); the differing value is bolded.
+        bg = " style='background:var(--warn-bg)'" if (slope_nd or offset_nd) else ""
+        variables = ", ".join(var_by_sensor.get(name, [])) or "—"
+        chan = a.get("sensor_channel")
+        chan_text = "" if chan is None else str(int(chan))
+        serial = str(a.get("sensor_serial_number", "")).strip()
+        device = f"SN {serial}" if serial else "—"
+        rows.append(
+            f"<tr><td class='mono'{bg}>{escape(variables)}</td>"
+            f"<td{bg}>{escape(str(a.get('sensor_role', '')))}</td>"
+            f"<td class='num'{bg}>{escape(chan_text)}</td>"
+            f"<td{bg}>{escape(device)}</td>"
+            f"<td{bg}>{escape(str(a.get('sensor_model', '')))}</td>"
+            f"<td{bg}>{escape(str(a.get('sensor_calibration_date', '')))}</td>"
+            f"<td class='mono'{bg}>{_value(slope, nondefault=slope_nd)}</td>"
+            f"<td class='mono'{bg}>{_value(offset, nondefault=offset_nd)}</td></tr>"
+        )
+    # No <h3>: this single table sits directly under the "Sensors" appendix heading, so a
+    # heading of its own would just repeat it.  The pre-catalog fallback keeps its headings,
+    # where there really are two tables (device inventory, then calibration state).
+    return (
+        "<table class='nc'><thead><tr>"
+        "<th>Variable</th><th>Role</th><th>Ch</th><th>Device</th><th>Model</th>"
+        "<th>Cal date</th><th>Slope</th><th>Offset</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+def _render_sensors_section(c: PageCtx) -> str | None:
+    """Render the Sensors appendix, or None when the cast has no sensor information.
+
+    A cast carrying the ``SENSOR_*`` catalog gets the one merged table joining each science
+    variable to the device that produced it and its calibration.  A file predating the
+    catalog falls back to the header-derived device inventory plus the drift calibration-state
+    table.  This is the single home for sensor information; the processing-provenance panel
+    points here rather than duplicating it.
+    """
+    merged = _render_sensor_catalog_table(c.ds)
+    if merged:
+        return merged
+    parts = [_render_sensor_table(c.sensor_info) or ""]
+    header = header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) or ""
+    if header:
+        parts.append(_render_sensor_calibration_table(sensor_calibrations(header)))
+    return "".join(parts) or None
+
+
 #: The status pip (CSS class, glyph) each conformance state renders as in the match column:
 #: a green ✓, a red ✗, a neutral ringed dash (no reference — no match, no warning).
 _TICK_BADGE = {
@@ -698,35 +803,34 @@ def _render_provenance_table(
     records: list[Correction],
     attrs: dict[str, Any],
     advisories: list[str] | None = None,
-    sensor_cals: list[SensorCalibration] | None = None,
     ticks: list[ConformanceTick] | None = None,
     conformance: list[str] | None = None,
     instrument_note: str | None = None,
+    sensor_xref: str = "",
 ) -> str | None:
     """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
 
-    *records* are the structured corrections (deck-unit align first, then each Sea-Bird
-    Data Processing module in file order, a repeat suffixed); *attrs* supplies the time
-    coordinate's source and offset; *advisories* are the structural implications
+    Focused on *what was done* to the data before ctdcast: *records* are the structured
+    corrections (deck-unit align first, then each Sea-Bird Data Processing module in file
+    order, a repeat suffixed); *attrs* supplies the time coordinate's source and offset;
+    *advisories* are the structural implications
     (:func:`~ctdcast.config.cnv_header.provenance_advisories`) drawn as a note beneath the
-    tables; *sensor_cals* are the per-sensor drift Slope/Offset
-    (:func:`~ctdcast.config.cnv_header.sensor_calibrations`) drawn as a calibration-state
-    table.  *ticks* are the conformance comparisons
+    tables.  *ticks* are the conformance comparisons
     (:func:`~ctdcast.config.cnv_header.conformance_ticks`); when present they add a
     "Matches reference" column to the corrections table, splitting a per-channel/per-cell
     correction into one row each.  *conformance* are the deviation sentences
     (:func:`~ctdcast.config.cnv_header.conformance_advisories`) drawn as a "Conformance"
     note.  *instrument_note* is a caption shown under the corrections table (e.g. when the
-    instrument has no encoded references).  The full verbatim blocks stay in the
-    ``sbe_acquisition`` / ``sbe_processing`` attributes.  Values escaped here (emitted
-    ``|safe``).
+    instrument has no encoded references).  *sensor_xref*, when set, is a one-line pointer to
+    the Sensors appendix, where per-sensor calibration state now lives.  The full verbatim
+    blocks stay in the ``sbe_acquisition`` / ``sbe_processing`` attributes.  Values escaped
+    here (emitted ``|safe``).
     """
     advisories = advisories or []
-    sensor_cals = sensor_cals or []
     conformance = conformance or []
     src = attrs.get("time_coordinate_source")
     off = attrs.get("time_clock_offset_seconds")
-    if not records and not src and off is None and not advisories and not sensor_cals:
+    if not records and not src and off is None and not advisories and not conformance:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
@@ -767,7 +871,10 @@ def _render_provenance_table(
             f"<ul class='caption' style='margin-top:0'>{items}</ul>"
         )
 
-    sensor_html = _render_sensor_calibration_table(sensor_cals)
+    # Per-sensor calibration state lives in the Sensors appendix (one table joining each
+    # variable to the device that produced it); this panel keeps its focus on processing and
+    # just points there.
+    xref_html = f"<p class='caption'>{escape(sensor_xref)}</p>" if sensor_xref else ""
 
     note = (
         "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
@@ -778,7 +885,7 @@ def _render_provenance_table(
     # and tables stack instead of tiling across the section's `.fig-row`.
     return (
         "<div class='prov-panel'>"
-        f"{corr_html}{sensor_html}{time_html}{advisory_html}{conformance_html}{note}"
+        f"{corr_html}{time_html}{advisory_html}{conformance_html}{xref_html}{note}"
         "</div>"
     )
 
@@ -799,14 +906,22 @@ def _render_provenance_panel(c: PageCtx) -> str | None:
     # spellings CNV_ALIASES misses, e.g. c0mS/cm → conductivity_1).  Lower-cased keys so the
     # lookup is case-insensitive against the header channel names.
     rename_map = source_to_canonical(c.ds, lower_keys=True)
+    # The sensor calibration state moved to the Sensors appendix (built from the catalog, not
+    # a header re-parse); this panel points there rather than carrying its own sensor table.
+    sensor_xref = (
+        "Per-sensor calibration state (drift Slope/Offset) and the device inventory are in "
+        "the Sensors appendix."
+        if c.sensor_info
+        else ""
+    )
     table = _render_provenance_table(
         correction_records(header),
         dict(c.ds.attrs),
         provenance_advisories(header),
-        sensor_calibrations(header),
         ticks=conformance_ticks(header, rename_map),
         conformance=conformance_advisories(header),
         instrument_note=instrument_note,
+        sensor_xref=sensor_xref,
     )
     if table is not None:
         return table
@@ -959,7 +1074,9 @@ CAST_PANELS: dict[str, Panel] = {
     "sensors_table": Panel(
         id="sensors_table",
         kind="table",
-        render=lambda c: _render_sensor_table(c.sensor_info),
+        # The one home for sensor information: the merged catalog table (variable → device →
+        # calibration), or the header-derived inventory for a pre-catalog file.
+        render=lambda c: _render_sensors_section(c),
     ),
     "data_ranges": Panel(
         id="data_ranges",
@@ -1056,7 +1173,10 @@ CAST_DEFAULT: Profile = Profile(
             "Sensors",
             ("sensors_table",),
             role="appendix",
-            applies_to=lambda c: bool(c.sensor_info),
+            # Applicable whenever the cast has sensor information — a catalog-bearing cast is
+            # exactly where it is *most* applicable, so the predicate must not gate on the
+            # catalog (that would route "Sensors" into the not-applicable footer).
+            applies_to=lambda c: bool(c.sensor_info) or _has_sensor_catalog(c.ds),
         ),
         Section(
             "data_ranges",

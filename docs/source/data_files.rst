@@ -328,10 +328,22 @@ infix are meaningful — keep them distinct:
   e.g. ``SENSOR_TEMPERATURE_5806`` or ``SENSOR_FLUOROMETER_FLNTURTD_3219``. It
   holds no data; all provenance is in its attributes (``sensor_model``,
   ``sensor_serial_number``, ``sensor_calibration_date``, ``sensor_maker``, the
-  L05/L22/L35 vocabulary URIs, and ``model_source``). The serial identifies the
+  L05/L22/L35 vocabulary URIs, ``model_source``, and its ``sensor_role`` and
+  ``sensor_channel``). A **frequency** sensor (temperature, conductivity,
+  pressure) also carries ``sensor_calibration_slope`` and
+  ``sensor_calibration_offset`` — the ``datcnv`` drift/span correction already
+  baked into the data before ctdcast read it; a value away from the identity
+  (slope 1, offset 0) means a correction was applied. The serial identifies the
   device, so a cell used as both primary and secondary of one type is a single
   entry; ``sensor_shared_with`` cross-links one device serving two roles (e.g. a
   combined FLNTU as both fluorometer and turbidity).
+
+  Each measured **data variable** carries a single ``sensor`` attribute naming
+  the ``SENSOR_*`` entry that produced it (e.g. ``ctd_temperature_1``'s
+  ``sensor = "SENSOR_TEMPERATURE_5806"``). That one link is all a variable
+  holds; its role and channel live on the entry, so a device with no stored
+  variable (pH, a transmissometer) still records both. This is what lets the
+  compile aggregate the catalog without re-reading the header.
 
 ``sensor_<role>`` — lower-case, dimension ``N_PROF``
   Per profile, a **string** naming the ``SENSOR_*`` variable that filled each
@@ -352,3 +364,33 @@ SensorID → model table ships in ``ctdcast/config/sbe_sensors.yaml``; per-cruis
 refinements come from the ``sensors:`` block in ``config.yaml`` (see above). The
 ``SBE sensors`` report page presents all of this as configuration, inventory and
 rewiring tables.
+
+Where it is built, and two kinds of provenance
+""""""""""""""""""""""""""""""""""""""""""""""
+
+The catalog is resolved **once, at stage 1** — the per-cast netCDF files carry
+their own ``SENSOR_*`` entries — and the compile simply aggregates them; nothing
+re-reads the SBE header downstream. This splits each entry's attributes into two
+provenances that mean different things when two casts disagree:
+
+- **Header-native** (``sensor_calibration_date``, ``sensor_calibration_slope``,
+  ``sensor_calibration_offset``) are fixed for a serial. A mismatch across casts
+  cannot be a real recalibration at sea, so it is flagged as a parsing or data
+  error.
+- **Config-resolved** (``sensor_model``, ``sensor_maker``, the vocabulary URIs)
+  come from the SensorID registry and the ``sensors:`` overrides. A mismatch
+  just means the casts were stamped under different config versions — expected,
+  and fixed by re-running stage 1 (or a future ``enrich`` step) to restamp, not
+  by treating it as a data error.
+
+Because provenance lives on the file, the per-cast page's **Sensors and
+calibration state** table reads the catalog directly — one row per device,
+joined to the variable it produced and showing its model, calibration date and
+any applied slope/offset — rather than re-parsing the SBE header. A file that
+predates the catalog falls back to the header parse.
+
+A per-cast file that carries **no** ``SENSOR_*`` catalog predates this
+provenance. The ``build_profiles`` library call still compiles it, with a
+warning and a ``sensor_catalog`` attribute recording the gap; ``ctdcast process
+--stage profiles`` and ``ctdcast run`` instead refuse, because re-running stage
+1 to build the catalog is the actionable fix before a product is shipped.

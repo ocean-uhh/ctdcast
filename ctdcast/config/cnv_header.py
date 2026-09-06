@@ -800,10 +800,29 @@ def parse_sensor_block(header_text: str) -> list[dict]:
     return records
 
 
-def _cal_value_nondefault(value: str, default: float) -> bool:
-    """True when *value* departs from *default* beyond the identity tolerance.
+def cal_value_nondefault(value: str, default: float) -> bool:
+    """Return whether a calibration *value* departs from its default beyond tolerance.
 
-    An unparseable value reads as default: a drift that cannot be read is not claimed.
+    Decides whether a stored slope (default 1.0) or offset (default 0.0) carries a
+    drift/span correction, so the cast page can amber-tint and bold it — used both on
+    the ``sensor_calibrations`` header parse and, since the sensor catalog, on the
+    per-cast ``SENSOR_*`` attributes.
+
+    Parameters
+    ----------
+    value : str
+        The stored slope or offset, verbatim as read from the SBE header or a
+        ``SENSOR_*`` catalog attribute.
+    default : float
+        The identity value it is compared against — ``1.0`` for a slope, ``0.0`` for
+        an offset.
+
+    Returns
+    -------
+    bool
+        True when *value* parses and lies more than the identity tolerance
+        (``_CAL_IDENTITY_TOL``, 5e-7) from *default*; False when it is within
+        tolerance or cannot be parsed — a drift that cannot be read is not claimed.
     """
     try:
         return abs(float(value) - default) > _CAL_IDENTITY_TOL
@@ -842,8 +861,8 @@ def sensor_calibrations(header_text: str) -> list[SensorCalibration]:
                 serial=serial,
                 slope=slope,
                 offset=offset,
-                slope_nondefault=_cal_value_nondefault(slope, 1.0),
-                offset_nondefault=_cal_value_nondefault(offset, 0.0),
+                slope_nondefault=cal_value_nondefault(slope, 1.0),
+                offset_nondefault=cal_value_nondefault(offset, 0.0),
             )
         )
     return calibrations
