@@ -136,6 +136,19 @@ h2 + .caption { margin-top: -0.5rem; max-width: none; }
 }
 .fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
 .fig-row.center { justify-content: center; }
+/* A multi-table panel (processing provenance) is one full-width flex item so its
+   headings and tables stack instead of tiling across the row. */
+.prov-panel { flex: 1 1 100%; }
+/* Conformance status pips — a green ✓ (matches), a red ✗ (differs) and a neutral
+   ringed dash (no reference), matching the LADCP-present/absent badges. */
+.conf {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.4em; height: 1.4em; border-radius: 50%;
+  font-size: var(--fs-xs); font-weight: 700; line-height: 1;
+}
+.conf-match { background: var(--ok); color: #fff; }
+.conf-differ { background: var(--error); color: #fff; }
+.conf-none { background: #fff; color: #000; border: 1px solid #000; }
 figure { margin: 0; }
 figure img {
   border: 1px solid var(--rule); border-radius: var(--radius-btn);
@@ -243,7 +256,7 @@ details.attrs td { font-size: var(--fs-xs); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-08-23 06:41 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-09-06 18:26 UTC</p>
   
   <div style="margin-top:0.65rem;margin-bottom:0.5rem">
     <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
@@ -813,7 +826,7 @@ details.attrs td { font-size: var(--fs-xs); }
       <td>
         
         <details class="attrs"><summary>3 attrs</summary>
-          <table><tr><td class="mono">flag_values</td><td>[0 1 2 3]</td></tr><tr><td class="mono">flag_meanings</td><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><td class="mono">comment</td><td>Best-available rung for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 = unknown: an unsuffixed flat file assumed to be stage 1 by the compatibility shim, which does not state its own stage. Casts can be at mixed stages early in a cruise.</td></tr></table>
+          <table><tr><td class="mono">flag_values</td><td>[0 1 2 3]</td></tr><tr><td class="mono">flag_meanings</td><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><td class="mono">comment</td><td>Best-available stage for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 = unknown: an unsuffixed flat file assumed to be stage 1 by the compatibility shim, which does not state its own stage. Casts can be at mixed stages early in a cruise.</td></tr></table>
         </details>
         
       </td>
@@ -875,8 +888,8 @@ details.attrs td { font-size: var(--fs-xs); }
       
       <td>
         
-        <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3120</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-May-23</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr></table>
+        <details class="attrs"><summary>13 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3120</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-May-23</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>0.99993682</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.00000</td></tr></table>
         </details>
         
       </td>
@@ -893,8 +906,8 @@ details.attrs td { font-size: var(--fs-xs); }
       
       <td>
         
-        <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>4922</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr></table>
+        <details class="attrs"><summary>13 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>4922</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000452</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.00000</td></tr></table>
         </details>
         
       </td>
@@ -965,8 +978,8 @@ details.attrs td { font-size: var(--fs-xs); }
       
       <td>
         
-        <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water pressure sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><td class="mono">sensor_model</td><td>Digiquartz</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><td class="mono">sensor_maker</td><td>Paroscientific, Inc.</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>0814</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>45</td></tr><tr><td class="mono">sbe_sensor_element</td><td>PressureSensor</td></tr></table>
+        <details class="attrs"><summary>13 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water pressure sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><td class="mono">sensor_model</td><td>Digiquartz</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><td class="mono">sensor_maker</td><td>Paroscientific, Inc.</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>0814</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>45</td></tr><tr><td class="mono">sbe_sensor_element</td><td>PressureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00004096</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.27440</td></tr></table>
         </details>
         
       </td>
@@ -983,8 +996,8 @@ details.attrs td { font-size: var(--fs-xs); }
       
       <td>
         
-        <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6000</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr></table>
+        <details class="attrs"><summary>13 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6000</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000000</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.0000</td></tr></table>
         </details>
         
       </td>
@@ -1001,8 +1014,8 @@ details.attrs td { font-size: var(--fs-xs); }
       
       <td>
         
-        <details class="attrs"><summary>11 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6435</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr></table>
+        <details class="attrs"><summary>13 attrs</summary>
+          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6435</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000000</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.0000</td></tr></table>
         </details>
         
       </td>
@@ -1520,8 +1533,8 @@ details.attrs td { font-size: var(--fs-xs); }
 <h3>(7.3) Provenance &amp; processing</h3>
 <table class="nc">
   <tbody>
-    <tr><td class="mono">date_created</td><td>2026-08-23T06:41:34Z</td></tr><tr><td class="mono">date_modified</td><td>2026-08-23T06:41:34Z</td></tr><tr><td class="mono">history</td><td>2026-08-23T06:41:34Z ctdcast 0.1.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
-2026-08-23T06:41:34Z ctdcast 0.1.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>D</td></tr><tr><td class="mono">data_mode_meaning</td><td>delayed-mode</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
+    <tr><td class="mono">date_created</td><td>2026-09-06T18:26:18Z</td></tr><tr><td class="mono">date_modified</td><td>2026-09-06T18:26:18Z</td></tr><tr><td class="mono">history</td><td>2026-09-06T18:26:18Z ctdcast 0.1.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-09-06T18:26:18Z ctdcast 0.1.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>D</td></tr><tr><td class="mono">data_mode_meaning</td><td>delayed-mode</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
   </tbody>
 </table>
 
@@ -1538,6 +1551,6 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-08-23 06:41 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-09-06 18:26 UTC</footer>
 </body>
 </html>
