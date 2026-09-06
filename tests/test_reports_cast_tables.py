@@ -69,6 +69,24 @@ class TestRenderSensorCatalogTable:
         assert "conductivity_1" in html and "SN 4922" in html
         assert "pressure" in html and "Digiquartz" in html
 
+    def test_qc_companions_of_catalog_scalars_are_not_rendered_as_sensors(self):
+        """A stage-2/3 cast has ``SENSOR_*_qc`` companions; they must not become empty rows."""
+        from ctdcast.processors.stage2 import apply_stage2
+
+        ds = _fixture_ds()
+        try:
+            processed = apply_stage2(ds.load())
+        finally:
+            ds.close()
+        # stage 2 stamps a _qc companion on the SENSOR_* scalars; the table must skip them.
+        assert any(
+            str(v).startswith("SENSOR_") and str(v).endswith("_qc")
+            for v in processed.variables
+        )
+        html = _render_sensor_catalog_table(processed)
+        # one <tr> header + one per real sensor (11), and no blank _qc rows padding it out
+        assert html.count("<tr>") == 1 + 11
+
     def test_variable_less_sensor_listed_with_empty_variable(self):
         """A pH sensor (no stored variable) still lists, with an em-dash Variable cell."""
         ds = _fixture_ds()

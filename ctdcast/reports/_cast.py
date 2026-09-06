@@ -580,9 +580,18 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
     )
 
 
+def _is_sensor_catalog_var(name: str) -> bool:
+    """True for a ``SENSOR_*`` catalog entry, excluding any ``_qc`` companion.
+
+    QC can stamp a ``{var}_qc`` companion on the dimensionless ``SENSOR_*`` scalars; those
+    are not catalog entries and must not be read as sensors.
+    """
+    return name.startswith("SENSOR_") and not name.endswith("_qc")
+
+
 def _has_sensor_catalog(ds: xr.Dataset) -> bool:
     """True when the cast carries the stage-1 ``SENSOR_*`` sensor catalog."""
-    return any(str(v).startswith("SENSOR_") for v in ds.variables)
+    return any(_is_sensor_catalog_var(str(v)) for v in ds.variables)
 
 
 def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
@@ -597,7 +606,7 @@ def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
     still lists, with an empty Variable/Channel.  Rows are ordered by acquisition channel.
     Returns ``""`` for a cast with no catalog, so the caller falls back to the header parse.
     """
-    catalog = [str(v) for v in ds.variables if str(v).startswith("SENSOR_")]
+    catalog = [str(v) for v in ds.variables if _is_sensor_catalog_var(str(v))]
     if not catalog:
         return ""
     # Invert the per-variable ``sensor=`` links so each catalog entry names its variable(s);
