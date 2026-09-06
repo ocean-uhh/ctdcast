@@ -12,11 +12,152 @@ from ctdcast.config.cnv_header import (
     Correction,
     SensorCalibration,
 )
+import xarray as xr
+from conftest import FIXTURES_NC
+
 from ctdcast.reports._cast import (
+    _has_sensor_catalog,
     _render_provenance_table,
     _render_sensor_calibration_table,
+    _render_sensor_catalog_table,
     _render_sensor_table,
+    _render_sensors_section,
 )
+
+
+def _fixture_ds() -> xr.Dataset:
+    """A catalog-bearing per-cast fixture (dual T/C, pH + transmissometer, applied drift)."""
+    return xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4")
+
+
+class TestRenderSensorCatalogTable:
+    """The merged, catalog-driven sensor table (Phase 3): variable→device→calibration."""
+
+    def test_empty_without_catalog(self):
+        """A cast with no SENSOR_* catalog yields "" (the caller falls back to the header)."""
+        ds = _fixture_ds()
+        try:
+            stripped = ds.drop_vars(
+                [v for v in ds.variables if str(v).startswith("SENSOR_")]
+            )
+        finally:
+            ds.close()
+        assert _render_sensor_catalog_table(stripped) == ""
+        assert _has_sensor_catalog(stripped) is False
+
+    def test_headers_and_variable_join(self):
+        """Eight columns, and each science variable joins to the device that measured it."""
+        ds = _fixture_ds()
+        try:
+            assert _has_sensor_catalog(ds) is True
+            html = _render_sensor_catalog_table(ds)
+        finally:
+            ds.close()
+        for col in (
+            "Variable",
+            "Role",
+            "Ch",
+            "Device",
+            "Model",
+            "Cal date",
+            "Slope",
+            "Offset",
+        ):
+            assert f"{col}</th>" in html
+        # a measured variable is joined to its device serial and model
+        assert "ctd_temperature_1" in html and "SN 6435" in html
+        assert "conductivity_1" in html and "SN 4922" in html
+        assert "pressure" in html and "Digiquartz" in html
+
+    def test_variable_less_sensor_listed_with_empty_variable(self):
+        """A pH sensor (no stored variable) still lists, with an em-dash Variable cell."""
+        ds = _fixture_ds()
+        try:
+            html = _render_sensor_catalog_table(ds)
+        finally:
+            ds.close()
+        # the pH device is present by role, and no ctdcast variable links to it
+        assert ">ph<" in html
+        assert "SN 339" in html  # the pH serial from the catalog
+        assert "—" in html  # the empty Variable cell for a variable-less sensor
+
+    def test_nonidentity_slope_is_amber_and_bold(self):
+        """A frequency sensor with an applied drift is tinted amber and the value bolded."""
+        ds = _fixture_ds()
+        try:
+            html = _render_sensor_catalog_table(ds)
+        finally:
+            ds.close()
+        # the conductivity cells carry genuine drift slopes in this fixture
+        assert "background:var(--warn-bg)" in html
+        assert (
+            "<strong>0.99993682</strong>" in html
+            or "<strong>1.00000452</strong>" in html
+        )
+        # pressure carries both a slope and offset correction
+        assert (
+            "<strong>1.00004096</strong>" in html and "<strong>0.27440</strong>" in html
+        )
+
+    def test_provenance_table_carries_no_sensor_table_only_a_cross_reference(self):
+        """The provenance panel holds no sensor table; it points to the Sensors appendix."""
+        html = _render_provenance_table(
+            [
+                Correction(
+                    "datcnv", "datcnv", "SBE Data Processing", "7.26", "skipover=0"
+                )
+            ],
+            {},
+            sensor_xref="calibration state is in the Sensors appendix",
+        )
+        assert html is not None
+        assert (
+            "Sensor calibration state" not in html
+        )  # no calibration table in the panel
+        assert "Sensors and calibration state" not in html
+        assert "Sensors appendix" in html  # the one-line cross-reference
+
+
+class TestRenderSensorsSection:
+    """The Sensors appendix: the merged catalog table, or the pre-catalog fallback."""
+
+    def test_catalog_cast_renders_merged_table(self):
+        """A catalog-bearing cast's Sensors appendix is the merged variable→device table."""
+        from types import SimpleNamespace
+
+        ds = _fixture_ds()
+        try:
+            html = _render_sensors_section(SimpleNamespace(ds=ds, sensor_info=[]))
+        finally:
+            ds.close()
+        assert html is not None
+        # The merged table carries no <h3> of its own (it sits under the "Sensors" appendix
+        # heading); identify it by its columns and the variable→device join.
+        assert "<h3" not in html
+        assert "<th>Cal date</th>" in html and "<th>Device</th>" in html
+        assert "ctd_temperature_1" in html and "SN 6435" in html
+
+    def test_precatalog_cast_falls_back_to_header_tables(self):
+        """A cast with no catalog falls back to the header device list + calibration state."""
+        from types import SimpleNamespace
+
+        from ctdcast.readers.metadata import parse_sensor_info
+
+        ds = _fixture_ds()
+        try:
+            stripped = ds.drop_vars(
+                [v for v in ds.variables if str(v).startswith("SENSOR_")]
+            )
+            html = _render_sensors_section(
+                SimpleNamespace(ds=stripped, sensor_info=parse_sensor_info(stripped))
+            )
+        finally:
+            ds.close()
+        assert html is not None
+        assert "Sensor calibration state" in html  # header-parsed fallback
+        assert (
+            "Sensors and calibration state" not in html
+        )  # not the merged catalog table
 
 
 class TestRenderSensorCalibrationTable:
@@ -72,13 +213,6 @@ class TestRenderSensorCalibrationTable:
         assert "<strong>0.27440</strong>" in html
         # identity temperature_1 slope is never bolded
         assert "<strong>1.00000000</strong>" not in html
-
-    def test_provenance_table_includes_calibration(self):
-        """The calibration table is embedded in the provenance panel output."""
-        html = _render_provenance_table([], {}, [], self._CALS)
-        assert html is not None
-        assert "Sensor calibration state" in html
-        assert "0814" in html
 
 
 class TestRenderProvenanceTable:

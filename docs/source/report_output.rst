@@ -138,7 +138,23 @@ starting points, not as a deviation.
 
 A separate **Conformance** note collects the deviations as hedged, source-citing sentences,
 kept distinct from the structural **Advisories** note (which reports what the file *is* —
-e.g. already pressure-binned — rather than how its parameters compare).
+e.g. already pressure-binned — rather than how its parameters compare).  The panel keeps its
+focus on *what was done* to the data; per-sensor calibration state lives in the Sensors
+appendix, and the panel carries a one-line pointer to it.
+
+Sensors appendix
+~~~~~~~~~~~~~~~~
+
+A single table joins each science variable to the physical device that produced it, in one
+row: **Variable · Role · Ch · Device · Model · Cal date · Slope · Offset**.  It is read from
+the per-cast sensor catalog (the ``SENSOR_*`` entries and each variable's ``sensor`` link —
+see :doc:`data_files`), not re-parsed from the header.  A
+device with no stored variable (pH, a transmissometer) still appears, with an empty Variable
+cell.  For a **frequency** sensor (temperature, conductivity, pressure) a Slope away from 1
+or Offset away from 0 is a ``datcnv`` drift/span correction already baked in; that row is
+tinted amber and the specific value bolded, so a correction is visible at a glance.  A cast
+file that predates the catalog falls back to the header-parsed device inventory and
+calibration-state tables.
 
 ----
 
