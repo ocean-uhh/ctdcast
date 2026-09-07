@@ -71,6 +71,9 @@ class TestApplyStage2:
         ds_out = apply_stage2(ds)
         assert "history" in ds_out.attrs
         assert "stage2: soak/deck" in ds_out.attrs["history"]
+        # The note names the variables it flagged, so the record says what was touched.
+        assert "flag 4 on" in ds_out.attrs["history"]
+        assert "ctd_temperature_1" in ds_out.attrs["history"]
 
     def test_history_contains_parameters(self):
         from ctdcast.processors.stage2 import apply_stage2

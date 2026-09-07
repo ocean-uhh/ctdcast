@@ -115,6 +115,11 @@ from — so the chain back to the raw CNV is readable from any single output.
   per profile (the compiled file has its own ``tracking_id`` global attribute).
 - Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
   attribute instead — ``source_cnv`` for CTD, ``source_mat`` for LADCP.
+- ``processing_stage`` (``1``/``2``/``3``) records the stage in the file itself, not only in
+  the filename, so a file copied out of its stage directory still declares what it is — the
+  form a cross-package consumer (caldip) reads.
+- ``cast_id`` records the cast identity (the canonical zero-padded form, e.g. ``011`` or
+  ``011b``) in the file for the same reason; it is stamped at stage 1 and carried forward.
 - ``date_created`` is set once (first write) and preserved across re-runs; ``date_modified``
   moves on every write. So a stage-3 rewrite records *when* it was rewritten without resetting
   the creation time.
@@ -122,6 +127,52 @@ from — so the chain back to the raw CNV is readable from any single output.
 To read the best-available ctdcast file per cast from another package, call
 ``ctdcast.select_best_available(root)`` (stage 3, else stage 2, else stage 1) rather than
 reimplementing the precedence — see :doc:`api`.
+
+Processing state
+~~~~~~~~~~~~~~~~~
+
+Two OceanSITES fields say what state a file is in, using that standard's own vocabulary.
+
+``data_mode`` (reference table 4) is a **global** attribute on every file: ``P``
+provisional (the default — some processing may have been done, but the file is not the
+product of record), ``D`` delayed-mode (all calibrations and QC applied), ``M`` mixed.
+``D`` is **declared, never inferred**: it comes only from ``cruise_info.data_mode: D`` in
+the config, because no code can know that *every* calibration a cruise needed was applied.
+A quick-look (``ctdcast draft``) file is always ``P``. In ``profiles.nc`` the global value
+is ``M`` only when the compiled casts genuinely differ, and a per-``N_PROF``
+``source_data_mode`` variable then says which profile is in which mode; casts merely compiled
+from different
+*stages* do not make the file ``M`` (stages 1–3 are all provisional — ``source_stage``
+records the stage difference). ``data_mode_meaning`` always accompanies it.
+
+``processing_level`` (reference table 3) is a **per-variable** attribute recording what has
+been done to that variable, using table 3's strings verbatim:
+
+- ``Instrument data that has been converted to geophysical values`` — stamped at stage 1 on
+  every **measured** channel (temperature, conductivity, pressure, oxygen, fluorescence,
+  turbidity, altimeter), identified by its link to a sensor in the CNV ``<Sensors>`` block.
+  **Computed** channels (``ctd_salinity_*``, density, …) do not carry it: they were derived
+  from already-converted inputs, never instrument data. Absence is not "raw" — table 3 has an
+  explicit raw value; absence means *not stated*.
+- ``Ranges applied, bad data flagged`` — stage-2 soak/deck flags and stage-3 gross-range and
+  spike tests.
+- ``Post-recovery calibrations have been applied`` — a stage-3 conductivity calibration; it
+  **propagates** to re-derived salinity, whose values now embody the calibration.
+
+When several apply to one variable they are joined with ``"; "`` in the order applied (comma
+is unusable — ``Ranges applied, bad data flagged`` contains one), so the attribute doubles as
+the procedure sequence. The list is an ordered **set**: re-running a stage never duplicates a
+value. The rule behind the split is that a value-changing procedure (calibration, flagging)
+propagates to variables derived from the changed inputs, while an origin claim (conversion)
+does not. Spelling is lowercase ``processing_level`` throughout, matching the ``<PARAM>:``
+template; do not "correct" a file to a capitalised variant from a stray manual example.
+
+The compiled ``profiles.nc`` carries the per-variable ``processing_level`` too, so the archive
+is interpretable without the stage files: for each variable it is the value the compiled casts
+agree on, or — where they differ — an explicit "mixed across casts" marker, never a union of
+their sentences (a union would claim a procedure on a cast that never had it). The per-profile
+treatment stays reachable through ``source_stage`` / ``source_data_mode`` /
+``source_tracking_id``.
 
 Profiles file (``<ctd_root>/profiles.nc``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

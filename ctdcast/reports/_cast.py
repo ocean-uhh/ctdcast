@@ -408,16 +408,69 @@ def _render_data_ranges_table(nc_path: Path) -> str | None:
         f"<td class='num'>{escape(str(v['v_min']))}</td>"
         f"<td class='num'>{escape(str(v['v_max']))}</td>"
         f"<td class='num'>{escape(str(v['n_valid']))}"
-        f"{' / ' + escape(str(v['n'])) if v['n_valid'] < v['n'] else ''}</td></tr>"
+        f"{' / ' + escape(str(v['n'])) if v['n_valid'] < v['n'] else ''}</td>"
+        f"<td>{escape(str(v.get('processing_level', '')))}</td></tr>"
         for v in rows_data
     )
     return (
         '<table class="nc data-ranges">'
         "<thead><tr><th>Variable</th><th>Units</th><th>Label units</th>"
         "<th class='num'>Min</th><th class='num'>Max</th>"
-        "<th class='num'>Valid</th></tr></thead>"
+        "<th class='num'>Valid</th><th>Processing level</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
     )
+
+
+#: Global attributes shown in the file-provenance table, in order, with their row labels.
+#: Only those present on the file are shown, so a legacy file skips the ones it lacks.
+_FILE_PROVENANCE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("cast_id", "Cast"),
+    ("data_mode", "Data mode"),
+    ("processing_stage", "Processing stage"),
+    ("source_cnv", "Source CNV"),
+    ("tracking_id", "Tracking id"),
+    ("source_tracking_id", "Made from"),
+    ("date_created", "Created"),
+    ("date_modified", "Modified"),
+)
+
+
+def _render_file_provenance(c: PageCtx) -> str | None:
+    """Return the file-identity/provenance key-value table, or None when the file has none.
+
+    Surfaces the global attributes ctdcast writes — cast identity, OceanSITES ``data_mode``,
+    ``processing_stage``, and the ``tracking_id`` lineage back to the CNV — so a reader can
+    confirm from the report which stage and mode produced the page.
+    """
+    a = c.ds.attrs
+    rows: list[str] = []
+    for key, label in _FILE_PROVENANCE_FIELDS:
+        val = a.get(key)
+        if val in (None, ""):
+            continue
+        text = str(val)
+        if key == "data_mode":
+            meaning = str(a.get("data_mode_meaning", "")).strip()
+            text = f"{text} ({meaning})" if meaning else text
+        rows.append(
+            f"<tr><th>{escape(label)}</th><td class='mono'>{escape(text)}</td></tr>"
+        )
+    if not rows:
+        return None
+    return f'<table class="nc file-provenance"><tbody>{"".join(rows)}</tbody></table>'
+
+
+#: Fields that on their own justify the file-provenance section.  Dates are excluded: almost
+#: every file has them, the footer already shows a processed date, and a two-row Created /
+#: Modified table on a legacy file is noise — the section is for identity, mode and lineage.
+_FILE_PROVENANCE_TRIGGERS: frozenset[str] = frozenset(
+    {k for k, _ in _FILE_PROVENANCE_FIELDS} - {"date_created", "date_modified"}
+)
+
+
+def _has_file_provenance(c: PageCtx) -> bool:
+    """True when the cast file carries a substantive file-provenance attribute (not just dates)."""
+    return any(c.ds.attrs.get(k) for k in _FILE_PROVENANCE_TRIGGERS)
 
 
 def _render_qc_table(nc_path: Path) -> str | None:
@@ -1078,6 +1131,11 @@ CAST_PANELS: dict[str, Panel] = {
         # calibration), or the header-derived inventory for a pre-catalog file.
         render=lambda c: _render_sensors_section(c),
     ),
+    "file_provenance": Panel(
+        id="file_provenance",
+        kind="table",
+        render=_render_file_provenance,
+    ),
     "data_ranges": Panel(
         id="data_ranges",
         kind="table",
@@ -1177,6 +1235,17 @@ CAST_DEFAULT: Profile = Profile(
             # exactly where it is *most* applicable, so the predicate must not gate on the
             # catalog (that would route "Sensors" into the not-applicable footer).
             applies_to=lambda c: bool(c.sensor_info) or _has_sensor_catalog(c.ds),
+        ),
+        Section(
+            "file_provenance",
+            "File provenance",
+            ("file_provenance",),
+            intro=(
+                "File identity read back from the cast file: cast, OceanSITES data mode, "
+                "processing stage, and the tracking_id lineage to the source CNV."
+            ),
+            role="appendix",
+            applies_to=_has_file_provenance,
         ),
         Section(
             "data_ranges",

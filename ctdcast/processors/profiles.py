@@ -35,6 +35,14 @@ _SKIP_VARS: frozenset[str] = frozenset(
     {"timeJ", "timeS", "pressure", "clock_offset_seconds"}
 )
 
+#: The compiled ``processing_level`` for a variable whose casts do not agree.  An explicit
+#: value, never an omission or a union of the casts' sentences: the per-profile treatment is
+#: reachable through ``source_stage`` / ``source_data_mode`` / ``source_tracking_id``.
+_MIXED_PROCESSING_LEVEL = (
+    "mixed across casts — see per-profile source_stage, source_data_mode "
+    "and source_tracking_id"
+)
+
 
 def _read_cast_sensor_catalog(ds: xr.Dataset) -> list[dict]:
     """Return one record per ``SENSOR_*`` catalog entry in a per-cast dataset.
@@ -447,6 +455,10 @@ def build_profiles(
     # Lineage: the tracking_id of each per-cast file compiled here (empty for a legacy file
     # that predates the id), so the chain back from profiles.nc is readable per profile.
     source_tracking_ids: list[str] = [""] * n_casts
+    # Each cast's own OceanSITES data_mode (P, or D when declared — stage 1 guarantees the
+    # attribute exists).  A compiled file mixing modes is labelled "M", and the manual then
+    # requires per-profile modes to resolve which data is in which mode; this array is that.
+    cast_data_modes: list[str] = ["P"] * n_casts
 
     # Per-cast sensor catalogs, in rank order, aggregated by _build_sensor_catalog.
     cast_catalogs: list[list[dict]] = []
@@ -464,6 +476,12 @@ def build_profiles(
     # the fraction is not distorted by binning's own reduction in point count.
     qc_input_counts: dict[str, int] = {v: 0 for v in var_names}
     qc_dropped_counts: dict[str, int] = {v: 0 for v in var_names}
+    # Per-variable processing_level, collected across the casts that carry each variable.
+    # The compiled attribute is the agreed value or, where casts disagree, an explicit mixed
+    # marker — never the union of the sets, which would claim a procedure on a cast that never
+    # had it. Per-cast detail stays reachable via source_stage / source_data_mode /
+    # source_tracking_id.
+    var_processing_levels: dict[str, set[str]] = {v: set() for v in var_names}
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
@@ -481,6 +499,9 @@ def build_profiles(
         for _v in var_names:
             if _v in ds:
                 qc_input_counts[_v] += int(np.isfinite(ds[_v].values).sum())
+                var_processing_levels[_v].add(
+                    str(ds[_v].attrs.get("processing_level", ""))
+                )
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
                 _is_bad = (ds[_qc] == QARTOD_SUSPECT) | (ds[_qc] == QARTOD_FAIL)
@@ -492,6 +513,7 @@ def build_profiles(
         source_stages[rank] = source_stage
         source_files[rank] = path.name
         source_tracking_ids[rank] = str(ds.attrs.get("tracking_id", ""))
+        cast_data_modes[rank] = str(ds.attrs.get("data_mode", "P")) or "P"
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -546,6 +568,30 @@ def build_profiles(
     source_stage_prof = np.repeat(source_stages, 2)
     source_file_prof = np.repeat(np.array(source_files), 2)
     source_tid_prof = np.repeat(np.array(source_tracking_ids), 2)
+    source_data_mode_prof = np.repeat(np.array(cast_data_modes), 2)
+
+    # Two independent kinds of heterogeneity, two mechanisms — do not conflate them.
+    # (1) Mixed *stages*: casts compiled from different stages (1/2/3) — expected early in a
+    #     cruise.  Warn naming each cast and its stage; source_stage already carries the fact
+    #     per profile.  It is NOT a data-mode difference: stages 1-3 are all provisional.
+    stages_present = sorted(set(int(s) for s in source_stages))
+    if len(stages_present) > 1:
+        detail = ", ".join(
+            f"{format_cast_id(num, suffix)}=stage{stage}"
+            for (num, suffix, _p, stage) in cast_list
+        )
+        warnings.warn(
+            "compiling casts at mixed processing stages "
+            f"(stages {stages_present} present): {detail}. This is permitted; "
+            "source_stage records the stage of each profile.",
+            stacklevel=2,
+        )
+    # (2) Mixed *data modes*: the OceanSITES table-4 trigger for "M".  Only a declared D
+    #     differs from the P default, so "M" appears exactly when casts genuinely disagree;
+    #     the per-profile data_mode variable then satisfies the manual's obligation to say
+    #     which data is in which mode.  The global data_mode is set from this below.
+    modes_present = sorted(set(cast_data_modes))
+    compiled_data_mode = modes_present[0] if len(modes_present) == 1 else "M"
 
     # Build output dataset
     # N_PROF is a plain sequential integer index — cast identity is in
@@ -673,6 +719,21 @@ def build_profiles(
                     ),
                 },
             ),
+            "source_data_mode": (
+                ["N_PROF"],
+                source_data_mode_prof,
+                {
+                    "long_name": "OceanSITES data mode of the source cast for this profile",
+                    "comment": (
+                        "The source cast's own data_mode (P provisional, D delayed-mode) — "
+                        "a per-profile fact about the source file, beside source_stage and "
+                        "source_tracking_id, not this compiled file's own mode. When the "
+                        "global data_mode is 'M' the casts genuinely differ, and this "
+                        "variable resolves which data is in which mode (the OceanSITES "
+                        "<PARAM>_DM obligation)."
+                    ),
+                },
+            ),
             # long_name/units/standard_name come from VARIABLES via write(); the
             # comment records that the position is the per-profile median fix.
             "latitude": (
@@ -779,9 +840,16 @@ def build_profiles(
         if np.isfinite(max_pressure_prof).any()
         else None
     )
+    # The compiled data_mode reflects what the casts ACTUALLY carry, so it overrides the
+    # config-declared value: "M" when the casts genuinely mix modes, else the single agreed
+    # value.  Feed it in *before* cruise_global_attrs so the identifier token (``id``,
+    # ``internal_mission_identifier``) and the ``data_mode`` / ``data_mode_meaning`` attrs are
+    # built from the same mode and cannot drift.  dataset_identity validates it and falls back
+    # to "P" on an out-of-vocabulary value, so there is no unguarded lookup here.
+    _ci_attrs = {**_ci, "data_mode": compiled_data_mode} if modes_present else _ci
     attrs.update(
         cruise_global_attrs(
-            _ci,
+            _ci_attrs,
             lats=lats,
             lons=lons,
             vertical_min=_v_min,
@@ -796,6 +864,7 @@ def build_profiles(
             config={"processing": {"profiles_dbar": dbar}},
         )
     )
+
     # Per-cast-sourced identity is authoritative over the config `cruise` set
     # above and over the identity cruise_global_attrs still emits, so a compiled
     # file states the cruise its casts actually came from (and errors if they
@@ -821,6 +890,27 @@ def build_profiles(
             "(soak/deck and gross-range/spike) before binning"
         )
     append_history(attrs, _note, stage="profiles")
+
+    # A config that declares data_mode 'D' but compiles casts that are not all delayed-mode
+    # gets 'P' (or 'M') above — honest, but the explicit declaration was overridden, which is
+    # the same quiet class as substituting a default. Say which casts are below D and at what
+    # stage (stage 3 has probably not been run on them), in a warning and in the file's own
+    # history, so the compiled file itself records why it is not D.
+    if str(_ci.get("data_mode", "")).upper() == "D" and compiled_data_mode != "D":
+        _below = [
+            f"{format_cast_id(num, suffix)}=stage{stage}"
+            for (num, suffix, _p, stage), _mode in zip(
+                cast_list, cast_data_modes, strict=True
+            )
+            if _mode != "D"
+        ]
+        _msg = (
+            f"config declares data_mode 'D' but {len(_below)} of {len(cast_list)} compiled "
+            f"cast(s) are below it ({', '.join(_below)}); the compiled file is "
+            f"'{compiled_data_mode}'. Stage 3 has probably not been run on them."
+        )
+        warnings.warn(_msg, stacklevel=2)
+        append_history(attrs, _msg, stage="profiles")
 
     # A per-cast file with no SENSOR_* catalog predates sensor provenance.  With
     # refuse_catalog_less=False (the library default) build_profiles does not
@@ -848,6 +938,17 @@ def build_profiles(
         "axis": "Z",
     }
     ds_out["N_PROF"].attrs = {"long_name": "Profile index (0-based sequential)"}
+
+    # Carry per-variable processing_level onto the compiled variables so profiles.nc — the
+    # archive, which may travel without the stage files — is interpretable on its own.  The
+    # value is what the casts agree on, or the explicit mixed marker when they differ; a
+    # variable no cast stamped stays absent (not-stated, never claimed as raw).
+    for _v, _pls in var_processing_levels.items():
+        if _v not in ds_out or not any(_pls):
+            continue
+        ds_out[_v].attrs["processing_level"] = (
+            next(iter(_pls)) if len(_pls) == 1 else _MIXED_PROCESSING_LEVEL
+        )
 
     # Route through the CF writer so the binned science variables and the
     # latitude/longitude/pressure coordinates receive their VARIABLES metadata

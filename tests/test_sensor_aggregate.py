@@ -81,6 +81,7 @@ _EXPECTED_PROFILE_VARS: frozenset[str] = frozenset(
         "sensor_transmissometer",
         "sensor_turbidity",
         "sensor_user_polynomial",
+        "source_data_mode",
         "source_file",
         "source_stage",
         "source_tracking_id",
@@ -357,5 +358,163 @@ def test_stage1_to_profiles_contract(tmp_path) -> None:
         assert catalog, "stage-1 catalog did not survive into the compiled file"
         assert any(str(v).startswith("sensor_") for v in ds.variables), "no linkage"
         assert "sensor_catalog" not in ds.attrs  # no catalog-less admission stamped
+    finally:
+        ds.close()
+
+
+def test_stage1_conversion_level_measured_yes_computed_no(tmp_path) -> None:
+    """Fresh stage 1 stamps the conversion value on every measured channel (frequency and
+    voltage) and on no computed channel — salinity is read from the CNV, never instrument
+    data, so claiming conversion for it would be false.  Gated on seasenselib."""
+    pytest.importorskip("seasenselib")
+    from ctdcast.processors.stage1 import stage1
+
+    converted = "converted to geophysical values"
+    nc_dir = tmp_path / "stage1"
+    assert stage1(FIXTURES_CNV, nc_dir, pattern="mixsed2_*.cnv") >= 1
+
+    stage1_file = sorted(nc_dir.glob("stage1/*.nc"))[0]
+    ds = xr.open_dataset(stage1_file, engine="netcdf4")
+    try:
+        # Every variable that maps to a <Sensors> sensor carries the conversion value...
+        measured = [v for v in ds.data_vars if "sensor" in ds[v].attrs]
+        assert measured, "no measured channel linked to a sensor"
+        for v in measured:
+            assert converted in ds[v].attrs.get("processing_level", ""), v
+        # ...and no computed channel does (salinity is read, datcnv-derived from T/C/P).
+        for v in ds.data_vars:
+            if str(v).startswith("ctd_salinity"):
+                assert converted not in ds[v].attrs.get("processing_level", ""), v
+        # The SENSOR_* catalog scalars are not measurements: no processing_level.
+        for v in ds.data_vars:
+            if str(v).startswith("SENSOR_"):
+                assert "processing_level" not in ds[v].attrs, v
+    finally:
+        ds.close()
+
+
+# ---------------------------------------------------------------------------
+# data_mode aggregation — stage is not data mode; "M" only for genuine P/D mix
+# ---------------------------------------------------------------------------
+
+
+def test_uniform_provisional_casts_stay_P_not_M(tmp_path) -> None:
+    """Every fixture is provisional, so the compiled file is 'P' — never 'M'."""
+    src = tmp_path / "casts"
+    src.mkdir()
+    _copy_fixtures(src)
+    out = tmp_path / "profiles.nc"
+    build_profiles(src, out, force=True)
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "P"
+        assert {str(x) for x in ds["source_data_mode"].values} == {"P"}
+    finally:
+        ds.close()
+
+
+def test_mixed_data_modes_label_the_file_M_with_per_profile_modes(tmp_path) -> None:
+    """A genuine P/D mix compiles to a global 'M'; the per-profile data_mode variable
+    resolves which profile is in which mode (the OceanSITES <PARAM>_DM obligation)."""
+    src = tmp_path / "casts"
+    src.mkdir()
+    _write_cast(src / "mixsed2_011.nc", "mixsed2_011.nc")  # no attr -> provisional
+
+    def _delayed(ds: xr.Dataset) -> xr.Dataset:
+        ds.attrs["data_mode"] = "D"
+        return ds
+
+    _write_cast(src / "mixsed2_012.nc", "mixsed2_012.nc", transform=_delayed)
+    out = tmp_path / "profiles.nc"
+    build_profiles(src, out, force=True)
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "M"
+        assert "mix" in ds.attrs["data_mode_meaning"].lower()
+        assert {str(x) for x in ds["source_data_mode"].values} == {"P", "D"}
+    finally:
+        ds.close()
+
+
+def test_mixed_mode_identifier_token_matches_data_mode(tmp_path) -> None:
+    """The data_mode embedded in the OceanSITES ``id`` / ``internal_mission_identifier``
+    must equal the ``data_mode`` attribute — both are built from one mode, so a mixed-mode
+    file cannot ship ``id='..._P_...'`` while it declares itself ``M``."""
+    src = tmp_path / "casts"
+    src.mkdir()
+    _write_cast(src / "mixsed2_011.nc", "mixsed2_011.nc")
+
+    def _delayed(ds: xr.Dataset) -> xr.Dataset:
+        ds.attrs["data_mode"] = "D"
+        return ds
+
+    _write_cast(src / "mixsed2_012.nc", "mixsed2_012.nc", transform=_delayed)
+    out = tmp_path / "profiles.nc"
+    build_profiles(
+        src,
+        out,
+        force=True,
+        cruise_info={
+            "platform": "odb",
+            "start_date": "2026-07-09",
+            "internal_id": "mixsed2",
+        },
+    )
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "M"
+        assert "id" in ds.attrs, "id should build from platform + start_date"
+        # id is <expocode>_<mode>_<product>_<grid>; the mode token must be the attr value.
+        assert ds.attrs["id"].split("_")[1] == "M"
+        assert ds.attrs["internal_mission_identifier"].split("_")[2] == "M"
+    finally:
+        ds.close()
+
+
+def test_declared_D_with_provisional_casts_warns_and_records(tmp_path) -> None:
+    """Declaring data_mode 'D' but compiling casts below it downgrades to 'P' (honest), yet
+    warns naming each cast and its stage and records the reason in the file's history — the
+    explicit declaration was overridden, so the file must say why it is not D."""
+    src = tmp_path / "casts"
+    src.mkdir()
+    _copy_fixtures(src)  # flat fixtures read as stage 1 → provisional
+    out = tmp_path / "profiles.nc"
+
+    with pytest.warns(UserWarning, match="declares data_mode 'D'"):
+        build_profiles(src, out, force=True, cruise_info={"data_mode": "D"})
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "P"
+        assert "declares data_mode 'D'" in ds.attrs["history"]
+        assert "011=stage" in ds.attrs["history"]  # each cast named with its stage
+    finally:
+        ds.close()
+
+
+def test_mixed_stages_warn_but_do_not_force_M(tmp_path) -> None:
+    """Casts compiled from different stages warn and are recorded in source_stage, but
+    stages are all provisional, so the file stays 'P' — stage is not data mode."""
+    from ctdcast.processors.stage_layout import stage_path
+
+    root = tmp_path / "CTD"
+    s1 = stage_path(root, "mixsed2_011", 1)
+    s3 = stage_path(root, "mixsed2_012", 3)
+    s1.parent.mkdir(parents=True, exist_ok=True)
+    s3.parent.mkdir(parents=True, exist_ok=True)
+    _write_cast(s1, "mixsed2_011.nc")
+    _write_cast(s3, "mixsed2_012.nc")
+    out = tmp_path / "profiles.nc"
+
+    with pytest.warns(UserWarning, match="mixed processing stages"):
+        build_profiles(root, out, force=True)
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "P"  # provisional despite mixed stages
+        assert {int(x) for x in ds["source_stage"].values} == {1, 3}
     finally:
         ds.close()

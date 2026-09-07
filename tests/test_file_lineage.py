@@ -92,6 +92,13 @@ def test_stage1_to_stage3_carries_catalog_and_lineage(tmp_path):
         assert a1.attrs["tracking_id"]
         assert a2.attrs["source_tracking_id"] == a1.attrs["tracking_id"]
         assert a3.attrs["source_tracking_id"] == a2.attrs["tracking_id"]
+        # Each file records its own stage and cast identity in attributes (caldip reads a
+        # file copied out of its directory, where the filename-borne stage and cast are lost).
+        assert a1.attrs["processing_stage"] == 1
+        assert a2.attrs["processing_stage"] == 2
+        assert a3.attrs["processing_stage"] == 3
+        assert a1.attrs["cast_id"] == a3.attrs["cast_id"]  # carries forward unchanged
+        assert a1.attrs["cast_id"]  # a non-empty canonical cast id
         assert (
             len(
                 {

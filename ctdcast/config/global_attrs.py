@@ -64,6 +64,7 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # Order per Eleanor's spec (2026-08-22); platform folded in here.
             "title",
             "cruise",
+            "cast_id",
             "platform",
             "platform_name",
             "platform_ices_code",
@@ -152,6 +153,7 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "source_tracking_id",
             "source_cnv",
             "source_mat",
+            "processing_stage",
             "history",
             # The file's creator (who produced it) — distinct from the cruise
             # contributors above.  The creator is a person, identified by
@@ -790,6 +792,38 @@ DATA_MODES: dict[str, str] = {
     "M": "mixed",
 }
 
+
+def data_mode_with_meaning(mode: str | None, *, warn: bool = True) -> tuple[str, str]:
+    """Return a validated OceanSITES ``data_mode`` and its ``data_mode_meaning``.
+
+    The single place the mode-to-meaning pairing is made, so the two attributes can never
+    drift.  An unset or out-of-vocabulary *mode* falls back to ``"P"`` (provisional) — the
+    honest default for a file nobody has declared finished — optionally warning.
+
+    Parameters
+    ----------
+    mode:
+        The candidate mode (e.g. from ``cruise_info.data_mode`` or an existing attribute).
+    warn:
+        Emit a warning when *mode* is present but not an OceanSITES data mode.
+
+    Returns
+    -------
+    tuple of str
+        The validated mode and its meaning, both drawn from :data:`DATA_MODES`.
+    """
+    m = str(mode or "P").upper()
+    if m not in DATA_MODES:
+        if warn:
+            warnings.warn(
+                f"cruise_info.data_mode {m!r} is not an OceanSITES data mode "
+                f"({sorted(DATA_MODES)}); using 'P'.",
+                stacklevel=2,
+            )
+        m = "P"
+    return m, DATA_MODES[m]
+
+
 #: Vertical grid of each compiled product, when it is fixed by the processing
 #: rather than chosen per cruise.  LADCP casts arrive on a native 10 m grid; the
 #: CTD bin comes from ``processing.profiles_dbar`` and so is looked up per run.
@@ -879,16 +913,12 @@ def dataset_identity(
     ci = cruise_info or {}
     attrs: dict[str, str] = {}
 
-    mode = str(ci.get("data_mode") or "D").upper()
-    if mode not in DATA_MODES:
-        warnings.warn(
-            f"cruise_info.data_mode {mode!r} is not an OceanSITES data mode "
-            f"({sorted(DATA_MODES)}); using 'D'.",
-            stacklevel=2,
-        )
-        mode = "D"
+    # Provisional is the honest default: an unset ``data_mode`` means nobody has declared
+    # the cruise finished, so the file cannot claim ``D`` (all calibrations and QC applied).
+    # ``D`` is a human claim, declared via ``cruise_info.data_mode: D``, never inferred.
+    mode, meaning = data_mode_with_meaning(ci.get("data_mode"))
     attrs["data_mode"] = mode
-    attrs["data_mode_meaning"] = DATA_MODES[mode]
+    attrs["data_mode_meaning"] = meaning
 
     token = grid if grid is not None else grid_token(product, config)
     tail = [mode, product] + ([token] if token else [])

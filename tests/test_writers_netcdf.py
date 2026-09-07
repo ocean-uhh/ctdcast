@@ -62,6 +62,35 @@ class TestWrite:
         assert ds_back["ctd_salinity_1"].attrs.get("label_units") == "PSU"
         ds_back.close()
 
+    def test_per_cast_file_defaults_to_provisional_data_mode(self, tmp_path):
+        """A per-cast file with no data_mode gets 'P' at the writer, so a consumer
+        reading a stage file (e.g. caldip via select_best_available) sees a mode."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        ds.attrs.pop("data_mode", None)
+        out = tmp_path / "test.nc"
+        write(ds, out)
+        ds_back = xr.open_dataset(out, engine="netcdf4")
+        assert ds_back.attrs["data_mode"] == "P"
+        assert ds_back.attrs["data_mode_meaning"] == "provisional"
+        ds_back.close()
+
+    def test_explicit_data_mode_kept_and_meaning_recomputed(self, tmp_path):
+        """An upstream data_mode survives the writer, and data_mode_meaning is refreshed
+        from it so a stale meaning can never travel with a changed mode."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        ds.attrs["data_mode"] = "D"
+        ds.attrs["data_mode_meaning"] = "stale"
+        out = tmp_path / "test.nc"
+        write(ds, out)
+        ds_back = xr.open_dataset(out, engine="netcdf4")
+        assert ds_back.attrs["data_mode"] == "D"
+        assert ds_back.attrs["data_mode_meaning"] == "delayed-mode"
+        ds_back.close()
+
     def test_latitude_coordinate_gets_standard_name(self, tmp_path):
         """Coordinate variables in VARIABLES receive CF attrs, not just data_vars."""
         from ctdcast.writers.netcdf import write

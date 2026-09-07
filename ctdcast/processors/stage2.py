@@ -25,7 +25,11 @@ import xarray as xr
 
 from ctdcast.config.cnv_header import start_time_clock
 from ctdcast.identity import expand_cast_numbers, format_cast_id
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_RANGES_FLAGGED,
+    add_processing_level,
+    append_history,
+)
 from ctdcast.processors.qc import QARTOD_FAIL, _qc_attrs
 from ctdcast.processors.stage_layout import (
     group_by_cast,
@@ -112,6 +116,7 @@ def apply_stage2(
         max_deck_dbar=max_deck_dbar,
     )
 
+    flagged: list[str] = []
     for var in list(ds.data_vars):
         if var in _SKIP_STAGE2_QC or var.endswith("_qc"):
             continue
@@ -129,6 +134,14 @@ def apply_stage2(
         if i_deck < n:
             qc[i_deck:] = QARTOD_FAIL
         ds[qc_name] = xr.DataArray(qc, dims=[dim], attrs=ds[qc_name].attrs)
+        # The SENSOR_* catalog scalars are not measurements: they must carry no
+        # processing_level and not be named as flagged, even though the pre-existing loop
+        # above still makes a (spurious) _qc companion for them — that is a separate,
+        # report-coupled follow-up, deliberately not touched here.
+        if var.startswith("SENSOR_"):
+            continue
+        add_processing_level(ds[var].attrs, PL_RANGES_FLAGGED)
+        flagged.append(var)
 
     n_soak = i_soak if i_soak > 0 else 0
     n_deck = n - i_deck if i_deck < n else 0
@@ -137,8 +150,10 @@ def apply_stage2(
         f"deck_window_seconds={deck_window_seconds}, margin_dbar={margin_dbar}, "
         f"max_deck_dbar={max_deck_dbar}"
     )
+    _on = f" on {', '.join(flagged)}" if flagged else ""
     note = (
-        f"soak/deck QARTOD flag 4: soak_end_idx={i_soak} ({n_soak} flagged), "
+        f"soak/deck QARTOD flag 4{_on}: "
+        f"soak_end_idx={i_soak} ({n_soak} flagged), "
         f"deck_start_idx={i_deck} ({n_deck} flagged); {params}"
     )
     append_history(ds.attrs, note, stage="stage2")
@@ -237,7 +252,7 @@ def apply_clock_offset(
     duration_s = int(round((shifted.max() - shifted.min()) / np.timedelta64(1, "s")))
     ds.attrs["time_coverage_duration"] = f"PT{duration_s}S"
 
-    note = f"clock_offset_seconds={offset_seconds:+.2f} applied"
+    note = f"clock_offset_seconds={offset_seconds:+.2f} applied to time"
     if evidence:
         note += f" ({evidence.removesuffix('; ')})"
     append_history(ds.attrs, note, stage="stage2")
@@ -564,6 +579,7 @@ def run(
             _src_id = ds.attrs.get("tracking_id", "")
             if _src_id:
                 ds_out.attrs["source_tracking_id"] = _src_id
+            ds_out.attrs["processing_stage"] = 2
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)

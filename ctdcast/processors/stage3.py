@@ -11,6 +11,7 @@ Phase 5 scope; this module covers only the post-conversion treatment.
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 
 import xarray as xr
@@ -18,7 +19,11 @@ import xarray as xr
 from ctdcast.analysis.derive import derive_salinity
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_CALIBRATED,
+    add_processing_level,
+    append_history,
+)
 from ctdcast.processors.stage_layout import (
     group_by_cast,
     is_up_to_date,
@@ -74,6 +79,12 @@ def stage3(
         ds = _apply_conductivity_slope(ds, slope)
         # Step 3: re-derive salinity from calibrated conductivity
         ds = derive_salinity(ds)
+        # Salinity now embodies the calibration (value-changing procedure propagates to the
+        # variable derived from the changed input) — but keeps no conversion value, since it
+        # was computed, never instrument data.
+        for _sal in ("ctd_salinity", "ctd_salinity_1", "ctd_salinity_2"):
+            if _sal in ds:
+                add_processing_level(ds[_sal].attrs, PL_CALIBRATED)
         append_history(
             ds.attrs,
             f"calibration: conductivity_slope={slope} applied; "
@@ -110,6 +121,7 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
         new_attrs = dict(ds[var].attrs)
         new_attrs["calibration_slope"] = slope
         new_attrs["calibration_note"] = f"conductivity multiplied by {slope}"
+        add_processing_level(new_attrs, PL_CALIBRATED)
         dim = ds[var].dims[0]
         ds[var] = xr.DataArray(calibrated, dims=[dim], attrs=new_attrs)
     return ds
@@ -121,6 +133,7 @@ def run(
     force: bool = False,
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
+    cruise_info: dict | None = None,
     **kw: object,
 ) -> int:
     """Apply stage 3 (QC + calibration) across the casts under *root*.
@@ -144,6 +157,11 @@ def run(
     cast_tags:
         If given, process only casts selected by these zero-padded tags
         (e.g. ``{"042"}``), matched on the parsed cast identity.
+    cruise_info:
+        The config ``cruise_info:`` block.  When it declares ``data_mode: D``,
+        each stage-3 file is stamped ``data_mode = "D"``; if no calibration was
+        actually applied the delayed-mode claim is unsupported, so the cast is
+        named in a warning and the gap recorded in ``history``.
     **kw:
         Passed to :func:`stage3` (e.g. ``cruise_cfg``).
 
@@ -161,6 +179,10 @@ def run(
         raise FileNotFoundError(f"stage root not found: {root}")
 
     cruise_cfg: dict | None = kw.get("cruise_cfg")  # type: ignore[assignment]
+    # A declared ``D`` is a human claim about a finished cruise (OceanSITES table 4), not
+    # something stage 3 can infer from having applied a slope; stamp it per cast, and warn
+    # (naming the cast) when nothing in the config backs the claim.
+    declare_delayed = str((cruise_info or {}).get("data_mode", "")).upper() == "D"
 
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
@@ -197,6 +219,31 @@ def run(
             _src_id = ds.attrs.get("tracking_id", "")
             if _src_id:
                 ds_out.attrs["source_tracking_id"] = _src_id
+            ds_out.attrs["processing_stage"] = 3
+            if declare_delayed:
+                ds_out.attrs["data_mode"] = "D"
+                # The claim is backed only if a calibration was actually applied — detected by
+                # the PL_CALIBRATED processing_level stage3 stamps when it calibrates, not by
+                # the presence of a config key that may carry no usable slope.
+                calibrated = any(
+                    PL_CALIBRATED in str(ds_out[v].attrs.get("processing_level", ""))
+                    for v in ds_out.data_vars
+                )
+                if not calibrated:
+                    num, suffix = cast_id
+                    name = format_cast_id(num, suffix)
+                    warnings.warn(
+                        f"cast {name}: data_mode 'D' declared but no calibration was "
+                        "applied; the delayed-mode claim is unsupported by anything in "
+                        "the file.",
+                        stacklevel=2,
+                    )
+                    append_history(
+                        ds_out.attrs,
+                        "data_mode=D declared but no calibration applied; "
+                        "delayed-mode claim unsupported",
+                        stage="stage3",
+                    )
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)

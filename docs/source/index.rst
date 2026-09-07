@@ -46,6 +46,7 @@ Contents
    ctd_groupings
    data_files
    report_output
+   provenance_roadmap
    api
 
 .. toctree::
