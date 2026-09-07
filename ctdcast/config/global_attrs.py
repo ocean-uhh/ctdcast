@@ -146,6 +146,12 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         (
             "date_created",
             "date_modified",
+            # Write-time file identity + lineage (ACDD/OceanSITES tracking_id): a fresh
+            # UUID4 on every write, and the id of the file this one was made from.
+            "tracking_id",
+            "source_tracking_id",
+            "source_cnv",
+            "source_mat",
             "history",
             # The file's creator (who produced it) — distinct from the cruise
             # contributors above.  The creator is a person, identified by

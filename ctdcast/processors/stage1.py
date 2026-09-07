@@ -450,6 +450,9 @@ class _SeasenselibBackend:
             ds = self._sl.read(str(cnv_path))
         ds = _normalise(ds, cruise_info=cruise_info)
         ds = _build_cast_sensor_catalog(ds, sensor_overrides or SensorOverrides())
+        # Lineage root: stage 1 has no upstream netCDF, so it names the raw CNV it read
+        # (a distinct attr, not source_tracking_id, which holds a tracking_id downstream).
+        ds.attrs["source_cnv"] = cnv_path.name
         write_nc(ds, nc_path)
         return True
 

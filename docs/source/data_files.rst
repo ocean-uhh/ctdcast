@@ -99,6 +99,30 @@ Global attributes: cruise identity (``cruise``, ``platform_*``, ``expocode``),
 correction ledger (``sbe_*``, ``correction_*``, ``time_coordinate_source``,
 ``time_clock_offset_seconds``). Each is described in the table below.
 
+File identity and lineage
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every file ctdcast writes carries a ``tracking_id`` (a UUID4, ACDD/OceanSITES
+convention) and, from stage 2 on, a ``source_tracking_id`` naming the file it was made
+from — so the chain back to the raw CNV is readable from any single output.
+
+- ``tracking_id`` answers *which instance of this file this is*, **not** *whether the
+  content changed*. It is **not a content hash**: a fresh id is written on **every** write,
+  so a re-run of stage 3 produces a new id even if nothing else moved. Stability would be the
+  bug — a stable id could not detect a rewrite.
+- ``source_tracking_id`` (stage 2, stage 3) holds the ``tracking_id`` of the stage file that
+  was read. In ``profiles.nc`` it is a per-``N_PROF`` variable, naming the source cast file
+  per profile (the compiled file has its own ``tracking_id`` global attribute).
+- Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
+  attribute instead — ``source_cnv`` for CTD, ``source_mat`` for LADCP.
+- ``date_created`` is set once (first write) and preserved across re-runs; ``date_modified``
+  moves on every write. So a stage-3 rewrite records *when* it was rewritten without resetting
+  the creation time.
+
+To read the best-available ctdcast file per cast from another package, call
+``ctdcast.select_best_available(root)`` (stage 3, else stage 2, else stage 1) rather than
+reimplementing the precedence — see :doc:`api`.
+
 Profiles file (``<ctd_root>/profiles.nc``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

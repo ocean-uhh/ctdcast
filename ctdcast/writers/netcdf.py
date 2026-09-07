@@ -8,6 +8,8 @@ atomically via a ``.nc.tmp`` intermediary.
 
 from __future__ import annotations
 
+import datetime as _dt
+import uuid
 from pathlib import Path
 
 import numpy as np
@@ -88,6 +90,21 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     # conformance (e.g. the compiled profiles builder writes "CF-1.13, ACDD-1.3")
     # keep it rather than being silently downgraded here.
     global_attrs.setdefault("Conventions", "CF-1.13")
+    # A fresh identity on *every* write (ACDD/OceanSITES ``tracking_id``, UUID4). This
+    # answers "which instance of this file is this" — NOT "did the content change": a
+    # content hash would answer a different question (and netCDF embeds write-time detail,
+    # so it would churn anyway).  Stability would be the bug — a stable id cannot detect a
+    # rewrite.  Written here, the single ``to_netcdf`` seam, so every stage file, the
+    # compiled ``profiles.nc`` and the LADCP files get one without per-module edits.  A
+    # writer overwrites any inbound ``tracking_id``; a stage that wants lineage must have
+    # already copied the file-it-read's id into ``source_tracking_id`` before calling write.
+    global_attrs["tracking_id"] = str(uuid.uuid4())
+    # ``date_modified`` moves on every write; ``date_created`` is set once (first write) and
+    # preserved on re-runs — a stage-3 rewrite records when it was rewritten without resetting
+    # the creation time. Same UTC form as ``global_attrs.provenance_attrs``.
+    _stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    global_attrs["date_modified"] = _stamp
+    global_attrs.setdefault("date_created", _stamp)
     # Write the global attributes in the canonical order (identity → platform →
     # coverage → people → rights → provenance); unnamed attrs keep their order and
     # follow.  One source of truth with the inventory page's grouping.
