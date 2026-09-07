@@ -53,9 +53,11 @@ class TestTrackingIdAtWriter:
             first.attrs["date_created"],
             first.attrs["date_modified"],
         )
+        # Release the handle before rewriting the same path — Windows refuses to replace
+        # an open file, and .load() has already read the data into memory.
+        first.close()
         # Re-write the loaded dataset (a stage-3-style rewrite of an existing file).
         write(first, p)
-        first.close()
         second = xr.open_dataset(p, engine="netcdf4")
         try:
             assert second.attrs["date_created"] == created_1  # set once, preserved
