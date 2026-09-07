@@ -112,8 +112,8 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     # ``ds.attrs`` before calling write and keep it.  The mode and its meaning come from one
     # helper so the pair can never drift, whoever set the mode (no warning at this last seam —
     # an invalid mode was already warned about where it was declared).
-    global_attrs["data_mode"], global_attrs["data_mode_meaning"] = data_mode_with_meaning(
-        global_attrs.get("data_mode"), warn=False
+    global_attrs["data_mode"], global_attrs["data_mode_meaning"] = (
+        data_mode_with_meaning(global_attrs.get("data_mode"), warn=False)
     )
     # Write the global attributes in the canonical order (identity → platform →
     # coverage → people → rights → provenance); unnamed attrs keep their order and

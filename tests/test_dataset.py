@@ -167,6 +167,39 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     assert "mS/cm" in html  # a populated label_units value (conductivity)
 
 
+def test_cast_page_shows_file_provenance_and_processing_level(tmp_path):
+    """A cast file carrying identity/mode/stage attrs gets a File provenance appendix, and the
+    data-ranges table carries a Processing level column populated from the variables."""
+    import xarray as xr
+
+    from ctdcast.reports._cast import generate_station_page
+    from ctdcast.reports._index import _read_cast_meta
+
+    src = tmp_path / "mixsed2_011_stage3.nc"
+    ds = xr.open_dataset(CAST_011, engine="netcdf4").load()
+    ds.attrs["cast_id"] = "011"
+    ds.attrs["data_mode"] = "P"
+    ds.attrs["data_mode_meaning"] = "provisional"
+    ds.attrs["processing_stage"] = 3
+    ds.attrs["tracking_id"] = "abc-123"
+    tvar = "ctd_temperature_1" if "ctd_temperature_1" in ds else "ctd_temperature"
+    ds[tvar].attrs["processing_level"] = (
+        "Instrument data that has been converted to geophysical values"
+    )
+    ds.to_netcdf(src)  # plain write: exercise the report reading arbitrary file attrs
+    ds.close()
+
+    out = generate_station_page(
+        src, tmp_path / "out", all_meta=[_read_cast_meta(src)], force=True
+    )
+    html = out.read_text(encoding="utf-8")
+    assert 'id="file_provenance"' in html  # the new appendix section
+    assert "File provenance" in html
+    assert "provisional" in html  # data_mode meaning surfaced
+    assert "Processing level" in html  # the new data-ranges column header
+    assert "converted to geophysical values" in html  # the value, in the ranges table
+
+
 def test_cast_page_shows_source_provenance(tmp_path):
     """The cast page names the source file (stage in the name) and a Processed date."""
     import shutil

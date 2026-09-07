@@ -793,9 +793,7 @@ DATA_MODES: dict[str, str] = {
 }
 
 
-def data_mode_with_meaning(
-    mode: str | None, *, warn: bool = True
-) -> tuple[str, str]:
+def data_mode_with_meaning(mode: str | None, *, warn: bool = True) -> tuple[str, str]:
     """Return a validated OceanSITES ``data_mode`` and its ``data_mode_meaning``.
 
     The single place the mode-to-meaning pairing is made, so the two attributes can never
@@ -824,6 +822,7 @@ def data_mode_with_meaning(
             )
         m = "P"
     return m, DATA_MODES[m]
+
 
 #: Vertical grid of each compiled product, when it is fixed by the processing
 #: rather than chosen per cruise.  LADCP casts arrive on a native 10 m grid; the

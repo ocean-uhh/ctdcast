@@ -78,6 +78,7 @@ def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
         "n_valid": n_valid,
         "v_min": _fmt_val(v_min),
         "v_max": _fmt_val(v_max),
+        "processing_level": v.attrs.get("processing_level", ""),
         "attrs": attrs,
     }
 
