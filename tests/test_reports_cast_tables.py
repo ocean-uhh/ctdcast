@@ -69,8 +69,9 @@ class TestRenderSensorCatalogTable:
         assert "conductivity_1" in html and "SN 4922" in html
         assert "pressure" in html and "Digiquartz" in html
 
-    def test_qc_companions_of_catalog_scalars_are_not_rendered_as_sensors(self):
-        """A stage-2/3 cast has ``SENSOR_*_qc`` companions; they must not become empty rows."""
+    def test_stage2_makes_no_qc_companion_for_catalog_scalars(self):
+        """The dimensionless ``SENSOR_*`` catalog scalars get no QC companion at stage 2, and
+        the catalog table shows one row per real sensor with no blank rows."""
         from ctdcast.processors.stage2 import apply_stage2
 
         ds = _fixture_ds()
@@ -78,8 +79,8 @@ class TestRenderSensorCatalogTable:
             processed = apply_stage2(ds.load())
         finally:
             ds.close()
-        # stage 2 stamps a _qc companion on the SENSOR_* scalars; the table must skip them.
-        assert any(
+        # No spurious SENSOR_*_qc scalar is created (a scalar cannot carry a time-series flag).
+        assert not any(
             str(v).startswith("SENSOR_") and str(v).endswith("_qc")
             for v in processed.variables
         )

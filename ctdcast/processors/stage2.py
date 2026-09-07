@@ -120,6 +120,11 @@ def apply_stage2(
     for var in list(ds.data_vars):
         if var in _SKIP_STAGE2_QC or var.endswith("_qc"):
             continue
+        # The SENSOR_* catalog entries are dimensionless provenance scalars, not measurements,
+        # so they get no time-series _qc companion.  Guarding on ndim == 0 as well catches any
+        # other scalar bookkeeping variable that should never carry a QARTOD flag.
+        if var.startswith("SENSOR_") or ds[var].ndim == 0:
+            continue
         qc_name = f"{var}_qc"
         if qc_name not in ds:
             sname = ds[var].attrs.get("standard_name")
@@ -134,12 +139,6 @@ def apply_stage2(
         if i_deck < n:
             qc[i_deck:] = QARTOD_FAIL
         ds[qc_name] = xr.DataArray(qc, dims=[dim], attrs=ds[qc_name].attrs)
-        # The SENSOR_* catalog scalars are not measurements: they must carry no
-        # processing_level and not be named as flagged, even though the pre-existing loop
-        # above still makes a (spurious) _qc companion for them — that is a separate,
-        # report-coupled follow-up, deliberately not touched here.
-        if var.startswith("SENSOR_"):
-            continue
         add_processing_level(ds[var].attrs, PL_RANGES_FLAGGED)
         flagged.append(var)
 
