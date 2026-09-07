@@ -149,10 +149,10 @@ def test_inspect_cli_missing_file(tmp_path, capsys):
 
 
 def test_cast_page_has_data_ranges_appendix(tmp_path):
-    """The cast page carries the netCDF data-ranges as appendix (B) with label units.
+    """The cast page carries the netCDF data-ranges appendix with label units.
 
-    The Sensors appendix (A) always renders for a cast with sensor information — the merged
-    catalog table lives there — so data ranges is the second appendix (B).
+    Sensors (A) and File provenance (B) precede it for a fixture that carries sensor
+    information and identity attributes, so data ranges is the third appendix (C).
     """
     from ctdcast.reports._cast import generate_station_page
     from ctdcast.reports._index import _read_cast_meta
@@ -162,7 +162,7 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     out = generate_station_page(CAST_011, tmp_path, all_meta=[meta], force=True)
     html = out.read_text(encoding="utf-8")
     assert 'id="data_ranges"' in html  # appendix section anchor
-    assert "(B) netCDF data ranges" in html  # lettered appendix in heading + jump-nav
+    assert "(C) netCDF data ranges" in html  # lettered appendix in heading + jump-nav
     assert "Label units" in html  # the label-units column
     assert "mS/cm" in html  # a populated label_units value (conductivity)
 

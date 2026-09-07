@@ -336,6 +336,12 @@ def _build_cast_sensor_catalog(
             if is_freq:
                 attrs["sensor_calibration_slope"] = rec["slope"]
                 attrs["sensor_calibration_offset"] = rec["offset"]
+            # The whole <sensor> config block, verbatim, for every sensor (voltage sensors
+            # carry coefficients too, so this is ungated by is_freq unlike the drift knobs):
+            # the raw→physical calibration is then reconstructable from the compiled file
+            # alone, not only from the stage-1 raw_metadata.
+            if rec.get("raw_block"):
+                attrs["sensor_config_xml"] = rec["raw_block"]
             catalog[name] = attrs
             serial_to_names.setdefault(canon, set()).add(name)
         var = _sensor_variable(role, ds)

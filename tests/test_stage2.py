@@ -27,7 +27,8 @@ class TestApplyStage2:
         ds_out = apply_stage2(ds)
         phys_vars = [v for v in ds.data_vars if not v.endswith("_qc")]
         for v in phys_vars:
-            if v in _SKIP_STAGE2_QC:
+            # SENSOR_* catalog scalars and any dimensionless var get no _qc companion.
+            if v in _SKIP_STAGE2_QC or v.startswith("SENSOR_") or ds[v].ndim == 0:
                 continue
             assert f"{v}_qc" in ds_out, f"Expected {v}_qc in output"
 

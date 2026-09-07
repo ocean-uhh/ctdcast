@@ -764,9 +764,10 @@ def parse_sensor_block(header_text: str) -> list[dict]:
 
     The single reader of the block. Each record has ``channel`` (int), ``element`` (the
     type tag, e.g. ``"TemperatureSensor"``), ``sensor_id``, ``serial``, ``calibration_date``
-    (verbatim), ``slope`` and ``offset`` (defaulting ``"1.0"`` / ``"0.0"`` when absent), and
+    (verbatim), ``slope`` and ``offset`` (defaulting ``"1.0"`` / ``"0.0"`` when absent),
     ``comment`` (the sensor-comment body, e.g. ``"Temperature, 2"`` or ``"Free"``) for the
-    caller to resolve to a role. Returns ``[]`` for an empty header or one with no
+    caller to resolve to a role, and ``raw_block`` (the whole ``<sensor>`` element verbatim,
+    for provenance). Returns ``[]`` for an empty header or one with no
     ``<Sensors>`` block. Role interpretation and calibration-date normalisation are the
     reader's concern (see :func:`ctdcast.readers.metadata.parse_sensor_channels`), so they
     stay out of here to keep the parser free of the sensor-role vocabulary.
@@ -794,6 +795,11 @@ def parse_sensor_block(header_text: str) -> list[dict]:
                 "slope": slope.group(1) if slope else "1.0",
                 "offset": offset.group(1) if offset else "0.0",
                 "comment": comment.group(1) if comment else "",
+                # The whole ``<sensor Channel="N">…</sensor>`` block, verbatim — every
+                # calibration coefficient and its type context (CellConst, both equation
+                # versions), so the raw→physical conversion is reconstructable from the file
+                # alone.  Kept schema-free, like the sbe_acquisition/sbe_processing blobs.
+                "raw_block": m.group(0),
             }
         )
     records.sort(key=lambda r: r["channel"])

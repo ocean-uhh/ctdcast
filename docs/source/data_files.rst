@@ -408,10 +408,15 @@ infix are meaningful — keep them distinct:
   pressure) also carries ``sensor_calibration_slope`` and
   ``sensor_calibration_offset`` — the ``datcnv`` drift/span correction already
   baked into the data before ctdcast read it; a value away from the identity
-  (slope 1, offset 0) means a correction was applied. The serial identifies the
-  device, so a cell used as both primary and secondary of one type is a single
-  entry; ``sensor_shared_with`` cross-links one device serving two roles (e.g. a
-  combined FLNTU as both fluorometer and turbidity).
+  (slope 1, offset 0) means a correction was applied. Every entry (frequency and
+  voltage alike) also carries ``sensor_config_xml`` — the whole ``<sensor>``
+  block from the CNV ``<Sensors>`` header, verbatim: every base calibration
+  coefficient and its type context, so the raw→physical conversion is
+  reconstructable from the compiled file alone, not only from the stage-1
+  ``raw_metadata``. The serial identifies the device, so a cell used as both
+  primary and secondary of one type is a single entry; ``sensor_shared_with``
+  cross-links one device serving two roles (e.g. a combined FLNTU as both
+  fluorometer and turbidity).
 
   Each measured **data variable** carries a single ``sensor`` attribute naming
   the ``SENSOR_*`` entry that produced it (e.g. ``ctd_temperature_1``'s

@@ -65,6 +65,17 @@ def test_records_carry_slope_and_offset() -> None:
     assert by_role["ph"]["slope"] == "0.3368"  # native cal, carried verbatim
 
 
+def test_records_carry_verbatim_config_block() -> None:
+    """Each channel record carries its whole ``<sensor>`` block verbatim — every calibration
+    coefficient and its type context, not only the slope/offset drift knobs."""
+    by_role = {r["role"]: r for r in _fixture_records() if r["role"]}
+    block = by_role["pressure"]["raw_block"].strip()
+    assert block.startswith("<sensor Channel=")
+    assert block.endswith("</sensor>")
+    assert "<SerialNumber>" in block  # the full config, not just the parsed fields
+    assert "0814" in block  # this pressure sensor's serial, verbatim in the block
+
+
 def _cast_catalog() -> xr.Dataset:
     """The mixsed2_011 fixture with its per-cast sensor catalog built (stage-1 step)."""
     from ctdcast.processors.stage1 import _build_cast_sensor_catalog
@@ -119,6 +130,23 @@ def test_frequency_sensor_carries_slope_offset_voltage_does_not() -> None:
     assert pres["sensor_calibration_offset"] == "0.27440"
     # oxygen is a voltage sensor: its native Slope is not a datcnv drift knob, so absent
     assert "sensor_calibration_slope" not in out["SENSOR_OXYGEN_0707"].attrs
+
+
+def test_every_sensor_entry_carries_verbatim_config_xml() -> None:
+    """Every SENSOR_* entry — frequency *and* voltage — carries its config XML verbatim, so the
+    raw→physical calibration is reconstructable from the file. Ungated by frequency, unlike the
+    drift slope/offset: a voltage sensor with no drift knob still records its coefficients."""
+    out = _cast_catalog()
+    entries = [v for v in out.data_vars if str(v).startswith("SENSOR_")]
+    assert entries
+    for name in entries:
+        xml = str(out[name].attrs.get("sensor_config_xml", "")).strip()
+        assert xml.startswith("<sensor Channel="), f"{name} missing verbatim config"
+        assert xml.endswith("</sensor>")
+    # the voltage oxygen sensor has no drift slope but does carry its config block
+    ox = out["SENSOR_OXYGEN_0707"].attrs
+    assert "sensor_calibration_slope" not in ox
+    assert str(ox.get("sensor_config_xml", "")).strip().startswith("<sensor Channel=")
 
 
 def test_single_sensor_role_survives_suffix_stripping() -> None:

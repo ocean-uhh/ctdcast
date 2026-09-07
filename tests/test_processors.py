@@ -258,7 +258,12 @@ def test_compiled_profiles_processing_level_agrees_or_marks_mixed(
     da = xr.open_dataset(out_a, engine="netcdf4")
     try:
         tvar = "ctd_temperature_1" if "ctd_temperature_1" in da else "ctd_temperature"
-        assert da[tvar].attrs["processing_level"] == "Ranges applied, bad data flagged"
+        # Both casts agree, so the compiled value is theirs verbatim: the stage-1 conversion
+        # value (fixtures now carry it) plus the stage-2/3 range flag.
+        assert "Ranges applied, bad data flagged" in da[tvar].attrs["processing_level"]
+        assert (
+            "converted to geophysical values" in da[tvar].attrs["processing_level"]
+        )
         assert (
             "Post-recovery calibrations have been applied"
             in da["conductivity_1"].attrs["processing_level"]

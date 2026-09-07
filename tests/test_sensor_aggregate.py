@@ -127,6 +127,26 @@ def _write_cast(dst_path: Path, src_name: str, transform=None) -> None:
     ds.close()
 
 
+def test_sensor_config_xml_survives_aggregation(tmp_path) -> None:
+    """The verbatim per-sensor config block reaches profiles.nc unchanged, so the compiled
+    archive records the raw→physical calibration on its own — not only the stage-1 files."""
+    src = tmp_path / "casts"
+    src.mkdir()
+    _copy_fixtures(src)
+    out = tmp_path / "profiles.nc"
+    build_profiles(src, out, force=True)
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        entries = [v for v in ds.data_vars if str(v).startswith("SENSOR_")]
+        assert entries
+        for name in entries:
+            xml = str(ds[name].attrs.get("sensor_config_xml", "")).strip()
+            assert xml.startswith("<sensor Channel=") and xml.endswith("</sensor>"), name
+    finally:
+        ds.close()
+
+
 def test_warns_and_stamps_catalog_less(tmp_path, recwarn) -> None:
     """A catalog-less directory compiles (library default) with a warning and a stamp."""
     src = tmp_path / "casts"
