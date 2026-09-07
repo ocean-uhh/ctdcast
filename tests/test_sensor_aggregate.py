@@ -83,6 +83,7 @@ _EXPECTED_PROFILE_VARS: frozenset[str] = frozenset(
         "sensor_user_polynomial",
         "source_file",
         "source_stage",
+        "source_tracking_id",
         "time_end",
         "time_start",
     }

@@ -192,6 +192,11 @@ def run(
         try:
             ds = xr.open_dataset(input_path, engine="netcdf4").load()
             ds_out = stage3(ds, cruise_cfg=cruise_cfg)
+            # Lineage: record the stage-2 file's id before the writer stamps ds_out's own
+            # fresh tracking_id (empty on a legacy stage-2 file that predates the id).
+            _src_id = ds.attrs.get("tracking_id", "")
+            if _src_id:
+                ds_out.attrs["source_tracking_id"] = _src_id
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)

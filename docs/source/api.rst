@@ -15,6 +15,17 @@ Main entry point
 
 ----
 
+Best-available file selection
+-----------------------------
+
+The supported entry point for consumers outside ctdcast (e.g. ``caldip``) to read the
+best available ctdcast file per cast — stage 3 if present, else stage 2, else stage 1 —
+without reimplementing the precedence ladder. Import it as ``ctdcast.select_best_available``.
+
+.. autofunction:: ctdcast.select_best_available
+
+----
+
 Cast identity
 -------------
 

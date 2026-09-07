@@ -559,6 +559,11 @@ def run(
                 ds_out = apply_clock_offset(
                     ds_out, offset, n_casts=n_seg, segment_sd=sd_seg
                 )
+            # Lineage: record the stage-1 file's id before the writer stamps a fresh one
+            # (empty on a legacy stage-1 file that predates the id).
+            _src_id = ds.attrs.get("tracking_id", "")
+            if _src_id:
+                ds_out.attrs["source_tracking_id"] = _src_id
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)

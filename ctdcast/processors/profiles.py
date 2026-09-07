@@ -444,6 +444,9 @@ def build_profiles(
     # cast_number+suffix+stage alone cannot reconstruct, and the one thing that
     # distinguishes casts sharing a number (a plain cast vs its lettered sibling).
     source_files: list[str] = [""] * n_casts
+    # Lineage: the tracking_id of each per-cast file compiled here (empty for a legacy file
+    # that predates the id), so the chain back from profiles.nc is readable per profile.
+    source_tracking_ids: list[str] = [""] * n_casts
 
     # Per-cast sensor catalogs, in rank order, aggregated by _build_sensor_catalog.
     cast_catalogs: list[list[dict]] = []
@@ -488,6 +491,7 @@ def build_profiles(
                 ds[_v] = ds[_v].where(~_is_bad)
         source_stages[rank] = source_stage
         source_files[rank] = path.name
+        source_tracking_ids[rank] = str(ds.attrs.get("tracking_id", ""))
         pressure = ds["pressure"].values
         i_turn = _turnaround_index(pressure)
 
@@ -541,6 +545,7 @@ def build_profiles(
     gebco_depth_prof = np.repeat(gebco_per_cast.astype(np.float32), 2)
     source_stage_prof = np.repeat(source_stages, 2)
     source_file_prof = np.repeat(np.array(source_files), 2)
+    source_tid_prof = np.repeat(np.array(source_tracking_ids), 2)
 
     # Build output dataset
     # N_PROF is a plain sequential integer index — cast identity is in
@@ -652,6 +657,19 @@ def build_profiles(
                         "recorded, as it is a local, perishable path. Distinguishes "
                         "casts that share a number — e.g. a plain cast and its "
                         "lettered sibling."
+                    ),
+                },
+            ),
+            "source_tracking_id": (
+                ["N_PROF"],
+                source_tid_prof,
+                {
+                    "long_name": "tracking_id of the per-cast file this profile was compiled from",
+                    "comment": (
+                        "The compiled file has its own tracking_id (global attr); this "
+                        "names the specific instance of each source cast file, so the "
+                        "lineage back to the CNV is readable per profile. Empty for a "
+                        "source file that predates the tracking_id."
                     ),
                 },
             ),

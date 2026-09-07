@@ -92,6 +92,9 @@ def convert_ladcp_cast(
     ds = cast_output_dtypes(ds)
     # Stamp the immutable cruise identity; identity_attrs returns {} for no config.
     ds.attrs.update(identity_attrs(cruise_info))
+    # Lineage root for the LADCP source (parallels stage-1's source_cnv); the writer adds
+    # the tracking_id.
+    ds.attrs["source_mat"] = mat_path.name
     write_nc(ds, nc_path)
     return True
 
