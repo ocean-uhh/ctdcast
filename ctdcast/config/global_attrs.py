@@ -64,6 +64,7 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # Order per Eleanor's spec (2026-08-22); platform folded in here.
             "title",
             "cruise",
+            "cast_id",
             "platform",
             "platform_name",
             "platform_ices_code",
@@ -152,6 +153,7 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "source_tracking_id",
             "source_cnv",
             "source_mat",
+            "processing_stage",
             "history",
             # The file's creator (who produced it) — distinct from the cruise
             # contributors above.  The creator is a person, identified by

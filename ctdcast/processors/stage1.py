@@ -50,6 +50,7 @@ from ctdcast.processors.history import (
     add_processing_level,
     append_history,
 )
+from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as write_nc
@@ -462,6 +463,14 @@ class _SeasenselibBackend:
         # Lineage root: stage 1 has no upstream netCDF, so it names the raw CNV it read
         # (a distinct attr, not source_tracking_id, which holds a tracking_id downstream).
         ds.attrs["source_cnv"] = cnv_path.name
+        # The stage and the cast identity both live in the filename, but a file copied out of
+        # its directory (as caldip takes it) loses the path; record both in the file so it is
+        # identifiable on its own.  cast_id is the canonical zero-padded form (e.g. "011",
+        # "011b"); it carries forward unchanged because stage 2/3 copy the attributes.
+        ds.attrs["processing_stage"] = 1
+        _cid = cast_id_from_name(cnv_path.stem)
+        if _cid is not None:
+            ds.attrs["cast_id"] = format_cast_id(*_cid)
         write_nc(ds, nc_path)
         return True
 

@@ -579,6 +579,7 @@ def run(
             _src_id = ds.attrs.get("tracking_id", "")
             if _src_id:
                 ds_out.attrs["source_tracking_id"] = _src_id
+            ds_out.attrs["processing_stage"] = 2
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
             target.parent.mkdir(parents=True, exist_ok=True)

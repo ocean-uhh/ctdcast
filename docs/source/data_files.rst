@@ -115,6 +115,11 @@ from — so the chain back to the raw CNV is readable from any single output.
   per profile (the compiled file has its own ``tracking_id`` global attribute).
 - Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
   attribute instead — ``source_cnv`` for CTD, ``source_mat`` for LADCP.
+- ``processing_stage`` (``1``/``2``/``3``) records the stage in the file itself, not only in
+  the filename, so a file copied out of its stage directory still declares what it is — the
+  form a cross-package consumer (caldip) reads.
+- ``cast_id`` records the cast identity (the canonical zero-padded form, e.g. ``011`` or
+  ``011b``) in the file for the same reason; it is stamped at stage 1 and carried forward.
 - ``date_created`` is set once (first write) and preserved across re-runs; ``date_modified``
   moves on every write. So a stage-3 rewrite records *when* it was rewritten without resetting
   the creation time.

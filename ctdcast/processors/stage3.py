@@ -219,6 +219,7 @@ def run(
             _src_id = ds.attrs.get("tracking_id", "")
             if _src_id:
                 ds_out.attrs["source_tracking_id"] = _src_id
+            ds_out.attrs["processing_stage"] = 3
             if declare_delayed:
                 ds_out.attrs["data_mode"] = "D"
                 # The claim is backed only if a calibration was actually applied — detected by
