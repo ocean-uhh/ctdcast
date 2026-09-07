@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from ctdcast.config.global_attrs import order_attrs
+from ctdcast.config.global_attrs import data_mode_with_meaning, order_attrs
 from ctdcast.config.parameters import VARIABLES
 
 _QARTOD_FLAG_VALUES = np.array([1, 2, 3, 4, 9], dtype=np.int8)
@@ -105,6 +105,16 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     _stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     global_attrs["date_modified"] = _stamp
     global_attrs.setdefault("date_created", _stamp)
+    # Every file carries a ``data_mode`` (OceanSITES reference table 4), so a consumer
+    # that reads a per-cast stage file via ``select_best_available`` — caldip does — can
+    # read its reference's mode without opening ``profiles.nc``.  Stage 1/2/3 files fall to
+    # ``P`` (provisional) here; the compiled builders and a declared ``D`` set the value on
+    # ``ds.attrs`` before calling write and keep it.  The mode and its meaning come from one
+    # helper so the pair can never drift, whoever set the mode (no warning at this last seam —
+    # an invalid mode was already warned about where it was declared).
+    global_attrs["data_mode"], global_attrs["data_mode_meaning"] = data_mode_with_meaning(
+        global_attrs.get("data_mode"), warn=False
+    )
     # Write the global attributes in the canonical order (identity → platform →
     # coverage → people → rights → provenance); unnamed attrs keep their order and
     # follow.  One source of truth with the inventory page's grouping.

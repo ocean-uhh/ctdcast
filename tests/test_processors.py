@@ -212,6 +212,163 @@ def test_run_stage3_cast_tags(tmp_path: Path) -> None:
     assert not stage_path(root, "mixsed2_012", 3).exists(), "012 should be filtered out"
 
 
+def test_stage3_declared_delayed_mode_without_calibration_warns(tmp_path: Path) -> None:
+    """A declared data_mode 'D' with no calibration block stamps 'D' but warns naming
+    the cast and records the unsupported claim in history — the file states its own gap."""
+    import xarray as xr
+
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 2)
+
+    with pytest.warns(UserWarning, match="data_mode 'D'"):
+        stage3_run(root, cruise_info={"data_mode": "D"})
+
+    ds = xr.open_dataset(stage_path(root, "mixsed2_011", 3), engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "D"
+        assert ds.attrs["data_mode_meaning"] == "delayed-mode"
+        assert "unsupported" in ds.attrs.get("history", "")
+    finally:
+        ds.close()
+
+
+def test_compiled_profiles_processing_level_agrees_or_marks_mixed(
+    tmp_path: Path,
+) -> None:
+    """profiles.nc carries per-variable processing_level so the archive is interpretable on
+    its own: the casts' agreed value when they match, an explicit mixed marker when they
+    differ — never a union of the sentences (which would claim a procedure on a cast that
+    never had it)."""
+    import warnings
+
+    import xarray as xr
+
+    from ctdcast.processors.profiles import build_profiles
+
+    cal = {"calibration": {"conductivity_slope": 1.0002}}
+
+    # Agreement: both casts processed identically to stage 3.
+    agree = tmp_path / "agree"
+    _place(agree, "mixsed2_011.nc", "mixsed2_011", 1)
+    _place(agree, "mixsed2_012.nc", "mixsed2_012", 1)
+    stage2_run(agree)
+    stage3_run(agree, cruise_cfg=cal)
+    out_a = tmp_path / "agree.nc"
+    build_profiles(agree, out_a, force=True)
+    da = xr.open_dataset(out_a, engine="netcdf4")
+    try:
+        tvar = "ctd_temperature_1" if "ctd_temperature_1" in da else "ctd_temperature"
+        assert da[tvar].attrs["processing_level"] == "Ranges applied, bad data flagged"
+        assert (
+            "Post-recovery calibrations have been applied"
+            in da["conductivity_1"].attrs["processing_level"]
+        )
+    finally:
+        da.close()
+
+    # Disagreement: one cast at stage 3, one left at stage 1 -> explicit mixed marker.
+    mixed = tmp_path / "mixed"
+    _place(mixed, "mixsed2_011.nc", "mixsed2_011", 1)
+    stage2_run(mixed)
+    stage3_run(mixed, cruise_cfg=cal)
+    _place(mixed, "mixsed2_012.nc", "mixsed2_012", 1)  # stays stage 1
+    out_m = tmp_path / "mixed.nc"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # mixed-stage warning is expected here
+        build_profiles(mixed, out_m, force=True)
+    dm = xr.open_dataset(out_m, engine="netcdf4")
+    try:
+        tvar = "ctd_temperature_1" if "ctd_temperature_1" in dm else "ctd_temperature"
+        assert "mixed across casts" in dm[tvar].attrs["processing_level"]
+    finally:
+        dm.close()
+
+
+def test_processing_level_accumulates_idempotently_across_stages(
+    tmp_path: Path,
+) -> None:
+    """stage 2 soak/deck and stage 3 gross-range both flag a measured var, yet the range
+    value is listed once; calibration adds its own value and propagates to re-derived
+    salinity, which — computed, never instrument data — carries no conversion value; the
+    SENSOR_* catalog scalars carry no processing_level at all."""
+    import xarray as xr
+
+    ranges = "Ranges applied, bad data flagged"
+    cal = "Post-recovery calibrations have been applied"
+
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
+    stage2_run(root)
+    stage3_run(root, cruise_cfg={"calibration": {"conductivity_slope": 1.0002}})
+
+    ds = xr.open_dataset(stage_path(root, "mixsed2_011", 3), engine="netcdf4")
+    try:
+        tvar = "ctd_temperature_1" if "ctd_temperature_1" in ds else "ctd_temperature"
+        assert ds[tvar].attrs["processing_level"].count(ranges) == 1  # idempotent
+        assert cal in ds["conductivity_1"].attrs["processing_level"]
+        sal = "ctd_salinity_1" if "ctd_salinity_1" in ds else "ctd_salinity"
+        assert cal in ds[sal].attrs["processing_level"]  # calibration propagates
+        assert "converted to geophysical values" not in ds[sal].attrs.get(
+            "processing_level", ""
+        )
+        sensors = [v for v in ds.data_vars if str(v).startswith("SENSOR_")]
+        assert sensors and all("processing_level" not in ds[v].attrs for v in sensors)
+    finally:
+        ds.close()
+
+
+def test_stage3_declared_delayed_mode_with_empty_calibration_block_warns(
+    tmp_path: Path,
+) -> None:
+    """A calibration block that applies no slope does not back a 'D' claim: the warning
+    fires on whether calibration was *applied*, not on the mere presence of the block."""
+    import xarray as xr
+
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 2)
+
+    with pytest.warns(UserWarning, match="data_mode 'D'"):
+        stage3_run(
+            root,
+            cruise_info={"data_mode": "D"},
+            cruise_cfg={"calibration": {"conductivity_slope": None}},
+        )
+
+    ds = xr.open_dataset(stage_path(root, "mixsed2_011", 3), engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "D"
+        assert "unsupported" in ds.attrs.get("history", "")
+    finally:
+        ds.close()
+
+
+def test_stage3_declared_delayed_mode_with_calibration_is_silent(
+    tmp_path: Path,
+) -> None:
+    """When a calibration block backs the 'D' claim, stamp 'D' and raise no warning."""
+    import warnings
+
+    import xarray as xr
+
+    root = tmp_path / "CTD"
+    _place(root, "mixsed2_011.nc", "mixsed2_011", 2)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        stage3_run(
+            root,
+            cruise_info={"data_mode": "D"},
+            cruise_cfg={"calibration": {"conductivity_slope": 1.0002}},
+        )
+    assert not [w for w in caught if "data_mode 'D'" in str(w.message)]
+
+    ds = xr.open_dataset(stage_path(root, "mixsed2_011", 3), engine="netcdf4")
+    try:
+        assert ds.attrs["data_mode"] == "D"
+    finally:
+        ds.close()
+
+
 # ---------------------------------------------------------------------------
 # Non-destructive stage lineage — new files, frozen predecessors, strict reads
 # ---------------------------------------------------------------------------

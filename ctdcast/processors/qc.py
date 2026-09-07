@@ -16,7 +16,11 @@ from __future__ import annotations
 import numpy as np
 import xarray as xr
 
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_RANGES_FLAGGED,
+    add_processing_level,
+    append_history,
+)
 
 #: QARTOD primary flag values (IOOS QARTOD).  The complete vocabulary — every
 #: value and its meaning — is encoded in :func:`_qc_attrs`; these name the two
@@ -204,6 +208,7 @@ def apply_gross_range(
             attrs["qc_gross_range_fail_min"] = float(f[0])
             attrs["qc_gross_range_fail_max"] = float(f[1])
         ds[qc_name] = xr.DataArray(qc, dims=ds[qc_name].dims, attrs=attrs)
+        add_processing_level(ds[var].attrs, PL_RANGES_FLAGGED)
         applied.append(var)
     if applied:
         append_history(ds.attrs, f"gross_range: {', '.join(applied)}", stage="stage3")
@@ -259,6 +264,7 @@ def apply_spike_test(
             _raise_flag(qc, finite & (spike > f), QARTOD_FAIL)
             attrs["qc_spike_fail_threshold"] = float(f)
         ds[qc_name] = xr.DataArray(qc, dims=ds[qc_name].dims, attrs=attrs)
+        add_processing_level(ds[var].attrs, PL_RANGES_FLAGGED)
         applied.append(var)
     if applied:
         append_history(ds.attrs, f"spike: {', '.join(applied)}", stage="stage3")

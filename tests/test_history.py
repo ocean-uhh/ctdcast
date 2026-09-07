@@ -4,13 +4,46 @@ import xarray as xr
 from conftest import CAST_011
 
 from ctdcast._version import __version__
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_CALIBRATED,
+    PL_CONVERTED,
+    PL_RANGES_FLAGGED,
+    add_processing_level,
+    append_history,
+)
 
 
 def _load(path):
     """Load a fixture cast as an in-memory Dataset."""
     with xr.open_dataset(path, engine="netcdf4") as ds:
         return ds.load()
+
+
+class TestAddProcessingLevel:
+    """add_processing_level is an idempotent, order-preserving '; '-joined ordered set."""
+
+    def test_appends_in_order(self):
+        attrs: dict = {}
+        add_processing_level(attrs, PL_CONVERTED)
+        add_processing_level(attrs, PL_CALIBRATED)
+        assert attrs["processing_level"] == f"{PL_CONVERTED}; {PL_CALIBRATED}"
+
+    def test_is_idempotent(self):
+        """A repeated value is not appended twice — the ordered set, not a log."""
+        attrs: dict = {}
+        add_processing_level(attrs, PL_RANGES_FLAGGED)
+        add_processing_level(attrs, PL_RANGES_FLAGGED)
+        assert attrs["processing_level"] == PL_RANGES_FLAGGED
+
+    def test_ranges_value_contains_a_comma_so_semicolon_is_the_separator(self):
+        """The '; ' join survives a value that itself contains a comma."""
+        attrs: dict = {}
+        add_processing_level(attrs, PL_CONVERTED)
+        add_processing_level(
+            attrs, PL_RANGES_FLAGGED
+        )  # 'Ranges applied, bad data flagged'
+        parts = attrs["processing_level"].split("; ")
+        assert parts == [PL_CONVERTED, PL_RANGES_FLAGGED]
 
 
 class TestAppendHistory:

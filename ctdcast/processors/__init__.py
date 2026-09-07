@@ -225,6 +225,7 @@ def _run_stage3(
     dry_run: bool = False,
     cast_tags: set[str] | None = None,
     cruise_cfg: dict | None = None,
+    cruise_info: dict | None = None,
     **_kw: object,
 ) -> int:
     """Apply QC + calibration to per-cast CTD netCDF (LADCP has no stage 3)."""
@@ -237,6 +238,7 @@ def _run_stage3(
             dry_run=dry_run,
             cast_tags=cast_tags,
             cruise_cfg=cruise_cfg,
+            cruise_info=cruise_info,
         )
         or 0
     )

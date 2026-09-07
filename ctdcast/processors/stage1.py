@@ -45,7 +45,11 @@ from ctdcast.config.sensors import (
     role_base,
 )
 from ctdcast.processors._warnings import summarise_warnings
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_CONVERTED,
+    add_processing_level,
+    append_history,
+)
 from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as write_nc
@@ -336,6 +340,11 @@ def _build_cast_sensor_catalog(
         var = _sensor_variable(role, ds)
         if var is not None and var in ds:
             ds[var].attrs["sensor"] = name
+            # This variable maps to a sensor in the <Sensors> block, which is the evidence
+            # that its values were converted from instrument units (datcnv did it upstream;
+            # table 3 describes the procedure, not who ran it).  Co-located with the link so
+            # the claim and its evidence cannot drift, and no channel needs a hardcoded name.
+            add_processing_level(ds[var].attrs, PL_CONVERTED)
         elif var is not None:
             # A role ctdcast knows how to store, whose variable is absent: the reader dropped
             # a channel it could have kept.  (A role with no stored variable at all — e.g. a

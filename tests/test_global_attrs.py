@@ -532,3 +532,11 @@ def test_a_present_but_unusable_slug_still_yields_none_not_a_placeholder():
     """An ambiguous slug is an authoring mistake, not a deferred value."""
     with pytest.warns(UserWarning, match="ambiguous"):
         assert cruise_expocode({**_EXPO_BASE, "platform": "meteor"}) is None
+
+
+def test_data_mode_defaults_to_provisional_not_delayed():
+    """An unset data_mode is provisional: nobody has declared the cruise finished, so
+    the file must not claim 'D' (all calibrations and QC applied)."""
+    identity = dataset_identity({"internal_id": "mixsed2"}, "ctd", grid="1dbar")
+    assert identity["data_mode"] == "P"
+    assert identity["data_mode_meaning"] == "provisional"

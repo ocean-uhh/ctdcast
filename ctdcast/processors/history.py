@@ -24,6 +24,38 @@ from typing import MutableMapping
 
 from ctdcast._version import __version__
 
+#: OceanSITES reference-table-3 ``processing_level`` values, verbatim.  A variable can carry
+#: several at once (converted, then calibrated, then flagged): they are joined with ``"; "``
+#: in the order applied by :func:`add_processing_level`, so the attribute doubles as the
+#: per-variable procedure sequence.  Comma is unusable as a separator — ``RANGES_FLAGGED``
+#: contains one.
+PL_CONVERTED = "Instrument data that has been converted to geophysical values"
+PL_RANGES_FLAGGED = "Ranges applied, bad data flagged"
+PL_CALIBRATED = "Post-recovery calibrations have been applied"
+PL_INTERPOLATED = "Data interpolated"
+
+
+def add_processing_level(attrs: MutableMapping[str, object], value: str) -> None:
+    """Append a table-3 ``processing_level`` *value* to *attrs*, idempotently.
+
+    The attribute is an ordered set joined with ``"; "``: *value* is appended only if it is
+    not already present, so re-running a stage — or two stages that apply the same procedure
+    (stage-2 soak/deck and stage-3 gross-range both flag) — never accumulates a duplicate.
+    Order of first application is preserved, so the attribute reads as the procedure sequence.
+
+    Parameters
+    ----------
+    attrs:
+        A variable's attribute mapping (``ds[var].attrs``), mutated in place.
+    value:
+        One of the ``PL_*`` table-3 strings.
+    """
+    existing = str(attrs.get("processing_level", ""))
+    parts = [p.strip() for p in existing.split(";") if p.strip()] if existing else []
+    if value not in parts:
+        parts.append(value)
+    attrs["processing_level"] = "; ".join(parts)
+
 
 def _iso_now() -> str:
     """Return the current UTC time as an ISO-8601 ``…Z`` stamp."""
