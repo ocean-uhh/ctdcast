@@ -142,7 +142,9 @@ def test_sensor_config_xml_survives_aggregation(tmp_path) -> None:
         assert entries
         for name in entries:
             xml = str(ds[name].attrs.get("sensor_config_xml", "")).strip()
-            assert xml.startswith("<sensor Channel=") and xml.endswith("</sensor>"), name
+            assert xml.startswith("<sensor Channel=") and xml.endswith("</sensor>"), (
+                name
+            )
     finally:
         ds.close()
 

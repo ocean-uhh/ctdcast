@@ -261,9 +261,7 @@ def test_compiled_profiles_processing_level_agrees_or_marks_mixed(
         # Both casts agree, so the compiled value is theirs verbatim: the stage-1 conversion
         # value (fixtures now carry it) plus the stage-2/3 range flag.
         assert "Ranges applied, bad data flagged" in da[tvar].attrs["processing_level"]
-        assert (
-            "converted to geophysical values" in da[tvar].attrs["processing_level"]
-        )
+        assert "converted to geophysical values" in da[tvar].attrs["processing_level"]
         assert (
             "Post-recovery calibrations have been applied"
             in da["conductivity_1"].attrs["processing_level"]
