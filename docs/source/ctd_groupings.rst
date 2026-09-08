@@ -27,7 +27,7 @@ over any cruise metadata found in the netCDF file attributes:
      ship: "Maria S. Merian"    # shown in page masthead
 
 Both keys are optional.  If absent, the report falls back to the ``cruise``
-attribute of the first netCDF file (defaulting to ``"odb2026"`` if that
+attribute of the first netCDF file (defaulting to ``"UNKCRUISE"`` if that
 attribute is not set), and ship shows as ``"UNK"``.
 
 Top-level key: ``sections``

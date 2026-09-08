@@ -276,7 +276,7 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
      --casts          Generate per-cast pages
      --sections       Generate section pages (requires profiles.nc and groupings_yaml)
      --timeseries     Generate timeseries pages (requires profiles.nc and groupings_yaml)
-     --index          Generate index.html and casts.html
+     --index          Generate navigation pages (index.html, casts.html, sections.html)
      --map            Generate leaflet.html interactive map
      --all            Generate every page type
 

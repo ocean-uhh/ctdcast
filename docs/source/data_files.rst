@@ -92,7 +92,7 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``ctd_oxygen`` / ``ctd_oxygen_1`` / ``ctd_oxygen_2``
      - Dissolved oxygen in µmol kg⁻¹.
    * - ``ctd_fluor``
-     - Fluorescence in µg L⁻¹ (chlorophyll-a equivalent).
+     - Fluorescence in mg m⁻³ (chlorophyll-a equivalent; 1 mg m⁻³ = 1 µg L⁻¹).
    * - ``ctd_turbidity``
      - Turbidity in NTU.
    * - ``ctd_altimeter``
