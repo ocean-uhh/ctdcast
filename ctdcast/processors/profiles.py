@@ -21,7 +21,7 @@ from ctdcast.config.global_attrs import (
     cruise_global_attrs,
     cruise_name,
 )
-from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.parameters import VARIABLES, is_sbe_channel
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
@@ -34,6 +34,22 @@ from ctdcast.writers.netcdf import write as _write_nc
 _SKIP_VARS: frozenset[str] = frozenset(
     {"timeJ", "timeS", "pressure", "clock_offset_seconds"}
 )
+
+
+def _is_griddable(ds: xr.Dataset, name: str) -> bool:
+    """Whether *name* is a per-sample science channel ``build_profiles`` should bin.
+
+    Excludes bookkeeping/coordinate columns (:data:`_SKIP_VARS`), QARTOD ``_qc`` flags, SeaBird
+    diagnostics (``sbe_*`` — dropped at stage 2, never binned), and non-per-sample columns such
+    as the dimensionless ``SENSOR_<type>_<serial>`` catalog scalars (caught by the pressure-shape
+    test).  One predicate so the several sites that select griddable columns cannot drift apart.
+    """
+    return (
+        name not in _SKIP_VARS
+        and not str(name).endswith("_qc")
+        and not is_sbe_channel(name)
+        and ds[name].shape == ds["pressure"].shape
+    )
 
 #: The compiled ``processing_level`` for a variable whose casts do not agree.  An explicit
 #: value, never an omission or a union of the casts' sentences: the per-profile treatment is
@@ -261,10 +277,8 @@ def _bin_to_grid(
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
-        if v in _SKIP_VARS or v.endswith("_qc"):
+        if not _is_griddable(ds_half, v):
             continue
-        if ds_half[v].shape != ds_half["pressure"].shape:
-            continue  # not a per-sample column (e.g. a SENSOR_<type>_<serial> scalar)
         vals = ds_half[v].values.astype(float)
         out = np.full(n, np.nan, dtype=np.float32)
         in_range = (idx >= 0) & (idx < n) & ~np.isnan(vals)
@@ -394,35 +408,39 @@ def build_profiles(
     # shallow of it.  For dbar=1 the centre equals the edge (unchanged).
     pressure_coord = (p_grid + (dbar - 1) / 2.0).astype(np.float32)
 
-    # Get variable names and cruise attr from the first file.  The config's
-    # cruise_id wins over the per-cast file attr (OdB per-cast files carry no
-    # cruise attr, which is why the compiled file used to read "UNK").
-    ds0 = xr.open_dataset(cast_list[0][2], engine="netcdf4", decode_timedelta=False)
-    # Exclude QARTOD _qc flags: they are per-cast integer flags, not griddable
-    # science, so binning would average them into meaningless floats.  profiles.nc
-    # carries no _qc today; this keeps that true now that best-available can pick a
-    # stage-3 file.  Flag 4 (soak/deck) is honoured per cast in the binning loop
-    # below, where the flagged samples are NaN-masked before the bin means.
-    # Exclude non-per-sample columns by shape as well as by name: the stage-1
-    # SENSOR_<type>_<serial> scalars are dynamic (serial-keyed) so _SKIP_VARS cannot list
-    # them.  Without this they would be allocated an (N_PROF, pressure) all-NaN array and
-    # written to profiles.nc as bogus variables (only masked today by the catalog being
-    # rebuilt under the same names — a coincidence that breaks if stage-1 and compile-time
-    # serial-alias resolution disagree).  The compiled catalog is built separately below.
-    var_names = [
-        v
-        for v in ds0.data_vars
-        if v not in _SKIP_VARS
-        and not v.endswith("_qc")
-        and ds0[v].shape == ds0["pressure"].shape
-    ]
+    # The cruise name is resolved later, from the aggregated identity — not here from the first
+    # file, and not from config.  `attrs.update(identity)` decides the `cruise` attribute, so
+    # anything derived from a different source (the title) would disagree with it.
     _ci = cruise_info or {}
-    # The cruise name is resolved later, from the aggregated identity — not here
-    # from the first file, and not from config.  `attrs.update(identity)` is what
-    # decides the `cruise` attribute, so anything derived from a different source
-    # (the title) would disagree with it.
     _cfg_cruise = cruise_name(_ci)
-    ds0.close()
+
+    # var_names is the UNION of the per-sample griddable channels (:func:`_is_griddable`) across
+    # ALL casts, not just the first: a channel fitted mid-cruise (or absent from cast 1) is still
+    # binned, and casts that lack it are all-NaN there (the binning loop guards on
+    # ``if v in binned``).  An insertion-ordered dict keeps first-seen order, so the output is
+    # byte-stable when every cast carries the same channels; the per-cast presence set drives one
+    # warning per variable not present in every cast, naming the casts that lack it.
+    _present: dict[str, set[str]] = {}
+    _labels: list[str] = []
+    for _cnum, _csuf, _cpath, _cstg in cast_list:
+        _lab = format_cast_id(_cnum, _csuf)
+        _labels.append(_lab)
+        _dsx = xr.open_dataset(_cpath, engine="netcdf4", decode_timedelta=False)
+        try:
+            for _v in _dsx.data_vars:
+                if _is_griddable(_dsx, _v):
+                    _present.setdefault(_v, set()).add(_lab)
+        finally:
+            _dsx.close()
+    var_names = list(_present)
+    for _v in var_names:
+        _miss = [c for c in _labels if c not in _present[_v]]
+        if _miss:
+            warnings.warn(
+                f"variable {_v!r} is absent from {len(_miss)} of {len(_labels)} casts "
+                f"({', '.join(_miss)}); it is all-NaN there in the compiled file.",
+                stacklevel=2,
+            )
 
     n_casts = len(cast_list)
     n_profiles = n_casts * 2

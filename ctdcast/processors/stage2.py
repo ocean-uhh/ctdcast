@@ -24,6 +24,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.config.cnv_header import start_time_clock
+from ctdcast.config.parameters import is_sbe_channel
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import (
     PL_RANGES_FLAGGED,
@@ -486,6 +487,81 @@ def find_cast_end(
     return i_max + int(below[0])
 
 
+def apply_curated_drop(
+    ds: xr.Dataset, drop_names: list[str] | None = None
+) -> xr.Dataset:
+    """Drop the curated set of SBE-derived channels stage 1 kept, recording what went.
+
+    Stage 1 is a faithful translation and keeps every CNV column (SeaBird-computed quantities
+    under an ``sbe_`` prefix); stage 2 is curated and removes them by default so the working
+    product is not cluttered with duplicates of quantities ctdcast recomputes.  The stage-1
+    file remains the record of what existed, so nothing is lost.
+
+    Parameters
+    ----------
+    ds:
+        The stage-2 Dataset (post soak/deck flags and clock correction).
+    drop_names:
+        Explicit names to drop (the config ``trim.drop_sbe:`` list).  ``None`` uses the
+        default: every ``sbe_*`` channel present (the known likely-dead-weight set).  An
+        unrecognised channel is kept — name it in ``trim.drop_sbe:`` to drop it.  A name not
+        present is ignored.
+
+    Returns
+    -------
+    xr.Dataset
+        A new Dataset without the dropped channels; unchanged when none are present.  The
+        dropped names are recorded in ``history`` and in a ``dropped_channels`` attribute, so
+        the file states what it no longer contains.
+    """
+    if drop_names is None:
+        # Default: the SBE-derived `sbe_*` set only.  The `sbe_` prefix is the label for
+        # "known likely dead weight" (SeaBird-computed quantities ctdcast recomputes or does
+        # not use); a channel with no VARIABLES entry is *unrecognised*, not known-junk, so it
+        # is kept by default — dropping the unknown would be the unfaithful choice.  A config
+        # `trim.drop_sbe:` list may name only `sbe_*` channels (a non-sbe_ name is refused).
+        present = sorted(
+            str(v)
+            for v in ds.data_vars
+            if is_sbe_channel(v) and not str(v).endswith("_qc")
+        )
+    else:
+        # The key is `trim.drop_sbe`: it may name only `sbe_*` channels.  A non-sbe_ name is an
+        # operator error — obeying it would silently remove a science / catalog / provenance
+        # channel at stage 2, invisible to caldip (which reads stage 3) but for a
+        # `dropped_channels` trace.  Refuse rather than act.
+        bad = sorted(str(n) for n in drop_names if not is_sbe_channel(n))
+        if bad:
+            raise ValueError(
+                f"trim.drop_sbe may name only sbe_* channels; got {bad}. Refusing — a "
+                "non-sbe_ name would drop a science, catalog or provenance channel."
+            )
+        # Refuse a bare _qc companion too: naming ``sbe_density_qc`` would drop only the flag
+        # and leave ``sbe_density`` behind.  Name the base variable — its _qc goes with it.
+        qc = sorted(str(n) for n in drop_names if str(n).endswith("_qc"))
+        if qc:
+            raise ValueError(
+                f"trim.drop_sbe must not name _qc companions; got {qc}. Name the base sbe_* "
+                "variable instead — its _qc is dropped with it."
+            )
+        wanted = set(drop_names)
+        present = sorted(str(v) for v in ds.data_vars if str(v) in wanted)
+    if not present:
+        return ds
+    ds = ds.copy()
+    companions = [f"{v}_qc" for v in present if f"{v}_qc" in ds.data_vars]
+    ds = ds.drop_vars(present + companions)
+    # Append, never overwrite: a second drop must extend the record, not erase the first.
+    _prior = str(ds.attrs.get("dropped_channels", "")).strip()
+    ds.attrs["dropped_channels"] = (
+        f"{_prior}, {', '.join(present)}" if _prior else ", ".join(present)
+    )
+    append_history(
+        ds.attrs, f"stage2 curated drop: removed {', '.join(present)}", stage="stage2"
+    )
+    return ds
+
+
 def run(
     root: Path,
     *,
@@ -539,6 +615,9 @@ def run(
     # Cruise-scope clock resolution once: which cast numbers get which offset, with each segment's
     # measured n/sd and a drift warning.  Empty unless processing.clock is configured.
     clock_apply = _resolve_clock_application(root, (cruise_cfg or {}).get("clock"))
+    # The curated drop set: the config `trim.drop_sbe:` list, or None for the default (every
+    # `sbe_*` channel present).  Config, not a flag, so the output is reproducible from config.
+    drop_names = (cruise_cfg or {}).get("trim", {}).get("drop_sbe")
 
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
@@ -573,6 +652,10 @@ def run(
                 ds_out = apply_clock_offset(
                     ds_out, offset, n_casts=n_seg, segment_sd=sd_seg
                 )
+            # Curated drop — AFTER the clock applier so sbe_timeJ/sbe_timeS were available for
+            # clock diagnosis first.  Removes the SBE-derived `sbe_*` set that stage 1 keeps
+            # faithfully; the stage-1 file remains the record of what existed.
+            ds_out = apply_curated_drop(ds_out, drop_names)
             # Lineage: record the stage-1 file's id before the writer stamps a fresh one
             # (empty on a legacy stage-1 file that predates the id).
             _src_id = ds.attrs.get("tracking_id", "")
