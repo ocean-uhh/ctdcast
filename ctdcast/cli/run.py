@@ -1,4 +1,4 @@
-"""``ctdcast run`` — convert profiles and generate HTML reports in one step."""
+"""``ctdcast run`` — run the processing pipeline, then generate HTML reports."""
 
 from __future__ import annotations
 
@@ -36,14 +36,14 @@ Examples:
   ctdcast run config.yaml --only 42
 """
     kwargs: dict = {
-        "description": "Convert profiles and generate HTML reports in one step.",
+        "description": "Run the processing pipeline (all stages by default), then generate HTML reports.",
         "formatter_class": argparse.RawDescriptionHelpFormatter,
         "epilog": _epilog,
     }
     if subparsers is not None:
         parser = subparsers.add_parser(
             "run",
-            help="Convert profiles then generate HTML reports (convert + report).",
+            help="Run the pipeline (all stages) then generate HTML reports (process + report).",
             **kwargs,
         )
         parser.set_defaults(func=run)

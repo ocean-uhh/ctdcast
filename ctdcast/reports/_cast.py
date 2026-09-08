@@ -132,7 +132,7 @@ def generate_station_page(
         Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived
         from *nc_path* if not provided.
     sal_range:
-        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this
+        ``(sal_min, sal_max)`` — records with ``ctd_salinity_1`` outside this
         range are excluded from all plots (but the NC file is not modified).
         The count of excluded records is shown in the page header.
     trim_soak:

@@ -37,7 +37,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="ctdcast",
         description=(
-            "Generate self-contained HTML reports from shipboard CTD and LADCP data."
+            "Process and report shipboard CTD and LADCP data: from raw files to QC'd netCDF to self-contained HTML."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_EPILOG,

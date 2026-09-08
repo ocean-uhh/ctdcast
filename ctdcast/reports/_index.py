@@ -146,7 +146,7 @@ def report(
         If set, rebuild only the station page for this cast number
         (implies ``generate={"stations": True, rest False}``).
     sal_range:
-        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this
+        ``(sal_min, sal_max)`` — records with ``ctd_salinity_1`` outside this
         range are excluded from all station page plots.  The NC files are
         not modified.  Excluded record count is shown in each page header.
     trim_soak:
