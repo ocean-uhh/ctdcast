@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import xarray as xr
 
-from ctdcast.plotters import plots
+from ctdcast.config.report_config import ReportConfig
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.qc import apply_gross_range, apply_spike_test
 from ctdcast.processors.stage2 import apply_stage2
@@ -61,9 +61,10 @@ def _build_stage3(nc_dir: Path, root: Path) -> None:
 
 if __name__ == "__main__":
     if GEBCO_NC.exists():
-        plots.GEBCO_PATH = GEBCO_NC
+        cfg = ReportConfig(gebco_path=GEBCO_NC)
         print(f"Using GEBCO bathymetry: {GEBCO_NC}")
     else:
+        cfg = ReportConfig()
         print(f"GEBCO not found at {GEBCO_NC} — maps will render without bathymetry")
 
     with tempfile.TemporaryDirectory() as _tmp:
@@ -91,6 +92,7 @@ if __name__ == "__main__":
                 "map": True,
             },
             force=True,
+            config=cfg,
             cruise_info=CRUISE_INFO,
         )
     print("Done.")
