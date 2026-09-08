@@ -148,7 +148,7 @@ def run(args: argparse.Namespace) -> int:
     from ctdcast.processors import process as _process
     from ctdcast.processors import stages_for
 
-    with open(cfg_path) as _f:
+    with cfg_path.open() as _f:
         _cfg = yaml.safe_load(_f) or {}
     _data = _cfg.get("data") or {}
     _processing = _cfg.get("processing") or {}

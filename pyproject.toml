@@ -67,6 +67,7 @@ select = [
     "RET",                  # return-statement hygiene
     "PIE", "SIM",           # misc lint + simplifications
     "NPY",                  # numpy-specific
+    "PTH",                  # pathlib over os.path / open()
     "RUF100",               # unused noqa
 ]
 ignore = [
@@ -85,7 +86,7 @@ convention = "numpy"
 # tests are not public API: no docstring rules (D), no annotations (ANN — documentation-only
 # with no type checker configured), no unused-argument rule (pytest fixtures look unused).
 # The requirement that a test docstring says which behaviour it asserts lives in CONTRIBUTING.md.
-"tests/*" = ["ARG", "ANN", "D"]
+"tests/*" = ["ARG", "ANN", "D", "PTH"]
 "scripts/*" = ["E402"]    # scripts use late imports for optional deps
 # Vendored files (kept in sync with oceanarray) — the linter must not drive divergence,
 # so RUF100 (noqa managed upstream) and the docstring/annotation rules are off here; any

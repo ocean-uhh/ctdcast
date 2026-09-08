@@ -197,7 +197,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    with open(cfg_path) as f:
+    with cfg_path.open() as f:
         cfg = yaml.safe_load(f)
 
     data = cfg.get("data") or {}

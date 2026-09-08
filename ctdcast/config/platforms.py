@@ -52,7 +52,7 @@ def _load_raw() -> dict[str, Any]:
     """Return the parsed ``platforms.yaml`` (empty mapping when absent)."""
     if not _PLATFORMS_YAML.exists():
         return {}
-    with open(_PLATFORMS_YAML, encoding="utf-8") as fh:
+    with _PLATFORMS_YAML.open(encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
 
 

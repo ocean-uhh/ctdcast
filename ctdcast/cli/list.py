@@ -103,7 +103,7 @@ def _load_cruise_info(config: Path | None) -> dict[str, Any] | None:
         return None
     import yaml
 
-    with open(config) as fh:
+    with config.open() as fh:
         cfg = yaml.safe_load(fh) or {}
     return cfg.get("cruise_info") or {}
 

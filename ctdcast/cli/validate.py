@@ -76,7 +76,7 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        with open(cfg_path) as f:
+        with cfg_path.open() as f:
             cfg = yaml.safe_load(f)
     except yaml.YAMLError as exc:
         print(f"ERROR: config YAML parse error: {exc}", file=sys.stderr)

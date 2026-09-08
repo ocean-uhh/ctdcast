@@ -721,7 +721,7 @@ def _write_index(
     sections_data_map: list[dict[str, Any]] = []
     # cast_groups: color → set of cast numbers (for overview panel top markers)
     cast_groups: dict[str, list[int]] = {}
-    for _grp_name, grp_cfg in _all_groups.items():
+    for grp_cfg in _all_groups.values():
         cast_nums_grp = expand_cast_numbers(grp_cfg.get("cast_numbers", []))
         color = grp_cfg.get("color", "#888888")
         if cast_nums_grp:
@@ -1075,7 +1075,7 @@ def _make_clock_section(
     # every file via raw_metadata) rather than a global attr, so this works on trees predating the
     # attr.  The bracket names which clock the coordinate is anchored to — the fact that decides
     # whether the offsets below are a defect or a curiosity.
-    first_stages = groups[sorted(groups)[0]]
+    first_stages = groups[min(groups)]
     caption_path = first_stages.get(1, first_stages[min(first_stages)])
     caption: dict[str, Any] = {}
     ds = xr.open_dataset(caption_path, engine="netcdf4")

@@ -23,7 +23,7 @@ MOORING_COLOR = "#4472c4"  # steel-blue label color for moorings
 
 # ---- Parse sections --------------------------------------------------------
 
-with open(_SECTIONS_YAML) as _f:
+with _SECTIONS_YAML.open() as _f:
     _sec_cfg = yaml.safe_load(_f)["sections"]
 
 
@@ -81,7 +81,7 @@ def _parse_coord_sm(raw: float | str | None) -> float | None:
 
 _moorings_sm: list[dict] = []
 if _ACTIVITIES_YAML.exists():
-    with open(_ACTIVITIES_YAML) as _f:
+    with _ACTIVITIES_YAML.open() as _f:
         _act = yaml.safe_load(_f)
     for _op in _act.get("operations", []):
         if not isinstance(_op, dict) or "moorings" not in _op:
@@ -92,7 +92,7 @@ if _ACTIVITIES_YAML.exists():
             if not _cfg_path.exists():
                 print(f"  [skip] {_label}: config not found: {_cfg_path}")
                 continue
-            with open(_cfg_path) as _f:
+            with _cfg_path.open() as _f:
                 _mcfg = yaml.safe_load(_f)
             _mlat = _parse_coord_sm(
                 _mcfg.get("deployment_latitude") or _mcfg.get("latitude")

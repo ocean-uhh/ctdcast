@@ -165,7 +165,7 @@ class SensorRegistry:
             if path is not None
             else Path(__file__).with_name("sbe_sensors.yaml")
         )
-        with open(p) as f:
+        with p.open() as f:
             data: dict[str, Any] = yaml.safe_load(f) or {}
         raw = data.get("sensors") or {}
         # SensorID keys are strings ("55"); coerce any int that slipped through.
