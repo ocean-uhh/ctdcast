@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "[CI]"
+      include: "scope"
+    reviewers:
+      - "eleanorfrajka"
+    assignees:
+      - "eleanorfrajka"
+    labels:
+      - "github-actions"
+      - "automated"
