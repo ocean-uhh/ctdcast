@@ -7,7 +7,7 @@ year = datetime.datetime.now(tz=datetime.timezone.utc).date().year
 project = "ctdcast"
 author = "Eleanor Frajka-Williams"
 copyright = f"{year}, {author}"
-release = "v0.1.0"
+release = "v0.2.0"
 
 extensions = [
     "sphinx.ext.autodoc",

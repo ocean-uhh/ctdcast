@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-08
+
 ### Added
 
 - **Sensor catalog** — a per-cast catalog built at stage 1 from the CNV `<Sensors>` block (#34), aggregated into `profiles.nc` (#35), rendered on the cast page as one merged variable→device→calibration table (#36), each entry carrying the sensor's verbatim `<Coefficients>` config (#39).

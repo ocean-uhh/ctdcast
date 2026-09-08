@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctdcast"
-version = "0.1.0"
-description = "Self-contained HTML report generator for shipboard CTD and LADCP data"
+version = "0.2.0"
+description = "Processing and reporting for shipboard CTD and LADCP data: raw files to QC'd netCDF to self-contained HTML"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
