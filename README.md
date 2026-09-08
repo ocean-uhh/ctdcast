@@ -5,9 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://ocean-uhh.github.io/ctdcast/)
 
-Self-contained HTML report generator for shipboard CTD and LADCP data.
-Produces portable HTML files — all figures embedded as base64 PNGs, no external requests —
-for three report types: per-cast station pages, transect section pages, and a cruise-wide
+Processing and reporting for shipboard CTD and LADCP data: from raw instrument files
+through QC'd, CF/CCHDO-aligned netCDF and a compiled profiles grid, to self-contained HTML.
+The reports are portable HTML files — all figures embedded as base64 PNGs, no external
+requests — in three types: per-cast station pages, transect section pages, and a cruise-wide
 time series page.
 
 Designed for use at sea where internet connectivity is limited or absent.
@@ -32,9 +33,9 @@ source venv/bin/activate        # macOS / Linux
 pip install -e ".[dev]"         # runtime + tests + docs + ruff
 ```
 
-Dependencies: `gsw`, `matplotlib`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `scipy`
+Dependencies: `gsw`, `matplotlib`, `pillow`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `ruamel.yaml`, `scipy`
 
-CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdcast (`ctdcast draft` or `ctdcast run --ctd`). Install with `pip install seasenselib`. Pre-converted netCDF files from other tools must match ctdcast's variable naming convention (see docs).
+CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdcast (`ctdcast draft` or `ctdcast run`). Install with `pip install seasenselib`. Pre-converted netCDF files from other tools must match ctdcast's variable naming convention (see docs).
 
 To verify the installation, run the bundled demo against the committed fixture casts:
 

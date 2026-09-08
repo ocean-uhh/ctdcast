@@ -17,6 +17,10 @@ What changed and why, in one short paragraph.
 
 Each breaking change and how to migrate (removed/renamed public API or CLI flag, changed signature or parameter meaning, changed output/config layout). Write "None" if there are none — keep the section so reviewers see it was considered.
 
+## Tests
+
+One line on how the change is covered — the new or updated test, or why none was needed.
+
 ## Notes
 
 Optional — design decisions or trade-offs, screenshots if outputs changed, related issues (Fixes #, Related to #), and anything reviewers should look at closely.
