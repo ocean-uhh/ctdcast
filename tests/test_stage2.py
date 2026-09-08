@@ -179,6 +179,22 @@ class TestCuratedDrop:
         with pytest.raises(ValueError, match="only sbe_"):
             apply_curated_drop(ds, drop_names=["ctd_temperature_2"])
 
+    def test_explicit_list_refuses_qc_companion(self):
+        """Naming a _qc companion would drop only the flag and leave the base sbe_ var — refuse."""
+        import pytest
+
+        from ctdcast.processors.stage2 import apply_curated_drop
+
+        ds = xr.Dataset(
+            {
+                "sbe_density": ("time", np.arange(3.0)),
+                "sbe_density_qc": ("time", np.arange(3.0)),
+            },
+            coords={"time": np.arange(3)},
+        )
+        with pytest.raises(ValueError, match="_qc"):
+            apply_curated_drop(ds, drop_names=["sbe_density_qc"])
+
     def test_stage1_keeps_sbe_channels(self):
         """Stage 1 is a faithful translation: the regenerated fixture carries the sbe_* set."""
         ds = _load(CAST_011)

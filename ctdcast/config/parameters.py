@@ -45,6 +45,17 @@ UNKNOWN_CRUISE_ID: str = "UNKCRUISE"
 # places across the processors and CLI.
 CAST_TAG_WIDTH: int = 3
 
+#: Prefix marking a SeaBird-derived channel — quantities ctdcast recomputes (density → sigma0)
+#: or does not use.  Stage 1 keeps them under this prefix (faithful translation); stage 2 drops
+#: them by default; build_profiles never bins them; CCHDO export excludes them.  The contract
+#: lives here, not as a bare ``"sbe_"`` literal scattered across those sites.
+SBE_PREFIX: str = "sbe_"
+
+
+def is_sbe_channel(name: str) -> bool:
+    """Return whether *name* is a SeaBird-derived channel (carries :data:`SBE_PREFIX`)."""
+    return str(name).startswith(SBE_PREFIX)
+
 # Slot widths, section aspect constants, and other presentation tokens now live
 # in the vendored, package-neutral ``config/report_tokens.py`` (spec §11/§14).
 # This file holds only scientific/variable metadata.
@@ -266,7 +277,7 @@ VARIABLES: dict[str, dict] = {
     # SBE-derived and raw channels kept by stage 1 (faithful translation).  CF `units`
     # are declared here because the CNV `# name` bracket is free text, not a unit field
     # (the as-received string survives in `cnv_original_unit`); `long_name` names them as
-    # SeaBird-computed.  Dropped at stage 2 by default (config `drop_sbe:`).
+    # SeaBird-computed.  Dropped at stage 2 by default (config `trim.drop_sbe:`).
     # -----------------------------------------------------------------------
     "sbe_density": {
         "long_name": "SeaBird-computed in-situ density",
@@ -647,7 +658,7 @@ CNV_ALIASES: dict[str, str] = {
     # SBE-derived columns → sbe_ prefix.  Stage 1 keeps every CNV column (faithful
     # translation); these are prefixed so a reader cannot mistake SeaBird's computed
     # quantities for ctdcast's own (ctdcast writes sigma0 via TEOS-10, not SBE density).
-    # The deliberate drop of these happens at stage 2 (config `drop_sbe:`).
+    # The deliberate drop of these happens at stage 2 (config `trim.drop_sbe:`).
     # -------------------------------------------------------------------
     "density": "sbe_density",
     "density00": "sbe_density",

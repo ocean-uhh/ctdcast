@@ -126,6 +126,11 @@ back to a built-in default.
      - Vertical bin size (dbar) for the compiled ``profiles.nc`` grid.  Default ``1``.
    * - ``trim.near_surface_dbar``
      - Pressure threshold for stage-2 soak detection (dbar).  Default ``10``.
+   * - ``trim.drop_sbe``
+     - Stage-2 curated drop: the list of SeaBird-derived ``sbe_*`` channels to remove
+       (recorded in ``history`` and the ``dropped_channels`` attribute).  Omit for the
+       default — every ``sbe_*`` channel present.  May name only ``sbe_*`` channels; a
+       non-``sbe_`` name is refused.  ``[]`` keeps them all.
    * - ``qc.gross_range.{suspect,fail}.<var>``
      - Stage-3 gross-range bounds ``[min, max]`` per variable, in two tiers:
        ``suspect`` (QARTOD flag 3) and ``fail`` (flag 4).  Anything not listed

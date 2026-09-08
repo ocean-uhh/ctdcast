@@ -59,7 +59,7 @@ from ctdcast.writers.netcdf import write as write_nc
 # Stage 1 is a faithful translation: it drops nothing.  Every CNV column reaches the stage-1
 # file (SBE-derived quantities under an ``sbe_`` prefix so they cannot be confused with
 # ctdcast's own; unrecognised channels under the reader's source name, warned once).  The
-# deliberate, recorded drop step lives at stage 2 (config ``drop_sbe:``).
+# deliberate, recorded drop step lives at stage 2 (config ``trim.drop_sbe:``).
 
 # Coordinate variables that _normalise must not warn about as kept-unknowns.
 _KEEP_COORDS: frozenset[str] = frozenset({"latitude", "longitude", "time"})
@@ -72,7 +72,7 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     ctdcast netCDF writer.  Both readers must produce a Dataset that this
     function can normalise into the same output shape.  Stage 1 is a **faithful
     translation**: every CNV column is kept.  The deliberate, recorded drop of the
-    SeaBird-derived ``sbe_*`` channels happens at stage 2 (config ``drop_sbe:``).
+    SeaBird-derived ``sbe_*`` channels happens at stage 2 (config ``trim.drop_sbe:``).
 
     Steps, in order:
 

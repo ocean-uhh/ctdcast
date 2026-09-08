@@ -24,6 +24,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.config.cnv_header import start_time_clock
+from ctdcast.config.parameters import is_sbe_channel
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import (
     PL_RANGES_FLAGGED,
@@ -503,7 +504,7 @@ def apply_curated_drop(
     drop_names:
         Explicit names to drop (the config ``trim.drop_sbe:`` list).  ``None`` uses the
         default: every ``sbe_*`` channel present (the known likely-dead-weight set).  An
-        unrecognised channel is kept — name it in ``drop_sbe:`` to drop it.  A name not
+        unrecognised channel is kept — name it in ``trim.drop_sbe:`` to drop it.  A name not
         present is ignored.
 
     Returns
@@ -518,22 +519,30 @@ def apply_curated_drop(
         # "known likely dead weight" (SeaBird-computed quantities ctdcast recomputes or does
         # not use); a channel with no VARIABLES entry is *unrecognised*, not known-junk, so it
         # is kept by default — dropping the unknown would be the unfaithful choice.  A config
-        # `drop_sbe:` list can name kept-unknowns explicitly when a cruise wants them gone.
+        # `trim.drop_sbe:` list may name only `sbe_*` channels (a non-sbe_ name is refused).
         present = sorted(
             str(v)
             for v in ds.data_vars
-            if str(v).startswith("sbe_") and not str(v).endswith("_qc")
+            if is_sbe_channel(v) and not str(v).endswith("_qc")
         )
     else:
-        # The key is `drop_sbe`: it may name only `sbe_*` channels.  A non-sbe_ name is an
+        # The key is `trim.drop_sbe`: it may name only `sbe_*` channels.  A non-sbe_ name is an
         # operator error — obeying it would silently remove a science / catalog / provenance
         # channel at stage 2, invisible to caldip (which reads stage 3) but for a
         # `dropped_channels` trace.  Refuse rather than act.
-        bad = sorted(str(n) for n in drop_names if not str(n).startswith("sbe_"))
+        bad = sorted(str(n) for n in drop_names if not is_sbe_channel(n))
         if bad:
             raise ValueError(
                 f"trim.drop_sbe may name only sbe_* channels; got {bad}. Refusing — a "
                 "non-sbe_ name would drop a science, catalog or provenance channel."
+            )
+        # Refuse a bare _qc companion too: naming ``sbe_density_qc`` would drop only the flag
+        # and leave ``sbe_density`` behind.  Name the base variable — its _qc goes with it.
+        qc = sorted(str(n) for n in drop_names if str(n).endswith("_qc"))
+        if qc:
+            raise ValueError(
+                f"trim.drop_sbe must not name _qc companions; got {qc}. Name the base sbe_* "
+                "variable instead — its _qc is dropped with it."
             )
         wanted = set(drop_names)
         present = sorted(str(v) for v in ds.data_vars if str(v) in wanted)

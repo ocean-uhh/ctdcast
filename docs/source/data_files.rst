@@ -35,7 +35,7 @@ ctdcast's own (ctdcast writes ``sigma0`` via TEOS-10, not SBE density); an unrec
 channel is kept under its source name and warned about once per cast (so a rig with an
 unmodelled channel warns on every cast until a ``VARIABLES`` entry is added). Stage 2 then removes the
 ``sbe_`` set by default — the drop is deliberate and recorded (a ``history`` line and a
-``dropped_channels`` attribute), driven by the config ``drop_sbe:`` list rather than a
+``dropped_channels`` attribute), driven by the config ``trim.drop_sbe:`` list rather than a
 flag so the output is reproducible from the config alone. Stage-2 output is therefore not a
 strict superset of stage 1: the stage-1 file is the faithful record, and every drop is written
 down (a ``history`` line and the ``dropped_channels`` attribute) so a removed channel is always
