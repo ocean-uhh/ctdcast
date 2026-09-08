@@ -333,11 +333,13 @@ One cast in, one cast out, once per cast.
      to the ``profiles`` compile, where they are reversible and recorded. A CNV
      arriving at stage 1 carries every scan of the full cast.
 - **Stage 1 — standardisation.** Convert raw CNV to CF-netCDF, faithfully: no
-  trimming and no QC. Canonical variable names, unit normalisation (conductivity
-  to mS/cm, pressure to dbar), and single-sensor renaming — ``ctd_temperature_1``
-  becomes ``ctd_temperature`` when there is no second sensor to distinguish it
-  from. The backend is pluggable (``CtdBackend``); ``seasenselib`` is the current
-  implementation.
+  trimming, no QC, and no channel dropped — every CNV column reaches the stage-1
+  file, with Sea-Bird-derived channels (density, depth, flags) kept under an
+  ``sbe_`` prefix rather than discarded. Canonical variable names, unit
+  normalisation (conductivity to mS/cm, pressure to dbar), and single-sensor
+  renaming — ``ctd_temperature_1`` becomes ``ctd_temperature`` when there is no
+  second sensor to distinguish it from. The backend is pluggable (``CtdBackend``);
+  ``seasenselib`` is the current implementation.
 - **Stage 2 — trim.** Decide which scans belong to the real cast: soak detection at
   the start and back-on-deck detection at the end. It does **not** split the cast
   into downcast and upcast — splitting changes the sampling representation, so by
@@ -347,7 +349,10 @@ One cast in, one cast out, once per cast.
   same stage, same question, different domain (see the note below).
   QARTOD flag 4 is set on soak and post-recovery records — **marked, not deleted**,
   per the monotonicity rule — and the detection parameters are recorded in
-  ``history``.
+  ``history``. A curated drop step then removes the ``sbe_`` diagnostic channels
+  stage 1 preserved (all of them by default, configurable via
+  ``processing.trim.drop_sbe``) — the one place columns are dropped, done
+  explicitly and recorded in ``history`` and ``dropped_channels``.
 - **Stage 3 — QC and calibration.** Gross-range and spike QC, then any conductivity
   calibration named in the cruise config, then salinity re-derived from the
   calibrated conductivity. Deliberately **iterative**: re-run it as calibration

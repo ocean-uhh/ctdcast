@@ -460,7 +460,7 @@ refinements come from the ``sensors:`` block in ``config.yaml`` (see above). The
 rewiring tables.
 
 Where it is built, and two kinds of provenance
-""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The catalog is resolved **once, at stage 1** — the per-cast netCDF files carry
 their own ``SENSOR_*`` entries — and the compile simply aggregates them; nothing
