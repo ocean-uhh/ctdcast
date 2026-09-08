@@ -27,6 +27,20 @@ Stages are **non-destructive**: each reads its predecessor and writes a new file
 so a stage can be re-run without redoing the ones before it, and the full lineage
 stays on disk. See :doc:`processing_framework` for what each stage does.
 
+**Stage 1 is faithful; stage 2 is curated.** Stage 1 is a faithful translation —
+*every* column in the CNV reaches the stage-1 file, dropping nothing. SeaBird-computed
+quantities (density, depth, sound velocity, ``timeJ``/``timeS``, the per-scan flag,
+oxygen saturation) are kept under an ``sbe_`` prefix so they cannot be mistaken for
+ctdcast's own (ctdcast writes ``sigma0`` via TEOS-10, not SBE density); an unrecognised
+channel is kept under its source name and warned about once per cast (so a rig with an
+unmodelled channel warns on every cast until a ``VARIABLES`` entry is added). Stage 2 then removes the
+``sbe_`` set by default — the drop is deliberate and recorded (a ``history`` line and a
+``dropped_channels`` attribute), driven by the config ``drop_sbe:`` list rather than a
+flag so the output is reproducible from the config alone. Stage-2 output is therefore not a
+strict superset of stage 1: the stage-1 file is the faithful record, and every drop is written
+down (a ``history`` line and the ``dropped_channels`` attribute) so a removed channel is always
+traceable to the stage-1 file that still holds it.
+
 The stage appears in the **directory and the filename**. The redundancy is
 deliberate: a file copied out of ``stage2/`` still says what it is, whereas
 provenance living only in the path is lost the first time someone moves a file.

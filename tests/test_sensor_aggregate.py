@@ -149,6 +149,34 @@ def test_sensor_config_xml_survives_aggregation(tmp_path) -> None:
         ds.close()
 
 
+def test_var_names_union_across_casts_warns_on_partial(tmp_path) -> None:
+    """A channel present in only some casts is still compiled (union of channels, not just the
+    first cast), all-NaN where absent, with one warning naming the casts that lack it."""
+    import numpy as np
+
+    src = tmp_path / "casts"
+    src.mkdir()
+    _write_cast(src / "mixsed2_011.nc", "mixsed2_011.nc")  # carries ctd_turbidity
+
+    def _drop_turbidity(ds: xr.Dataset) -> xr.Dataset:
+        return ds.drop_vars([v for v in ("ctd_turbidity",) if v in ds])
+
+    _write_cast(src / "mixsed2_012.nc", "mixsed2_012.nc", transform=_drop_turbidity)
+    out = tmp_path / "profiles.nc"
+
+    with pytest.warns(UserWarning, match=r"ctd_turbidity.*absent"):
+        build_profiles(src, out, force=True)
+
+    ds = xr.open_dataset(out, engine="netcdf4")
+    try:
+        assert "ctd_turbidity" in ds  # union kept it despite 012 lacking it
+        vals = ds["ctd_turbidity"].values
+        assert np.isfinite(vals).any()  # 011's profiles carry data
+        assert np.isnan(vals).any()  # 012's profiles are all-NaN
+    finally:
+        ds.close()
+
+
 def test_warns_and_stamps_catalog_less(tmp_path, recwarn) -> None:
     """A catalog-less directory compiles (library default) with a warning and a stamp."""
     src = tmp_path / "casts"

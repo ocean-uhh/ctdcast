@@ -262,6 +262,80 @@ VARIABLES: dict[str, dict] = {
         "vmin": 0,
         "vmax": None,
     },
+    # -----------------------------------------------------------------------
+    # SBE-derived and raw channels kept by stage 1 (faithful translation).  CF `units`
+    # are declared here because the CNV `# name` bracket is free text, not a unit field
+    # (the as-received string survives in `cnv_original_unit`); `long_name` names them as
+    # SeaBird-computed.  Dropped at stage 2 by default (config `drop_sbe:`).
+    # -----------------------------------------------------------------------
+    "sbe_density": {
+        "long_name": "SeaBird-computed in-situ density",
+        "units": "kg m-3",
+    },
+    "sbe_speed_of_sound": {
+        "long_name": "SeaBird-computed sound velocity",
+        "units": "m s-1",
+    },
+    "sbe_depth": {
+        "long_name": "SeaBird-computed depth",
+        "units": "m",
+    },
+    "sbe_timeJ": {
+        "long_name": "SeaBird elapsed time, Julian days since start of year",
+        "units": "day",
+        "comment": "days since the start of the acquisition year; not a CF time coordinate",
+    },
+    "sbe_timeS": {
+        "long_name": "SeaBird elapsed time since start of cast",
+        "units": "s",
+    },
+    "sbe_flag": {
+        "long_name": "SeaBird per-scan processing flag",
+        "units": "1",
+    },
+    "sbe_scan": {
+        "long_name": "SeaBird scan count",
+        "units": "1",
+    },
+    "sbe_oxygen_saturation_1": {
+        "long_name": "SeaBird-computed oxygen saturation, primary",
+        "units": "percent",
+    },
+    "sbe_oxygen_saturation_2": {
+        "long_name": "SeaBird-computed oxygen saturation, secondary",
+        "units": "percent",
+    },
+    "oxygen_raw_1": {
+        "long_name": "Raw SBE 43 oxygen sensor voltage, primary",
+        "units": "V",
+    },
+    "oxygen_raw_2": {
+        "long_name": "Raw SBE 43 oxygen sensor voltage, secondary",
+        "units": "V",
+    },
+    # The four channels data_files.rst promises; kept under these names with metadata.
+    "transmissometer": {
+        "long_name": "Beam transmission",
+        "units": "percent",
+    },
+    "par": {
+        "long_name": "Photosynthetically active radiation",
+        "units": "umol m-2 s-1",
+    },
+    "spar": {
+        "long_name": "Surface photosynthetically active radiation",
+        "units": "umol m-2 s-1",
+    },
+    # Raw auxiliary voltage channels (v0..v7): the pre-conversion signal for a sensor whose
+    # calibration ctdcast does not apply.  ``_raw`` says pre-conversion, pairs with the
+    # reference-table-3 "Raw instrument data" processing_level, and matches ``oxygen_raw_N``.
+    **{
+        f"volt{_n}_raw": {
+            "long_name": f"Raw auxiliary voltage channel {_n}",
+            "units": "V",
+        }
+        for _n in range(8)
+    },
     # TEOS-10 derived — computed on-the-fly by derive_teos10(), not stored in NC
     "conservative_temperature": {
         "label": "CT",
@@ -569,6 +643,26 @@ CNV_ALIASES: dict[str, str] = {
     "altimeter": "ctd_altimeter",
     # Raw CNV altimeter column name
     "altm": "ctd_altimeter",  # sea-floor distance, metres
+    # -------------------------------------------------------------------
+    # SBE-derived columns → sbe_ prefix.  Stage 1 keeps every CNV column (faithful
+    # translation); these are prefixed so a reader cannot mistake SeaBird's computed
+    # quantities for ctdcast's own (ctdcast writes sigma0 via TEOS-10, not SBE density).
+    # The deliberate drop of these happens at stage 2 (config `drop_sbe:`).
+    # -------------------------------------------------------------------
+    "density": "sbe_density",
+    "density00": "sbe_density",
+    "speed_of_sound": "sbe_speed_of_sound",
+    "svcm": "sbe_speed_of_sound",  # raw CNV Sound Velocity (Chen-Millero)
+    "depth": "sbe_depth",
+    "depsm": "sbe_depth",  # raw CNV Depth [salt water, m]
+    "timej": "sbe_timeJ",  # Julian days since start of year
+    "times": "sbe_timeS",  # elapsed seconds
+    "flag": "sbe_flag",  # SBE per-scan processing flag
+    "scan": "sbe_scan",  # scan count (dimensionless)
+    # Raw auxiliary voltage channels — SBE ``v0``..``v7`` (and the ``volt0``..``volt7`` spelling
+    # some readers use) → ``voltN_raw``.  ``_raw`` marks the signal as pre-conversion.
+    **{f"v{_n}": f"volt{_n}_raw" for _n in range(8)},
+    **{f"volt{_n}": f"volt{_n}_raw" for _n in range(8)},
 }
 
 # ---------------------------------------------------------------------------
@@ -593,16 +687,22 @@ CCHDO_COMPOSITE: dict[str, str] = {
     "ctd_oxygen": "ctd_oxygen",
 }
 
-# Variables NOT written to CCHDO output.
+# Variables NOT written to CCHDO output.  The SBE-derived channels stage 1 keeps carry an
+# ``sbe_`` prefix (they are dropped by default at stage 2, so a CCHDO export normally never
+# sees them — this set is the belt-and-braces exclusion if an export runs off a stage-1 file).
 CCHDO_EXCLUDE: frozenset[str] = frozenset(
     {
-        "timeJ",  # Julian-day timestamp; CCHDO uses ISO 8601 time coordinate
-        "timeS",  # elapsed seconds; not a scientific variable
-        "speed_of_sound",  # SeaBird bookkeeping
-        "density",  # in-situ density; ctdcast writes sigma0 — no density WHP param
-        "flag",  # SeaBird processing flag, not a QC flag
+        "sbe_timeJ",  # Julian-day timestamp; CCHDO uses the ISO 8601 time coordinate
+        "sbe_timeS",  # elapsed seconds; not a scientific variable
+        "sbe_speed_of_sound",  # SeaBird bookkeeping
+        "sbe_density",  # in-situ density; ctdcast writes sigma0 — no density WHP param
+        "sbe_depth",  # derived from pressure; not a WHP param
+        "sbe_flag",  # SeaBird per-scan processing flag, not a QC flag
+        "sbe_scan",  # scan count
+        "sbe_oxygen_saturation_1",  # % saturation; CCHDO stores µmol/kg (ctd_oxygen)
+        "sbe_oxygen_saturation_2",
         "oxygen_raw_1",  # raw SBE 43 voltage
-        # oxygen_saturation is not stored (derived on demand) — no entry needed here
+        "oxygen_raw_2",
     }
 )
 

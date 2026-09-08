@@ -56,59 +56,44 @@ from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as write_nc
 
 
-# Variables that the reader may produce but that ctdcast does not store.
-# Dropped in _normalise() rather than reaching any downstream stage.
-_DROP_VARS: frozenset[str] = frozenset(
-    {
-        "timeJ",  # Julian-day; time coordinate is sufficient
-        "timeS",  # elapsed seconds
-        "speed_of_sound",
-        "density",  # SeaBird computed; ctdcast uses sigma0 via TEOS-10
-        "depth",  # derived from pressure; not stored
-        "flag",  # SeaBird processing flag; QARTOD _qc variables replace it
-    }
-)
+# Stage 1 is a faithful translation: it drops nothing.  Every CNV column reaches the stage-1
+# file (SBE-derived quantities under an ``sbe_`` prefix so they cannot be confused with
+# ctdcast's own; unrecognised channels under the reader's source name, warned once).  The
+# deliberate, recorded drop step lives at stage 2 (config ``drop_sbe:``).
 
-# Variables with no CCHDO equivalent that ctdcast does not store (derived on demand).
-# Also includes seasenselib's oxygen_1/oxygen_2, which are % saturation (from
-# sbeox0PS/sbeox1PS), not µmol/kg.  The µmol/kg value (sbox0Mm/Kg) is kept and
-# aliased to ctd_oxygen_1 via CNV_ALIASES.
-_DERIVE_ON_DEMAND: frozenset[str] = frozenset(
-    {"oxsat_1", "sbeox0PS", "sbeox0ps", "oxygen_1", "oxygen_2"}
-)
-
-# Variables to keep even if absent from VARIABLES: raw sensor channels useful
-# for QC / sensor drift analysis but not plotted directly.  Listed in
-# CCHDO_EXCLUDE so they are never written to CCHDO exchange output.
-_KEEP_VARS: frozenset[str] = frozenset({"oxygen_raw_1", "oxygen_raw_2"})
+# Coordinate variables that _normalise must not warn about as kept-unknowns.
+_KEEP_COORDS: frozenset[str] = frozenset({"latitude", "longitude", "time"})
 
 
 def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
-    """Rename variables to ctdcast canonical names and drop non-standard columns.
+    """Rename variables to ctdcast canonical names — dropping nothing.
 
     Applied between the reader (seasenselib or future hex reader) and the
     ctdcast netCDF writer.  Both readers must produce a Dataset that this
-    function can normalise into the same output shape.
+    function can normalise into the same output shape.  Stage 1 is a **faithful
+    translation**: every CNV column is kept.  The deliberate, recorded drop of the
+    SeaBird-derived ``sbe_*`` channels happens at stage 2 (config ``drop_sbe:``).
 
     Steps, in order:
 
     1. Rename variables using :data:`~ctdcast.config.parameters.CNV_ALIASES`
-       (keys are lower-cased before lookup), handle the oxygen unit variants,
-       and convert conductivity from S/m to mS/cm (the CCHDO convention).
-    2. Drop variables in ``_DROP_VARS`` (SeaBird bookkeeping) and
-       ``_DERIVE_ON_DEMAND`` (quantities computed on demand, not stored).
-    3. Drop any remaining variables not in
-       :data:`~ctdcast.config.parameters.VARIABLES` and not a recognised
-       coordinate (``latitude``, ``longitude``, ``time``).
-    4. Apply the single-sensor naming rule: when only one sensor of a measured
+       (keys are lower-cased before lookup; two columns aliasing to one name keep
+       the first, the duplicate stays under its own name), handle the oxygen unit
+       variants, and convert conductivity from S/m to mS/cm (the CCHDO convention).
+       SeaBird-computed quantities (density, depth, sound velocity, timeJ/S, flag,
+       oxygen saturation) are renamed to an ``sbe_`` prefix so they cannot be
+       mistaken for ctdcast's own; nothing is dropped.
+    2. Record any ``None`` variable attribute the reader left as ``"UNK"``, and warn
+       about kept channels with no ``VARIABLES`` entry or no ``units`` (not optional).
+    3. Apply the single-sensor naming rule: when only one sensor of a measured
        type is present, strip the ``_1`` suffix so the variable is plain
        (e.g. ``ctd_temperature_1`` → ``ctd_temperature`` when there is no
        ``ctd_temperature_2``).
-    5. Append a ``history`` line recording the ctdcast version and stage.
-    6. Stamp the cruise identity (``cruise`` + ``platform_*`` + ``expocode``)
+    4. Append a ``history`` line recording the ctdcast version and stage.
+    5. Stamp the cruise identity (``cruise`` + ``platform_*`` + ``expocode``)
        when *cruise_info* supplies it, so a per-cast stage file is
        self-describing when copied out of its directory.
-    7. Stamp the SBE upstream-provenance ledger (``sbe_acquisition``,
+    6. Stamp the SBE upstream-provenance ledger (``sbe_acquisition``,
        ``sbe_processing``, ``sbe_processing_order``, ``correction_*``,
        ``time_*``) from the verbatim header in ``raw_metadata``, recording
        what the deck unit and SBE Data Processing did before ctdcast. A no-op
@@ -134,50 +119,66 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     # ``cnv_original_name``, so the source→canonical provenance survives these
     # renames without any extra bookkeeping here.
     rename_map: dict[str, str] = {}
+    _claimed_by: dict[str, str] = {}
     for var in list(ds.data_vars):
         target = CNV_ALIASES.get(var.lower())
-        if target and target != var:
-            rename_map[var] = target
+        if not target or target == var:
+            continue
+        # Two source columns can alias to one canonical name (e.g. a file carrying both
+        # ``density`` and ``density00``).  First claim wins; a later duplicate keeps its own
+        # name and surfaces as a kept-unknown rather than crashing the rename.  Which one wins
+        # is reader column order and it can change numbers — anything computed from the target
+        # (the µmol/L → µmol/kg oxygen conversion divides by ``sbe_density``) uses the winner —
+        # so name both columns and the winner.
+        if target in _claimed_by or target in ds.data_vars:
+            _winner = _claimed_by.get(target, target)
+            warnings.warn(
+                f"two columns map to {target!r}: {_winner!r} won, {var!r} kept under its own "
+                f"name (cnv_original_name records the source). Anything derived from {target!r} "
+                "uses the winner.",
+                stacklevel=3,
+            )
+            continue
+        rename_map[var] = target
+        _claimed_by[target] = var
     if rename_map:
         ds = ds.rename(rename_map)
 
-    # Step 1b: handle seasenselib's oxygen_N vars, which may be % saturation,
-    # volts, µmol/L, or µmol/kg depending on the CNV column the sensor was on.
-    # % saturation and volts are derived-on-demand / discarded.
-    # µmol/kg → rename to ctd_oxygen_N (step 4 will strip _1 if single-sensor).
-    # µmol/L → convert to µmol/kg using density from the dataset, then rename.
-    # Density is available here from seasenselib and is dropped in step 2.
-    # Also handles the seasenselib hex-reader names ('oxygen', 'oxygen2') which
-    # omit the _N suffix.  Suffix "1" = primary sensor, "2" = secondary.
+    # Step 1b: handle seasenselib's oxygen_N vars, which may be % saturation, µmol/L, or
+    # µmol/kg depending on the CNV column the sensor was on.  µmol/kg → ctd_oxygen_N (the basic
+    # measured value); µmol/L → convert to µmol/kg using SBE density (now sbe_density, kept, not
+    # dropped); % saturation → sbe_oxygen_saturation_N (SBE-derived, kept under the sbe_ prefix).
+    # Step 3 strips the _1 suffix when single-sensor.  Also handles the hex-reader names
+    # ('oxygen', 'oxygen2').  Volts arrive under a separate raw name (oxygen_raw_N), not here.
     for _v in ("oxygen_1", "oxygen_2", "oxygen", "oxygen2"):
         if _v not in ds.data_vars:
             continue
         _suffix = "1" if _v in ("oxygen_1", "oxygen") else "2"
-        _target = f"ctd_oxygen_{_suffix}"
         _units = ds[_v].attrs.get("units", "").lower().strip()
         if "umol/kg" in _units or "µmol/kg" in _units:
-            ds = ds.rename({_v: _target})
+            ds = ds.rename({_v: f"ctd_oxygen_{_suffix}"})
         elif "umol/l" in _units or "µmol/l" in _units:
-            if "density" in ds:
-                # density from seasenselib is in kg/m³; divide by 1000 to get kg/L,
-                # then µmol/L / (kg/L) = µmol/kg.
-                rho = ds["density"] / 1000.0
+            if "sbe_density" in ds:
+                # sbe_density is kg/m³; divide by 1000 to get kg/L, then µmol/L / (kg/L) = µmol/kg.
+                rho = ds["sbe_density"] / 1000.0
                 converted = ds[_v] / rho
                 new_attrs = dict(ds[_v].attrs)
                 new_attrs["units"] = "umol/kg"
                 new_attrs["comment"] = (
-                    "converted from umol/l to umol/kg using seasenselib density"
+                    "converted from umol/l to umol/kg using SBE density"
                 )
                 converted.attrs = new_attrs
-                ds = ds.drop_vars([_v]).assign({_target: converted})
+                ds = ds.drop_vars([_v]).assign({f"ctd_oxygen_{_suffix}": converted})
             else:
+                # No density to convert with — keep it under its source name (stage 1 drops
+                # nothing) and warn; it surfaces as a kept-unknown below.
                 warnings.warn(
-                    f"Oxygen variable {_v!r} is in µmol/L but no density is available "
-                    "for conversion.  Variable dropped; reprocess with density present.",
+                    f"Oxygen variable {_v!r} is in µmol/L but no SBE density is available to "
+                    "convert it; kept under its source name.",
                     stacklevel=3,
                 )
-                ds = ds.drop_vars([_v])
-        # else: % saturation, volts, or unknown — falls through to _DERIVE_ON_DEMAND drop
+        else:
+            ds = ds.rename({_v: f"sbe_oxygen_saturation_{_suffix}"})
 
     # Step 1c: convert conductivity from S/m to mS/cm — the CCHDO/oceanographic
     # convention and what gsw.SP_from_C expects.  1 S/m = 10 mS/cm.  Guarded on
@@ -205,34 +206,58 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
             converted.attrs = _attrs
             ds = ds.assign({_c: converted})
 
-    # Step 2: drop bookkeeping and derive-on-demand variables
-    to_drop = [v for v in ds.data_vars if v in _DROP_VARS or v in _DERIVE_ON_DEMAND]
-    if to_drop:
-        ds = ds.drop_vars(to_drop)
+    # The reader stamps None for a per-variable attribute it could not fill (e.g.
+    # cnv_original_unit on a column with no unit).  netCDF cannot serialize None; record it as
+    # "UNK" — never a silent drop or default — so the file keeps that the source had no value.
+    # Scoped to the reader boundary and to variable attrs: a None on the provenance backbone
+    # (a global tracking_id / cruise) must still reach the writer and crash, not be rewritten.
+    for _var in ds.variables:
+        _attrs = ds[_var].attrs
+        for _key, _val in list(_attrs.items()):
+            if _val is None:
+                _attrs[_key] = "UNK"
 
-    # Step 3: drop anything not in VARIABLES, not a coordinate, and not in _KEEP_VARS
-    _KEEP_COORDS = {"latitude", "longitude", "time"}
-    unknown = [
-        v
-        for v in ds.data_vars
-        if v not in VARIABLES and v not in _KEEP_COORDS and v not in _KEEP_VARS
-    ]
-    if unknown:
-        ds = ds.drop_vars(unknown)
+    # Stage 1 drops nothing — a faithful translation.  Two warn-only checks: kept-unknown
+    # channels (no VARIABLES entry) are kept under their source name; and units are not
+    # optional, so warn naming any kept-unknown the reader left without units (variables in
+    # VARIABLES receive their units from the writer).
+    _unknown = sorted(
+        str(v) for v in ds.data_vars if v not in VARIABLES and v not in _KEEP_COORDS
+    )
+    if _unknown:
+        warnings.warn(
+            f"stage 1 kept {len(_unknown)} channel(s) with no VARIABLES entry "
+            f"({', '.join(_unknown)}); add a VARIABLES entry to give them units and a long_name.",
+            stacklevel=3,
+        )
+        _no_units = [
+            v for v in _unknown if not str(ds[v].attrs.get("units", "")).strip()
+        ]
+        if _no_units:
+            warnings.warn(
+                f"stage 1 kept {len(_no_units)} variable(s) with no units "
+                f"({', '.join(_no_units)}); units are not optional.",
+                stacklevel=3,
+            )
 
-    # Step 4: single-sensor naming — strip _1 when no _2 sibling exists.
+    # Step 3: single-sensor naming — strip _1 when no _2 sibling exists.
     # Only applies to scientific end-product variables (T/S/O); conductivity
     # is an intermediate quantity and keeps its _1 suffix regardless.
     _SUFFIXED_PAIRS = [
         ("ctd_temperature_1", "ctd_temperature_2", "ctd_temperature"),
         ("ctd_salinity_1", "ctd_salinity_2", "ctd_salinity"),
         ("ctd_oxygen_1", "ctd_oxygen_2", "ctd_oxygen"),
+        (
+            "sbe_oxygen_saturation_1",
+            "sbe_oxygen_saturation_2",
+            "sbe_oxygen_saturation",
+        ),
     ]
     for v1, v2, plain in _SUFFIXED_PAIRS:
         if v1 in ds.data_vars and v2 not in ds.data_vars:
             ds = ds.rename({v1: plain})
 
-    # Step 5: append history.  The SBE upstream steps predate the reader's own line, so
+    # Step 4: append history.  The SBE upstream steps predate the reader's own line, so
     # they are prepended (in reverse file order, so the earliest module ends up first) to
     # keep the record oldest-first; ctdcast's stage-1 line is then appended at the end.
     # The header comes from raw_metadata, computed once here and reused for the ledger.
@@ -250,14 +275,14 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
             )
     append_history(ds.attrs, "normalise (CNV → canonical names)", stage="stage1")
 
-    # Step 6: stamp the immutable cruise identity.  identity_attrs returns {} when
+    # Step 5: stamp the immutable cruise identity.  identity_attrs returns {} when
     # cruise_info is None/empty, so this is a no-op for callers that pass no config
     # (e.g. the stage-1 tests).  Config remains the source of truth: the compiler
     # re-applies it and warns on disagreement, so this is a portability snapshot,
     # not a second authority.
     ds.attrs.update(identity_attrs(cruise_info))
 
-    # Step 7: stamp the SBE upstream-provenance ledger, read from the same verbatim
+    # Step 6: stamp the SBE upstream-provenance ledger, read from the same verbatim
     # header.  Records what the deck unit and SBE Data Processing did before ctdcast, so
     # a later stage cannot re-apply a correction already made.  No-op with no SBE header.
     # Structural advisories (pressure-gridded, asymmetric advance, system clock) are also

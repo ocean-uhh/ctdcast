@@ -409,11 +409,14 @@ def build_profiles(
     # written to profiles.nc as bogus variables (only masked today by the catalog being
     # rebuilt under the same names — a coincidence that breaks if stage-1 and compile-time
     # serial-alias resolution disagree).  The compiled catalog is built separately below.
-    var_names = [
+    _cast0_order = [
         v
         for v in ds0.data_vars
         if v not in _SKIP_VARS
         and not v.endswith("_qc")
+        and not str(v).startswith(
+            "sbe_"
+        )  # SBE diagnostics — dropped at stage 2, never binned
         and ds0[v].shape == ds0["pressure"].shape
     ]
     _ci = cruise_info or {}
@@ -423,6 +426,41 @@ def build_profiles(
     # (the title) would disagree with it.
     _cfg_cruise = cruise_name(_ci)
     ds0.close()
+
+    # var_names is the UNION of per-sample channels across ALL casts, not just the first: a
+    # channel fitted mid-cruise (or absent from cast 1) is still binned, and casts that lack it
+    # get all-NaN there (the binning loop already guards on ``if v in binned``).  First-cast
+    # order is preserved so the output is byte-stable when every cast carries the same channels;
+    # any channel only later casts have is appended in sorted order.  Warn once per variable
+    # that is not present in every cast, naming the casts that lack it.
+    _present: dict[str, list[str]] = {}
+    _labels: list[str] = []
+    for _cnum, _csuf, _cpath, _cstg in cast_list:
+        _lab = format_cast_id(_cnum, _csuf)
+        _labels.append(_lab)
+        _dsx = xr.open_dataset(_cpath, engine="netcdf4", decode_timedelta=False)
+        try:
+            _psh = _dsx["pressure"].shape
+            for _v in _dsx.data_vars:
+                if (
+                    _v not in _SKIP_VARS
+                    and not str(_v).endswith("_qc")
+                    and not str(_v).startswith("sbe_")
+                    and _dsx[_v].shape == _psh
+                ):
+                    _present.setdefault(str(_v), []).append(_lab)
+        finally:
+            _dsx.close()
+    _extras = sorted(v for v in _present if v not in set(_cast0_order))
+    var_names = [v for v in _cast0_order if v in _present] + _extras
+    for _v in var_names:
+        _miss = [c for c in _labels if c not in _present[_v]]
+        if _miss:
+            warnings.warn(
+                f"variable {_v!r} is absent from {len(_miss)} of {len(_labels)} casts "
+                f"({', '.join(_miss)}); it is all-NaN there in the compiled file.",
+                stacklevel=2,
+            )
 
     n_casts = len(cast_list)
     n_profiles = n_casts * 2

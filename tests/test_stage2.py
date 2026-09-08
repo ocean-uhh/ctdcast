@@ -126,3 +126,64 @@ class TestQcAttrs:
 
         attrs = _qc_attrs("temperature_1", "sea_water_temperature")
         assert attrs["standard_name"] == "sea_water_temperature status_flag"
+
+
+class TestCuratedDrop:
+    """apply_curated_drop removes the SBE-derived channels stage 1 keeps, and records it."""
+
+    def test_default_drops_sbe_and_records(self):
+        from ctdcast.processors.stage2 import apply_curated_drop
+
+        ds = xr.Dataset(
+            {
+                "ctd_temperature_1": ("time", np.arange(3.0)),
+                "sbe_density": ("time", np.arange(3.0)),
+                "sbe_flag": ("time", np.arange(3.0)),
+            },
+            coords={"time": np.arange(3)},
+        )
+        out = apply_curated_drop(ds)
+        assert "sbe_density" not in out and "sbe_flag" not in out
+        assert "ctd_temperature_1" in out  # a real measurement is untouched
+        assert "sbe_density" in out.attrs["dropped_channels"]
+        assert "stage2 curated drop" in out.attrs["history"]
+
+    def test_explicit_list_is_a_subset_not_the_full_default(self):
+        """A drop_sbe list drops exactly those sbe_ names — a subset — not the full sbe_ default."""
+        from ctdcast.processors.stage2 import apply_curated_drop
+
+        ds = xr.Dataset(
+            {
+                "sbe_density": ("time", np.arange(3.0)),
+                "sbe_flag": ("time", np.arange(3.0)),
+            },
+            coords={"time": np.arange(3)},
+        )
+        out = apply_curated_drop(ds, drop_names=["sbe_density"])
+        assert "sbe_density" not in out  # the one listed
+        assert (
+            "sbe_flag" in out
+        )  # NOT dropped — the list overrides the drop-all-sbe_ default
+
+    def test_explicit_list_refuses_non_sbe_name(self):
+        """A non-sbe_ name in drop_sbe is an operator error and must raise, not silently drop
+        a science/provenance channel."""
+        import pytest
+
+        from ctdcast.processors.stage2 import apply_curated_drop
+
+        ds = xr.Dataset(
+            {"ctd_temperature_2": ("time", np.arange(3.0))},
+            coords={"time": np.arange(3)},
+        )
+        with pytest.raises(ValueError, match="only sbe_"):
+            apply_curated_drop(ds, drop_names=["ctd_temperature_2"])
+
+    def test_stage1_keeps_sbe_channels(self):
+        """Stage 1 is a faithful translation: the regenerated fixture carries the sbe_* set."""
+        ds = _load(CAST_011)
+        try:
+            sbe = sorted(v for v in ds.data_vars if str(v).startswith("sbe_"))
+            assert "sbe_density" in sbe and "sbe_timeJ" in sbe
+        finally:
+            ds.close()
