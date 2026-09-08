@@ -14,9 +14,9 @@ import numpy as np
 import pytest
 
 from ctdcast.config.global_attrs import (
+    _IDENTITY_KEYS,
     ATTR_GROUPS,
     OTHER_GROUP,
-    _IDENTITY_KEYS,
     aggregate_identity,
     canonical_attr_order,
     coverage_attrs,
@@ -31,7 +31,6 @@ from ctdcast.config.global_attrs import (
     order_attrs,
     provenance_attrs,
 )
-
 
 # --- derived coverage ------------------------------------------------------
 
@@ -512,7 +511,7 @@ def test_placeholder_can_never_be_mistaken_for_a_real_expocode():
     with pytest.warns(UserWarning):
         expo = cruise_expocode({"platform": "odb"})
     assert is_placeholder_expocode(expo)
-    assert not expo.replace("{", "").replace("}", "") == expo
+    assert expo.replace("{", "").replace("}", "") != expo
     assert not is_placeholder_expocode("29OD20260709")
 
 

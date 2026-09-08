@@ -7,11 +7,11 @@ import sys
 from pathlib import Path
 
 import yaml
-from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 
-from ctdcast.config.loader import SectionsConfig, groupings_path
 from ctdcast.config.global_attrs import cruise_name
+from ctdcast.config.loader import SectionsConfig, groupings_path
 from ctdcast.config.people import check_contributors, contributor_attrs
+from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 from ctdcast.processors import StagePaths
 
 

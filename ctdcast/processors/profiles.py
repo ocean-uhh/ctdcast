@@ -51,6 +51,7 @@ def _is_griddable(ds: xr.Dataset, name: str) -> bool:
         and ds[name].shape == ds["pressure"].shape
     )
 
+
 #: The compiled ``processing_level`` for a variable whose casts do not agree.  An explicit
 #: value, never an omission or a union of the casts' sentences: the per-profile treatment is
 #: reachable through ``source_stage`` / ``source_data_mode`` / ``source_tracking_id``.
@@ -492,8 +493,8 @@ def build_profiles(
     # denominator they were drawn from, reported at the top of the inventory page.
     # The denominator is the count of finite input samples (not binned points), so
     # the fraction is not distorted by binning's own reduction in point count.
-    qc_input_counts: dict[str, int] = {v: 0 for v in var_names}
-    qc_dropped_counts: dict[str, int] = {v: 0 for v in var_names}
+    qc_input_counts: dict[str, int] = dict.fromkeys(var_names, 0)
+    qc_dropped_counts: dict[str, int] = dict.fromkeys(var_names, 0)
     # Per-variable processing_level, collected across the casts that carry each variable.
     # The compiled attribute is the agreed value or, where casts disagree, an explicit mixed
     # marker — never the union of the sets, which would claim a procedure on a cast that never
@@ -592,7 +593,7 @@ def build_profiles(
     # (1) Mixed *stages*: casts compiled from different stages (1/2/3) — expected early in a
     #     cruise.  Warn naming each cast and its stage; source_stage already carries the fact
     #     per profile.  It is NOT a data-mode difference: stages 1-3 are all provisional.
-    stages_present = sorted(set(int(s) for s in source_stages))
+    stages_present = sorted({int(s) for s in source_stages})
     if len(stages_present) > 1:
         detail = ", ".join(
             f"{format_cast_id(num, suffix)}=stage{stage}"

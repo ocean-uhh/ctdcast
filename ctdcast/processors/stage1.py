@@ -44,17 +44,16 @@ from ctdcast.config.sensors import (
     resolve_sensor,
     role_base,
 )
+from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors._warnings import summarise_warnings
 from ctdcast.processors.history import (
     PL_CONVERTED,
     add_processing_level,
     append_history,
 )
-from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage_layout import stage_dir, stage_path
 from ctdcast.readers.metadata import parse_sensor_channels
 from ctdcast.writers.netcdf import write as write_nc
-
 
 # Stage 1 is a faithful translation: it drops nothing.  Every CNV column reaches the stage-1
 # file (SBE-derived quantities under an ``sbe_`` prefix so they cannot be confused with
@@ -301,7 +300,7 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
 
 
 def _sensor_variable(role: str, ds: xr.Dataset) -> str | None:
-    """The data variable a sensor *role* maps to in *ds*, or None if it stores none.
+    """Return the data variable a sensor *role* maps to in *ds*, or None if it stores none.
 
     Joins the header's role vocabulary to ctdcast's variable names via
     :data:`~ctdcast.config.sensors.ROLE_VARIABLE`, then resolves the single-vs-dual spelling

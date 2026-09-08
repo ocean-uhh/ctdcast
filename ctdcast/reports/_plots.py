@@ -24,7 +24,8 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
-from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
+from ctdcast.config import report_tokens
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.plots import (
     _cast_markers,
     _hide_outer_spines,
@@ -53,10 +54,8 @@ from ctdcast.plotters.plots import (
     draw_updown_diff_fig,
     section_figsize_and_slot,
 )
+from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
 from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp
-
-from ctdcast.config import report_tokens
-from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.reports._encode import _fig_to_base64
 
 # render_b64 is imported from _figdebug (a package-local wrapper around the vendored
@@ -196,6 +195,16 @@ def _make_section_b64(
 
     Parameters
     ----------
+    ds_prof : xr.Dataset
+        2-D profiles dataset gridded on pressure × *x_vals*.
+    var : str
+        Variable name to plot from *ds_prof*.
+    label : str
+        Variable label shown on the colorbar.
+    x_vals : np.ndarray
+        Along-track x positions for each profile.
+    x_label : str
+        Axis label for the x coordinate.
     title:
         Ignored (kept for call-site compatibility). Variable label appears on colorbar.
     style:
@@ -219,6 +228,8 @@ def _make_section_b64(
         When ``True``, a ``None`` return from :func:`draw_section_fig` is silently
         accepted (variable absent from this cruise).  When ``False`` (default), ``None``
         raises :exc:`RuntimeError` if :data:`RAISE_ON_PLOT_ERROR` is set.
+    cfg : ReportConfig
+        Report configuration (GEBCO path, cruise info) threaded to the renderer.
     """
     return render_b64(
         draw_section_fig,
@@ -640,6 +651,8 @@ def _make_ts_diagram_timeseries_b64(
     ds_ts:
         2-D profiles dataset with dims ``(N_PROF, pressure)`` and variables
         ``SA``, ``CT``, ``time_start``.
+    cfg : ReportConfig
+        Report configuration threaded to the renderer.
     """
     return render_b64(draw_ts_diagram_timeseries_fig, ds_ts, cfg=cfg)
 
@@ -716,12 +729,24 @@ def _make_overview_panel_b64(
 
     Parameters
     ----------
-    vmin, vmax:
-        Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
+    ds_prof : xr.Dataset
+        Downcast profiles, sorted by cast_number, gridded on pressure × cast.
+    var : str
+        Variable name to plot from *ds_prof*.
+    label : str
+        Variable label shown on the colorbar.
+    bathy_depths : np.ndarray | None
+        Water depth (m, same length as N_PROF) drawing a filled bathymetry below data.
     style:
         ``"pcolormesh"`` (default) or ``"contourf"``.
+    vmin, vmax:
+        Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
+    cast_groups : dict[str, list[int]] | None
+        Named groups of cast numbers used to annotate spans along the top edge.
     optional:
         Pass ``True`` for biogeochemical variables that may be absent in some casts.
+    cfg : ReportConfig
+        Report configuration threaded to the renderer.
     """
     return render_b64(
         draw_overview_panel_fig,
@@ -759,6 +784,8 @@ def _make_all_sections_map_b64(
         Positions of all casts drawn as a grey background scatter.
     target_h:
         Target figure height in inches; width is computed from geographic aspect ratio.
+    cfg : ReportConfig
+        Report configuration threaded to the renderer.
     """
     fig_result = None
     try:
@@ -810,6 +837,12 @@ def _make_timeseries_b64(
 
     Parameters
     ----------
+    ds_prof : xr.Dataset
+        Profiles dataset gridded on cast time × pressure.
+    var : str
+        Variable name to plot from *ds_prof*.
+    label : str
+        Variable label shown on the colorbar.
     style:
         ``"pcolormesh"`` (default) or ``"contourf"``.
     vmin, vmax:
@@ -818,6 +851,8 @@ def _make_timeseries_b64(
         Figure width in inches; auto-computed from profile count if None.
     optional:
         Pass ``True`` for biogeochemical variables that may be absent in some casts.
+    cfg : ReportConfig
+        Report configuration threaded to the renderer.
     """
     return render_b64(
         draw_timeseries_fig,

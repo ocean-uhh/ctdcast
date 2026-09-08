@@ -84,6 +84,16 @@ def load_gebco(
 
     Parameters
     ----------
+    lat_lo : float
+        Southern latitude bound of the region (degrees North).
+    lat_hi : float
+        Northern latitude bound of the region (degrees North).
+    lon_lo : float
+        Western longitude bound of the region (degrees East).
+    lon_hi : float
+        Eastern longitude bound of the region (degrees East).
+    margin : float, default 0.05
+        Extra degrees added on every side, so the fill runs to the panel edge.
     path:
         Path to GEBCO_2025.nc. Pass ``cfg.gebco_path`` from the caller.
         Returns None if not provided or file not found.

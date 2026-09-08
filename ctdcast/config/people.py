@@ -273,7 +273,8 @@ def institution_role_vocabulary(
 
 
 def resolve_institution(
-    item: Any, registry: dict[str, dict[str, Any]]
+    item: Any,  # noqa: ANN401  # parsed institutions: entry — str shorthand or dict, validated below
+    registry: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
     """Resolve one ``institutions:`` entry to ``{name, id, role}``.
 
@@ -572,7 +573,7 @@ def orcid_uri(orcid: str) -> str:
     return f"https://orcid.org/{match.group(1).upper()}"
 
 
-def _canonical_orcid(orcid: Any) -> str | None:
+def _canonical_orcid(orcid: Any) -> str | None:  # noqa: ANN401  # possibly-malformed ORCID from parsed config; must not raise
     """Return the canonical ORCID URL, or ``None`` when absent or malformed.
 
     Comparison helper only: a malformed ORCID is reported separately by
@@ -966,6 +967,9 @@ def contributor_attrs(
     ----------
     cruise_info : dict
         The ``cruise_info:`` mapping from the cruise config.
+    source : str or None, optional
+        Provenance hint forwarded to :func:`entry_roles` when resolving each
+        entry's roles; ``None`` uses the default resolution.
 
     Returns
     -------

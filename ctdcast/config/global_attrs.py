@@ -30,15 +30,16 @@ import warnings
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
+
 from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.config.platforms import (
     PlatformError,
     expocode_from_cruise_info,
     parse_config_date,
     platform_attrs,
 )
-
-from ctdcast.config.people import check_contributors, contributor_attrs
 
 #: Canonical coordinate units, taken from the single source of truth in
 #: :data:`ctdcast.config.parameters.VARIABLES` so the bound units always match
@@ -235,7 +236,7 @@ def group_attrs(attrs: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _finite(values: Any) -> np.ndarray:
+def _finite(values: npt.ArrayLike) -> np.ndarray:
     """Return the finite (non-NaN, non-inf) subset of *values* as a 1-D array."""
     arr = np.asarray(values, dtype="float64").ravel()
     return arr[np.isfinite(arr)]
@@ -243,12 +244,12 @@ def _finite(values: Any) -> np.ndarray:
 
 def coverage_attrs(
     *,
-    lats: Any,
-    lons: Any,
+    lats: npt.ArrayLike,
+    lons: npt.ArrayLike,
     vertical_min: float | None = None,
     vertical_max: float | None = None,
     vertical_units: str = "dbar",
-    times: Any = None,
+    times: npt.ArrayLike | None = None,
 ) -> dict[str, str]:
     """Return the derived ACDD coverage attributes.
 
@@ -673,12 +674,12 @@ def aggregate_identity(
 def cruise_global_attrs(
     cruise_info: dict[str, Any] | None,
     *,
-    lats: Any = None,
-    lons: Any = None,
+    lats: npt.ArrayLike | None = None,
+    lons: npt.ArrayLike | None = None,
     vertical_min: float | None = None,
     vertical_max: float | None = None,
     vertical_units: str = "dbar",
-    times: Any = None,
+    times: npt.ArrayLike | None = None,
     source: str | None = None,
     config: dict[str, Any] | None = None,
     now: _dt.datetime | None = None,
@@ -964,7 +965,7 @@ def dataset_filename(
     return f"{ident}.nc" if ident else None
 
 
-def _compact_date(value: Any) -> str:
+def _compact_date(value: Any) -> str:  # noqa: ANN401  # date/datetime, or any stringifiable parsed-config value
     """Return ``YYYYMMDD`` for a date, datetime or ISO-ish string."""
     if isinstance(value, (_dt.date, _dt.datetime)):
         return value.strftime("%Y%m%d")
@@ -982,7 +983,7 @@ EXPOCODE_PLACEHOLDER_DATE = "{YYYYMMDD}"
 
 
 def is_placeholder_expocode(expocode: str | None) -> bool:
-    """True when *expocode* carries a placeholder for a missing config value."""
+    """Return True when *expocode* carries a placeholder for a missing config value."""
     return bool(expocode) and "{" in str(expocode)
 
 

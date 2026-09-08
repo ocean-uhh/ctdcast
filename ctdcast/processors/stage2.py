@@ -594,6 +594,9 @@ def run(
     cast_tags:
         If given, process only casts selected by these zero-padded tags
         (e.g. ``{"042"}``), matched on the parsed cast identity.
+    cruise_cfg:
+        The ``processing:`` config block, read for the stage-2 curated drop
+        (``trim.drop_sbe``) and the clock correction; ``None`` uses defaults.
     **kw:
         Tuning forwarded to :func:`apply_stage2` (e.g. ``near_surface_dbar``);
         keys it does not accept are ignored.

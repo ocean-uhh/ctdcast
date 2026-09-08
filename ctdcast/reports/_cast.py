@@ -2,6 +2,17 @@
 
 from __future__ import annotations
 
+import dataclasses
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import xarray as xr
+from markupsafe import escape
+
+from ctdcast._version import __version__ as _VERSION
+from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.cnv_header import (
     CONFORMANCE_DIFFER,
     CONFORMANCE_MATCH,
@@ -20,18 +31,6 @@ from ctdcast.config.cnv_header import (
     sensor_calibrations,
 )
 from ctdcast.config.global_attrs import cruise_name
-
-import dataclasses
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
-
-import numpy as np
-import xarray as xr
-from markupsafe import escape
-
-from ctdcast._version import __version__ as _VERSION
-from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     UNKNOWN_CRUISE_ID,
@@ -44,11 +43,9 @@ from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
 from ctdcast.reports._dataset import read_dataset_meta
-from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
-from ctdcast.reports._qc import qc_summary, qc_thresholds
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -63,6 +60,8 @@ from ctdcast.reports._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
+from ctdcast.reports._qc import qc_summary, qc_thresholds
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -145,6 +144,12 @@ def generate_station_page(
     cast_notes:
         Optional list of free-text notes for this cast (e.g. "SBE43 malfunction").
         Rendered as warning banners near the top of the page.
+    cruise_info : dict | None
+        Optional cruise-level metadata used in the page header.
+    drop_stub : bool
+        If True, omit sections whose figure returned None instead of rendering a stub.
+    cfg : ReportConfig
+        Report configuration (styling, paths, display options) threaded to the plotters.
 
     Returns
     -------
@@ -469,7 +474,7 @@ _FILE_PROVENANCE_TRIGGERS: frozenset[str] = frozenset(
 
 
 def _has_file_provenance(c: PageCtx) -> bool:
-    """True when the cast file carries a substantive file-provenance attribute (not just dates)."""
+    """Return True when the cast file carries a substantive file-provenance attribute (not just dates)."""
     return any(c.ds.attrs.get(k) for k in _FILE_PROVENANCE_TRIGGERS)
 
 
@@ -634,7 +639,7 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
 
 
 def _is_sensor_catalog_var(name: str) -> bool:
-    """True for a ``SENSOR_*`` catalog entry, excluding any ``_qc`` companion.
+    """Return True for a ``SENSOR_*`` catalog entry, excluding any ``_qc`` companion.
 
     QC can stamp a ``{var}_qc`` companion on the dimensionless ``SENSOR_*`` scalars; those
     are not catalog entries and must not be read as sensors.
@@ -643,7 +648,7 @@ def _is_sensor_catalog_var(name: str) -> bool:
 
 
 def _has_sensor_catalog(ds: xr.Dataset) -> bool:
-    """True when the cast carries the stage-1 ``SENSOR_*`` sensor catalog."""
+    """Return True when the cast carries the stage-1 ``SENSOR_*`` sensor catalog."""
     return any(_is_sensor_catalog_var(str(v)) for v in ds.variables)
 
 
@@ -747,13 +752,13 @@ _TICK_BADGE = {
 
 
 def _match_cell(tick: ConformanceTick, bg: str) -> str:
-    """The "Matches reference" cell: a coloured status pip (the reference is in a caption)."""
+    """Return the "Matches reference" cell: a coloured status pip (the reference is in a caption)."""
     cls, glyph = _TICK_BADGE.get(tick.state, _TICK_BADGE[CONFORMANCE_NO_REFERENCE])
     return f"<td{bg}><span class='conf {cls}'>{glyph}</span></td>"
 
 
 def _references_caption(ticks: list[ConformanceTick]) -> str:
-    """A caption listing each documented reference value and its source, under the table.
+    """Return a caption listing each documented reference value and its source, under the table.
 
     Collects the distinct (step, reference, source) triples from the ticks, so the match
     pips stay uncluttered and the reader still sees what each was checked against and where
@@ -777,7 +782,7 @@ def _references_caption(ticks: list[ConformanceTick]) -> str:
 
 
 def _variables_cell(text: str, bg: str) -> str:
-    """The "Variables" cell: the channels a step touched; a long list collapses behind a disclosure."""
+    """Return the "Variables" cell: the channels a step touched; a long list collapses behind a disclosure."""
     if not text:
         return f"<td{bg}></td>"
     if len(text) > 60:
@@ -827,7 +832,7 @@ def _corrections_rows_with_ticks(
 def _corrections_table_html(
     records: list[Correction], ticks: list[ConformanceTick] | None, tight: str
 ) -> str:
-    """The corrections table, with Variables and match columns when *ticks* are supplied."""
+    """Return the corrections table, with Variables and match columns when *ticks* are supplied."""
     if not records:
         return ""
     if ticks:
@@ -993,12 +998,12 @@ def _render_provenance_panel(c: PageCtx) -> str | None:
 
 
 def _has_biogeo(c: PageCtx) -> bool:
-    """True when any biogeochemistry variable is present (single- or dual-sensor)."""
+    """Return True when any biogeochemistry variable is present (single- or dual-sensor)."""
     return any(resolve_sensor_var(c.ds, v) in c.ds for v in SECTION_BIOGEO_VARS)
 
 
 def _has_ts(c: PageCtx) -> bool:
-    """True when temperature and salinity are present (CT/SA/σ₀ derivable).
+    """Return True when temperature and salinity are present (CT/SA/σ₀ derivable).
 
     Gates Hydrography, T–S diagram and Stability: a cast with T and S *could* have
     them, so if the figure then returns None it is a defect (a stub), not a silent
@@ -1008,7 +1013,7 @@ def _has_ts(c: PageCtx) -> bool:
 
 
 def _has_dual_sensors(c: PageCtx) -> bool:
-    """True when a second temperature *or* salinity sensor is present.
+    """Return True when a second temperature *or* salinity sensor is present.
 
     Mirrors :func:`~ctdcast.plotters.plots.draw_sensor_diff_fig`, which draws the
     T₁−T₂ and/or S₁−S₂ difference when either pair exists — so the panel must apply
@@ -1027,7 +1032,7 @@ def _has_dual_sensors(c: PageCtx) -> bool:
 
 
 def _has_qc(c: PageCtx) -> bool:
-    """True when the cast file carries QARTOD ``{var}_qc`` companions.
+    """Return True when the cast file carries QARTOD ``{var}_qc`` companions.
 
     Stage-2/3 files have them; a stage-1-only cast does not, so the QC section is
     omitted (into the not-applicable footer) rather than stubbed.  Presence is
@@ -1038,7 +1043,7 @@ def _has_qc(c: PageCtx) -> bool:
 
 
 def _has_provenance(c: PageCtx) -> bool:
-    """True when the cast carries a raw Sea-Bird header to recover provenance from.
+    """Return True when the cast carries a raw Sea-Bird header to recover provenance from.
 
     The provenance panel renders from the verbatim SBE header in ``raw_metadata``
     (corrections, sensor calibrations, advisories, time coordinate) -- not from the

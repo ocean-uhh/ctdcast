@@ -16,9 +16,9 @@ import yaml
 
 from ctdcast.cli import convert as _convert
 from ctdcast.cli import draft as _draft
-from ctdcast.cli import process as _process
 from ctdcast.cli import init as _init
 from ctdcast.cli import main as cli_main
+from ctdcast.cli import process as _process
 from ctdcast.cli import report as _report
 from ctdcast.cli import run as _run
 from ctdcast.cli import validate as _validate

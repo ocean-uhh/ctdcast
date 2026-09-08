@@ -51,9 +51,9 @@ def test_width_aliases_match_slots() -> None:
     )
 
     assert W_QUARTER == SLOTS["quarter"][1] == 2.25
-    assert W_THIRD == SLOTS["third"][1]
-    assert W_HALF == SLOTS["half"][1]
-    assert W_TWO_FIFTHS == SLOTS["two-fifths"][1]
+    assert SLOTS["third"][1] == W_THIRD
+    assert SLOTS["half"][1] == W_HALF
+    assert SLOTS["two-fifths"][1] == W_TWO_FIFTHS
 
 
 # ---------------------------------------------------------------------------

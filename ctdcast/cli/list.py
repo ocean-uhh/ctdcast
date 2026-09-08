@@ -109,7 +109,7 @@ def _load_cruise_info(config: Path | None) -> dict[str, Any] | None:
 
 
 def _matches(search: str | None, *fields: str) -> bool:
-    """True when *search* is absent, or a case-insensitive substring of any field."""
+    """Return True when *search* is absent, or a case-insensitive substring of any field."""
     return search is None or any(search.lower() in f.lower() for f in fields)
 
 

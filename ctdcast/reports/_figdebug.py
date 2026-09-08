@@ -13,10 +13,15 @@ macro emits nothing (it guards on :func:`figdbg` being non-empty).
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ctdcast.config.report_tokens import FIG_DPI
 from ctdcast.reports import _encode
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from matplotlib.figure import Figure
 
 #: b64 PNG string -> {"func": str, "figsize_in": (w, h), "png_px": (w, h)}.
 _COLLECTED: dict[str, dict[str, Any]] = {}
@@ -41,7 +46,7 @@ def clear() -> None:
     _COLLECTED.clear()
 
 
-def _draw_name(draw: Any) -> str:
+def _draw_name(draw: Callable[..., object]) -> str:
     """Return a readable name for *draw*, collapsing closures to their enclosing scope.
 
     Uses ``__qualname__`` and, if it contains ``.<locals>.`` (a closure such as the
@@ -54,7 +59,7 @@ def _draw_name(draw: Any) -> str:
     return name.rsplit(".", 1)[-1]
 
 
-def record(b64: str | None, func: str, fig: Any) -> None:
+def record(b64: str | None, func: str, fig: Figure | None) -> None:
     """Store the figsize/png geometry for *b64* under label *func* (no-op when disabled)."""
     if not enabled() or not b64 or fig is None:
         return
@@ -81,7 +86,11 @@ def figdbg(b64: str | None) -> str:
 
 
 def render_b64(
-    draw: Any, /, *args: Any, optional: bool = False, **kwargs: Any
+    draw: Callable[..., object],
+    /,
+    *args: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
+    optional: bool = False,
+    **kwargs: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
 ) -> str | None:
     """Encode *draw* via the vendored encoder; when debug is on, record its geometry.
 
@@ -94,7 +103,10 @@ def render_b64(
 
     captured: dict[str, Any] = {}
 
-    def _wrapped(*a: Any, **k: Any) -> Any:
+    def _wrapped(
+        *a: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
+        **k: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
+    ) -> Any:  # noqa: ANN401  # returns whatever *draw* returns (Figure or None)
         fig = draw(*a, **k)
         captured["fig"] = fig
         return fig

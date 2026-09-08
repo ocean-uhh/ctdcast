@@ -11,13 +11,22 @@ import pytest
 from conftest import FIXTURES_CNV, FIXTURES_NC
 
 from ctdcast.config.cnv_header import (
+    CONFORMANCE_DIFFER,
+    CONFORMANCE_MATCH,
+    CONFORMANCE_NO_REFERENCE,
     Acquisition,
     Correction,
     ProcessingChain,
-    StartTime,
     SbeHistoryNote,
+    StartTime,
+    _channel_kind,
+    _conf_close,
     build_correction_ledger,
+    conformance_advisories,
+    conformance_supported,
+    conformance_ticks,
     correction_records,
+    detect_instrument,
     header_from_raw_metadata,
     parse_processing_chain,
     parse_star_block,
@@ -26,17 +35,6 @@ from ctdcast.config.cnv_header import (
     sbe_history_notes,
     sensor_calibrations,
     start_time_clock,
-)
-from ctdcast.config.cnv_header import (
-    CONFORMANCE_DIFFER,
-    CONFORMANCE_MATCH,
-    CONFORMANCE_NO_REFERENCE,
-    _channel_kind,
-    _conf_close,
-    conformance_advisories,
-    conformance_supported,
-    conformance_ticks,
-    detect_instrument,
 )
 
 # Header-only excerpts of real files live in the tracked cnv_headers/ dir; the raw

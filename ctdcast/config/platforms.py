@@ -116,7 +116,7 @@ def resolve_platform(slug: str) -> dict[str, Any]:
     return registry[key]
 
 
-def parse_config_date(value: Any) -> _dt.date | None:
+def parse_config_date(value: Any) -> _dt.date | None:  # noqa: ANN401  # parsed YAML node: date/datetime/str/None
     """Coerce a config date value to a :class:`datetime.date`, or ``None``.
 
     Accepts a ``date``/``datetime`` (YAML parses a bare ``2026-03-27`` as a

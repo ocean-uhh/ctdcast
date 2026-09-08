@@ -37,8 +37,8 @@ def _touch(root, stage, stem):
 
 def test_suffixes_and_tuple_derive_from_dirs():
     # Suffix is the dir name with a leading underscore; the tuple is its keys.
-    assert STAGE_SUFFIXES == {n: f"_{d}" for n, d in STAGE_DIRS.items()}
-    assert STAGES == tuple(sorted(STAGE_DIRS))
+    assert {n: f"_{d}" for n, d in STAGE_DIRS.items()} == STAGE_SUFFIXES
+    assert tuple(sorted(STAGE_DIRS)) == STAGES
 
 
 def test_cast_stages_match_the_pipeline_registry():

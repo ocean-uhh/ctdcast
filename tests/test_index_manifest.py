@@ -9,14 +9,14 @@ The rendered index HTML is covered end-to-end by the golden/integration suite.
 from __future__ import annotations
 
 from ctdcast.reports._anchors import LEGACY_ANCHORS
-from ctdcast.reports._plots import RenderedPanel
-from ctdcast.reports._section import SECTION_DEFAULT
 from ctdcast.reports._index import (
     INDEX_DEFAULT,
     INDEX_PANELS,
     IndexPageCtx,
     resolve_index,
 )
+from ctdcast.reports._plots import RenderedPanel
+from ctdcast.reports._section import SECTION_DEFAULT
 
 
 def _ctx(

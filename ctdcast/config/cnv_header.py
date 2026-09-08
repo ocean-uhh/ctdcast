@@ -307,7 +307,7 @@ def _star_verbatim(lines: list[str]) -> str:
     kept: list[str] = []
     for raw in lines:
         stripped = raw.strip()
-        if stripped.startswith("**") or stripped.startswith("*END*"):
+        if stripped.startswith(("**", "*END*")):
             continue
         if stripped.startswith("*"):
             kept.append(raw.rstrip())
@@ -472,11 +472,11 @@ def _processing_region(lines: list[str]) -> list[str]:
         stripped = raw.strip()
         if stripped.startswith("*END*"):
             break
-        if stripped.startswith("# <Sensors") or stripped.startswith("# <sensors"):
+        if stripped.startswith(("# <Sensors", "# <sensors")):
             in_sensors = True
             continue
         if in_sensors:
-            if stripped.startswith("# </Sensors") or stripped.startswith("# </sensors"):
+            if stripped.startswith(("# </Sensors", "# </sensors")):
                 in_sensors = False
             continue
         if not stripped.startswith("#"):
@@ -543,7 +543,7 @@ def _module_date_parts(params: dict[str, str]) -> tuple[str, str]:
 
 
 def _module_version(params: dict[str, str]) -> str:
-    """The SBE Data Processing version from a module's ``date`` value, or ``""``."""
+    """Return the SBE Data Processing version from a module's ``date`` value, or ``""``."""
     return _module_date_parts(params)[1]
 
 
@@ -566,7 +566,7 @@ def _wfilter_body(step: ProcessingStep) -> str:
 
 
 def _correction_body(step: ProcessingStep) -> str:
-    """The salient parameter string for a module.
+    """Return the salient parameter string for a module.
 
     Salient-listed modules show only those fields; wfilter collapses its per-variable
     actions to one; anything else falls back to all non-housekeeping parameters.  The
@@ -586,7 +586,7 @@ def _correction_body(step: ProcessingStep) -> str:
 
 
 def _deck_advances(deck: DeckUnit) -> str:
-    """The deck-unit advance string, keeping SBE channel names (``primary conductivity``)."""
+    """Return the deck-unit advance string, keeping SBE channel names (``primary conductivity``)."""
     return ", ".join(f"{chan} +{sec:.3f} s" for chan, sec in deck.advance.items())
 
 
@@ -661,7 +661,7 @@ def sbe_history_notes(header_text: str) -> list[SbeHistoryNote]:
 
 
 def _is_pressure_bin(bintype: str) -> bool:
-    """True when a ``binavg`` bin type is a pressure axis.
+    """Return True when a ``binavg`` bin type is a pressure axis.
 
     Only ``decibars`` is confirmed in the corpus. SBE's Bin Average also offers depth and
     scan-number bins; do not match a guessed ``meters`` string — verify what SBE writes for
@@ -956,20 +956,20 @@ def _as_float(value: str) -> float | None:
 
 
 def _conf_close(value: str, reference: float, tol: float) -> bool:
-    """True when *value* parses and lies within *tol* of *reference*."""
+    """Return True when *value* parses and lies within *tol* of *reference*."""
     number = _as_float(value)
     return number is not None and abs(number - reference) <= tol
 
 
 def _is_numeric(value: str) -> bool:
-    """True when *value* parses as a float, so a comparison against it is meaningful."""
+    """Return True when *value* parses as a float, so a comparison against it is meaningful."""
     return _as_float(value) is not None
 
 
 def _no_ref_tick(
     key: str, label: str, detail: str = "", variables: str = ""
 ) -> ConformanceTick:
-    """A tick for a step with no documented reference: a dash, no reference or source."""
+    """Return a tick for a step with no documented reference: a dash, no reference or source."""
     return ConformanceTick(
         key, label, CONFORMANCE_NO_REFERENCE, "", "", detail, variables
     )
@@ -1142,7 +1142,7 @@ def detect_instrument(header_text: str) -> str | None:
 
 
 def conformance_supported(header_text: str) -> bool:
-    """True when documented references exist for this cast's instrument (the SBE 9 family).
+    """Return True when documented references exist for this cast's instrument (the SBE 9 family).
 
     The values in :data:`_CONFORMANCE_REFS` (celltm α/τ, filter-pressure tc, deck
     conductivity advance) are the SBE 9 / 11plus defaults. Other instruments (SBE 19plus,
@@ -1215,7 +1215,7 @@ def _all_channels(chain: ProcessingChain) -> set[str]:
 
 
 def _oxygen_aligned(chain: ProcessingChain) -> bool:
-    """True when an ``alignctd`` step advances an oxygen channel."""
+    """Return True when an ``alignctd`` step advances an oxygen channel."""
     for step in chain.steps:
         if step.module != "alignctd":
             continue
@@ -1301,7 +1301,7 @@ def conformance_advisories(header_text: str) -> list[str]:
 def _step_channels(
     step: ProcessingStep, rename_map: dict[str, str] | None = None
 ) -> str:
-    """The variable(s) a scalar step modified, for the "Variables" column, or ''.
+    """Return the variable(s) a scalar step modified, for the "Variables" column, or ''.
 
     Filter, Wild Edit, cell thermal mass and the deck advance carry their modified variable
     on their own tick; this covers the rest: a window filter names its per-channel actions,

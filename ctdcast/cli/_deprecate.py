@@ -28,7 +28,7 @@ class DeprecatedAlias(argparse.Action):
         self,
         parser: argparse.ArgumentParser,  # noqa: ARG002  (argparse Action interface)
         namespace: argparse.Namespace,
-        values: Any,
+        values: Any,  # noqa: ANN401  # argparse Action interface: parsed value(s), type varies with nargs
         option_string: str | None = None,
     ) -> None:
         """Store *values* on the canonical dest and note the deprecated *option_string*."""

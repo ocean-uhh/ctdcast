@@ -401,7 +401,7 @@ def _make_gebco_layers(
 # ---------------------------------------------------------------------------
 
 
-def _safe_json(obj: Any) -> str:
+def _safe_json(obj: Any) -> str:  # noqa: ANN401  # arbitrary JSON-serialisable payload (dict/list/str/...)
     """JSON-encode obj, escaping ``</`` for safe embedding inside a <script> block."""
     return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
 
