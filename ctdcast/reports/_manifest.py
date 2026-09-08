@@ -12,8 +12,7 @@ package-neutral (names no variable, page, or science) and is vendored
 byte-identical to the sister repos.  Each page's concrete registry (its
 ``Ctx`` builder, panels, sections, and profiles) lives in that page's own
 module — grid's in ``reports/_grid.py``, and so on — never in a plural
-``_manifests.py`` companion.  The design rationale is in
-``.claude/notes/2026-08-15-report-section-manifest-design.md``.
+``_manifests.py`` companion.
 """
 
 from __future__ import annotations

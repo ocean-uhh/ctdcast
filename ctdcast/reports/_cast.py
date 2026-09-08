@@ -326,7 +326,7 @@ def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
 
 
 # ---------------------------------------------------------------------------
-# Section manifest — the cast page as data (see .claude/rep-section-manifest-plan.md)
+# Section manifest — the cast page as data
 #
 # NOTE (2026-08-16, autonomous): this is the model layer only.  It is NOT yet
 # wired into generate_station_page() / cast.html — that template port is a

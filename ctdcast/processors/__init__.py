@@ -373,7 +373,7 @@ def process(
     ladcp_dir: Path | str | None = None,
     ladcp_root: Path | str | None = None,
     # Superseded by the roots above; still accepted so an existing caller keeps
-    # working until it migrates (see .claude/stage-files-plan.md §12).
+    # working until it migrates.
     nc_dir: Path | str | None = None,
     profiles_path: Path | str | None = None,
     ladcp_nc_dir: Path | str | None = None,

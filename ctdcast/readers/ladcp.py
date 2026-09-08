@@ -4,8 +4,7 @@ Locates the ``.mat`` file for a cast (:func:`find_ladcp_file`), loads it with a
 single set of ``scipy.io.loadmat`` options (:func:`read_ladcp`), and maps the
 result struct to a single-cast :class:`xarray.Dataset` on the native 10 m depth
 grid (:func:`read_ladcp_cast`).  The ``.mat`` is the LDEO IX velocity *solution*;
-its ~50 fields are mapped to the compiled-dataset schema in
-``.claude/notes/2026-08-17-ladcp-compiled-dataset.md``.
+its ~50 fields are mapped to the compiled-dataset schema.
 """
 
 from __future__ import annotations

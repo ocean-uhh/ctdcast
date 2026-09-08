@@ -114,7 +114,7 @@ def run(args: argparse.Namespace) -> int:
 
     # ctd_root: per-cast files live under stageN/, with the flat layout still
     # accepted for a directory written before the stage layout.
-    # Same distinction vsclaude drew for the derived profiles.nc, applied one
+    # Same distinction as for the derived profiles.nc, applied one
     # block earlier: `ctd_root` is a directory ctdcast WRITES INTO -- stage1/ and
     # its contents are outputs of `process --stage 1` -- so a fresh, valid config
     # legitimately points at a root that does not exist yet.  Erroring there
