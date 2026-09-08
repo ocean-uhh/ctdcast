@@ -1,0 +1,574 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.analysis.clock &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=683873e3"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.analysis.clock</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.analysis.clock</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Cruise-scale acquisition-clock diagnostic: per-cast NMEA-vs-System offsets, changepoints, verdict.</span>
+
+<span class="sd">Reads the acquisition (System) and GPS (NMEA) clock pair off each cast's raw Sea-Bird header —</span>
+<span class="sd">already on every stage-1 file in ``raw_metadata`` — and classifies the cruise's clock error as a</span>
+<span class="sd">constant offset, a drift, or one or more step changes. Read-only: this *finds* the error; whether</span>
+<span class="sd">a correction is *applied* is a separate stage-2 decision, and turns not only on the kind here but</span>
+<span class="sd">on whether the time coordinate is already on GPS (``start_time`` sourced from NMEA) — the two are</span>
+<span class="sd">orthogonal.</span>
+
+<span class="sd">**Sign convention, stated once because a sign error here is silent and catastrophic:**</span>
+<span class="sd">``offset = NMEA - System`` — the seconds *added* to acquisition time to obtain corrected (GPS)</span>
+<span class="sd">time. Positive means the acquisition clock ran **behind** GPS. This matches oceanarray's</span>
+<span class="sd">``_apply_clock_offset``, so the value transfers without a flip.</span>
+
+<span class="sd">The offsets are whole seconds, so structure is read as a **histogram of levels**, not a fitted</span>
+<span class="sd">line: three contiguous casts at one value are a level, not scatter. :func:`classify_offsets`</span>
+<span class="sd">recurses, splitting at each detected step until every segment is flat (sd below the quantisation).</span>
+<span class="sd">A segment that will not flatten is a drift only if a rate positively fits it — otherwise it is a</span>
+<span class="sd">noisy level, reported as a constant/step with a resolution caveat rather than a drift.</span>
+<span class="sd">:func:`classify_offsets` is pure; :func:`clock_offsets` reads the cast files.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_dt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statistics</span><span class="w"> </span><span class="kn">import</span> <span class="n">fmean</span><span class="p">,</span> <span class="n">pstdev</span><span class="p">,</span> <span class="n">pvariance</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">header_from_raw_metadata</span><span class="p">,</span>
+    <span class="n">parse_star_block</span><span class="p">,</span>
+    <span class="n">parse_start_time</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">group_by_cast</span>
+
+<span class="c1"># SBE header timestamps are whole seconds.  Named, with its reasoning, so a future sub-second</span>
+<span class="c1"># Seasave that changes the resolution does not silently loosen the flatness test below.</span>
+<span class="n">QUANTISATION_SECONDS</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="c1"># Fewest casts that constitute a level rather than an accident: three contiguous casts at one</span>
+<span class="c1"># value (MSM142's 001-003, sd 0.47) are a level.  Measured and load-bearing — 4 or 5 would absorb</span>
+<span class="c1"># that 3-cast level into its neighbour and leave those casts corrected by a value ~3 s wrong.</span>
+<span class="n">MIN_SEGMENT_CASTS</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="c1"># A split is a real step only when the between-segment gap dominates the within-segment scatter.</span>
+<span class="c1"># With the quantisation as the scatter floor this makes ~3 s the smallest resolvable step, which</span>
+<span class="c1"># still catches MSM142's tightest boundary (3.43 s).</span>
+<span class="n">STEP_GAP_FACTOR</span> <span class="o">=</span> <span class="mf">3.0</span>
+<span class="c1"># A cruise with fewer casts than this cannot show cruise-scale structure: one cast's offset cannot</span>
+<span class="c1"># be told from a stale NMEA sentence, and only the series reveals a step. Distinct from</span>
+<span class="c1"># MIN_SEGMENT_CASTS, which is the floor on one level *within* an already-trusted series.</span>
+<span class="n">MIN_CASTS</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="c1"># When the series will not resolve into flat segments, a rate is only *claimed* (drift, not</span>
+<span class="c1"># unresolved) with positive evidence: the line must explain the offsets down to near the</span>
+<span class="c1"># quantisation AND account for most of their variance AND move materially over the cruise. MSM142's</span>
+<span class="c1"># rejected fit — residual sd 2.84 s, R² 0.41 — fails all three, which is the point: a merely messy</span>
+<span class="c1"># cruise (OdB) is a constant with a caveat, not a drift.</span>
+<span class="n">_DRIFT_MAX_RESIDUAL_SD</span> <span class="o">=</span> <span class="mf">1.5</span>  <span class="c1"># s; MSM142's 2.84 must fail</span>
+<span class="n">_DRIFT_MIN_R2</span> <span class="o">=</span> <span class="mf">0.80</span>  <span class="c1"># MSM142's 0.41 must fail</span>
+<span class="n">_DRIFT_MIN_CHANGE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="mf">2.0</span>  <span class="c1"># s over the cruise; a sub-2 s trend is not a drift worth the name</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="CastClock">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.CastClock">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CastClock</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One cast's acquisition/GPS clock pair, with both raw times so the sign is checkable.</span>
+
+<span class="sd">    Carries both times and the cast id (not just the derived offset): the per-cast table shows</span>
+<span class="sd">    both so a reader can confirm the sign, and segments are labelled by cast range.</span>
+<span class="sd">    """</span>
+
+    <span class="n">cast_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">system_utc</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span>
+    <span class="n">nmea_utc</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span>
+    <span class="n">offset_seconds</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="ClockSegment">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.ClockSegment">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClockSegment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A run of casts sharing one clock offset, between changepoints — one row of the segment table."""</span>
+
+    <span class="n">first_cast</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">last_cast</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span>
+    <span class="n">end</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span>
+    <span class="n">offset_seconds</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sd_seconds</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">n_casts</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cast_range</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Cast-id span as ``"001-003"`` (or just ``"001"`` for a single-cast segment)."""</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first_cast</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_cast</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_cast</span>
+            <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">first_cast</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">last_cast</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ClockVerdict">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.ClockVerdict">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClockVerdict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The cruise's clock classification: kind, level segments and a plain-language note.</span>
+
+<span class="sd">    ``kind`` is ``"constant"``, ``"drift"``, ``"step"``, ``"no_clock_pair"`` or ``"insufficient"``.</span>
+<span class="sd">    ``"drift"`` is claimed only when a rate is *measured* (the note quotes slope, R² and residual</span>
+<span class="sd">    sd) — failing to resolve into flat segments is **not** evidence of a rate, so a merely noisy</span>
+<span class="sd">    cruise is a ``"constant"`` (or ``"step"``) with a resolution caveat, never a drift.</span>
+<span class="sd">    ``"no_clock_pair"`` (files scanned, none carrying a pair) is distinct from ``"insufficient"``</span>
+<span class="sd">    (too few casts, or no files) so a renderer selects on ``kind`` alone, never on the note prose.</span>
+<span class="sd">    ``resolution_caveat`` is non-empty when a segment's sd exceeds the quantisation: a statement</span>
+<span class="sd">    about resolution (per-cast comparison noise, or possibly-hidden structure), carried beside the</span>
+<span class="sd">    verdict rather than as a verdict of its own. Changepoints are exposed via :attr:`changepoints`.</span>
+<span class="sd">    """</span>
+
+    <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">segments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ClockSegment</span><span class="p">]</span>
+    <span class="n">note</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">resolution_caveat</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">changepoints</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Acquisition times of the segment boundaries (empty unless the verdict is a step)."""</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">start</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">segments</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"step"</span> <span class="k">else</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="cast_number">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.cast_number">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cast_number</span><span class="p">(</span><span class="n">cast_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Integer cast number from a formatted cast id (``"001"`` -&gt; 1, ``"029b"`` -&gt; 29)."""</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ch</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">cast_id</span> <span class="k">if</span> <span class="n">ch</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()))</span></div>
+
+
+
+<div class="viewcode-block" id="suggested_config_yaml">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.suggested_config_yaml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">suggested_config_yaml</span><span class="p">(</span><span class="n">verdict</span><span class="p">:</span> <span class="n">ClockVerdict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Paste-ready ``processing.clock`` YAML for a step/constant verdict, or ``None`` if inapplicable.</span>
+
+<span class="sd">    One ``segments`` entry per segment, keyed on inclusive cast-number ranges (the</span>
+<span class="sd">    ``ctd_groupings.yaml`` idiom). Returns ``None`` for ``drift`` (no applier), ``no_clock_pair``</span>
+<span class="sd">    and ``insufficient``. The sign is emitted so it is copied, never hand-computed — that is the</span>
+<span class="sd">    one thing here that is silently catastrophic to get backwards. A ``[[lo, hi]]`` range expands to</span>
+<span class="sd">    plain casts only, so a segment holding lettered casts (``029b``) or gaps gets a warning comment</span>
+<span class="sd">    to verify by hand rather than silently mis-scoping the correction.</span>
+
+<span class="sd">    Each segment also carries ``n_casts`` and ``clock_offset_sd_seconds`` — the evidence that</span>
+<span class="sd">    justified the offset. The applier records these with the correction so the number's uncertainty</span>
+<span class="sd">    travels with it; sourcing them here (not from a re-measurement at apply time) keeps the recorded</span>
+<span class="sd">    statistics describing the population that actually produced the number.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">verdict</span><span class="o">.</span><span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"step"</span><span class="p">,</span> <span class="s2">"constant"</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">"processing:"</span><span class="p">,</span>
+        <span class="s2">"  clock:"</span><span class="p">,</span>
+        <span class="s2">"    # seconds added to acquisition time to obtain corrected time (NMEA - System)."</span><span class="p">,</span>
+        <span class="s2">"    # Generated by ctdcast; paste as-is -- do not hand-compute the sign."</span><span class="p">,</span>
+        <span class="s2">"    segments:"</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">verdict</span><span class="o">.</span><span class="n">segments</span><span class="p">:</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">cast_number</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">first_cast</span><span class="p">),</span> <span class="n">cast_number</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">last_cast</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"      - casts: [[</span><span class="si">{</span><span class="n">lo</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">hi</span><span class="si">}</span><span class="s2">]]"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">!=</span> <span class="n">seg</span><span class="o">.</span><span class="n">n_casts</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"        # VERIFY: </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">n_casts</span><span class="si">}</span><span class="s2"> casts span numeric range </span><span class="si">{</span><span class="n">lo</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">hi</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">hi</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">lo</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> numbers) — lettered casts and/or gaps; a [[lo,hi]] range covers "</span>
+                <span class="s2">"plain casts only, so adjust by hand if a lettered cast needs the offset."</span>
+            <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"        clock_offset_seconds: </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">offset_seconds</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"        n_casts: </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">n_casts</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"        clock_offset_sd_seconds: </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">sd_seconds</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="clock_offsets">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.clock_offsets">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clock_offsets</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">],</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return the casts carrying both clocks, the number of casts scanned, and a coordinate census.</span>
+
+<span class="sd">    Discovers casts with :func:`group_by_cast`, the same best-available machinery the report uses,</span>
+<span class="sd">    so it works across the nested ``stageN/`` layout, a flat ``nc_dir``, or a tree processed only to</span>
+<span class="sd">    stage 2/3 — and skips compiled products and unnumbered files. The header (``raw_metadata``)</span>
+<span class="sd">    rides every stage, so the raw clock pair is read from each cast's stage-1 file when present,</span>
+<span class="sd">    else its lowest available stage. A cast whose clock is missing/unparseable is skipped and</span>
+<span class="sd">    counted in a single warning. The census counts which clock each cast's ``start_time`` bracket</span>
+<span class="sd">    anchors the *coordinate* to (``system`` vs ``nmea``) — the fact the stage-2 gate keys on,</span>
+<span class="sd">    orthogonal to the offset structure. Only *determined* sources are counted; a bracketless header</span>
+<span class="sd">    (``"unknown"``) is left out rather than tallied as a source it never named.</span>
+<span class="sd">    """</span>
+    <span class="n">casts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">coordinate_counts</span><span class="p">:</span> <span class="n">Counter</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+    <span class="n">scanned</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">skipped</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">cast_id</span><span class="p">,</span> <span class="n">stages</span> <span class="ow">in</span> <span class="n">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">scanned</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">nc_path</span> <span class="o">=</span> <span class="n">stages</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="n">stages</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">stages</span><span class="p">)]</span>
+        <span class="p">)</span>  <span class="c1"># raw header rides every stage; prefer stage 1</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">nc_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">parse_start_time</span><span class="p">(</span><span class="n">header</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">start</span><span class="o">.</span><span class="n">clock</span> <span class="ow">and</span> <span class="n">start</span><span class="o">.</span><span class="n">clock</span> <span class="o">!=</span> <span class="s2">"unknown"</span>
+        <span class="p">):</span>  <span class="c1"># count only a determined coordinate source</span>
+            <span class="n">coordinate_counts</span><span class="p">[</span><span class="n">start</span><span class="o">.</span><span class="n">clock</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">clocks</span> <span class="o">=</span> <span class="n">parse_star_block</span><span class="p">(</span><span class="n">header</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">clocks</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">clocks</span><span class="o">.</span><span class="n">offset_seconds</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">):</span>  <span class="c1"># no computable offset -&gt; keep out of the series</span>
+            <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">casts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">CastClock</span><span class="p">(</span>
+                <span class="n">cast_id</span><span class="o">=</span><span class="n">format_cast_id</span><span class="p">(</span><span class="o">*</span><span class="n">cast_id</span><span class="p">),</span>
+                <span class="n">system_utc</span><span class="o">=</span><span class="n">clocks</span><span class="o">.</span><span class="n">system_dt</span><span class="p">,</span>
+                <span class="n">nmea_utc</span><span class="o">=</span><span class="n">clocks</span><span class="o">.</span><span class="n">nmea_dt</span><span class="p">,</span>
+                <span class="n">offset_seconds</span><span class="o">=</span><span class="n">clocks</span><span class="o">.</span><span class="n">offset_seconds</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">skipped</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"clock diagnostic: </span><span class="si">{</span><span class="n">skipped</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> cast(s) skipped for a missing/unparseable "</span>
+            <span class="s2">"clock."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">casts</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">system_utc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">casts</span><span class="p">,</span> <span class="n">scanned</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="p">)</span></div>
+
+
+
+<span class="n">_COORDINATE_LABELS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"system"</span><span class="p">:</span> <span class="s2">"System (PC clock)"</span><span class="p">,</span> <span class="s2">"nmea"</span><span class="p">:</span> <span class="s2">"NMEA (GPS)"</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="coordinate_summary">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.coordinate_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">coordinate_summary</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">scanned</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One line stating which clock the *time coordinate* is anchored to, and the correction consequence.</span>
+
+<span class="sd">    Orthogonal to the offset verdict: a cruise can show a real offset yet need no correction because</span>
+<span class="sd">    its coordinate was already on GPS (OdB). Reports the count, not a single answer — mixed values</span>
+<span class="sd">    across a cruise are themselves a finding. ``nmea`` needs no correction; ``system`` is where a</span>
+<span class="sd">    non-zero offset would be applied.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">coordinate_counts</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Coordinate: source unknown on 0/</span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> casts (no start_time bracket parsed)."</span>
+    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"nmea"</span><span class="p">}:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">coordinate_counts</span><span class="p">[</span><span class="s2">"nmea"</span><span class="p">]</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Coordinate: NMEA (GPS) on </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> casts — already correct; no correction applies."</span>
+    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"system"</span><span class="p">}:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">coordinate_counts</span><span class="p">[</span><span class="s2">"system"</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Coordinate: System (PC clock) on </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> casts — a correction applies where "</span>
+            <span class="s2">"the offset is non-zero."</span>
+        <span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_COORDINATE_LABELS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">k</span><span class="p">)</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="o">-</span><span class="n">kv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"Coordinate: mixed — </span><span class="si">{</span><span class="n">parts</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> — investigate before correcting."</span></div>
+
+
+
+<div class="viewcode-block" id="correction_status">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.correction_status">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">correction_status</span><span class="p">(</span><span class="n">coordinate_counts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Whether a clock correction applies, from the coordinate census: ``apply``/``on_gps``/``undetermined``.</span>
+
+<span class="sd">    The single source of truth for the gate both the CLI and the report read, so they cannot</span>
+<span class="sd">    disagree. Any cast on the System clock means a correction is relevant (``apply``); a coordinate</span>
+<span class="sd">    only ever on GPS needs none (``on_gps``); an empty census means no ``start_time`` bracket was</span>
+<span class="sd">    parsed, so whether a correction applies is ``undetermined`` — which must NOT be reported as</span>
+<span class="sd">    "already on GPS", a source that was never measured.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">coordinate_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"apply"</span>
+    <span class="k">if</span> <span class="n">coordinate_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nmea"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"on_gps"</span>
+    <span class="k">return</span> <span class="s2">"undetermined"</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_segment</span><span class="p">(</span><span class="n">casts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ClockSegment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Summarise a contiguous run of casts as one :class:`ClockSegment`."""</span>
+    <span class="n">offsets</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">offset_seconds</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">casts</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">ClockSegment</span><span class="p">(</span>
+        <span class="n">first_cast</span><span class="o">=</span><span class="n">casts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cast_id</span><span class="p">,</span>
+        <span class="n">last_cast</span><span class="o">=</span><span class="n">casts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">cast_id</span><span class="p">,</span>
+        <span class="n">start</span><span class="o">=</span><span class="n">casts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">system_utc</span><span class="p">,</span>
+        <span class="n">end</span><span class="o">=</span><span class="n">casts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">system_utc</span><span class="p">,</span>
+        <span class="n">offset_seconds</span><span class="o">=</span><span class="n">fmean</span><span class="p">(</span><span class="n">offsets</span><span class="p">),</span>
+        <span class="n">sd_seconds</span><span class="o">=</span><span class="n">pstdev</span><span class="p">(</span><span class="n">offsets</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">offsets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">n_casts</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">casts</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_segment_runs</span><span class="p">(</span><span class="n">casts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Recursively split *casts* at each detected step; a run with no clean step stays whole.</span>
+
+<span class="sd">    The step test is the stopping rule: a run is split only where the best changepoint's</span>
+<span class="sd">    between-segment gap dominates the within-segment scatter and both sides hold at least</span>
+<span class="sd">    ``MIN_SEGMENT_CASTS``. A flat run has no such split and is returned as one segment.</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">casts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">MIN_SEGMENT_CASTS</span><span class="p">:</span>  <span class="c1"># cannot form two valid segments</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">casts</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">offset_seconds</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">casts</span><span class="p">]</span>
+    <span class="n">best_k</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+        <span class="nb">range</span><span class="p">(</span><span class="n">MIN_SEGMENT_CASTS</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="n">MIN_SEGMENT_CASTS</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">pvariance</span><span class="p">(</span><span class="n">y</span><span class="p">[:</span><span class="n">k</span><span class="p">])</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="n">pvariance</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">k</span><span class="p">:])</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">k</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:</span><span class="n">best_k</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">best_k</span><span class="p">:]</span>
+    <span class="n">gap</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">fmean</span><span class="p">(</span><span class="n">left</span><span class="p">)</span> <span class="o">-</span> <span class="n">fmean</span><span class="p">(</span><span class="n">right</span><span class="p">))</span>
+    <span class="n">worst_sd</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pstdev</span><span class="p">(</span><span class="n">left</span><span class="p">),</span> <span class="n">pstdev</span><span class="p">(</span><span class="n">right</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">gap</span> <span class="o">&gt;</span> <span class="n">STEP_GAP_FACTOR</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">worst_sd</span><span class="p">,</span> <span class="n">QUANTISATION_SECONDS</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_segment_runs</span><span class="p">(</span><span class="n">casts</span><span class="p">[:</span><span class="n">best_k</span><span class="p">])</span> <span class="o">+</span> <span class="n">_segment_runs</span><span class="p">(</span><span class="n">casts</span><span class="p">[</span><span class="n">best_k</span><span class="p">:])</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">casts</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rate</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Fit offset against acquisition time and return (slope s/day, R², residual sd s, total change s).</span>
+
+<span class="sd">    Positive evidence for a drift: a good line means the offsets are explained by a rate, not by</span>
+<span class="sd">    unresolved structure. MSM142's fit is deliberately poor (R² 0.41, residual sd 2.84), which is</span>
+<span class="sd">    how the classifier tells a real drift from a merely messy series.</span>
+<span class="sd">    """</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">series</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">system_utc</span>
+    <span class="n">days</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">c</span><span class="o">.</span><span class="n">system_utc</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="mf">86400.0</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">series</span><span class="p">])</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">offset_seconds</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">series</span><span class="p">])</span>
+    <span class="n">slope</span><span class="p">,</span> <span class="n">intercept</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">days</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">residual</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="p">(</span><span class="n">slope</span> <span class="o">*</span> <span class="n">days</span> <span class="o">+</span> <span class="n">intercept</span><span class="p">)</span>
+    <span class="n">ss_res</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">residual</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">ss_tot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">y</span> <span class="o">-</span> <span class="n">y</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">ss_res</span> <span class="o">/</span> <span class="n">ss_tot</span> <span class="k">if</span> <span class="n">ss_tot</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">residual_sd</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ss_res</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)))</span>
+    <span class="n">total_change</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">days</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">days</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">slope</span><span class="p">),</span> <span class="n">r2</span><span class="p">,</span> <span class="n">residual_sd</span><span class="p">,</span> <span class="n">total_change</span>
+
+
+<div class="viewcode-block" id="classify_offsets">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.clock.classify_offsets">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">classify_offsets</span><span class="p">(</span>
+    <span class="n">series</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CastClock</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">n_scanned</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ClockVerdict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Classify a cruise's offset series (sorted by acquisition time) into a :class:`ClockVerdict`.</span>
+
+<span class="sd">    Recursively segments the series and reads the result: one segment is a **constant**, several</span>
+<span class="sd">    are a **step**. A segment that will not flatten triggers a rate test — only a rate that</span>
+<span class="sd">    positively fits is a **drift**; otherwise the segments stand and the non-flat sd becomes a</span>
+<span class="sd">    resolution caveat (per-cast comparison noise, or possibly-hidden structure). *n_scanned*, when</span>
+<span class="sd">    given, is reported in the too-few message so a reader can tell "no clocks in these headers"</span>
+<span class="sd">    from "few casts present"; the cause of an empty result is not asserted here.</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="p">)</span>
+    <span class="n">scanned</span> <span class="o">=</span> <span class="n">n_scanned</span> <span class="k">if</span> <span class="n">n_scanned</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">n</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Split by what was measured, not assumed: no casts scanned is a mount/path problem;</span>
+        <span class="c1"># casts scanned but none carrying a pair means the headers are GPS-fed.</span>
+        <span class="k">if</span> <span class="n">scanned</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+                <span class="s2">"insufficient"</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">"no cast files found under the root."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+            <span class="s2">"no_clock_pair"</span><span class="p">,</span>
+            <span class="p">[],</span>
+            <span class="sa">f</span><span class="s2">"no cast carries a System/NMEA clock pair in the </span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> cast(s) scanned — "</span>
+            <span class="s2">"start_time is GPS-fed, so there is no acquisition-clock error to correct."</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">MIN_CASTS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+            <span class="s2">"insufficient"</span><span class="p">,</span>
+            <span class="p">[],</span>
+            <span class="sa">f</span><span class="s2">"only </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">scanned</span><span class="si">}</span><span class="s2"> cast(s) carry a clock pair — too few to classify."</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">segments</span> <span class="o">=</span> <span class="p">[</span><span class="n">_segment</span><span class="p">(</span><span class="n">run</span><span class="p">)</span> <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">_segment_runs</span><span class="p">(</span><span class="n">series</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">sd_seconds</span> <span class="o">&lt;=</span> <span class="n">QUANTISATION_SECONDS</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">):</span>
+        <span class="c1"># A segment did not flatten. That is only a *drift* if a rate positively fits; failing to</span>
+        <span class="c1"># flatten is not itself evidence of one (MSM142's rejected fit, OdB's noisy comparison).</span>
+        <span class="c1"># Otherwise the segments still stand as the verdict, with the non-flat sd carried as a</span>
+        <span class="c1"># resolution caveat rather than promoted to a different diagnosis.</span>
+        <span class="n">slope</span><span class="p">,</span> <span class="n">r2</span><span class="p">,</span> <span class="n">residual_sd</span><span class="p">,</span> <span class="n">total_change</span> <span class="o">=</span> <span class="n">_rate</span><span class="p">(</span><span class="n">series</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">residual_sd</span> <span class="o">&lt;=</span> <span class="n">_DRIFT_MAX_RESIDUAL_SD</span>
+            <span class="ow">and</span> <span class="n">r2</span> <span class="o">&gt;=</span> <span class="n">_DRIFT_MIN_R2</span>
+            <span class="ow">and</span> <span class="n">total_change</span> <span class="o">&gt;=</span> <span class="n">_DRIFT_MIN_CHANGE</span>
+        <span class="p">):</span>
+            <span class="n">evidence</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"slope </span><span class="si">{</span><span class="n">slope</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> s/day, R²=</span><span class="si">{</span><span class="n">r2</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, residual sd </span><span class="si">{</span><span class="n">residual_sd</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s"</span>
+            <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+                <span class="s2">"drift"</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">_segment</span><span class="p">(</span><span class="n">series</span><span class="p">)],</span>
+                <span class="sa">f</span><span class="s2">"clock drifts (</span><span class="si">{</span><span class="n">evidence</span><span class="si">}</span><span class="s2">) — a rate correction is NOT implemented, so the "</span>
+                <span class="s2">"stage-2 applier must refuse this verdict."</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">segments</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">seg</span> <span class="o">=</span> <span class="n">segments</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">caveat</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="n">seg</span><span class="o">.</span><span class="n">sd_seconds</span> <span class="o">&gt;</span> <span class="n">QUANTISATION_SECONDS</span><span class="p">:</span>
+            <span class="n">caveat</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"sd </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">sd_seconds</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> s exceeds the </span><span class="si">{</span><span class="n">QUANTISATION_SECONDS</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> s quantisation "</span>
+                <span class="s2">"— per-cast comparison uncertainty (likely NMEA-sentence latency), not structure."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+            <span class="s2">"constant"</span><span class="p">,</span>
+            <span class="n">segments</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"constant offset </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">offset_seconds</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> s (sd </span><span class="si">{</span><span class="n">seg</span><span class="o">.</span><span class="n">sd_seconds</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)."</span><span class="p">,</span>
+            <span class="n">caveat</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">levels</span> <span class="o">=</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"casts </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">cast_range</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">offset_seconds</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> s"</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span>
+    <span class="p">)</span>
+    <span class="n">boundaries</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">start</span><span class="si">:</span><span class="s2">%Y-%m-%d</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="n">non_flat</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">sd_seconds</span> <span class="o">&gt;</span> <span class="n">QUANTISATION_SECONDS</span><span class="p">]</span>
+    <span class="n">caveat</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">non_flat</span><span class="p">:</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">cast_range</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">non_flat</span><span class="p">)</span>
+        <span class="n">caveat</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"segment(s) </span><span class="si">{</span><span class="n">ranges</span><span class="si">}</span><span class="s2"> have sd above the </span><span class="si">{</span><span class="n">QUANTISATION_SECONDS</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> s quantisation — "</span>
+            <span class="s2">"more structure may be present."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ClockVerdict</span><span class="p">(</span>
+        <span class="s2">"step"</span><span class="p">,</span>
+        <span class="n">segments</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"step, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">segments</span><span class="p">)</span><span class="si">}</span><span class="s2"> segments — </span><span class="si">{</span><span class="n">levels</span><span class="si">}</span><span class="s2"> (changepoint(s) </span><span class="si">{</span><span class="n">boundaries</span><span class="si">}</span><span class="s2">)."</span><span class="p">,</span>
+        <span class="n">caveat</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

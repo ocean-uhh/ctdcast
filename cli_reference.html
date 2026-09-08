@@ -1,0 +1,531 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLI reference &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=683873e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ctdcast processing framework" href="processing_framework.html" />
+    <link rel="prev" title="About the demo report" href="demo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CLI reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-draft">ctdcast draft</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-inspect">ctdcast inspect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-init">ctdcast init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-validate">ctdcast validate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-process">ctdcast process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-convert-deprecated">ctdcast convert (deprecated)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-report">ctdcast report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-run">ctdcast run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-clock">ctdcast clock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ctdcast-list">ctdcast list</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CLI reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/cli_reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cli-reference">
+<span id="id1"></span><h1>CLI reference<a class="headerlink" href="#cli-reference" title="Link to this heading"></a></h1>
+<p>All subcommands are available via the <code class="docutils literal notranslate"><span class="pre">ctdcast</span></code> entry point.
+Run <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">&lt;command&gt;</span> <span class="pre">--help</span></code> for the full flag list at any time.</p>
+<hr class="docutils" />
+<section id="ctdcast-draft">
+<h2>ctdcast draft<a class="headerlink" href="#ctdcast-draft" title="Link to this heading"></a></h2>
+<p>Quick-look pipeline: convert raw CNV files to station pages + index + map in one step.
+No <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> required.  Sections and time series are skipped (require <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code>).</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast draft &lt;cnv_dir&gt; [out_dir] [options]
+
+positional arguments:
+  cnv_dir          Directory of raw SBE CNV files (required)
+  out_dir          Output directory (default: ./ctd_draft/)
+
+options:
+  --cruise ID      Cruise ID shown in the report header
+                   (default: read from nc file attrs, fallback 'draft')
+  --ship NAME      Ship name shown in the report header
+  --keep-nc DIR    Save converted netCDF files to DIR instead of discarding after the run
+  --pattern GLOB   Filename glob selecting CNV files within cnv_dir (default: '*.cnv')
+  --sal MIN MAX    Salinity range for plot trimming: records with salinity_1 outside
+                   it are excluded from the station plots.  The netCDF files are not
+                   modified — this is a plotting filter only
+  --trim-soak      Strip the pre-soak window from each cast before plotting: at least
+                   the first 60 s (pump activation), and any records up to the last
+                   time the CTD was within 2 dbar of the surface
+  --force          Regenerate existing pages regardless of modification times
+  --dry-run        Print what would be done without writing any files
+</pre></div>
+</div>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">seasenselib</span></code> (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">seasenselib</span></code>) for CNV conversion.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span> <span class="o">./</span><span class="n">out</span><span class="o">/</span> <span class="o">--</span><span class="n">cruise</span> <span class="n">odb2026</span> <span class="o">--</span><span class="n">ship</span> <span class="n">RRS_Discovery</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">nc</span> <span class="o">./</span><span class="n">nc_out</span><span class="o">/</span> <span class="o">--</span><span class="n">force</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span> <span class="o">--</span><span class="n">dry</span><span class="o">-</span><span class="n">run</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-inspect">
+<h2>ctdcast inspect<a class="headerlink" href="#ctdcast-inspect" title="Link to this heading"></a></h2>
+<p>Render a data-inventory page for a <strong>single</strong> netCDF file: every variable with its
+dimensions, units and attributes.  No <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> required.  Useful for checking
+what a stage actually wrote — which QC flags are present, whether an attribute
+survived a stage, what the compiled product contains.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast inspect &lt;nc_file&gt; [options]
+
+positional arguments:
+  nc_file          The netCDF file to inventory
+
+options:
+  -o, --out PATH   Output HTML path
+                   (default: &lt;nc_file stem&gt;_inventory.html, beside the input)
+  --title TEXT     Page title (default: the file name)
+</pre></div>
+</div>
+<p>Unlike <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">clock</span></code>, which is cruise-scope and reads every stage-1 file, this
+looks at one file and writes one page.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">inspect</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">ctd_nc</span><span class="o">/</span><span class="n">stage1</span><span class="o">/</span><span class="n">msm_142_1_001_stage1</span><span class="o">.</span><span class="n">nc</span>
+<span class="n">ctdcast</span> <span class="n">inspect</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">ctd_nc</span><span class="o">/</span><span class="n">profiles</span><span class="o">.</span><span class="n">nc</span> <span class="o">-</span><span class="n">o</span> <span class="n">profiles_inventory</span><span class="o">.</span><span class="n">html</span>
+<span class="n">ctdcast</span> <span class="n">inspect</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">ctd_nc</span><span class="o">/</span><span class="n">profiles</span><span class="o">.</span><span class="n">nc</span> <span class="o">--</span><span class="n">title</span> <span class="s2">"MSM142 compiled product"</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-init">
+<h2>ctdcast init<a class="headerlink" href="#ctdcast-init" title="Link to this heading"></a></h2>
+<p>Write a commented template <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> (and optionally auto-detect
+sections/timeseries groups from <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code>) in the target directory.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast init [dest] [options]
+
+positional arguments:
+  dest                  Destination directory or explicit .yaml path (default: .)
+
+options:
+  --sections            Also write a template ctd_groupings.yaml
+  --interactive         Prompt for all data paths and cruise metadata,
+                        then offer to auto-detect sections/timeseries
+  --auto-section        Re-run section/timeseries detection from an existing
+                        config and overwrite ctd_groupings_draft.yaml.
+                        Reads profiles_nc from the config; does not touch config.yaml.
+  --force               Overwrite existing files
+
+detection thresholds (used with --interactive or --auto-section):
+  --dx-diameter KM      Max inter-cast distance (km) within a repeat-station cluster (default: 1)
+  --dx-section KM       Inter-cast gap (km) that starts a new coarse group (default: 50)
+  --max-turn-deg DEG    Max heading change (°) within a directional run (default: 45)
+  --min-run-casts N     Min casts for a run to be kept as a section (default: 4, min: 3)
+  --max-section-casts N Safety cap: split runs longer than this (default: 25)
+</pre></div>
+</div>
+<p><strong>Detection algorithm</strong> (<code class="docutils literal notranslate"><span class="pre">--interactive</span></code> / <code class="docutils literal notranslate"><span class="pre">--auto-section</span></code>):</p>
+<ol class="arabic simple">
+<li><p>Coarse gap split on inter-cast distance &gt; <code class="docutils literal notranslate"><span class="pre">--dx-section</span></code>.</p></li>
+<li><p>Within each coarse group, find maximal sub-sequences where every consecutive
+heading change ≤ <code class="docutils literal notranslate"><span class="pre">--max-turn-deg</span></code> (stable-heading run detection).
+A backward-extension step adds the “approach station” when the ship arrives
+at the first section station from the section’s bearing direction.</p></li>
+<li><p>Remaining unclaimed casts are clustered by proximity: consecutive unclaimed
+casts within <code class="docutils literal notranslate"><span class="pre">--dx-diameter</span></code> of each other form a repeat-station cluster.</p></li>
+<li><p>Classification is by detection method: stable-heading runs → sections;
+diameter clusters → timeseries.</p></li>
+<li><p>Runs &gt; <code class="docutils literal notranslate"><span class="pre">--max-section-casts</span></code> are split into consecutive chunks.</p></li>
+</ol>
+<p>Output is <code class="docutils literal notranslate"><span class="pre">ctd_groupings_draft.yaml</span></code> (alongside <code class="docutils literal notranslate"><span class="pre">groupings_yaml</span></code> from the
+config, or in the config’s directory).  Review and rename to
+<code class="docutils literal notranslate"><span class="pre">ctd_groupings.yaml</span></code> before use.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">init</span>                          <span class="c1"># write config.yaml in current directory</span>
+<span class="n">ctdcast</span> <span class="n">init</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">cruise</span><span class="o">/</span>
+<span class="n">ctdcast</span> <span class="n">init</span> <span class="o">--</span><span class="n">sections</span>               <span class="c1"># also write a template ctd_groupings.yaml</span>
+<span class="n">ctdcast</span> <span class="n">init</span> <span class="o">--</span><span class="n">interactive</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">force</span>   <span class="c1"># guided setup with auto-detection</span>
+<span class="n">ctdcast</span> <span class="n">init</span> <span class="o">--</span><span class="n">auto</span><span class="o">-</span><span class="n">section</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">force</span>  <span class="c1"># re-detect sections only</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-validate">
+<h2>ctdcast validate<a class="headerlink" href="#ctdcast-validate" title="Link to this heading"></a></h2>
+<p>Validate config paths and data before the first run.  Does not write any files.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast validate &lt;config&gt; [options]
+
+positional arguments:
+  config           Path to config.yaml
+
+options:
+  --strict         Also check that all cast numbers referenced in
+                   ctd_groupings.yaml are present in ctd_root
+</pre></div>
+</div>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">validate</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>
+<span class="n">ctdcast</span> <span class="n">validate</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">strict</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-process">
+<h2>ctdcast process<a class="headerlink" href="#ctdcast-process" title="Link to this heading"></a></h2>
+<p>Run one or more pipeline stages, across every configured data source.  A stage
+runs for whichever sources are configured: with both CTD and LADCP paths set,
+<code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">1</span></code> ingests both (CNV → nc <em>and</em> <code class="docutils literal notranslate"><span class="pre">.mat</span></code> → nc) and <code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">profiles</span></code>
+compiles both (<code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> <em>and</em> <code class="docutils literal notranslate"><span class="pre">ladcp_profiles.nc</span></code>).  A source whose paths
+are absent is silently skipped.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast process &lt;config&gt; --stage {1,2,3,profiles} [more] [options]
+
+positional arguments:
+  config           Path to config.yaml
+
+required:
+  --stage ...      One or more of: 1, 2, 3, profiles.  Multiple values run in
+                   canonical order (1 → 2 → 3 → profiles) regardless of the
+                   order given.
+
+options:
+  --only N [N ...]  Restrict cast-scope stages (1, 2, 3) to these casts
+  --force           Overwrite existing output files
+  --dry-run         Print what would be done without writing any files
+  --gebco NC        GEBCO bathymetry for the profiles stage
+  --backend NAME    CTD conversion backend (default: seasenselib)
+  --pattern GLOB    Filename glob for CNV files (default: from config, else '*.cnv')
+
+stage 2 trim tuning (all optional; the defaults are the documented behaviour):
+  --near-surface-dbar D    Pressure threshold for the last near-surface crossing
+                           (default: 10 dbar)
+  --search-seconds S       Backward-crawl window for the pre-descent surface minimum
+                           (default: 20 s)
+  --deck-window-seconds S  Tail window for the on-deck reference pressure estimate
+                           (default: 20 s)
+  --margin-dbar D          Added to the on-deck median to form the cut threshold
+                           (default: 0.5 dbar)
+  --max-deck-dbar D        If the on-deck median exceeds this, no end-trim is applied
+                           (default: 20 dbar)
+</pre></div>
+</div>
+<p>A trim flag overrides the corresponding <code class="docutils literal notranslate"><span class="pre">processing.trim</span></code> key in the config for that
+run only; nothing is written back.  Use them to test a threshold before committing it
+to the config.</p>
+<p>Stage 1 ingests raw files to per-cast netCDF; stages 2 and 3 apply CTD soak/deck
+flagging and QC/calibration (LADCP has no stage 2 or 3); <code class="docutils literal notranslate"><span class="pre">profiles</span></code> compiles the
+per-cast files into the gridded products.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">process</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="mi">1</span>                <span class="c1"># ingest CTD + LADCP</span>
+<span class="n">ctdcast</span> <span class="n">process</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="n">profiles</span>   <span class="c1"># full pipeline</span>
+<span class="n">ctdcast</span> <span class="n">process</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="n">profiles</span>         <span class="c1"># compile products only</span>
+<span class="n">ctdcast</span> <span class="n">process</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="mi">1</span> <span class="o">--</span><span class="n">only</span> <span class="mi">42</span>      <span class="c1"># re-ingest one cast</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-convert-deprecated">
+<h2>ctdcast convert (deprecated)<a class="headerlink" href="#ctdcast-convert-deprecated" title="Link to this heading"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">convert</span></code> is deprecated — use <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">process</span> <span class="pre">--stage</span> <span class="pre">...</span></code>.
+<code class="docutils literal notranslate"><span class="pre">convert</span> <span class="pre">--ctd</span></code> → <code class="docutils literal notranslate"><span class="pre">process</span> <span class="pre">--stage</span> <span class="pre">1</span></code>; <code class="docutils literal notranslate"><span class="pre">convert</span> <span class="pre">--profiles</span></code> →
+<code class="docutils literal notranslate"><span class="pre">process</span> <span class="pre">--stage</span> <span class="pre">profiles</span></code>; <code class="docutils literal notranslate"><span class="pre">convert</span> <span class="pre">--ladcp</span></code> → <code class="docutils literal notranslate"><span class="pre">process</span> <span class="pre">--stage</span> <span class="pre">1</span> <span class="pre">profiles</span></code>.
+The command still runs, with a notice.</p>
+</div>
+<p>Convert raw data to netCDF inputs without generating HTML.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast convert &lt;config&gt; [options]
+
+positional arguments:
+  config           Path to config.yaml
+
+step selection (default: --profiles only if data.profiles_nc is configured):
+  --ctd            Convert per-cast CNV files to netCDF (requires data.cnv_dir in config)
+  --profiles       Compile per-cast netCDF files into profiles.nc
+  --ladcp          Convert LADCP .mat files and compile ladcp_profiles.nc
+
+options:
+  --backend NAME   CTD conversion backend (currently only 'seasenselib')
+  --pattern GLOB   Filename glob for CNV files (default: '*.cnv'); --ctd only
+  --only N         Convert only cast N (implies --ctd)
+  --force          Overwrite existing output files
+  --dry-run        Print what would be done without writing any files
+
+(The former ``--cast`` spelling still works as a deprecated alias for ``--only``.)
+</pre></div>
+</div>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">convert</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>                  <span class="c1"># build profiles.nc (default)</span>
+<span class="n">ctdcast</span> <span class="n">convert</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">ctd</span>            <span class="c1"># CNV → nc, then profiles.nc</span>
+<span class="n">ctdcast</span> <span class="n">convert</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">profiles</span>       <span class="c1"># rebuild profiles.nc only</span>
+<span class="n">ctdcast</span> <span class="n">convert</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">ctd</span> <span class="o">--</span><span class="n">only</span> <span class="mi">42</span>  <span class="c1"># convert one cast</span>
+<span class="n">ctdcast</span> <span class="n">convert</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">dry</span><span class="o">-</span><span class="n">run</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-report">
+<h2>ctdcast report<a class="headerlink" href="#ctdcast-report" title="Link to this heading"></a></h2>
+<p>Generate HTML pages from existing netCDF inputs.  Does not run any conversion.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast report &lt;config&gt; [options]
+
+positional arguments:
+  config           Path to config.yaml
+
+page selection (default: all page types enabled in config):
+  --casts          Generate per-cast pages
+  --sections       Generate section pages (requires profiles.nc and groupings_yaml)
+  --timeseries     Generate timeseries pages (requires profiles.nc and groupings_yaml)
+  --index          Generate navigation pages (index.html, casts.html, sections.html)
+  --map            Generate leaflet.html interactive map
+  --all            Generate every page type
+
+options:
+  --only N [N ...] Regenerate only the pages for cast N (one or more)
+  --force          Regenerate all pages regardless of modification times
+  --skip-existing  Skip pages whose HTML already exists (fill missing pages only)
+  --dry-run        Print what would be done without writing any files
+
+plotting (affect the figures only; no netCDF file is modified):
+  --sal MIN MAX    Salinity range for plot trimming: records with salinity_1
+                   outside it are excluded from the cast-page plots
+  --trim-soak      Strip the pre-soak window before plotting: at least the first
+                   60 s (pump activation), and any records up to the last time
+                   the CTD was within 2 dbar of the surface
+  --dbar-step N    Plot every Nth dbar level from profiles.nc in section and
+                   timeseries figures (default: 1, full resolution).  The
+                   compiled product always stores 1 dbar; this thins the plot,
+                   not the data
+  --drop-stub      Drop cast-page sections whose figures all failed to render.
+                   By default such a section stays visible as a warning, so a
+                   failed figure is noticed rather than silently absent
+
+The process exits non-zero if any requested page fails to build.
+The former ``--stations`` and ``--cast`` spellings still work as hidden,
+deprecated aliases for ``--casts`` and ``--only``; they emit a warning.
+</pre></div>
+</div>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">report</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>                   <span class="c1"># generate all enabled page types</span>
+<span class="n">ctdcast</span> <span class="n">report</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">casts</span>           <span class="c1"># cast pages only</span>
+<span class="n">ctdcast</span> <span class="n">report</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">only</span> <span class="mi">42</span> <span class="o">--</span><span class="n">force</span> <span class="c1"># rebuild one cast page</span>
+<span class="n">ctdcast</span> <span class="n">report</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">existing</span>   <span class="c1"># fill any missing pages</span>
+<span class="n">ctdcast</span> <span class="n">report</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">dry</span><span class="o">-</span><span class="n">run</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-run">
+<h2>ctdcast run<a class="headerlink" href="#ctdcast-run" title="Link to this heading"></a></h2>
+<p>Run the processing pipeline then the reports in one step (most common workflow).</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast run &lt;config&gt; [options]
+
+positional arguments:
+  config           Path to config.yaml
+
+options:
+  --stage ...      Stage(s) to run before reporting, across every configured
+                   source (default: all — 1 2 3 profiles). E.g. --stage profiles
+                   to only compile and report.
+  --only N [N ...] Process only these cast(s): cast-scope stages (1 2 3) run for
+                   them and only their pages rebuild; profiles is skipped
+  --force          Force regeneration of all outputs regardless of modification times
+  --skip-existing  Skip pages whose HTML already exists
+  --dry-run        Print what would be done without writing any files
+  --trim-soak      Strip pre-soak records from each cast before plotting (see
+                   ``report --trim-soak``)
+</pre></div>
+</div>
+<p>Equivalent to <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">process</span> <span class="pre">--stage</span> <span class="pre">...</span></code> then <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">report</span></code>.  <code class="docutils literal notranslate"><span class="pre">run</span></code> is
+the recommended everyday command: by default it runs every stage (ingest → QC →
+compile) across every configured source, then builds the HTML — so it works from
+raw on a fresh checkout.  Narrow with <code class="docutils literal notranslate"><span class="pre">--stage</span></code> when you do not want the full
+pipeline (<code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">profiles</span></code> compiles and reports without re-ingesting raw).  Use
+<code class="docutils literal notranslate"><span class="pre">report</span></code> when the compiled products are already current and you only want to
+regenerate pages.  (The former <code class="docutils literal notranslate"><span class="pre">--cast</span></code> spelling is a deprecated alias for
+<code class="docutils literal notranslate"><span class="pre">--only</span></code>; the former <code class="docutils literal notranslate"><span class="pre">--ctd</span></code> flag is deprecated — <code class="docutils literal notranslate"><span class="pre">run</span></code> now ingests raw by
+default.)</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>                      <span class="c1"># full pipeline (all stages) + reports</span>
+<span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="n">profiles</span>     <span class="c1"># compile + report only (skip ingest)</span>
+<span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">stage</span> <span class="mi">1</span> <span class="n">profiles</span>   <span class="c1"># ingest + compile + report (skip QC)</span>
+<span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">force</span>              <span class="c1"># rebuild everything</span>
+<span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">only</span> <span class="mi">42</span>            <span class="c1"># reprocess + rebuild one cast page</span>
+<span class="n">ctdcast</span> <span class="n">run</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">dry</span><span class="o">-</span><span class="n">run</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-clock">
+<h2>ctdcast clock<a class="headerlink" href="#ctdcast-clock" title="Link to this heading"></a></h2>
+<p>Diagnose the acquisition-clock error for a cruise.  Each SBE cast records two
+clocks in its header — the acquisition PC’s System clock and the GPS-derived NMEA
+clock — and their difference is the offset by which the recorded <code class="docutils literal notranslate"><span class="pre">time</span></code> may be
+wrong.  <code class="docutils literal notranslate"><span class="pre">clock</span></code> reads that pair off every stage-1 cast, classifies the cruise,
+and prints a verdict, the coordinate-source line, a per-segment table, and a
+paste-ready <code class="docutils literal notranslate"><span class="pre">processing.clock</span></code> block.  It writes nothing — applying a correction
+is a separate stage-2 step.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast clock &lt;config&gt; [options]
+
+positional arguments:
+  config           Path to config.yaml (the CTD root is read from data.ctd_root)
+
+options:
+  -f, --figure PNG Also write the offset-vs-cast figure to this path
+</pre></div>
+</div>
+<p>The verdict is one of <code class="docutils literal notranslate"><span class="pre">constant</span></code>, <code class="docutils literal notranslate"><span class="pre">step</span></code> (one row per level, a changepoint at
+each boundary), <code class="docutils literal notranslate"><span class="pre">drift</span></code> (only when a rate positively fits — the note quotes
+slope, R² and residual sd), <code class="docutils literal notranslate"><span class="pre">no_clock_pair</span></code> or <code class="docutils literal notranslate"><span class="pre">insufficient</span></code>.  The
+coordinate-source line is orthogonal to the verdict: a cruise can show a real
+offset yet need no correction because its <code class="docutils literal notranslate"><span class="pre">time</span></code> coordinate was already anchored
+to GPS.  The suggested block is shown only when the coordinate is on the System
+clock, and its sign is emitted as a comment so it is copied, never hand-computed.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="n">clock</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>                       <span class="c1"># print the verdict + suggested config</span>
+<span class="n">ctdcast</span> <span class="n">clock</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span> <span class="o">--</span><span class="n">figure</span> <span class="n">clock</span><span class="o">.</span><span class="n">png</span>    <span class="c1"># also write the offset-vs-cast figure</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="ctdcast-list">
+<h2>ctdcast list<a class="headerlink" href="#ctdcast-list" title="Link to this heading"></a></h2>
+<p>Show what the institution, platform and role registries hold, so you do not have to
+open a YAML file inside <code class="docutils literal notranslate"><span class="pre">site-packages</span></code> to find a slug.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ctdcast list {institutions|platforms|roles} [CONFIG] [options]
+
+positional arguments:
+  registry         Which registry to list; omit to see the three names.
+  config           Optional config.yaml — also shows what this cruise adds.
+
+options:
+  --search TEXT    Case-insensitive filter across slug and name.
+  --vocabulary N   For `roles`: show one vocabulary only (C89, G04, C59, W08).
+</pre></div>
+</div>
+<p>Give a <code class="docutils literal notranslate"><span class="pre">CONFIG</span></code> to see what <em>your</em> cruise adds on top of the shipped defaults: a
+<code class="docutils literal notranslate"><span class="pre">cruise_info.institutions_file</span></code> and inline <code class="docutils literal notranslate"><span class="pre">cruise_info.institutions</span></code> entries, and an
+inline <code class="docutils literal notranslate"><span class="pre">cruise_info.platform</span></code> vessel.  The <code class="docutils literal notranslate"><span class="pre">Source</span></code> column says where each entry came
+from (<code class="docutils literal notranslate"><span class="pre">packaged</span></code>, <code class="docutils literal notranslate"><span class="pre">user</span></code>, the config file, or <code class="docutils literal notranslate"><span class="pre">inline</span></code>), so you can tell “my entry did
+not load” from “you did not give me a config”.  <code class="docutils literal notranslate"><span class="pre">list</span> <span class="pre">platforms</span></code> also prints the
+<code class="docutils literal notranslate"><span class="pre">ambiguous_slugs</span></code> and <code class="docutils literal notranslate"><span class="pre">forbidden_codes</span></code> traps with the reason each is refused; <code class="docutils literal notranslate"><span class="pre">list</span>
+<span class="pre">roles</span></code> groups the four vocabularies by axis (person vs institution) and marks each axis’s
+default.</p>
+<p><strong>Examples</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ctdcast</span> <span class="nb">list</span>                              <span class="c1"># the three registries</span>
+<span class="n">ctdcast</span> <span class="nb">list</span> <span class="n">institutions</span> <span class="n">config</span><span class="o">.</span><span class="n">yaml</span>     <span class="c1"># shipped + user + this config's entries</span>
+<span class="n">ctdcast</span> <span class="nb">list</span> <span class="n">platforms</span> <span class="o">--</span><span class="n">search</span> <span class="n">meteor</span>    <span class="c1"># filter by slug or name</span>
+<span class="n">ctdcast</span> <span class="nb">list</span> <span class="n">roles</span> <span class="o">--</span><span class="n">vocabulary</span> <span class="n">W08</span>        <span class="c1"># one vocabulary</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="demo.html" class="btn btn-neutral float-left" title="About the demo report" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="processing_framework.html" class="btn btn-neutral float-right" title="ctdcast processing framework" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

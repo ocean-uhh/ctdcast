@@ -1,0 +1,650 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data files (netCDF) &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=683873e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Report output" href="report_output.html" />
+    <link rel="prev" title="ctd_groupings.yaml" href="ctd_groupings.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data files (netCDF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#layout">Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#best-available-selection">Best-available selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#per-cast-files">Per-cast files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-identity-and-lineage">File identity and lineage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#processing-state">Processing state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#profiles-file-ctd-root-profiles-nc">Profiles file (<code class="docutils literal notranslate"><span class="pre">&lt;ctd_root&gt;/profiles.nc</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#where-each-attribute-is-written">Where each attribute is written</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#lifting-is-strict">Lifting is strict</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-correction-ledger">The correction ledger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensor-provenance">Sensor provenance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#where-it-is-built-and-two-kinds-of-provenance">Where it is built, and two kinds of provenance</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Data files (netCDF)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/data_files.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="data-files-netcdf">
+<span id="data-files"></span><h1>Data files (netCDF)<a class="headerlink" href="#data-files-netcdf" title="Link to this heading"></a></h1>
+<section id="layout">
+<h2>Layout<a class="headerlink" href="#layout" title="Link to this heading"></a></h2>
+<p>Each instrument has one <strong>root</strong> that ctdcast owns — <code class="docutils literal notranslate"><span class="pre">ctd_root</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ladcp_root</span></code> in the config’s <code class="docutils literal notranslate"><span class="pre">data:</span></code> block. Inside it, one directory per
+processing stage, and the compiled product at the top:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;ctd_root&gt;/
+    stage1/  mixsed2_017_stage1.nc     raw CNV converted
+    stage2/  mixsed2_017_stage2.nc     + soak / back-on-deck flags
+    stage3/  mixsed2_017_stage3.nc     + QC and calibration
+    profiles.nc                        compiled product
+
+&lt;ladcp_root&gt;/
+    stage1/  ladcp_017_stage1.nc       LADCP has one stage
+    ladcp_profiles.nc
+</pre></div>
+</div>
+<p>Stages are <strong>non-destructive</strong>: each reads its predecessor and writes a new file,
+so a stage can be re-run without redoing the ones before it, and the full lineage
+stays on disk. See <a class="reference internal" href="processing_framework.html"><span class="doc">ctdcast processing framework</span></a> for what each stage does.</p>
+<p><strong>Stage 1 is faithful; stage 2 is curated.</strong> Stage 1 is a faithful translation —
+<em>every</em> column in the CNV reaches the stage-1 file, dropping nothing. SeaBird-computed
+quantities (density, depth, sound velocity, <code class="docutils literal notranslate"><span class="pre">timeJ</span></code>/<code class="docutils literal notranslate"><span class="pre">timeS</span></code>, the per-scan flag,
+oxygen saturation) are kept under an <code class="docutils literal notranslate"><span class="pre">sbe_</span></code> prefix so they cannot be mistaken for
+ctdcast’s own (ctdcast writes <code class="docutils literal notranslate"><span class="pre">sigma0</span></code> via TEOS-10, not SBE density); an unrecognised
+channel is kept under its source name and warned about once per cast (so a rig with an
+unmodelled channel warns on every cast until a <code class="docutils literal notranslate"><span class="pre">VARIABLES</span></code> entry is added). Stage 2 then removes the
+<code class="docutils literal notranslate"><span class="pre">sbe_</span></code> set by default — the drop is deliberate and recorded (a <code class="docutils literal notranslate"><span class="pre">history</span></code> line and a
+<code class="docutils literal notranslate"><span class="pre">dropped_channels</span></code> attribute), driven by the config <code class="docutils literal notranslate"><span class="pre">trim.drop_sbe:</span></code> list rather than a
+flag so the output is reproducible from the config alone. Stage-2 output is therefore not a
+strict superset of stage 1: the stage-1 file is the faithful record, and every drop is written
+down (a <code class="docutils literal notranslate"><span class="pre">history</span></code> line and the <code class="docutils literal notranslate"><span class="pre">dropped_channels</span></code> attribute) so a removed channel is always
+traceable to the stage-1 file that still holds it.</p>
+<p>The stage appears in the <strong>directory and the filename</strong>. The redundancy is
+deliberate: a file copied out of <code class="docutils literal notranslate"><span class="pre">stage2/</span></code> still says what it is, whereas
+provenance living only in the path is lost the first time someone moves a file.
+For that reason <code class="docutils literal notranslate"><span class="pre">parse_stage</span></code> reads the suffix from the filename and does not
+trust the parent directory.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A directory of <strong>unsuffixed</strong> per-cast files, written before the stage layout
+existed, is still read — as stage 1. Point <code class="docutils literal notranslate"><span class="pre">ctd_root</span></code> at it and nothing
+needs regenerating.</p>
+</div>
+</section>
+<section id="best-available-selection">
+<h2>Best-available selection<a class="headerlink" href="#best-available-selection" title="Link to this heading"></a></h2>
+<p>Anything <em>reading</em> per-cast files — <code class="docutils literal notranslate"><span class="pre">build_profiles</span></code>, the report — takes the
+highest stage present for each cast: stage 3 if it exists, else stage 2, else
+stage 1. So a cruise part-way through processing compiles honestly rather than
+failing, and casts may legitimately sit at different stages.</p>
+<p>Anything <em>writing</em> is stricter: a stage reads <strong>only</strong> its immediate predecessor
+(stage 3 from stage 2, never from stage 1). A missing predecessor skips that cast
+with a warning. The asymmetry is deliberate — <code class="docutils literal notranslate"><span class="pre">mixsed2_017_stage3.nc</span></code> must mean
+one thing, and if stage 3 could silently consume stage 1 the same filename would
+sometimes mean “QC’d, soak flagged” and sometimes “QC’d, not soak flagged”.</p>
+<p>Cast identity is the <code class="docutils literal notranslate"><span class="pre">(number,</span> <span class="pre">suffix)</span></code> pair, so <code class="docutils literal notranslate"><span class="pre">017</span></code> and <code class="docutils literal notranslate"><span class="pre">017b</span></code> are
+distinct events rather than one cast listed twice.</p>
+</section>
+<section id="per-cast-files">
+<h2>Per-cast files<a class="headerlink" href="#per-cast-files" title="Link to this heading"></a></h2>
+<p>Each file covers one CTD cast.  The required dimension and variables are:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code> (dim)</p></td>
+<td><p>Time coordinate (1-D, one value per scan).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pressure</span></code></p></td>
+<td><p>Sea pressure in dbar.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_2</span></code></p></td>
+<td><p>In-situ temperature in °C (ITS-90). Plain name for single-sensor instruments; <code class="docutils literal notranslate"><span class="pre">_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code> suffix for dual-sensor rigs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_salinity</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_2</span></code></p></td>
+<td><p>Practical salinity (PSU).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_oxygen</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_1</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_2</span></code></p></td>
+<td><p>Dissolved oxygen in µmol kg⁻¹.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_fluor</span></code></p></td>
+<td><p>Fluorescence in mg m⁻³ (chlorophyll-a equivalent; 1 mg m⁻³ = 1 µg L⁻¹).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_turbidity</span></code></p></td>
+<td><p>Turbidity in NTU.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_altimeter</span></code></p></td>
+<td><p>Altimeter distance to seafloor in m.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">conductivity_1</span></code> / <code class="docutils literal notranslate"><span class="pre">conductivity_2</span></code></p></td>
+<td><p>Electrical conductivity in mS cm⁻¹ (no CCHDO equivalent; keeps <code class="docutils literal notranslate"><span class="pre">_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code> suffix always).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transmissometer</span></code></p></td>
+<td><p>Beam transmittance in % (WET Labs C-Star; no CCHDO equivalent).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">par</span></code></p></td>
+<td><p>Photosynthetically active radiation in µmol photons m⁻² s⁻¹ (Biospherical/Licor/Chelsea).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">spar</span></code></p></td>
+<td><p>Surface PAR in µmol photons m⁻² s⁻¹ (deck-mounted reference sensor).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">volt{N}_raw</span></code></p></td>
+<td><p>Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. <code class="docutils literal notranslate"><span class="pre">N</span></code> is the zero-based voltage channel index.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Global attributes: cruise identity (<code class="docutils literal notranslate"><span class="pre">cruise</span></code>, <code class="docutils literal notranslate"><span class="pre">platform_*</span></code>, <code class="docutils literal notranslate"><span class="pre">expocode</span></code>),
+<code class="docutils literal notranslate"><span class="pre">raw_filename</span></code>, <code class="docutils literal notranslate"><span class="pre">raw_metadata</span></code>, a stamped <code class="docutils literal notranslate"><span class="pre">history</span></code>, and the upstream
+correction ledger (<code class="docutils literal notranslate"><span class="pre">sbe_*</span></code>, <code class="docutils literal notranslate"><span class="pre">correction_*</span></code>, <code class="docutils literal notranslate"><span class="pre">time_coordinate_source</span></code>,
+<code class="docutils literal notranslate"><span class="pre">time_clock_offset_seconds</span></code>). Each is described in the table below.</p>
+</section>
+<section id="file-identity-and-lineage">
+<h2>File identity and lineage<a class="headerlink" href="#file-identity-and-lineage" title="Link to this heading"></a></h2>
+<p>Every file ctdcast writes carries a <code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> (a UUID4, ACDD/OceanSITES
+convention) and, from stage 2 on, a <code class="docutils literal notranslate"><span class="pre">source_tracking_id</span></code> naming the file it was made
+from — so the chain back to the raw CNV is readable from any single output.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> answers <em>which instance of this file this is</em>, <strong>not</strong> <em>whether the
+content changed</em>. It is <strong>not a content hash</strong>: a fresh id is written on <strong>every</strong> write,
+so a re-run of stage 3 produces a new id even if nothing else moved. Stability would be the
+bug — a stable id could not detect a rewrite.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">source_tracking_id</span></code> (stage 2, stage 3) holds the <code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> of the stage file that
+was read. In <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> it is a per-<code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> variable, naming the source cast file
+per profile (the compiled file has its own <code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> global attribute).</p></li>
+<li><p>Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
+attribute instead — <code class="docutils literal notranslate"><span class="pre">source_cnv</span></code> for CTD, <code class="docutils literal notranslate"><span class="pre">source_mat</span></code> for LADCP.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">processing_stage</span></code> (<code class="docutils literal notranslate"><span class="pre">1</span></code>/<code class="docutils literal notranslate"><span class="pre">2</span></code>/<code class="docutils literal notranslate"><span class="pre">3</span></code>) records the stage in the file itself, not only in
+the filename, so a file copied out of its stage directory still declares what it is — the
+form a cross-package consumer (caldip) reads.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cast_id</span></code> records the cast identity (the canonical zero-padded form, e.g. <code class="docutils literal notranslate"><span class="pre">011</span></code> or
+<code class="docutils literal notranslate"><span class="pre">011b</span></code>) in the file for the same reason; it is stamped at stage 1 and carried forward.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">date_created</span></code> is set once (first write) and preserved across re-runs; <code class="docutils literal notranslate"><span class="pre">date_modified</span></code>
+moves on every write. So a stage-3 rewrite records <em>when</em> it was rewritten without resetting
+the creation time.</p></li>
+</ul>
+<p>To read the best-available ctdcast file per cast from another package, call
+<code class="docutils literal notranslate"><span class="pre">ctdcast.select_best_available(root)</span></code> (stage 3, else stage 2, else stage 1) rather than
+reimplementing the precedence — see <a class="reference internal" href="api.html"><span class="doc">Python API</span></a>.</p>
+</section>
+<section id="processing-state">
+<h2>Processing state<a class="headerlink" href="#processing-state" title="Link to this heading"></a></h2>
+<p>Two OceanSITES fields say what state a file is in, using that standard’s own vocabulary.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data_mode</span></code> (reference table 4) is a <strong>global</strong> attribute on every file: <code class="docutils literal notranslate"><span class="pre">P</span></code>
+provisional (the default — some processing may have been done, but the file is not the
+product of record), <code class="docutils literal notranslate"><span class="pre">D</span></code> delayed-mode (all calibrations and QC applied), <code class="docutils literal notranslate"><span class="pre">M</span></code> mixed.
+<code class="docutils literal notranslate"><span class="pre">D</span></code> is <strong>declared, never inferred</strong>: it comes only from <code class="docutils literal notranslate"><span class="pre">cruise_info.data_mode:</span> <span class="pre">D</span></code> in
+the config, because no code can know that <em>every</em> calibration a cruise needed was applied.
+A quick-look (<code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">draft</span></code>) file is always <code class="docutils literal notranslate"><span class="pre">P</span></code>. In <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> the global value
+is <code class="docutils literal notranslate"><span class="pre">M</span></code> only when the compiled casts genuinely differ, and a per-<code class="docutils literal notranslate"><span class="pre">N_PROF</span></code>
+<code class="docutils literal notranslate"><span class="pre">source_data_mode</span></code> variable then says which profile is in which mode; casts merely compiled
+from different
+<em>stages</em> do not make the file <code class="docutils literal notranslate"><span class="pre">M</span></code> (stages 1–3 are all provisional — <code class="docutils literal notranslate"><span class="pre">source_stage</span></code>
+records the stage difference). <code class="docutils literal notranslate"><span class="pre">data_mode_meaning</span></code> always accompanies it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">processing_level</span></code> (reference table 3) is a <strong>per-variable</strong> attribute recording what has
+been done to that variable, using table 3’s strings verbatim:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Instrument</span> <span class="pre">data</span> <span class="pre">that</span> <span class="pre">has</span> <span class="pre">been</span> <span class="pre">converted</span> <span class="pre">to</span> <span class="pre">geophysical</span> <span class="pre">values</span></code> — stamped at stage 1 on
+every <strong>measured</strong> channel (temperature, conductivity, pressure, oxygen, fluorescence,
+turbidity, altimeter), identified by its link to a sensor in the CNV <code class="docutils literal notranslate"><span class="pre">&lt;Sensors&gt;</span></code> block.
+<strong>Computed</strong> channels (<code class="docutils literal notranslate"><span class="pre">ctd_salinity_*</span></code>, density, …) do not carry it: they were derived
+from already-converted inputs, never instrument data. Absence is not “raw” — table 3 has an
+explicit raw value; absence means <em>not stated</em>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Ranges</span> <span class="pre">applied,</span> <span class="pre">bad</span> <span class="pre">data</span> <span class="pre">flagged</span></code> — stage-2 soak/deck flags and stage-3 gross-range and
+spike tests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Post-recovery</span> <span class="pre">calibrations</span> <span class="pre">have</span> <span class="pre">been</span> <span class="pre">applied</span></code> — a stage-3 conductivity calibration; it
+<strong>propagates</strong> to re-derived salinity, whose values now embody the calibration.</p></li>
+</ul>
+<p>When several apply to one variable they are joined with <code class="docutils literal notranslate"><span class="pre">&quot;;</span> <span class="pre">&quot;</span></code> in the order applied (comma
+is unusable — <code class="docutils literal notranslate"><span class="pre">Ranges</span> <span class="pre">applied,</span> <span class="pre">bad</span> <span class="pre">data</span> <span class="pre">flagged</span></code> contains one), so the attribute doubles as
+the procedure sequence. The list is an ordered <strong>set</strong>: re-running a stage never duplicates a
+value. The rule behind the split is that a value-changing procedure (calibration, flagging)
+propagates to variables derived from the changed inputs, while an origin claim (conversion)
+does not. Spelling is lowercase <code class="docutils literal notranslate"><span class="pre">processing_level</span></code> throughout, matching the <code class="docutils literal notranslate"><span class="pre">&lt;PARAM&gt;:</span></code>
+template; do not “correct” a file to a capitalised variant from a stray manual example.</p>
+<p>The compiled <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> carries the per-variable <code class="docutils literal notranslate"><span class="pre">processing_level</span></code> too, so the archive
+is interpretable without the stage files: for each variable it is the value the compiled casts
+agree on, or — where they differ — an explicit “mixed across casts” marker, never a union of
+their sentences (a union would claim a procedure on a cast that never had it). The per-profile
+treatment stays reachable through <code class="docutils literal notranslate"><span class="pre">source_stage</span></code> / <code class="docutils literal notranslate"><span class="pre">source_data_mode</span></code> /
+<code class="docutils literal notranslate"><span class="pre">source_tracking_id</span></code>.</p>
+</section>
+<section id="profiles-file-ctd-root-profiles-nc">
+<h2>Profiles file (<code class="docutils literal notranslate"><span class="pre">&lt;ctd_root&gt;/profiles.nc</span></code>)<a class="headerlink" href="#profiles-file-ctd-root-profiles-nc" title="Link to this heading"></a></h2>
+<p>Compiled on a 1 dbar pressure grid, dimensions <code class="docutils literal notranslate"><span class="pre">N_PROF</span> <span class="pre">×</span> <span class="pre">pressure</span></code>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cast_number</span></code></p></td>
+<td><p>Integer cast number.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cast_suffix</span></code></p></td>
+<td><p>Letter suffix for a repeated cast (<code class="docutils literal notranslate"><span class="pre">&quot;b&quot;</span></code>), empty otherwise. Identity is
+the <code class="docutils literal notranslate"><span class="pre">(cast_number,</span> <span class="pre">cast_suffix)</span></code> pair.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">source_stage</span></code></p></td>
+<td><p>Which processing stage this profile was compiled from — <code class="docutils literal notranslate"><span class="pre">int8</span></code> with
+<code class="docutils literal notranslate"><span class="pre">flag_values</span></code>/<code class="docutils literal notranslate"><span class="pre">flag_meanings</span></code>, the same idiom as the QARTOD flags:
+<code class="docutils literal notranslate"><span class="pre">1</span></code> converted, <code class="docutils literal notranslate"><span class="pre">2</span></code> soak flagged, <code class="docutils literal notranslate"><span class="pre">3</span></code> QC and calibration, and <code class="docutils literal notranslate"><span class="pre">0</span></code>
+<em>unknown</em>. <code class="docutils literal notranslate"><span class="pre">0</span></code> means the source was an unsuffixed file read through the
+flat-layout shim, which does not state its own stage — recorded as unknown
+rather than assumed to be 1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cast_direction</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;down&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;up&quot;</span></code> (<code class="docutils literal notranslate"><span class="pre">cast_type</span></code> is a deprecated alias for the same values).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">latitude</span></code></p></td>
+<td><p>Latitude in decimal degrees north.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">longitude</span></code></p></td>
+<td><p>Longitude in decimal degrees east.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time_start</span></code></p></td>
+<td><p>Start time of the cast (datetime64).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time_end</span></code></p></td>
+<td><p>End time of the cast (datetime64).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code></p></td>
+<td><p>In-situ temperature on the 1 dbar grid.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_salinity</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_salinity_1</span></code></p></td>
+<td><p>Practical salinity on the 1 dbar grid.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ctd_oxygen</span></code> / <code class="docutils literal notranslate"><span class="pre">ctd_oxygen_1</span></code></p></td>
+<td><p>Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Each cast contributes <strong>two</strong> profiles — downcast and upcast — so <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> is
+twice the cast count. The LADCP product has one profile per cast, so the two
+files’ <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> axes do not align; join on <code class="docutils literal notranslate"><span class="pre">(cast_number,</span> <span class="pre">cast_suffix)</span></code>
+rather than by index.</p>
+<p>The pressure coordinate is the <strong>bin centre</strong>, so a binned value sits at the mean
+depth of the samples it averages rather than at the bin’s shallow edge.</p>
+<p>Samples flagged QARTOD suspect (<code class="docutils literal notranslate"><span class="pre">3</span></code>) or fail (<code class="docutils literal notranslate"><span class="pre">4</span></code>) — from the stage-2 soak /
+back-on-deck trim and the stage-3 gross-range and spike tests — are dropped before
+binning, so flagged data does not enter the bin means. Each science variable
+records <code class="docutils literal notranslate"><span class="pre">qc_input_samples</span></code> (finite input samples) and <code class="docutils literal notranslate"><span class="pre">qc_excluded_samples</span></code>
+(dropped); the netCDF inventory page reports these per variable as a percentage of
+pre-binning samples, so the figure is not confounded by binning’s own reduction in
+point count. Note the soak/deck trim flags the same scans on <em>every</em> variable, so a
+variable can be excluded here without its own gross-range or spike test firing.</p>
+</section>
+<section id="where-each-attribute-is-written">
+<h2>Where each attribute is written<a class="headerlink" href="#where-each-attribute-is-written" title="Link to this heading"></a></h2>
+<p>A fact is attached at the earliest stage at which it is <em>true</em>, so a
+per-cast stage file is self-describing and the compiled product mostly
+<strong>inherits</strong> rather than <strong>originates</strong>. The test is not “is it knowable at stage
+1” but “can it still change after the ship docks” — a value written into 200
+frozen stage files and then edited in config is a stale copy in 200 places.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 30.0%" />
+<col style="width: 48.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Examples</p></th>
+<th class="head"><p>Where, and why</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Identity</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cruise</span></code>, <code class="docutils literal notranslate"><span class="pre">platform_*</span></code>, <code class="docutils literal notranslate"><span class="pre">expocode</span></code></p></td>
+<td><p>Written at <strong>stage 1</strong> on every per-cast file, and lifted unchanged into
+the compiled products. Fixed the moment a cast is taken, and a file copied
+out of its directory must still say which cruise and which ship.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Derived from data</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geospatial_*</span></code>, <code class="docutils literal notranslate"><span class="pre">time_coverage_*</span></code>, vertical bounds</p></td>
+<td><p><strong>Computed at every level.</strong> Not moved early: per-cast bounds describe
+that cast, compiled bounds describe the cruise. Same function, different
+scope.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Authored, and revisable</strong></p></td>
+<td><p>contributors, <code class="docutils literal notranslate"><span class="pre">license</span></code>, <code class="docutils literal notranslate"><span class="pre">embargo</span></code>, <code class="docutils literal notranslate"><span class="pre">acknowledgement</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code></p></td>
+<td><p><strong>Compile time only.</strong> ORCIDs get corrected and embargo dates shift for
+years afterwards; per-cast copies would be plausible and wrong.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>About the product</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pressure_spacing_dbar</span></code>, <code class="docutils literal notranslate"><span class="pre">source</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code></p></td>
+<td><p><strong>Compile time only.</strong> They describe the gridded artefact, not the
+measurement, so there is nothing earlier to originate them.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Upstream provenance</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sbe_processing_order</span></code>, <code class="docutils literal notranslate"><span class="pre">correction_*</span></code>, <code class="docutils literal notranslate"><span class="pre">time_coordinate_source</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sbe_acquisition</span></code>, <code class="docutils literal notranslate"><span class="pre">sbe_processing</span></code></p></td>
+<td><p>Written at <strong>stage 1</strong>, read from the CNV header. Describes what was done
+to the cast <em>before</em> ctdcast — see the ledger below.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Stage-local</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">history</span></code></p></td>
+<td><p><strong>Each stage appends.</strong> The model the rest of this table follows.</p></td>
+</tr>
+</tbody>
+</table>
+<section id="lifting-is-strict">
+<h3>Lifting is strict<a class="headerlink" href="#lifting-is-strict" title="Link to this heading"></a></h3>
+<p>When the compiled product takes identity from the per-cast files, disagreement on
+a <strong>cruise-defining</strong> attribute is an <strong>error</strong>, not a merge: a compiled product
+describes one cruise, so two values of <code class="docutils literal notranslate"><span class="pre">cruise</span></code> or <code class="docutils literal notranslate"><span class="pre">expocode</span></code> mean either a
+cast from another cruise in the directory or two legs sharing one root. (Legs
+depart on different dates, so they have different EXPOCODEs — compile each into
+its own root.)</p>
+<p>The rest of the identity layer — the <code class="docutils literal notranslate"><span class="pre">platform_*</span></code> block — describes the <em>ship</em>,
+and casts disagreeing there is ordinary registry drift: a <code class="docutils literal notranslate"><span class="pre">platform_vocabulary</span></code>
+URI edited between two stage-1 runs, a vessel renamed mid-programme. That says
+nothing about whether these casts are one cruise, so it <strong>warns</strong> rather than
+failing: <code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>’s value is used where it states one, and the attribute
+is omitted where it does not, rather than picking one cast’s answer arbitrarily.</p>
+<p>An attribute no per-cast file states falls back to <code class="docutils literal notranslate"><span class="pre">cruise_info</span></code> with a
+warning, which is the path for files written before identity was recorded at
+stage 1.</p>
+<p>Where the two sources disagree about identity, <strong>the files win</strong> — a stage file
+records the cruise the cast was actually taken on, and a config can be edited
+years later. The compiled product’s <code class="docutils literal notranslate"><span class="pre">title</span></code> is built from the same lifted value,
+so a file cannot be titled for one cruise and attributed to another. Re-run stage 1
+if it is the per-cast files that are wrong.</p>
+<p>For everything outside identity, config remains the source of truth: writing
+identity at stage 1 makes the per-cast file <em>portable</em>, not the authority on what
+the cruise is called in the report.</p>
+</section>
+</section>
+<section id="the-correction-ledger">
+<h2>The correction ledger<a class="headerlink" href="#the-correction-ledger" title="Link to this heading"></a></h2>
+<p>A CNV usually arrives already processed — by the deck unit at acquisition and by
+SBE Data Processing afterwards. Stage 1 reads the header and records what it finds,
+so a stage file states not only what ctdcast did to it but what had already been
+done. See <a class="reference internal" href="processing_framework.html#processing-framework"><span class="std std-ref">ctdcast processing framework</span></a> for why this matters; this section is the
+attribute reference.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sbe_acquisition</span></code></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">*</span></code> block, <strong>verbatim</strong>, minus the <code class="docutils literal notranslate"><span class="pre">&lt;Sensors&gt;</span></code> XML (which is kept
+separately as <code class="docutils literal notranslate"><span class="pre">raw_metadata</span></code>). Archival ground truth: no interpretation,
+so it cannot be wrong, and a key a future SBE release adds is preserved
+even though this version’s parser has never heard of it.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sbe_processing</span></code></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">#</span></code> module block, verbatim, same rationale.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sbe_processing_order</span></code></p></td>
+<td><p>The corrections in the order they were applied, e.g.
+<code class="docutils literal notranslate"><span class="pre">align(deck)</span> <span class="pre">datcnv</span> <span class="pre">wildedit</span> <span class="pre">filter</span> <span class="pre">celltm</span> <span class="pre">Derive</span> <span class="pre">binavg</span></code>. Recorded
+explicitly rather than left to be re-derived: the deck-unit alignment
+carries no timestamp of its own, and some module writers emit none either,
+so file order is the only reliable ordering key.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">correction_align</span></code></p></td>
+<td><p>The deck-unit advance, per channel, e.g. <code class="docutils literal notranslate"><span class="pre">SBE</span> <span class="pre">11plus</span> <span class="pre">V</span> <span class="pre">5.0</span> <span class="pre">deck</span> <span class="pre">unit:</span>
+<span class="pre">primary</span> <span class="pre">conductivity</span> <span class="pre">+0.073</span> <span class="pre">s,</span> <span class="pre">secondary</span> <span class="pre">conductivity</span> <span class="pre">+0.043</span> <span class="pre">s,</span>
+<span class="pre">voltage</span> <span class="pre">0</span> <span class="pre">+0.000</span> <span class="pre">s</span></code>. Per channel because older deck units do not always
+set the two conductivity channels alike, and a channel advanced less than
+the physical lag carries a residual the other does not.</p>
+<p>Written whenever the deck unit stated an advance at all — including one
+set to <code class="docutils literal notranslate"><span class="pre">+0.000</span></code> on every channel, since “present and set to zero” is a
+different fact from “no deck unit”. In that case <code class="docutils literal notranslate"><span class="pre">align(deck)</span></code> is
+<strong>absent</strong> from <code class="docutils literal notranslate"><span class="pre">sbe_processing_order</span></code>, because nothing was applied.</p>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">correction_celltm</span></code>, <code class="docutils literal notranslate"><span class="pre">correction_wildedit</span></code>, <code class="docutils literal notranslate"><span class="pre">correction_binavg</span></code>, …</p></td>
+<td><p><strong>One attribute per module in the chain</strong>, naming the agent and the
+parameters it used. There is no curated subset: deciding which modules
+“count” as corrections would mean predicting them, and real headers carry
+modules that were not predicted. A module that ran <strong>more than once</strong> —
+which Sea-Bird explicitly sanctions for Wild Edit — is suffixed
+<code class="docutils literal notranslate"><span class="pre">correction_wildedit</span></code>, <code class="docutils literal notranslate"><span class="pre">correction_wildedit_2</span></code>, in file order, so no
+run’s parameters are lost.</p>
+<p><strong>Absence means “not recorded”, never “not done”</strong> — a file whose chain
+ctdcast could not parse has the verbatim blocks and no <code class="docutils literal notranslate"><span class="pre">correction_*</span></code>
+entries at all.</p>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time_coordinate_source</span></code></p></td>
+<td><p>Which clock the <code class="docutils literal notranslate"><span class="pre">time</span></code> coordinate is anchored to, and to which moment:
+<code class="docutils literal notranslate"><span class="pre">System</span> <span class="pre">UTC,</span> <span class="pre">first</span> <span class="pre">data</span> <span class="pre">scan</span></code>, <code class="docutils literal notranslate"><span class="pre">NMEA</span> <span class="pre">time,</span> <span class="pre">header</span></code>, and so on. SBE
+records this in a bracket on its <code class="docutils literal notranslate"><span class="pre">start_time</span></code> line and it <strong>varies
+between cruises</strong>, so a file that does not state it leaves the reader
+unable to tell GPS time from a possibly-drifting acquisition clock.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time_clock_offset_seconds</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NMEA</span> <span class="pre">UTC</span></code> minus <code class="docutils literal notranslate"><span class="pre">System</span> <span class="pre">UTC</span></code>, where the header carries both. Several
+seconds is normal and the sign varies. It is <em>reported</em>, not applied — a
+single cast cannot distinguish a drifting clock from a stale NMEA sentence;
+that takes the whole cruise.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The unit of record is the <strong>correction</strong>, not the module — which matters because
+the most consequential one, the deck-unit conductivity alignment, is not a module
+at all and lives in a different part of the header. Every module in the chain then
+contributes a correction of its own, so in practice the ledger is one entry per
+module plus one for the deck unit.</p>
+<p>Parameters keep the SBE channel names the header uses (<code class="docutils literal notranslate"><span class="pre">t090C</span></code>, <code class="docutils literal notranslate"><span class="pre">c0S/m</span></code>) rather
+than being translated to ctdcast’s canonical names: the file states what its source
+stated, and translation happens where the mapping is needed.</p>
+</section>
+<section id="sensor-provenance">
+<h2>Sensor provenance<a class="headerlink" href="#sensor-provenance" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> also records which physical sensor produced each measurement,
+using three families of variables. The capitalisation and the <code class="docutils literal notranslate"><span class="pre">_channel_</span></code>
+infix are meaningful — keep them distinct:</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;</span></code> — upper-case, dimensionless</dt><dd><p>One variable per <strong>distinct physical device</strong> used anywhere in the cruise,
+e.g. <code class="docutils literal notranslate"><span class="pre">SENSOR_TEMPERATURE_5806</span></code> or <code class="docutils literal notranslate"><span class="pre">SENSOR_FLUOROMETER_FLNTURTD_3219</span></code>. It
+holds no data; all provenance is in its attributes (<code class="docutils literal notranslate"><span class="pre">sensor_model</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sensor_serial_number</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_calibration_date</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_maker</span></code>, the
+L05/L22/L35 vocabulary URIs, <code class="docutils literal notranslate"><span class="pre">model_source</span></code>, and its <code class="docutils literal notranslate"><span class="pre">sensor_role</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sensor_channel</span></code>). A <strong>frequency</strong> sensor (temperature, conductivity,
+pressure) also carries <code class="docutils literal notranslate"><span class="pre">sensor_calibration_slope</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sensor_calibration_offset</span></code> — the <code class="docutils literal notranslate"><span class="pre">datcnv</span></code> drift/span correction already
+baked into the data before ctdcast read it; a value away from the identity
+(slope 1, offset 0) means a correction was applied. Every entry (frequency and
+voltage alike) also carries <code class="docutils literal notranslate"><span class="pre">sensor_config_xml</span></code> — the whole <code class="docutils literal notranslate"><span class="pre">&lt;sensor&gt;</span></code>
+block from the CNV <code class="docutils literal notranslate"><span class="pre">&lt;Sensors&gt;</span></code> header, verbatim: every base calibration
+coefficient and its type context, so the raw→physical conversion is
+reconstructable from the compiled file alone, not only from the stage-1
+<code class="docutils literal notranslate"><span class="pre">raw_metadata</span></code>. The serial identifies the device, so a cell used as both
+primary and secondary of one type is a single entry; <code class="docutils literal notranslate"><span class="pre">sensor_shared_with</span></code>
+cross-links one device serving two roles (e.g. a combined FLNTU as both
+fluorometer and turbidity).</p>
+<p>Each measured <strong>data variable</strong> carries a single <code class="docutils literal notranslate"><span class="pre">sensor</span></code> attribute naming
+the <code class="docutils literal notranslate"><span class="pre">SENSOR_*</span></code> entry that produced it (e.g. <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">sensor</span> <span class="pre">=</span> <span class="pre">&quot;SENSOR_TEMPERATURE_5806&quot;</span></code>). That one link is all a variable
+holds; its role and channel live on the entry, so a device with no stored
+variable (pH, a transmissometer) still records both. This is what lets the
+compile aggregate the catalog without re-reading the header.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sensor_&lt;role&gt;</span></code> — lower-case, dimension <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code></dt><dd><p>Per profile, a <strong>string</strong> naming the <code class="docutils literal notranslate"><span class="pre">SENSOR_*</span></code> variable that filled each
+role — e.g. <code class="docutils literal notranslate"><span class="pre">sensor_temperature_1</span></code> may be <code class="docutils literal notranslate"><span class="pre">&quot;SENSOR_TEMPERATURE_5806&quot;</span></code> on
+early casts and <code class="docutils literal notranslate"><span class="pre">&quot;SENSOR_TEMPERATURE_4823&quot;</span></code> after a swap. This answers
+“which sensor’s calibration applies to this cast?”; diffing it down the casts
+gives the sensor-change log.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sensor_channel_&lt;role&gt;</span></code> — lower-case, dimension <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code></dt><dd><p>Per profile, the <strong>integer</strong> raw acquisition channel that role’s sensor was
+wired into (<code class="docutils literal notranslate"><span class="pre">-1</span></code> where unused). A change here while <code class="docutils literal notranslate"><span class="pre">sensor_&lt;role&gt;</span></code> holds
+constant is a re-cabling, not a hardware swap.</p>
+</dd>
+</dl>
+<p>Roles use ctdcast’s canonical names: <code class="docutils literal notranslate"><span class="pre">temperature_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">conductivity_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">oxygen_1</span></code>/<code class="docutils literal notranslate"><span class="pre">_2</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">fluorometer</span></code>,
+<code class="docutils literal notranslate"><span class="pre">turbidity</span></code>, <code class="docutils literal notranslate"><span class="pre">transmissometer</span></code>, <code class="docutils literal notranslate"><span class="pre">ph</span></code>, <code class="docutils literal notranslate"><span class="pre">altimeter</span></code>. The universal
+SensorID → model table ships in <code class="docutils literal notranslate"><span class="pre">ctdcast/config/sbe_sensors.yaml</span></code>; per-cruise
+refinements come from the <code class="docutils literal notranslate"><span class="pre">sensors:</span></code> block in <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> (see above). The
+<code class="docutils literal notranslate"><span class="pre">SBE</span> <span class="pre">sensors</span></code> report page presents all of this as configuration, inventory and
+rewiring tables.</p>
+<section id="where-it-is-built-and-two-kinds-of-provenance">
+<h3>Where it is built, and two kinds of provenance<a class="headerlink" href="#where-it-is-built-and-two-kinds-of-provenance" title="Link to this heading"></a></h3>
+<p>The catalog is resolved <strong>once, at stage 1</strong> — the per-cast netCDF files carry
+their own <code class="docutils literal notranslate"><span class="pre">SENSOR_*</span></code> entries — and the compile simply aggregates them; nothing
+re-reads the SBE header downstream. This splits each entry’s attributes into two
+provenances that mean different things when two casts disagree:</p>
+<ul class="simple">
+<li><p><strong>Header-native</strong> (<code class="docutils literal notranslate"><span class="pre">sensor_calibration_date</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_calibration_slope</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sensor_calibration_offset</span></code>) are fixed for a serial. A mismatch across casts
+cannot be a real recalibration at sea, so it is flagged as a parsing or data
+error.</p></li>
+<li><p><strong>Config-resolved</strong> (<code class="docutils literal notranslate"><span class="pre">sensor_model</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_maker</span></code>, the vocabulary URIs)
+come from the SensorID registry and the <code class="docutils literal notranslate"><span class="pre">sensors:</span></code> overrides. A mismatch
+just means the casts were stamped under different config versions — expected,
+and fixed by re-running stage 1 (or a future <code class="docutils literal notranslate"><span class="pre">enrich</span></code> step) to restamp, not
+by treating it as a data error.</p></li>
+</ul>
+<p>Because provenance lives on the file, the per-cast page’s <strong>Sensors and
+calibration state</strong> table reads the catalog directly — one row per device,
+joined to the variable it produced and showing its model, calibration date and
+any applied slope/offset — rather than re-parsing the SBE header. A file that
+predates the catalog falls back to the header parse.</p>
+<p>A per-cast file that carries <strong>no</strong> <code class="docutils literal notranslate"><span class="pre">SENSOR_*</span></code> catalog predates this
+provenance. The <code class="docutils literal notranslate"><span class="pre">build_profiles</span></code> library call still compiles it, with a
+warning and a <code class="docutils literal notranslate"><span class="pre">sensor_catalog</span></code> attribute recording the gap; <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">process</span>
+<span class="pre">--stage</span> <span class="pre">profiles</span></code> and <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">run</span></code> instead refuse, because re-running stage
+1 to build the catalog is the actionable fix before a product is shipped.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ctd_groupings.html" class="btn btn-neutral float-left" title="ctd_groupings.yaml" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="report_output.html" class="btn btn-neutral float-right" title="Report output" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

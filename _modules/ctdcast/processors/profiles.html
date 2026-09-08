@@ -1,0 +1,1151 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.profiles &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=683873e3"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.profiles</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.profiles</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Cruise-level profile compiler: per-cast netCDF → profiles.nc.</span>
+
+<span class="sd">Reads all per-cast netCDF files in a directory, splits each into downcast and</span>
+<span class="sd">upcast halves, bins to a common 1-dbar grid, and writes a single</span>
+<span class="sd">(N_PROF × pressure) netCDF.  The ``converters`` module re-exports</span>
+<span class="sd">``build_profiles`` for backward compatibility.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.bathymetry</span><span class="w"> </span><span class="kn">import</span> <span class="n">interpolate_bathy_at_casts</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.global_attrs</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CREATION_NOTE</span><span class="p">,</span>
+    <span class="n">aggregate_identity</span><span class="p">,</span>
+    <span class="n">cruise_global_attrs</span><span class="p">,</span>
+    <span class="n">cruise_name</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLES</span><span class="p">,</span> <span class="n">is_sbe_channel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">append_history</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QARTOD_FAIL</span><span class="p">,</span> <span class="n">QARTOD_SUSPECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_up_to_date</span><span class="p">,</span> <span class="n">select_best_available</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.netcdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">write</span> <span class="k">as</span> <span class="n">_write_nc</span>
+
+<span class="c1"># Non-profile columns: seasenselib time-bookkeeping, and per-cast provenance scalars a stage</span>
+<span class="c1"># may add (``clock_offset_seconds`` from the stage-2 clock applier).  These carry no profile</span>
+<span class="c1"># dimension, so they must not be treated as griddable channels.</span>
+<span class="n">_SKIP_VARS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">"timeJ"</span><span class="p">,</span> <span class="s2">"timeS"</span><span class="p">,</span> <span class="s2">"pressure"</span><span class="p">,</span> <span class="s2">"clock_offset_seconds"</span><span class="p">}</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_griddable</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Whether *name* is a per-sample science channel ``build_profiles`` should bin.</span>
+
+<span class="sd">    Excludes bookkeeping/coordinate columns (:data:`_SKIP_VARS`), QARTOD ``_qc`` flags, SeaBird</span>
+<span class="sd">    diagnostics (``sbe_*`` — dropped at stage 2, never binned), and non-per-sample columns such</span>
+<span class="sd">    as the dimensionless ``SENSOR_&lt;type&gt;_&lt;serial&gt;`` catalog scalars (caught by the pressure-shape</span>
+<span class="sd">    test).  One predicate so the several sites that select griddable columns cannot drift apart.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_SKIP_VARS</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_sbe_channel</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+    <span class="p">)</span>
+
+
+<span class="c1">#: The compiled ``processing_level`` for a variable whose casts do not agree.  An explicit</span>
+<span class="c1">#: value, never an omission or a union of the casts' sentences: the per-profile treatment is</span>
+<span class="c1">#: reachable through ``source_stage`` / ``source_data_mode`` / ``source_tracking_id``.</span>
+<span class="n">_MIXED_PROCESSING_LEVEL</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"mixed across casts — see per-profile source_stage, source_data_mode "</span>
+    <span class="s2">"and source_tracking_id"</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return one record per ``SENSOR_*`` catalog entry in a per-cast dataset.</span>
+
+<span class="sd">    Reads the catalog stage 1 built: each dimensionless ``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;``</span>
+<span class="sd">    variable, taking its ``sensor_role`` and ``sensor_channel`` off the entry itself</span>
+<span class="sd">    (not off the data variables). A sensor with no stored variable — pH, a</span>
+<span class="sd">    transmissometer — is therefore read exactly like one that has a variable, which</span>
+<span class="sd">    is what lets the compile aggregate without re-parsing the CNV header. Returns</span>
+<span class="sd">    ``[]`` when the cast carries no catalog.</span>
+
+<span class="sd">    Each record has ``name`` (the catalog variable name, already resolved at stage</span>
+<span class="sd">    1), ``role``, ``channel`` (int, or ``-1`` if unstated) and ``attrs`` (the full</span>
+<span class="sd">    entry attributes, verbatim).</span>
+<span class="sd">    """</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"SENSOR_"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensor_role"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="s2">"channel"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="nb">int</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"sensor_channel"</span><span class="p">])</span> <span class="k">if</span> <span class="s2">"sensor_channel"</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="p">),</span>
+                <span class="s2">"attrs"</span><span class="p">:</span> <span class="n">attrs</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">records</span>
+
+
+<span class="c1"># Header-native attributes are physically fixed for a serial: a mismatch across</span>
+<span class="c1"># casts is a parsing or data error (a serial cannot be recalibrated at sea).</span>
+<span class="n">_HEADER_NATIVE_ATTRS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"sensor_calibration_date"</span><span class="p">,</span>
+    <span class="s2">"sensor_calibration_slope"</span><span class="p">,</span>
+    <span class="s2">"sensor_calibration_offset"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># Config-resolved attributes are filled from the SensorID registry + overrides at</span>
+<span class="c1"># stage 1: a mismatch across casts means the casts were stamped under different</span>
+<span class="c1"># config versions — expected, and fixed by re-running stage 1 or `enrich`, not a</span>
+<span class="c1"># data error.</span>
+<span class="n">_CONFIG_RESOLVED_ATTRS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"sensor_model"</span><span class="p">,</span>
+    <span class="s2">"sensor_maker"</span><span class="p">,</span>
+    <span class="s2">"sensor_model_vocabulary"</span><span class="p">,</span>
+    <span class="s2">"sensor_maker_vocabulary"</span><span class="p">,</span>
+    <span class="s2">"sensor_type_vocabulary"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_warn_on_catalog_conflict</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prior</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">warned</span><span class="p">:</span> <span class="nb">set</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Warn when a later cast disagrees with the first on a catalog entry's attributes.</span>
+
+<span class="sd">    Two provenances, two meanings: a header-native mismatch (calibration date,</span>
+<span class="sd">    slope, offset) is a data error; a config-resolved mismatch (model, maker,</span>
+<span class="sd">    vocabularies) means the casts were stamped under different config versions and</span>
+<span class="sd">    points at a re-stamp. Each ``(name, attr)`` conflict warns once via *warned*, so</span>
+<span class="sd">    a persistent disagreement does not re-warn on every cast.</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">_HEADER_NATIVE_ATTRS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">prior</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="o">!=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">warned</span><span class="p">:</span>
+            <span class="n">warned</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">a</span><span class="p">))</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Sensor catalog conflict for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">prior</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> then "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> (cast </span><span class="si">{</span><span class="n">cast_num</span><span class="si">}</span><span class="s2">); a serial's calibration "</span>
+                <span class="s2">"cannot change at sea — check CNV parsing."</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">_CONFIG_RESOLVED_ATTRS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">prior</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="o">!=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">warned</span><span class="p">:</span>
+            <span class="n">warned</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">a</span><span class="p">))</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Sensor catalog for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> differs across casts "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">prior</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> then </span><span class="si">{</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">!r}</span><span class="s2">, cast </span><span class="si">{</span><span class="n">cast_num</span><span class="si">}</span><span class="s2">); "</span>
+                <span class="s2">"casts were stamped under different config versions — re-run stage 1 "</span>
+                <span class="s2">"or enrich to restamp. Keeping the first cast's value."</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_sensor_catalog</span><span class="p">(</span>
+    <span class="n">cast_catalogs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]],</span>
+    <span class="n">cast_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+    <span class="n">n_profiles</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Aggregate per-cast sensor catalogs into the compiled catalog and linkage.</span>
+
+<span class="sd">    Attribute names follow OG1 conventions for interoperability, but this is</span>
+<span class="sd">    shipboard CTD data and the per-profile linkage has no OG1 equivalent.</span>
+
+<span class="sd">    *cast_catalogs* is one :func:`_read_cast_sensor_catalog` result per cast, in the</span>
+<span class="sd">    same rank order as *cast_list*. Each cast contributes to two profiles (down,</span>
+<span class="sd">    up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``. Sensor</span>
+<span class="sd">    identity, model and calibration were all resolved at stage 1, so this is a merge</span>
+<span class="sd">    — not a resolver: it reads role and channel off each entry, needs no SensorID</span>
+<span class="sd">    registry or overrides, and aggregates a variable-less sensor (pH, a</span>
+<span class="sd">    transmissometer) exactly like one with a variable.</span>
+
+<span class="sd">    Returns ``(catalog_vars, linkage_vars)`` as xarray-style</span>
+<span class="sd">    ``{name: (dims, data, attrs)}`` mappings:</span>
+
+<span class="sd">    - **catalog** — one dimensionless ``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;`` variable per</span>
+<span class="sd">      distinct physical sensor, carrying the entry's attributes (role and channel</span>
+<span class="sd">      excepted — those become the linkage below).</span>
+<span class="sd">    - **linkage** — ``sensor_&lt;role&gt;(N_PROF)`` naming the catalog variable in that</span>
+<span class="sd">      role for each profile, and ``sensor_channel_&lt;role&gt;(N_PROF)`` recording the</span>
+<span class="sd">      raw acquisition channel.</span>
+<span class="sd">    """</span>
+    <span class="n">catalog</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">roles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># first-appearance order</span>
+    <span class="n">link</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">chan</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">warned</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># (name, attr) conflicts already reported</span>
+
+    <span class="k">for</span> <span class="n">rank</span><span class="p">,</span> <span class="n">records</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cast_catalogs</span><span class="p">):</span>
+        <span class="n">cast_num</span> <span class="o">=</span> <span class="n">cast_list</span><span class="p">[</span><span class="n">rank</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">role</span> <span class="o">=</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">role</span><span class="p">:</span>  <span class="c1"># an entry with no role cannot fill a linkage slot</span>
+                <span class="k">continue</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"attrs"</span><span class="p">]</span>
+            <span class="n">prior</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">prior</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># role and channel become linkage variables, not entry attributes;</span>
+                <span class="c1"># sensor_shared_with was cross-linked at stage 1 and is preserved.</span>
+                <span class="n">catalog</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
+                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"sensor_role"</span><span class="p">,</span> <span class="s2">"sensor_channel"</span><span class="p">)</span>
+                <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">_warn_on_catalog_conflict</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">prior</span><span class="p">,</span> <span class="n">attrs</span><span class="p">,</span> <span class="n">cast_num</span><span class="p">,</span> <span class="n">warned</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">link</span><span class="p">:</span>
+                <span class="n">roles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">role</span><span class="p">)</span>
+                <span class="n">link</span><span class="p">[</span><span class="n">role</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">""</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_profiles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+                <span class="n">chan</span><span class="p">[</span><span class="n">role</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="n">rank</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">rank</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">link</span><span class="p">[</span><span class="n">role</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+                <span class="n">chan</span><span class="p">[</span><span class="n">role</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"channel"</span><span class="p">]</span>
+
+    <span class="n">catalog_vars</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="p">((),</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="s2">""</span><span class="p">})</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">attrs</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+    <span class="n">linkage_vars</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">roles</span><span class="p">:</span>
+        <span class="n">linkage_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"sensor_</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+            <span class="n">link</span><span class="p">[</span><span class="n">role</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"catalog variable naming the </span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> sensor per profile"</span><span class="p">,</span>
+                <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">"value is a SENSOR_* variable name in this file; "</span>
+                    <span class="s2">"empty where no sensor filled this role"</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">linkage_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"sensor_channel_</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+            <span class="n">chan</span><span class="p">[</span><span class="n">role</span><span class="p">],</span>
+            <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"raw CNV acquisition channel of the </span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> sensor"</span><span class="p">,</span>
+                <span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"-1 where no sensor filled this role"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">catalog_vars</span><span class="p">,</span> <span class="n">linkage_vars</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_select_cast_files</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return sorted ``(cast_num, cast_suffix, path, source_stage)`` per cast.</span>
+
+<span class="sd">    Each cast is compiled from its **best-available** stage file — stage 3 if</span>
+<span class="sd">    present, else stage 2, else stage 1 — so a mixed-stage directory early in a</span>
+<span class="sd">    cruise compiles honestly, and ``source_stage`` records the stage each profile</span>
+<span class="sd">    came from.  A plain cast ``NNN`` and its lettered sibling ``NNNb`` are</span>
+<span class="sd">    distinct events; identity is the ``(number, suffix)`` pair.  An old flat</span>
+<span class="sd">    ``nc_dir`` (unsuffixed files under the root) is read as stage 1 via the shim</span>
+<span class="sd">    in :mod:`ctdcast.processors.stage_layout`.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">),</span> <span class="n">path</span><span class="p">,</span> <span class="n">stage</span> <span class="ow">in</span> <span class="n">select_best_available</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_turnaround_index</span><span class="p">(</span><span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return last index where pressure is within 2 dbar of its maximum."""</span>
+    <span class="n">p_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">pressure</span><span class="p">))</span>
+    <span class="n">near_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">pressure</span> <span class="o">&gt;=</span> <span class="n">p_max</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">near_max</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">near_max</span><span class="p">)</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bin_to_grid</span><span class="p">(</span>
+    <span class="n">ds_half</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">p_grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">dbar</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Bin each data variable onto *p_grid* (``dbar``-spaced) by mean per bin.</span>
+
+<span class="sd">    Uses numpy bincount — no pandas dependency required.  Each raw sample is</span>
+<span class="sd">    assigned to its nearest grid centre and every variable becomes the mean of</span>
+<span class="sd">    the samples in that bin.  With ``dbar=1`` this reproduces the 1-dbar grid</span>
+<span class="sd">    exactly (``idx == p_bin - p0``); ``dbar=2`` averages each adjacent pressure</span>
+<span class="sd">    pair, halving the number of levels and reducing per-level sample noise.</span>
+<span class="sd">    """</span>
+    <span class="n">p_raw</span> <span class="o">=</span> <span class="n">ds_half</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">p_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">p_raw</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">p0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">p_grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p_grid</span><span class="p">)</span>
+    <span class="c1"># Uniform dbar-wide bins: grid level i collects p_bin in [p0+i*dbar, p0+(i+1)*dbar).</span>
+    <span class="c1"># With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_bin</span> <span class="o">-</span> <span class="n">p0</span><span class="p">)</span> <span class="o">//</span> <span class="n">dbar</span>
+
+    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds_half</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_griddable</span><span class="p">(</span><span class="n">ds_half</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">ds_half</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">in_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">in_range</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">vi</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[</span><span class="n">in_range</span><span class="p">]</span>
+            <span class="n">vv</span> <span class="o">=</span> <span class="n">vals</span><span class="p">[</span><span class="n">in_range</span><span class="p">]</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">vi</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">vv</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">vi</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">nonzero</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">nonzero</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">sums</span><span class="p">[</span><span class="n">nonzero</span><span class="p">]</span> <span class="o">/</span> <span class="n">counts</span><span class="p">[</span><span class="n">nonzero</span><span class="p">])</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">out</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cast_meta</span><span class="p">(</span>
+    <span class="n">ds_half</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return (lat, lon, time_start, time_end) for a half-cast Dataset."""</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds_half</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">ds_half</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">))</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">ds_half</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"datetime64[ns]"</span><span class="p">)</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">ds_half</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"datetime64[ns]"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t1</span>
+
+
+<div class="viewcode-block" id="build_profiles">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.profiles.build_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_profiles</span><span class="p">(</span>
+    <span class="n">nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">profiles_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">gebco_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dbar</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">refuse_catalog_less</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.</span>
+
+<span class="sd">    Reads all ``*.nc`` files in nc_dir, splits each cast into downcast and</span>
+<span class="sd">    upcast halves, bins to a common *dbar*-dbar pressure grid (default 1 dbar),</span>
+<span class="sd">    and writes a single (N_PROF × pressure) netCDF.  N_PROF is a plain integer</span>
+<span class="sd">    index (0, 1, 2, …); cast identity is carried by ``cast_number``,</span>
+<span class="sd">    ``cast_suffix``, and ``cast_direction`` variables.  The bin spacing is</span>
+<span class="sd">    recorded in the ``pressure_spacing_dbar`` global attribute so the gridding</span>
+<span class="sd">    can be reconstructed from the output file alone.</span>
+
+<span class="sd">    Per-cast scalar variables added to the output:</span>
+
+<span class="sd">    - ``max_pressure_dbar`` — maximum pressure recorded over the full cast.</span>
+<span class="sd">    - ``gebco_depth_m`` — GEBCO bathymetry depth (m, positive down) at the</span>
+<span class="sd">      max-pressure lat/lon position; NaN when *gebco_path* is None or the file</span>
+<span class="sd">      is unavailable.</span>
+
+<span class="sd">    The ``altimeter`` channel (when present in the input files) is binned onto</span>
+<span class="sd">    the 1-dbar grid as a standard 2-D variable.</span>
+
+<span class="sd">    Samples carrying a QARTOD suspect (3) or fail (4) flag on their ``{var}_qc``</span>
+<span class="sd">    companion are NaN-masked before binning, so flagged data does not enter the bin</span>
+<span class="sd">    means.  Each science variable records how many finite input samples it carried</span>
+<span class="sd">    (``qc_input_samples``) and how many were excluded (``qc_excluded_samples``).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_dir:</span>
+<span class="sd">        Directory containing per-cast netCDF files.</span>
+<span class="sd">    profiles_path:</span>
+<span class="sd">        Output path for the compiled profiles netCDF.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite an existing profiles_path.</span>
+<span class="sd">    gebco_path:</span>
+<span class="sd">        Path to a GEBCO_2025.nc file.  Used to look up water depth at each</span>
+<span class="sd">        cast's max-pressure position.  Pass ``cfg.gebco_path`` when calling</span>
+<span class="sd">        from report generation code.  Silently omitted when None.</span>
+<span class="sd">    dbar:</span>
+<span class="sd">        Vertical bin spacing (dbar) of the output grid.  Default 1.  Use 2 (or</span>
+<span class="sd">        more) to average adjacent pressure levels together, reducing per-level</span>
+<span class="sd">        noise when the raw scan resolution does not justify a 1-dbar grid.</span>
+<span class="sd">    cruise_info:</span>
+<span class="sd">        The ``cruise_info:`` mapping from the cruise config.  Supplies the cruise</span>
+<span class="sd">        id (so the compiled file is not labelled ``UNK``), the authored discovery</span>
+<span class="sd">        fields, people, embargo, and the ``ship``/``start_date`` from which the</span>
+<span class="sd">        EXPOCODE coordinate is derived.  Coverage bounds and creation time are</span>
+<span class="sd">        computed from the data, not taken from here.</span>
+<span class="sd">    refuse_catalog_less:</span>
+<span class="sd">        Policy for a CTD cast whose per-cast file carries no ``SENSOR_*`` catalog</span>
+<span class="sd">        (it predates sensor provenance).  The default ``False`` is the library</span>
+<span class="sd">        behaviour: warn once, name the files, and stamp the admission into the</span>
+<span class="sd">        output so the gap is visible in the file itself.  The pipeline driver</span>
+<span class="sd">        (``ctdcast process --stage profiles`` and ``ctdcast run``) passes ``True``</span>
+<span class="sd">        so the compile refuses instead — at the point a product is shipped,</span>
+<span class="sd">        re-running stage 1 to build the catalog is the actionable fix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if profiles.nc was written; False if skipped (existed, force=False).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If no recognised cast files are found in nc_dir, or if</span>
+<span class="sd">        *refuse_catalog_less* is True and any cast carries no sensor catalog.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dbar</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">dbar</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"dbar must be an integer &gt;= 1, got </span><span class="si">{</span><span class="n">dbar</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
+
+    <span class="n">cast_list</span> <span class="o">=</span> <span class="n">_select_cast_files</span><span class="p">(</span><span class="n">nc_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cast_list</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"No recognised cast netCDF files found in </span><span class="si">{</span><span class="n">nc_dir</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+
+    <span class="c1"># Skip only if profiles.nc exists AND is newer than every source cast file, so</span>
+    <span class="c1"># a re-processed cast (a newer stage file) rebuilds the product rather than</span>
+    <span class="c1"># leaving a stale compile in place.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="n">is_up_to_date</span><span class="p">(</span><span class="n">profiles_path</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">_n</span><span class="p">,</span> <span class="n">_s</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">_st</span> <span class="ow">in</span> <span class="n">cast_list</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Pass 1: determine global pressure range for the shared grid</span>
+    <span class="n">p_max_global</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">_num</span><span class="p">,</span> <span class="n">_suffix</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">_stage</span> <span class="ow">in</span> <span class="n">cast_list</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">p_max_global</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">p_max_global</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="c1"># p_grid holds the bin LOWER EDGES used for the binning assignment in</span>
+    <span class="c1"># _bin_to_grid (level i collects rounded pressures [1+i*dbar, 1+(i+1)*dbar)).</span>
+    <span class="n">p_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">p_max_global</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dbar</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="c1"># The reported pressure coordinate is the bin CENTRE, so a binned value sits</span>
+    <span class="c1"># at the mean depth of the samples it averages rather than (dbar-1)/2 dbar</span>
+    <span class="c1"># shallow of it.  For dbar=1 the centre equals the edge (unchanged).</span>
+    <span class="n">pressure_coord</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_grid</span> <span class="o">+</span> <span class="p">(</span><span class="n">dbar</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="c1"># The cruise name is resolved later, from the aggregated identity — not here from the first</span>
+    <span class="c1"># file, and not from config.  `attrs.update(identity)` decides the `cruise` attribute, so</span>
+    <span class="c1"># anything derived from a different source (the title) would disagree with it.</span>
+    <span class="n">_ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">_cfg_cruise</span> <span class="o">=</span> <span class="n">cruise_name</span><span class="p">(</span><span class="n">_ci</span><span class="p">)</span>
+
+    <span class="c1"># var_names is the UNION of the per-sample griddable channels (:func:`_is_griddable`) across</span>
+    <span class="c1"># ALL casts, not just the first: a channel fitted mid-cruise (or absent from cast 1) is still</span>
+    <span class="c1"># binned, and casts that lack it are all-NaN there (the binning loop guards on</span>
+    <span class="c1"># ``if v in binned``).  An insertion-ordered dict keeps first-seen order, so the output is</span>
+    <span class="c1"># byte-stable when every cast carries the same channels; the per-cast presence set drives one</span>
+    <span class="c1"># warning per variable not present in every cast, naming the casts that lack it.</span>
+    <span class="n">_present</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">_cnum</span><span class="p">,</span> <span class="n">_csuf</span><span class="p">,</span> <span class="n">_cpath</span><span class="p">,</span> <span class="n">_cstg</span> <span class="ow">in</span> <span class="n">cast_list</span><span class="p">:</span>
+        <span class="n">_lab</span> <span class="o">=</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">_cnum</span><span class="p">,</span> <span class="n">_csuf</span><span class="p">)</span>
+        <span class="n">_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_lab</span><span class="p">)</span>
+        <span class="n">_dsx</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">_cpath</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_v</span> <span class="ow">in</span> <span class="n">_dsx</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">_is_griddable</span><span class="p">(</span><span class="n">_dsx</span><span class="p">,</span> <span class="n">_v</span><span class="p">):</span>
+                    <span class="n">_present</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">_v</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_lab</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">_dsx</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">var_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_present</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_v</span> <span class="ow">in</span> <span class="n">var_names</span><span class="p">:</span>
+        <span class="n">_miss</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_labels</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_present</span><span class="p">[</span><span class="n">_v</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="n">_miss</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"variable </span><span class="si">{</span><span class="n">_v</span><span class="si">!r}</span><span class="s2"> is absent from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">_miss</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">_labels</span><span class="p">)</span><span class="si">}</span><span class="s2"> casts "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_miss</span><span class="p">)</span><span class="si">}</span><span class="s2">); it is all-NaN there in the compiled file."</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="n">n_casts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span>
+    <span class="n">n_profiles</span> <span class="o">=</span> <span class="n">n_casts</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">n_pressure</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p_grid</span><span class="p">)</span>
+
+    <span class="c1"># Pre-allocate output arrays</span>
+    <span class="n">data_2d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">v</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">n_pressure</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_names</span>
+    <span class="p">}</span>
+    <span class="n">cast_nums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">cast_suffixes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">directions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">lons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">time_starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"datetime64[ns]"</span><span class="p">)</span>
+    <span class="n">time_ends</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"datetime64[ns]"</span><span class="p">)</span>
+
+    <span class="c1"># Per-cast scalars (indexed by rank, then expanded to N_PROF after Pass 2)</span>
+    <span class="n">max_pressures</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_casts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">lats_at_max_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_casts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">lons_at_max_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_casts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="c1"># Which processing stage each cast was compiled from (1/2/3) — casts are at</span>
+    <span class="c1"># mixed stages early in a cruise, so the compiled file states it per profile.</span>
+    <span class="n">source_stages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_casts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+    <span class="c1"># The actual per-cast filename each profile came from — provenance that</span>
+    <span class="c1"># cast_number+suffix+stage alone cannot reconstruct, and the one thing that</span>
+    <span class="c1"># distinguishes casts sharing a number (a plain cast vs its lettered sibling).</span>
+    <span class="n">source_files</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">""</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_casts</span>
+    <span class="c1"># Lineage: the tracking_id of each per-cast file compiled here (empty for a legacy file</span>
+    <span class="c1"># that predates the id), so the chain back from profiles.nc is readable per profile.</span>
+    <span class="n">source_tracking_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">""</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_casts</span>
+    <span class="c1"># Each cast's own OceanSITES data_mode (P, or D when declared — stage 1 guarantees the</span>
+    <span class="c1"># attribute exists).  A compiled file mixing modes is labelled "M", and the manual then</span>
+    <span class="c1"># requires per-profile modes to resolve which data is in which mode; this array is that.</span>
+    <span class="n">cast_data_modes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"P"</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_casts</span>
+
+    <span class="c1"># Per-cast sensor catalogs, in rank order, aggregated by _build_sensor_catalog.</span>
+    <span class="n">cast_catalogs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># CTD casts whose per-cast file carries no SENSOR_* catalog (predate the catalog).</span>
+    <span class="n">catalog_less</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Per-cast global attrs, for lifting cruise identity strictly (§4d).</span>
+    <span class="n">per_cast_attrs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Pass 2: split and bin each cast</span>
+    <span class="n">qc_excluded</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># did any input carry suspect/fail records to exclude?</span>
+    <span class="c1"># Per-variable tally of pre-binning samples excluded and the finite-sample</span>
+    <span class="c1"># denominator they were drawn from, reported at the top of the inventory page.</span>
+    <span class="c1"># The denominator is the count of finite input samples (not binned points), so</span>
+    <span class="c1"># the fraction is not distorted by binning's own reduction in point count.</span>
+    <span class="n">qc_input_counts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">var_names</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">qc_dropped_counts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">var_names</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Per-variable processing_level, collected across the casts that carry each variable.</span>
+    <span class="c1"># The compiled attribute is the agreed value or, where casts disagree, an explicit mixed</span>
+    <span class="c1"># marker — never the union of the sets, which would claim a procedure on a cast that never</span>
+    <span class="c1"># had it. Per-cast detail stays reachable via source_stage / source_data_mode /</span>
+    <span class="c1"># source_tracking_id.</span>
+    <span class="n">var_processing_levels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="nb">set</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_names</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">rank</span><span class="p">,</span> <span class="p">(</span><span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">source_stage</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cast_list</span><span class="p">):</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">per_cast_attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">))</span>
+        <span class="n">cast_catalog</span> <span class="o">=</span> <span class="n">_read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">cast_catalogs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cast_catalog</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cast_catalog</span><span class="p">:</span>
+            <span class="n">catalog_less</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="c1"># Honour QARTOD flags 3 (suspect) and 4 (fail) from stage 2 (soak/deck) AND</span>
+        <span class="c1"># stage 3 (gross-range and spike): NaN the flagged samples so they do not</span>
+        <span class="c1"># enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so the</span>
+        <span class="c1"># binning coordinate is untouched; stage-1-only files have no _qc and are</span>
+        <span class="c1"># unaffected — qc_excluded stays False and the history line does not claim</span>
+        <span class="c1"># an exclusion that never happened.  Suspect/fail flags are only raised on</span>
+        <span class="c1"># finite samples, so the excluded count is a subset of the finite count.</span>
+        <span class="k">for</span> <span class="n">_v</span> <span class="ow">in</span> <span class="n">var_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="n">qc_input_counts</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+                <span class="n">var_processing_levels</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"processing_level"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+                <span class="p">)</span>
+            <span class="n">_qc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_v</span><span class="si">}</span><span class="s2">_qc"</span>
+            <span class="k">if</span> <span class="n">_qc</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="n">_v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="n">_is_bad</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_qc</span><span class="p">]</span> <span class="o">==</span> <span class="n">QARTOD_SUSPECT</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_qc</span><span class="p">]</span> <span class="o">==</span> <span class="n">QARTOD_FAIL</span><span class="p">)</span>
+                <span class="n">_n_bad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_is_bad</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+                <span class="k">if</span> <span class="n">_n_bad</span><span class="p">:</span>
+                    <span class="n">qc_excluded</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">qc_dropped_counts</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span> <span class="o">+=</span> <span class="n">_n_bad</span>
+                <span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">_is_bad</span><span class="p">)</span>
+        <span class="n">source_stages</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_stage</span>
+        <span class="n">source_files</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">source_tracking_ids</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tracking_id"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+        <span class="n">cast_data_modes</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_mode"</span><span class="p">,</span> <span class="s2">"P"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">"P"</span>
+        <span class="n">pressure</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">i_turn</span> <span class="o">=</span> <span class="n">_turnaround_index</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span>
+
+        <span class="n">i_max_p</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmax</span><span class="p">(</span><span class="n">pressure</span><span class="p">))</span>
+        <span class="n">max_pressures</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">pressure</span><span class="p">[</span><span class="n">i_max_p</span><span class="p">])</span>
+        <span class="n">lats_at_max_p</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">i_max_p</span><span class="p">])</span>
+        <span class="n">lons_at_max_p</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">i_max_p</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">direction</span><span class="p">,</span> <span class="n">sl</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">"down"</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i_turn</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="p">(</span><span class="s2">"up"</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="n">i_turn</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+        <span class="p">]:</span>
+            <span class="n">prof_idx</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">direction</span> <span class="o">==</span> <span class="s2">"down"</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">ds_half</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">sl</span><span class="p">)</span>
+            <span class="n">binned</span> <span class="o">=</span> <span class="n">_bin_to_grid</span><span class="p">(</span><span class="n">ds_half</span><span class="p">,</span> <span class="n">p_grid</span><span class="p">,</span> <span class="n">dbar</span><span class="p">)</span>
+            <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t1</span> <span class="o">=</span> <span class="n">_cast_meta</span><span class="p">(</span><span class="n">ds_half</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_names</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">binned</span><span class="p">:</span>
+                    <span class="n">data_2d</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">binned</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+
+            <span class="n">cast_nums</span><span class="p">[</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">cast_num</span>
+            <span class="n">cast_suffixes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cast_suffix</span><span class="p">)</span>
+            <span class="n">directions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+            <span class="n">lats</span><span class="p">[</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">lat</span>
+            <span class="n">lons</span><span class="p">[</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">lon</span>
+            <span class="n">time_starts</span><span class="p">[</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">t0</span>
+            <span class="n">time_ends</span><span class="p">[</span><span class="n">prof_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">t1</span>
+
+        <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># Refuse early (before the GEBCO lookup and grid expansion) when the caller is</span>
+    <span class="c1"># the pipeline driver and any cast predates the sensor catalog.  The library</span>
+    <span class="c1"># default (refuse_catalog_less=False) instead warns and stamps the admission</span>
+    <span class="c1"># into the output further below; the two paths share the same file list.</span>
+    <span class="k">if</span> <span class="n">catalog_less</span> <span class="ow">and</span> <span class="n">refuse_catalog_less</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">catalog_less</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> cast file(s) carry no sensor "</span>
+            <span class="sa">f</span><span class="s2">"catalog (</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">catalog_less</span><span class="p">)</span><span class="si">}</span><span class="s2">); re-run stage 1 for this cruise "</span>
+            <span class="s2">"before compiling profiles, so the compiled file records sensor "</span>
+            <span class="s2">"provenance for every cast."</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Expand per-cast scalars to per-profile (same value for down and up of each cast)</span>
+    <span class="n">max_pressure_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">max_pressures</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">gebco_per_cast</span> <span class="o">=</span> <span class="n">interpolate_bathy_at_casts</span><span class="p">(</span>
+        <span class="nb">list</span><span class="p">(</span><span class="n">lats_at_max_p</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="n">lons_at_max_p</span><span class="p">),</span> <span class="n">path</span><span class="o">=</span><span class="n">gebco_path</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">gebco_per_cast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gebco_per_cast</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_casts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">gebco_depth_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">gebco_per_cast</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">source_stage_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">source_stages</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">source_file_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">source_files</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">source_tid_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">source_tracking_ids</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">source_data_mode_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cast_data_modes</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Two independent kinds of heterogeneity, two mechanisms — do not conflate them.</span>
+    <span class="c1"># (1) Mixed *stages*: casts compiled from different stages (1/2/3) — expected early in a</span>
+    <span class="c1">#     cruise.  Warn naming each cast and its stage; source_stage already carries the fact</span>
+    <span class="c1">#     per profile.  It is NOT a data-mode difference: stages 1-3 are all provisional.</span>
+    <span class="n">stages_present</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">source_stages</span><span class="p">})</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stages_present</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">=stage</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">_p</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span> <span class="ow">in</span> <span class="n">cast_list</span>
+        <span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">"compiling casts at mixed processing stages "</span>
+            <span class="sa">f</span><span class="s2">"(stages </span><span class="si">{</span><span class="n">stages_present</span><span class="si">}</span><span class="s2"> present): </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">. This is permitted; "</span>
+            <span class="s2">"source_stage records the stage of each profile."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="c1"># (2) Mixed *data modes*: the OceanSITES table-4 trigger for "M".  Only a declared D</span>
+    <span class="c1">#     differs from the P default, so "M" appears exactly when casts genuinely disagree;</span>
+    <span class="c1">#     the per-profile data_mode variable then satisfies the manual's obligation to say</span>
+    <span class="c1">#     which data is in which mode.  The global data_mode is set from this below.</span>
+    <span class="n">modes_present</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">cast_data_modes</span><span class="p">))</span>
+    <span class="n">compiled_data_mode</span> <span class="o">=</span> <span class="n">modes_present</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_present</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"M"</span>
+
+    <span class="c1"># Build output dataset</span>
+    <span class="c1"># N_PROF is a plain sequential integer index — cast identity is in</span>
+    <span class="c1"># cast_number + cast_suffix + cast_direction.</span>
+    <span class="n">n_prof_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_profiles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"N_PROF"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"N_PROF"</span><span class="p">,</span> <span class="n">n_prof_idx</span><span class="p">),</span>
+        <span class="s2">"pressure"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"pressure"</span><span class="p">,</span> <span class="n">pressure_coord</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="c1"># Science vars carry only the coordinates pointer here; write() supplies</span>
+    <span class="c1"># units/long_name/standard_name/label_units from VARIABLES.  A var not in</span>
+    <span class="c1"># VARIABLES keeps a placeholder long_name so it is not left wholly unlabelled.</span>
+    <span class="n">data_vars</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">v</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">,</span> <span class="s2">"pressure"</span><span class="p">],</span>
+            <span class="n">data_2d</span><span class="p">[</span><span class="n">v</span><span class="p">],</span>
+            <span class="p">{</span>
+                <span class="o">**</span><span class="p">(</span>
+                    <span class="p">{</span><span class="s2">"coordinates"</span><span class="p">:</span> <span class="s2">"latitude longitude"</span><span class="p">}</span>
+                    <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">VARIABLES</span>
+                    <span class="k">else</span> <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span> <span class="s2">"coordinates"</span><span class="p">:</span> <span class="s2">"latitude longitude"</span><span class="p">}</span>
+                <span class="p">),</span>
+                <span class="c1"># Provenance of the soak/deck + gross-range/spike exclusion: how many</span>
+                <span class="c1"># finite input samples this variable carried and how many were dropped</span>
+                <span class="c1"># (flag 3 or 4) before binning.  Denominator is pre-binning samples so</span>
+                <span class="c1"># the fraction is not confounded by binning's own point reduction.</span>
+                <span class="s2">"qc_input_samples"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">qc_input_counts</span><span class="p">[</span><span class="n">v</span><span class="p">]),</span>
+                <span class="s2">"qc_excluded_samples"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">qc_dropped_counts</span><span class="p">[</span><span class="n">v</span><span class="p">]),</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_names</span>
+    <span class="p">}</span>
+    <span class="n">data_vars</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"cast_number"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">cast_nums</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"original cast number from filename"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"cast_suffix"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cast_suffixes</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"cast letter suffix from filename"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"empty for a plain cast; a letter (e.g. 'b') marks a "</span>
+                        <span class="s2">"distinct sibling event at the same station number"</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"cast_id"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">format_cast_id</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cast_nums</span><span class="p">,</span> <span class="n">cast_suffixes</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Cast identifier"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"Zero-padded cast number with optional letter suffix, e.g. '004' or '004b'."</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"cast_direction"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">directions</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Profile direction"</span><span class="p">,</span>
+                    <span class="s2">"flag_values"</span><span class="p">:</span> <span class="s2">"down up"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"replaces the N_PROF = cast + 0.5 float encoding"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="c1"># Keep cast_type as a deprecated alias until consumers are updated.</span>
+            <span class="s2">"cast_type"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">directions</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"downcast or upcast (deprecated alias for cast_direction)"</span><span class="p">,</span>
+                    <span class="s2">"flag_values"</span><span class="p">:</span> <span class="s2">"down up"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"source_stage"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">source_stage_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"processing stage of the source file for this profile"</span><span class="p">,</span>
+                    <span class="c1"># int8 + flag_values/flag_meanings matches the QARTOD idiom in</span>
+                    <span class="c1"># processors/qc.py that writers/netcdf.py already emits.</span>
+                    <span class="s2">"flag_values"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>
+                    <span class="s2">"flag_meanings"</span><span class="p">:</span> <span class="s2">"unknown converted soak_flagged qc_calibrated"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"Best-available stage for this cast at compile time: "</span>
+                        <span class="s2">"1 = raw converted, 2 = soak/deck flagged, 3 = QC and "</span>
+                        <span class="s2">"calibration. 0 = unknown: an unsuffixed flat file assumed "</span>
+                        <span class="s2">"to be stage 1 by the compatibility shim, which does not "</span>
+                        <span class="s2">"state its own stage. Casts can be at mixed stages early "</span>
+                        <span class="s2">"in a cruise."</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"source_file"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">source_file_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"source per-cast filename this profile was compiled from"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"Filename only (see the global 'source' attribute for the "</span>
+                        <span class="s2">"naming convention); the absolute root is deliberately not "</span>
+                        <span class="s2">"recorded, as it is a local, perishable path. Distinguishes "</span>
+                        <span class="s2">"casts that share a number — e.g. a plain cast and its "</span>
+                        <span class="s2">"lettered sibling."</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"source_tracking_id"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">source_tid_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"tracking_id of the per-cast file this profile was compiled from"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"The compiled file has its own tracking_id (global attr); this "</span>
+                        <span class="s2">"names the specific instance of each source cast file, so the "</span>
+                        <span class="s2">"lineage back to the CNV is readable per profile. Empty for a "</span>
+                        <span class="s2">"source file that predates the tracking_id."</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"source_data_mode"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">source_data_mode_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"OceanSITES data mode of the source cast for this profile"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"The source cast's own data_mode (P provisional, D delayed-mode) — "</span>
+                        <span class="s2">"a per-profile fact about the source file, beside source_stage and "</span>
+                        <span class="s2">"source_tracking_id, not this compiled file's own mode. When the "</span>
+                        <span class="s2">"global data_mode is 'M' the casts genuinely differ, and this "</span>
+                        <span class="s2">"variable resolves which data is in which mode (the OceanSITES "</span>
+                        <span class="s2">"&lt;PARAM&gt;_DM obligation)."</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="c1"># long_name/units/standard_name come from VARIABLES via write(); the</span>
+            <span class="c1"># comment records that the position is the per-profile median fix.</span>
+            <span class="s2">"latitude"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">lats</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"median of the position fixes over the cast direction"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"longitude"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">lons</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"median of the position fixes over the cast direction"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"time_start"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">time_starts</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"start time of cast direction"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"time_end"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">time_ends</span><span class="p">,</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"end time of cast direction"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"max_pressure_dbar"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">max_pressure_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Maximum pressure recorded during full cast"</span><span class="p">,</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"Same value for downcast and upcast profiles of the same cast."</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"gebco_depth_m"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">],</span>
+                <span class="n">gebco_depth_prof</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"GEBCO bathymetry depth at max-pressure position"</span><span class="p">,</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"m"</span><span class="p">,</span>
+                    <span class="s2">"positive"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">,</span>
+                    <span class="s2">"comment"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s2">"Bilinearly interpolated from GEBCO_2025 at the lat/lon "</span>
+                        <span class="s2">"of maximum pressure. NaN when GEBCO file is unavailable."</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="c1"># Sensor catalog + per-profile linkage (dimensionless SENSOR_* variables</span>
+    <span class="c1"># and sensor_&lt;role&gt;/sensor_channel_&lt;role&gt; on N_PROF).  Sensor provenance is</span>
+    <span class="c1"># resolved at stage 1 now, so this aggregates the per-cast catalogs rather</span>
+    <span class="c1"># than re-resolving from headers.</span>
+    <span class="n">catalog_vars</span><span class="p">,</span> <span class="n">linkage_vars</span> <span class="o">=</span> <span class="n">_build_sensor_catalog</span><span class="p">(</span>
+        <span class="n">cast_catalogs</span><span class="p">,</span>
+        <span class="n">cast_list</span><span class="p">,</span>
+        <span class="n">n_profiles</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">data_vars</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">catalog_vars</span><span class="p">)</span>
+    <span class="n">data_vars</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">linkage_vars</span><span class="p">)</span>
+
+    <span class="c1"># Identity (cruise, platform_*, expocode) lifted from the per-cast files,</span>
+    <span class="c1"># strictly: constant across casts → lifted; varying → error (two cruises in</span>
+    <span class="c1"># one directory); absent → cruise_info fallback with a warning.  This is the</span>
+    <span class="c1"># authority for identity at compile — config is no longer re-derived here.</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="n">aggregate_identity</span><span class="p">(</span><span class="n">per_cast_attrs</span><span class="p">,</span> <span class="n">_ci</span><span class="p">)</span>
+    <span class="c1"># `identity` is authoritative — it is what lands in `attrs` below — so the</span>
+    <span class="c1"># title is built from it, not from config.  Deriving the two separately is how</span>
+    <span class="c1"># a file ended up titled for one cruise and attributed to another, behind a</span>
+    <span class="c1"># warning that announced the opposite resolution.</span>
+    <span class="n">_lifted_cruise</span> <span class="o">=</span> <span class="n">identity</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_cfg_cruise</span> <span class="ow">and</span> <span class="n">_lifted_cruise</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">_cfg_cruise</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">str</span><span class="p">(</span><span class="n">_lifted_cruise</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"the per-cast files say this is cruise </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">_lifted_cruise</span><span class="p">)</span><span class="si">!r}</span><span class="s2">, but "</span>
+            <span class="sa">f</span><span class="s2">"cruise_info says </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">_cfg_cruise</span><span class="p">)</span><span class="si">!r}</span><span class="s2">; using the files' value, "</span>
+            <span class="sa">f</span><span class="s2">"because a stage file records the cruise the cast was actually taken "</span>
+            <span class="sa">f</span><span class="s2">"on. If the config is the correct one, re-run stage 1 to restamp "</span>
+            <span class="sa">f</span><span class="s2">"the per-cast files."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">cruise</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">_lifted_cruise</span> <span class="ow">or</span> <span class="n">_cfg_cruise</span> <span class="ow">or</span> <span class="s2">"UNK"</span><span class="p">)</span>
+
+    <span class="c1"># Base provenance attrs, then the ACDD/derived/authored layer on top (which</span>
+    <span class="c1"># upgrades Conventions to include ACDD-1.3 and adds coverage bounds, people,</span>
+    <span class="c1"># embargo, and platform fields).  Coverage is computed from the data here so</span>
+    <span class="c1"># the bounding box brackets every station rather than copying one cast up.</span>
+    <span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cruise</span><span class="si">}</span><span class="s2"> CTD profiles — all casts, downcast + upcast"</span><span class="p">,</span>
+        <span class="s2">"cruise"</span><span class="p">:</span> <span class="n">cruise</span><span class="p">,</span>
+        <span class="s2">"source"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> per-cast netCDF files compiled by ctdcast from "</span>
+            <span class="s2">"stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)"</span>
+        <span class="p">),</span>
+        <span class="s2">"pressure_units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="s2">"pressure_spacing_dbar"</span><span class="p">:</span> <span class="n">dbar</span><span class="p">,</span>
+        <span class="s2">"Conventions"</span><span class="p">:</span> <span class="s2">"CF-1.13"</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="c1"># Guard the reductions: an empty grid or all-NaN max-pressure would make</span>
+    <span class="c1"># np.nanmin/nanmax warn and emit a NaN bound; pass None so it is omitted.</span>
+    <span class="n">_v_min</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">pressure_coord</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">pressure_coord</span><span class="o">.</span><span class="n">size</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">pressure_coord</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">_v_max</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">max_pressure_prof</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">max_pressure_prof</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="c1"># The compiled data_mode reflects what the casts ACTUALLY carry, so it overrides the</span>
+    <span class="c1"># config-declared value: "M" when the casts genuinely mix modes, else the single agreed</span>
+    <span class="c1"># value.  Feed it in *before* cruise_global_attrs so the identifier token (``id``,</span>
+    <span class="c1"># ``internal_mission_identifier``) and the ``data_mode`` / ``data_mode_meaning`` attrs are</span>
+    <span class="c1"># built from the same mode and cannot drift.  dataset_identity validates it and falls back</span>
+    <span class="c1"># to "P" on an out-of-vocabulary value, so there is no unguarded lookup here.</span>
+    <span class="n">_ci_attrs</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">_ci</span><span class="p">,</span> <span class="s2">"data_mode"</span><span class="p">:</span> <span class="n">compiled_data_mode</span><span class="p">}</span> <span class="k">if</span> <span class="n">modes_present</span> <span class="k">else</span> <span class="n">_ci</span>
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="n">cruise_global_attrs</span><span class="p">(</span>
+            <span class="n">_ci_attrs</span><span class="p">,</span>
+            <span class="n">lats</span><span class="o">=</span><span class="n">lats</span><span class="p">,</span>
+            <span class="n">lons</span><span class="o">=</span><span class="n">lons</span><span class="p">,</span>
+            <span class="n">vertical_min</span><span class="o">=</span><span class="n">_v_min</span><span class="p">,</span>
+            <span class="n">vertical_max</span><span class="o">=</span><span class="n">_v_max</span><span class="p">,</span>
+            <span class="n">vertical_units</span><span class="o">=</span><span class="n">VARIABLES</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">][</span><span class="s2">"units"</span><span class="p">],</span>
+            <span class="n">times</span><span class="o">=</span><span class="n">time_starts</span><span class="p">,</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">"ctd"</span><span class="p">,</span>
+            <span class="c1"># The identifier's grid token must reflect the ACTUAL bin spacing used</span>
+            <span class="c1"># here (build_profiles' own `dbar`), not the config default — otherwise</span>
+            <span class="c1"># a 2-dbar file is labelled `..._ctd_1dbar` while pressure_spacing_dbar</span>
+            <span class="c1"># correctly says 2.  grid_token reads processing.profiles_dbar.</span>
+            <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"processing"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"profiles_dbar"</span><span class="p">:</span> <span class="n">dbar</span><span class="p">}},</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Per-cast-sourced identity is authoritative over the config `cruise` set</span>
+    <span class="c1"># above and over the identity cruise_global_attrs still emits, so a compiled</span>
+    <span class="c1"># file states the cruise its casts actually came from (and errors if they</span>
+    <span class="c1"># disagree).</span>
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span>
+
+    <span class="c1"># Provenance: what wrote the file, then what it did.  Both go through</span>
+    <span class="c1"># `append_history`, so neither can be clobbered by a layer that returns a</span>
+    <span class="c1"># `history` key of its own — `cruise_global_attrs` no longer emits one.</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">CREATION_NOTE</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"create"</span><span class="p">)</span>
+
+    <span class="c1"># Record the binning operation in history (pressure_spacing_dbar</span>
+    <span class="c1"># keeps the machine-readable scalar), so the treatment is reconstructable from</span>
+    <span class="c1"># the compiled file alone.  Only claim the soak/deck exclusion when it actually</span>
+    <span class="c1"># removed something — stage-1-only inputs carry no flags to exclude.</span>
+    <span class="n">_note</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"compiled </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> casts; mean of raw samples per </span><span class="si">{</span><span class="n">dbar</span><span class="si">}</span><span class="s2">-dbar "</span>
+        <span class="s2">"bin, pressure coordinate is the bin centre"</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">qc_excluded</span><span class="p">:</span>
+        <span class="n">_note</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="s2">"; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records "</span>
+            <span class="s2">"(soak/deck and gross-range/spike) before binning"</span>
+        <span class="p">)</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">_note</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"profiles"</span><span class="p">)</span>
+
+    <span class="c1"># A config that declares data_mode 'D' but compiles casts that are not all delayed-mode</span>
+    <span class="c1"># gets 'P' (or 'M') above — honest, but the explicit declaration was overridden, which is</span>
+    <span class="c1"># the same quiet class as substituting a default. Say which casts are below D and at what</span>
+    <span class="c1"># stage (stage 3 has probably not been run on them), in a warning and in the file's own</span>
+    <span class="c1"># history, so the compiled file itself records why it is not D.</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">_ci</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_mode"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"D"</span> <span class="ow">and</span> <span class="n">compiled_data_mode</span> <span class="o">!=</span> <span class="s2">"D"</span><span class="p">:</span>
+        <span class="n">_below</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">=stage</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">_p</span><span class="p">,</span> <span class="n">stage</span><span class="p">),</span> <span class="n">_mode</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="n">cast_list</span><span class="p">,</span> <span class="n">cast_data_modes</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">_mode</span> <span class="o">!=</span> <span class="s2">"D"</span>
+        <span class="p">]</span>
+        <span class="n">_msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"config declares data_mode 'D' but </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">_below</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> compiled "</span>
+            <span class="sa">f</span><span class="s2">"cast(s) are below it (</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_below</span><span class="p">)</span><span class="si">}</span><span class="s2">); the compiled file is "</span>
+            <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">compiled_data_mode</span><span class="si">}</span><span class="s2">'. Stage 3 has probably not been run on them."</span>
+        <span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">_msg</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">_msg</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"profiles"</span><span class="p">)</span>
+
+    <span class="c1"># A per-cast file with no SENSOR_* catalog predates sensor provenance.  With</span>
+    <span class="c1"># refuse_catalog_less=False (the library default) build_profiles does not</span>
+    <span class="c1"># refuse — it warns once, names the files, and stamps the admission into the</span>
+    <span class="c1"># output so the gap is visible in the file itself, not only in a log.  The</span>
+    <span class="c1"># process/run CLI passes refuse_catalog_less=True and so raised above instead:</span>
+    <span class="c1"># re-running stage 1 is the actionable fix at the point a product is shipped.</span>
+    <span class="k">if</span> <span class="n">catalog_less</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">catalog_less</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> cast file(s) carry no sensor "</span>
+            <span class="sa">f</span><span class="s2">"catalog (</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">catalog_less</span><span class="p">)</span><span class="si">}</span><span class="s2">); their sensor provenance is absent "</span>
+            <span class="s2">"from profiles.nc. Re-run stage 1 for this cruise to build it."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"sensor_catalog"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"absent for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">catalog_less</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> casts — those "</span>
+            <span class="s2">"per-cast files predate the catalog; re-run stage 1"</span>
+        <span class="p">)</span>
+
+    <span class="n">ds_out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">data_vars</span><span class="o">=</span><span class="n">data_vars</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="n">ds_out</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Sea water pressure"</span><span class="p">,</span>
+        <span class="s2">"positive"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">,</span>
+        <span class="s2">"axis"</span><span class="p">:</span> <span class="s2">"Z"</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">ds_out</span><span class="p">[</span><span class="s2">"N_PROF"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Profile index (0-based sequential)"</span><span class="p">}</span>
+
+    <span class="c1"># Carry per-variable processing_level onto the compiled variables so profiles.nc — the</span>
+    <span class="c1"># archive, which may travel without the stage files — is interpretable on its own.  The</span>
+    <span class="c1"># value is what the casts agree on, or the explicit mixed marker when they differ; a</span>
+    <span class="c1"># variable no cast stamped stays absent (not-stated, never claimed as raw).</span>
+    <span class="k">for</span> <span class="n">_v</span><span class="p">,</span> <span class="n">_pls</span> <span class="ow">in</span> <span class="n">var_processing_levels</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">_v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_out</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">_pls</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">ds_out</span><span class="p">[</span><span class="n">_v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"processing_level"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">_pls</span><span class="p">))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_pls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">_MIXED_PROCESSING_LEVEL</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Route through the CF writer so the binned science variables and the</span>
+    <span class="c1"># latitude/longitude/pressure coordinates receive their VARIABLES metadata</span>
+    <span class="c1"># (units, standard_name, long_name, label_units) — a plain to_netcdf here</span>
+    <span class="c1"># would leave them unlabelled.  write() writes atomically.</span>
+    <span class="n">_write_nc</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">profiles_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="run">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.profiles.run">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>
+    <span class="n">nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">profiles_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Build ``profiles.nc`` from NC files in *nc_dir*.</span>
+
+<span class="sd">    Called by :func:`ctdcast.processors.process` with ``stage="profiles"``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_dir:</span>
+<span class="sd">        Directory of per-cast netCDF files.</span>
+<span class="sd">    profiles_path:</span>
+<span class="sd">        Output path for the compiled profiles netCDF.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite an existing profiles.nc.</span>
+<span class="sd">    dry_run:</span>
+<span class="sd">        Print what would be built without writing any output.</span>
+<span class="sd">    **kw:</span>
+<span class="sd">        Passed to :func:`build_profiles` (e.g. ``gebco_path``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if profiles.nc was written; False if skipped (or dry_run).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[dry-run] profiles: </span><span class="si">{</span><span class="n">nc_dir</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">profiles_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">build_profiles</span><span class="p">(</span><span class="n">nc_dir</span><span class="p">,</span> <span class="n">profiles_path</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"profiles: wrote </span><span class="si">{</span><span class="n">profiles_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"profiles: skipped (up to date; use --force to rebuild): </span><span class="si">{</span><span class="n">profiles_path</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

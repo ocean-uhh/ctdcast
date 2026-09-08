@@ -1,0 +1,205 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registries &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=683873e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ctd_groupings.yaml" href="ctd_groupings.html" />
+    <link rel="prev" title="Cruise metadata (cruise_info)" href="cruise_metadata.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Registries</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#institutions">Institutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#platforms">Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#roles">Roles</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Registries</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/registries.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="registries">
+<span id="id1"></span><h1>Registries<a class="headerlink" href="#registries" title="Link to this heading"></a></h1>
+<p>A cruise config names three things by slug or code — institutions, a platform, and
+contributor roles. The valid values ship inside the installed package, so rather than
+open a YAML file in <code class="docutils literal notranslate"><span class="pre">site-packages</span></code> to find one, list them:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>list<span class="w">                              </span><span class="c1"># the three registries</span>
+ctdcast<span class="w"> </span>list<span class="w"> </span>institutions<span class="w">                 </span><span class="c1"># what ships + your user directory</span>
+ctdcast<span class="w"> </span>list<span class="w"> </span>institutions<span class="w"> </span>config.yaml<span class="w">     </span><span class="c1"># ... plus what this config adds</span>
+ctdcast<span class="w"> </span>list<span class="w"> </span>platforms<span class="w"> </span>--search<span class="w"> </span>meteor<span class="w">    </span><span class="c1"># filter by slug or name</span>
+ctdcast<span class="w"> </span>list<span class="w"> </span>roles<span class="w"> </span>--vocabulary<span class="w"> </span>W08<span class="w">        </span><span class="c1"># one role vocabulary</span>
+</pre></div>
+</div>
+<p>The full command reference is in <a class="reference internal" href="cli_reference.html"><span class="doc">CLI reference</span></a>. What each registry is, and how to
+add to it without editing package data, follows.</p>
+<section id="institutions">
+<h2>Institutions<a class="headerlink" href="#institutions" title="Link to this heading"></a></h2>
+<p>Research organisations, referenced by <code class="docutils literal notranslate"><span class="pre">cruise_info.institutions</span></code> (see
+<a class="reference internal" href="cruise_metadata.html"><span class="doc">Cruise metadata (cruise_info)</span></a>). They resolve from four sources, later winning slug by slug — the
+<code class="docutils literal notranslate"><span class="pre">Source</span></code> column in <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">list</span> <span class="pre">institutions</span></code> tells you which supplied each entry:</p>
+<ol class="arabic simple">
+<li><p><strong>packaged</strong> — the shipped <code class="docutils literal notranslate"><span class="pre">ctdcast/config/institutions.yaml</span></code>;</p></li>
+<li><p><strong>user</strong> — <code class="docutils literal notranslate"><span class="pre">~/.config/ctdcast/institutions.yaml</span></code> (or <code class="docutils literal notranslate"><span class="pre">$CTDCAST_CONFIG_DIR</span></code>), for
+organisations you use across cruises;</p></li>
+<li><p>a <strong>config file</strong> named by <code class="docutils literal notranslate"><span class="pre">cruise_info.institutions_file</span></code>, kept beside the cruise
+config;</p></li>
+<li><p><strong>inline</strong> — an entry in <code class="docutils literal notranslate"><span class="pre">cruise_info.institutions</span></code> written with its own <code class="docutils literal notranslate"><span class="pre">name</span></code> and
+<code class="docutils literal notranslate"><span class="pre">id</span></code>, which needs no registry at all.</p></li>
+</ol>
+<p>Tiers 3 and 4 are only visible when you pass the config, so <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">list</span> <span class="pre">institutions</span></code>
+with no config prints a footer saying so.</p>
+</section>
+<section id="platforms">
+<h2>Platforms<a class="headerlink" href="#platforms" title="Link to this heading"></a></h2>
+<p>Vessels, referenced by <code class="docutils literal notranslate"><span class="pre">cruise_info.platform</span></code> (or the older <code class="docutils literal notranslate"><span class="pre">ship_slug</span></code>). The platform
+drives the EXPOCODE via its ICES code, so a wrong slug is refused rather than guessed.
+Two sources:</p>
+<ol class="arabic">
+<li><p><strong>packaged</strong> — the shipped <code class="docutils literal notranslate"><span class="pre">ctdcast/config/platforms.yaml</span></code>;</p></li>
+<li><p><strong>inline</strong> — <code class="docutils literal notranslate"><span class="pre">cruise_info.platform</span></code> written as a mapping, for a vessel not in the
+shared registry:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">cruise_info</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">platform</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"RRS</span><span class="nv"> </span><span class="s">Discovery"</span>
+<span class="w">    </span><span class="nt">ices_code</span><span class="p">:</span><span class="w"> </span><span class="s">"74E3"</span><span class="w">        </span><span class="c1"># drives the EXPOCODE</span>
+<span class="w">    </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="s">"..."</span><span class="w">          </span><span class="c1"># optional L06 category</span>
+</pre></div>
+</div>
+<p>This works end to end — no need to edit <code class="docutils literal notranslate"><span class="pre">platforms.yaml</span></code>.</p>
+</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">list</span> <span class="pre">platforms</span></code> also prints two sets of <strong>traps</strong> that <code class="docutils literal notranslate"><span class="pre">platforms.yaml</span></code>
+records and the resolver refuses: <code class="docutils literal notranslate"><span class="pre">ambiguous_slugs</span></code> (a name shared by several hulls —
+<code class="docutils literal notranslate"><span class="pre">meteor</span></code> alone is refused; use <code class="docutils literal notranslate"><span class="pre">meteor3</span></code>) and <code class="docutils literal notranslate"><span class="pre">forbidden_codes</span></code> (ICES codes that must
+not be used, each with the reason). They are shown so you can see <em>why</em> a slug is refused,
+not only that it was.</p>
+</section>
+<section id="roles">
+<h2>Roles<a class="headerlink" href="#roles" title="Link to this heading"></a></h2>
+<p>Contributor role codes, referenced by <code class="docutils literal notranslate"><span class="pre">cruise_info.role_vocabulary</span></code> (people) and
+<code class="docutils literal notranslate"><span class="pre">cruise_info.institution_role_vocabulary</span></code> (institutions). There are four vocabularies on
+two axes:</p>
+<ul class="simple">
+<li><p><strong>Person roles</strong> — <code class="docutils literal notranslate"><span class="pre">C89</span></code> (BODC dataset roles, the default) and <code class="docutils literal notranslate"><span class="pre">G04</span></code>;</p></li>
+<li><p><strong>Institution roles</strong> — <code class="docutils literal notranslate"><span class="pre">C59</span></code> (the default) and <code class="docutils literal notranslate"><span class="pre">W08</span></code>.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">list</span> <span class="pre">roles</span></code> groups them by axis and marks each axis’s default, so a person role
+is never mistaken for one usable where an institution role is required. <code class="docutils literal notranslate"><span class="pre">--vocabulary</span></code>
+shows a single one.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cruise_metadata.html" class="btn btn-neutral float-left" title="Cruise metadata (cruise_info)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ctd_groupings.html" class="btn btn-neutral float-right" title="ctd_groupings.yaml" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.stage_layout &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=683873e3"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.stage_layout</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.stage_layout</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""On-disk stage layout: per-stage paths and best-available cast-file discovery.</span>
+
+<span class="sd">The single source of truth for the stage-file naming, so nothing elsewhere</span>
+<span class="sd">hard-codes ``_stageN`` or ``stageN/``.  Each processing stage writes its own</span>
+<span class="sd">per-cast netCDF under a stage subdirectory of one instrument root, with the</span>
+<span class="sd">stage carried in the filename as well as the path::</span>
+
+<span class="sd">    &lt;root&gt;/stage1/&lt;cast_stem&gt;_stage1.nc</span>
+<span class="sd">    &lt;root&gt;/stage2/&lt;cast_stem&gt;_stage2.nc</span>
+<span class="sd">    &lt;root&gt;/stage3/&lt;cast_stem&gt;_stage3.nc</span>
+
+<span class="sd">The subdirectory bounds each directory's file count by cast count rather than</span>
+<span class="sd">cast count times stages; the filename suffix means a file copied out of its</span>
+<span class="sd">directory is still identifiable and still parses.  :func:`parse_stage` reads the</span>
+<span class="sd">stage off the filename and does not trust the parent directory, so the two can</span>
+<span class="sd">disagree (the filename wins, with a warning) without losing the file.</span>
+
+<span class="sd">The cast stages here mirror the ``"cast"``-scope entries of</span>
+<span class="sd">:data:`ctdcast.processors.STAGES` (the pipeline registry); the two are tied by a</span>
+<span class="sd">consistency test rather than derived from each other, because the registry</span>
+<span class="sd">imports the stage modules that import this one — deriving would be an import</span>
+<span class="sd">cycle.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_id_from_name</span><span class="p">,</span> <span class="n">format_cast_id</span>
+
+<span class="c1">#: Subdirectory under the instrument root that holds each stage's files.  This is</span>
+<span class="c1">#: the one hand-maintained map; the suffixes and the stage tuple derive from it,</span>
+<span class="c1">#: so adding a stage (e.g. a future hex→CNV stage 0) is a single line here.</span>
+<span class="n">STAGE_DIRS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">"stage1"</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">"stage2"</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="s2">"stage3"</span><span class="p">}</span>
+
+<span class="c1">#: Filename suffix (before ``.nc``) carried by each stage's per-cast file.  The</span>
+<span class="c1">#: stage's directory name and filename suffix are the same token by construction,</span>
+<span class="c1">#: matching the sibling oceanarray package's "stage name doubles as the suffix".</span>
+<span class="n">STAGE_SUFFIXES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"_</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">STAGE_DIRS</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+<span class="c1">#: The per-cast stages that write stage files, in ascending order.</span>
+<span class="n">STAGES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">STAGE_DIRS</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Raise :class:`ValueError` if *stage* is not a known per-cast stage."""</span>
+    <span class="k">if</span> <span class="n">stage</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">STAGE_DIRS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"unknown stage </span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">; expected one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">STAGE_DIRS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">stage_dir</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">create</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``root/stageN``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : Path or str</span>
+<span class="sd">        The instrument stage root (e.g. the CTD or LADCP root).</span>
+<span class="sd">    stage : int</span>
+<span class="sd">        The processing stage (1, 2, or 3).</span>
+<span class="sd">    create : bool, optional</span>
+<span class="sd">        Create the directory (and parents) when true.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path</span>
+<span class="sd">        The stage subdirectory.</span>
+<span class="sd">    """</span>
+    <span class="n">_check_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">/</span> <span class="n">STAGE_DIRS</span><span class="p">[</span><span class="n">stage</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">create</span><span class="p">:</span>
+        <span class="n">directory</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">directory</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">stage_path</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cast_stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the per-cast output path ``root/stageN/&lt;cast_stem&gt;_stageN.nc``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : Path or str</span>
+<span class="sd">        The instrument stage root.</span>
+<span class="sd">    cast_stem : str</span>
+<span class="sd">        The cast's base stem, without any stage suffix (e.g. ``mixsed2_017``).</span>
+<span class="sd">    stage : int</span>
+<span class="sd">        The processing stage (1, 2, or 3).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path</span>
+<span class="sd">        The stage-suffixed per-cast netCDF path.</span>
+<span class="sd">    """</span>
+    <span class="n">_check_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stage_dir</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cast_stem</span><span class="si">}{</span><span class="n">STAGE_SUFFIXES</span><span class="p">[</span><span class="n">stage</span><span class="p">]</span><span class="si">}</span><span class="s2">.nc"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_stage</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``(base_stem, stage)`` parsed from a filename, or ``None``.</span>
+
+<span class="sd">    The stage is read from the filename suffix, not the parent directory, so a</span>
+<span class="sd">    file copied out of its stage directory still parses.  When the filename</span>
+<span class="sd">    suffix and the parent directory disagree, the filename wins and a warning is</span>
+<span class="sd">    emitted rather than the file being misread or dropped.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : Path or str</span>
+<span class="sd">        A per-cast netCDF path or name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (str, int) or None</span>
+<span class="sd">        The base stem (stage suffix stripped) and the stage number, or ``None``</span>
+<span class="sd">        when the name carries no recognised stage suffix.</span>
+<span class="sd">    """</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">stem</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stem</span>  <span class="c1"># drops the ``.nc`` extension</span>
+    <span class="k">for</span> <span class="n">stage</span><span class="p">,</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">STAGE_SUFFIXES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">stem</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">suffix</span><span class="p">):</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">stem</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)]</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">if</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">STAGE_DIRS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="ow">and</span> <span class="n">parent</span> <span class="o">!=</span> <span class="n">STAGE_DIRS</span><span class="p">[</span><span class="n">stage</span><span class="p">]:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries </span><span class="si">{</span><span class="n">suffix</span><span class="si">!r}</span><span class="s2"> but sits in </span><span class="si">{</span><span class="n">parent</span><span class="si">!r}</span><span class="s2">; "</span>
+                    <span class="s2">"trusting the filename"</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">base</span><span class="p">,</span> <span class="n">stage</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">best_available</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cast_stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the highest-stage file present for *cast_stem*, else ``None``.</span>
+
+<span class="sd">    Precedence is stage 3, then stage 2, then stage 1 — the one place this rule</span>
+<span class="sd">    lives.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : Path or str</span>
+<span class="sd">        The instrument stage root.</span>
+<span class="sd">    cast_stem : str</span>
+<span class="sd">        The cast's base stem, without any stage suffix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path or None</span>
+<span class="sd">        The best-available per-cast file, or ``None`` when no stage file exists.</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">STAGES</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">stage_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">cast_stem</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">candidate</span>
+    <span class="c1"># Flat/suffix-less shim: an old ``nc_dir`` holds ``&lt;stem&gt;.nc`` directly under</span>
+    <span class="c1"># the root, no stage subdirectory and no suffix.  It counts as stage 1, and</span>
+    <span class="c1"># ranks below any nested stage file (checked above first).</span>
+    <span class="n">flat</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cast_stem</span><span class="si">}</span><span class="s2">.nc"</span>
+    <span class="k">if</span> <span class="n">flat</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">flat</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Map each cast identity to the stage files present for it.</span>
+
+<span class="sd">    Walks ``root/stage*/`` and groups every recognised stage file by its cast</span>
+<span class="sd">    identity ``(cast_num, cast_suffix)`` — so a plain cast ``NNN`` and its</span>
+<span class="sd">    lettered sibling ``NNNb`` are distinct keys.  Files whose name carries no</span>
+<span class="sd">    stage suffix or no cast number are skipped.</span>
+
+<span class="sd">    A suffix-less ``*.nc`` directly under the root (the old flat ``nc_dir``</span>
+<span class="sd">    layout, and the committed test fixtures) is folded in as **stage 1**, unless</span>
+<span class="sd">    a nested ``stage1/…_stage1.nc`` already exists for that cast — the nested file</span>
+<span class="sd">    wins.  Compiled products such as ``profiles.nc`` carry no cast number and are</span>
+<span class="sd">    skipped automatically.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : Path or str</span>
+<span class="sd">        The instrument stage root.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{(cast_num, cast_suffix): {stage: path}}``.</span>
+<span class="sd">    """</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="n">STAGES</span><span class="p">:</span>
+        <span class="n">directory</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">STAGE_DIRS</span><span class="p">[</span><span class="n">stage</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">directory</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">directory</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">"*</span><span class="si">{</span><span class="n">STAGE_SUFFIXES</span><span class="p">[</span><span class="n">stage</span><span class="p">]</span><span class="si">}</span><span class="s2">.nc"</span><span class="p">)):</span>
+            <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_stage</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">parsed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover - glob guarantees the suffix</span>
+                <span class="k">continue</span>
+            <span class="n">base</span><span class="p">,</span> <span class="n">file_stage</span> <span class="o">=</span> <span class="n">parsed</span>
+            <span class="n">cast_id</span> <span class="o">=</span> <span class="n">cast_id_from_name</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cast_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cast_id</span><span class="p">,</span> <span class="p">{})[</span><span class="n">file_stage</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span>
+    <span class="c1"># Flat/suffix-less shim: top-level suffix-less cast files count as stage 1,</span>
+    <span class="c1"># ranking below any nested stage-1 file already found (hence ``setdefault``).</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*.nc"</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">parse_stage</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>  <span class="c1"># a suffixed file loose at the root — not a flat stage 1</span>
+        <span class="k">if</span> <span class="n">is_product_name</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">continue</span>  <span class="c1"># compiled product (…profiles.nc), even if its name has digits</span>
+        <span class="n">cast_id</span> <span class="o">=</span> <span class="n">cast_id_from_name</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cast_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>  <span class="c1"># non-cast file</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cast_id</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">groups</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">matches_tags</span><span class="p">(</span><span class="n">cast_id</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *cast_id* is selected by any zero-padded cast *tag*.</span>
+
+<span class="sd">    Matches on the parsed cast identity, not a filename substring — so a cruise</span>
+<span class="sd">    or leg number in the stem cannot be mistaken for the cast number (the bug in</span>
+<span class="sd">    the old ``tag in stem`` rule), and a lettered sibling ``004b`` is selected by</span>
+<span class="sd">    its own tag (``"004b"``) or by the bare number (``"004"``).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast_id : tuple of (int, str)</span>
+<span class="sd">        The ``(cast_num, cast_suffix)`` identity from :func:`group_by_cast`.</span>
+<span class="sd">    tags : set of str</span>
+<span class="sd">        Zero-padded cast tags (e.g. ``{"042", "004b"}``), as the CLI produces</span>
+<span class="sd">        from ``--only``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if any tag names this cast.</span>
+<span class="sd">    """</span>
+    <span class="n">num</span><span class="p">,</span> <span class="n">suffix</span> <span class="o">=</span> <span class="n">cast_id</span>
+    <span class="k">return</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tags</span> <span class="ow">or</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tags</span>
+
+
+<span class="c1">#: Filename suffix of the compiled gridded products (``profiles.nc``,</span>
+<span class="c1">#: ``ladcp_profiles.nc``) that sit at the stage root beside the stage directories.</span>
+<span class="n">PRODUCT_SUFFIX</span> <span class="o">=</span> <span class="s2">"profiles.nc"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">is_product_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a compiled-product file, not a per-cast file.</span>
+
+<span class="sd">    Compiled products (``…profiles.nc``) live at the stage root; they are terminal</span>
+<span class="sd">    gridded artefacts, not casts, and must never be folded into cast discovery —</span>
+<span class="sd">    even when the name carries a cruise number (e.g. ``msm_142_profiles.nc``),</span>
+<span class="sd">    which would otherwise parse as cast 142.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">PRODUCT_SUFFIX</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="select_best_available">
+<a class="viewcode-back" href="../../../api.html#ctdcast.select_best_available">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">select_best_available</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(cast_id, best_path, source_stage)`` per cast, sorted by identity.</span>
+
+<span class="sd">    The one place the best-available precedence lives for every consumer (the</span>
+<span class="sd">    report, ``build_profiles``, the LADCP compile).  ``best_path`` is the</span>
+<span class="sd">    highest-stage file present (3 &gt; 2 &gt; 1); ``source_stage`` is that stage, or 0</span>
+<span class="sd">    when the best file is a flat/suffix-less file that does not state its own</span>
+<span class="sd">    stage (the compatibility shim only *assumes* stage 1, so 0 = "unknown, guessed</span>
+<span class="sd">    stage 1" stays distinct from a stated stage 1).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : Path or str</span>
+<span class="sd">        The instrument stage root.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of (tuple(int, str), Path, int)</span>
+<span class="sd">        One ``((cast_num, cast_suffix), path, source_stage)`` per cast, sorted by</span>
+<span class="sd">        cast identity.</span>
+<span class="sd">    """</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cast_id</span><span class="p">,</span> <span class="n">stages</span> <span class="ow">in</span> <span class="n">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">stages</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">stages</span><span class="p">[</span><span class="n">best</span><span class="p">]</span>
+        <span class="n">stage</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="p">(</span><span class="n">best</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">parse_stage</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="n">best</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">cast_id</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">stage</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">is_up_to_date</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sources</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *target* exists and is newer than every source in *sources*.</span>
+
+<span class="sd">    The one skip/re-run test for a derived file (a stage output or a compiled</span>
+<span class="sd">    product): skip only when the output already exists **and** no input has been</span>
+<span class="sd">    rewritten since (by mtime).  This is what makes a forced re-run of an earlier</span>
+<span class="sd">    step propagate — ``process --stage 1 --only 42 --force`` followed by a plain</span>
+<span class="sd">    ``process --stage 2 3 profiles`` regenerates cast 42 downstream instead of</span>
+<span class="sd">    silently skipping because a stale output happened to exist.  A missing source</span>
+<span class="sd">    is ignored (it cannot make the target stale).</span>
+<span class="sd">    """</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">t_mtime</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">&lt;=</span> <span class="n">t_mtime</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sources</span> <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">())</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Provenance roadmap &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=683873e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Python API" href="api.html" />
+    <link rel="prev" title="Report output" href="report_output.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Provenance roadmap</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-principle">The principle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-identity-and-lineage-done">File identity and lineage — done</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cross-package-discovery-done">Cross-package discovery — done</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#processing-state-done">Processing state — done</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mixed-processing-states-done">Mixed processing states — done</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensor-calibration-coefficients-planned">Sensor calibration coefficients — planned</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#known-limits">Known limits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Provenance roadmap</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/provenance_roadmap.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="provenance-roadmap">
+<h1>Provenance roadmap<a class="headerlink" href="#provenance-roadmap" title="Link to this heading"></a></h1>
+<p>ctdcast is the first of three packages in one chain: ctdcast processes CTD casts to
+per-stage netCDF; <a class="reference external" href="https://github.com/ocean-uhh/caldip">caldip</a> compares mooring
+instruments against a ctdcast CTD file at calibration-dip bottle stops;
+<a class="reference external" href="https://github.com/ocean-uhh/oceanarray">oceanarray</a> applies the resulting offsets to
+mooring instruments. This page records how provenance travels along that chain, what is
+implemented, and what is planned.</p>
+<p>Status labels: <strong>done</strong> — in the released or merged code; <strong>in progress</strong> — being built;
+<strong>planned</strong> — designed and agreed, not yet built.</p>
+<section id="the-principle">
+<h2>The principle<a class="headerlink" href="#the-principle" title="Link to this heading"></a></h2>
+<p>Two rules shape every decision below.</p>
+<p><strong>A file must be interpretable on its own.</strong> Given one output file, a reader should be able to
+recover which input produced it, what was done to it, and with which parameters — without a
+directory listing, a configuration file, or a conversation.</p>
+<p><strong>Each fact is recorded once, by the package that first observes it, and passed through
+unchanged.</strong> ctdcast observes the CTD’s sensors and identity; caldip observes which of them it
+used as reference and the comparison itself; oceanarray consumes and records what it applied.
+A package that re-derives a fact another already recorded is duplicating, not validating —
+and shared facts keep the same attribute names the whole way down, so no consumer needs a
+translation layer.</p>
+</section>
+<section id="file-identity-and-lineage-done">
+<h2>File identity and lineage — done<a class="headerlink" href="#file-identity-and-lineage-done" title="Link to this heading"></a></h2>
+<p>Every file ctdcast writes carries a <code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> (UUID4, ACDD/OceanSITES convention),
+fresh on every write, and from stage 2 onward a <code class="docutils literal notranslate"><span class="pre">source_tracking_id</span></code> naming the file it was
+made from. Stage 1 records <code class="docutils literal notranslate"><span class="pre">source_cnv</span></code> instead, since it has no upstream netCDF; the LADCP
+stage-1 file records <code class="docutils literal notranslate"><span class="pre">source_mat</span></code>. <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> carries <code class="docutils literal notranslate"><span class="pre">source_tracking_id</span></code> per
+profile alongside <code class="docutils literal notranslate"><span class="pre">source_file</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> answers <em>which instance of this file this is</em> — it is deliberately <strong>not</strong> a
+content hash, and it changes even when a re-run produces identical values. Comparing
+<code class="docutils literal notranslate"><span class="pre">tracking_id</span></code> tells you the file was rewritten; comparing the recorded processing parameters
+tells you whether anything actually moved.</p>
+<p>A cross-stage test asserts that the sensor catalog, the raw instrument header, the cruise and
+cast identity and the lineage attributes all survive stage 1 → 2 → 3. It runs on the
+canonical Linux job, where the CNV reader is installed; it is skipped on the other test-matrix
+cells, so an operating-system-specific fault in the conversion path is not covered by it.</p>
+</section>
+<section id="cross-package-discovery-done">
+<h2>Cross-package discovery — done<a class="headerlink" href="#cross-package-discovery-done" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast.select_best_available</span></code> is the supported entry point for other packages: it returns,
+per cast, the best-available stage file and which stage it came from. It exists so downstream
+packages do not reimplement the stage-3-else-2-else-1 precedence, which would drift the first
+time a stage is added.</p>
+</section>
+<section id="processing-state-done">
+<h2>Processing state — done<a class="headerlink" href="#processing-state-done" title="Link to this heading"></a></h2>
+<p>Two OceanSITES fields, rather than bespoke ones.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data_mode</span></code> (reference table 4) says whether a file is the product of record. It is on
+every file — the per-cast stage files as well as the compiled products — so a consumer that
+reads a stage file through <code class="docutils literal notranslate"><span class="pre">select_best_available</span></code> (caldip does) sees the mode without
+opening <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code>. The default is <code class="docutils literal notranslate"><span class="pre">P</span></code> provisional; <code class="docutils literal notranslate"><span class="pre">D</span></code> delayed-mode is a claim that
+all calibrations and quality control have been applied, so it is <strong>declared</strong> in the config
+(<code class="docutils literal notranslate"><span class="pre">cruise_info.data_mode:</span> <span class="pre">D</span></code>), never inferred — and a <code class="docutils literal notranslate"><span class="pre">D</span></code> declared with no calibration
+block warns and names the cast. Quick-look output (<code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">draft</span></code>) is <code class="docutils literal notranslate"><span class="pre">P</span></code> regardless of
+configuration.</p>
+<p><code class="docutils literal notranslate"><span class="pre">processing_level</span></code> (reference table 3) says what has been done, <strong>per variable</strong>, using that
+table’s wording. The stage-1 conversion value is stamped on every measured channel — the ones
+that map to a sensor in the CNV <code class="docutils literal notranslate"><span class="pre">&lt;Sensors&gt;</span></code> block — and on no computed channel, since
+salinity, density and the rest were derived from already-converted inputs and were never
+instrument data. Later procedures append their own values: range-flagging at stages 2 and 3,
+and calibration at stage 3, which propagates to re-derived salinity. Several values can apply
+to one variable at once, so they are joined with <code class="docutils literal notranslate"><span class="pre">&quot;;</span> <span class="pre">&quot;</span></code> in the order applied, as an ordered
+set — re-running a stage never duplicates a value — which makes the attribute double as the
+per-variable sequence. No value in that table describes a clock correction, so the time
+coordinate does not claim one; the shift is recorded in <code class="docutils literal notranslate"><span class="pre">history</span></code>, in the clock-offset
+variable and in the retained original time coordinate.</p>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">processing_level</span></code> names a <em>procedure that was applied</em>, not a guarantee about the
+data. “Ranges applied, bad data flagged” means a range test ran and its failures were flagged;
+the thresholds it used are recorded on the flag variables, which is what makes the scope of the
+claim checkable.</p>
+</section>
+<section id="mixed-processing-states-done">
+<h2>Mixed processing states — done<a class="headerlink" href="#mixed-processing-states-done" title="Link to this heading"></a></h2>
+<p>Compiling casts that sit at different stages is permitted: re-running two casts to check a
+change should not mean re-processing a cruise. Two kinds of heterogeneity are kept distinct,
+because stage is not data mode:</p>
+<ul class="simple">
+<li><p><strong>Mixed stages.</strong> Casts compiled from different stages warn loudly, naming every cast and
+its stage; the per-profile <code class="docutils literal notranslate"><span class="pre">source_stage</span></code> already carries the fact. Stages 1, 2 and 3 are
+all provisional, so this does <strong>not</strong> make the file <code class="docutils literal notranslate"><span class="pre">M</span></code> — an all-provisional compile is
+<code class="docutils literal notranslate"><span class="pre">data_mode</span> <span class="pre">=</span> <span class="pre">&quot;P&quot;</span></code>.</p></li>
+<li><p><strong>Mixed data modes.</strong> <code class="docutils literal notranslate"><span class="pre">data_mode</span> <span class="pre">=</span> <span class="pre">&quot;M&quot;</span></code> appears only when the casts genuinely differ (a
+declared <code class="docutils literal notranslate"><span class="pre">D</span></code> compiled alongside <code class="docutils literal notranslate"><span class="pre">P</span></code> ones). <code class="docutils literal notranslate"><span class="pre">M</span></code> then triggers the manual’s obligation
+to say which data is in which mode, satisfied by a per-<code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> <code class="docutils literal notranslate"><span class="pre">source_data_mode</span></code>
+variable read from each cast’s own attribute.</p></li>
+</ul>
+</section>
+<section id="sensor-calibration-coefficients-planned">
+<h2>Sensor calibration coefficients — planned<a class="headerlink" href="#sensor-calibration-coefficients-planned" title="Link to this heading"></a></h2>
+<p>Stage-1 files preserve the instrument header verbatim, so the base calibration coefficients
+are present at stage 1 but do not currently reach the compiled product. Carrying each sensor’s
+complete configuration block onto its catalog entry makes the raw-to-physical conversion
+reconstructable from the compiled file alone.</p>
+</section>
+<section id="known-limits">
+<h2>Known limits<a class="headerlink" href="#known-limits" title="Link to this heading"></a></h2>
+<p><strong>Stage 3 can apply only a conductivity slope.</strong> There is no conductivity offset, no
+temperature correction and no pressure correction. A downstream package’s temperature reference
+therefore cannot be corrected by ctdcast as it stands, whichever stage it reads. Any check that
+enumerates ctdcast’s correction fields is complete only until a second correction is added.</p>
+<p><strong>Calibration-dip integration is not yet implemented in either direction.</strong> caldip’s
+machine-readable output is moving to one netCDF per cast, with the statistics CSV retained as a
+derived export for cruise reports; oceanarray then applies those corrections at the front of
+its stage 3. Until that lands, corrections determined from calibration dips are not applied
+automatically anywhere in the chain.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="report_output.html" class="btn btn-neutral float-left" title="Report output" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="Python API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

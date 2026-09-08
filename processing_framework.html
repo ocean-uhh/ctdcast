@@ -1,0 +1,595 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast processing framework &mdash; ctdcast v0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=683873e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="config.yaml" href="config_yaml.html" />
+    <link rel="prev" title="CLI reference" href="cli_reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ctdcast processing framework</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-stages">The stages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-sea-bird-has-already-done-to-the-file">What Sea-Bird has already done to the file</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#why-the-block-matters-more-than-it-looks">Why the <code class="docutils literal notranslate"><span class="pre">*</span></code> block matters more than it looks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-correction-ledger">The correction ledger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#where-a-file-enters-the-sequence">Where a file enters the sequence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sea-bird-s-own-recommendation-for-comparison">Sea-Bird’s own recommendation, for comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-worked-example">A worked example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cast-level-processing">Cast-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cruise-level-processing">Cruise-level processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-table">Summary table</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ctdcast processing framework</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/processing_framework.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ctdcast-processing-framework">
+<span id="processing-framework"></span><h1>ctdcast processing framework<a class="headerlink" href="#ctdcast-processing-framework" title="Link to this heading"></a></h1>
+<p>This page describes <strong>what each processing stage does and why</strong>, as distinct from
+<a class="reference internal" href="cli_reference.html"><span class="doc">CLI reference</span></a>, which describes how to invoke them. It is the ctdcast
+counterpart to oceanarray’s processing framework: where oceanarray moves
+instrument → mooring → array, ctdcast moves <strong>cast → cruise</strong>.</p>
+<p>Those two levels are not an informal grouping — they are the <code class="docutils literal notranslate"><span class="pre">scope</span></code> field on
+every row of the stage registry (<code class="docutils literal notranslate"><span class="pre">ctdcast.processors.STAGES</span></code>), which is the
+single source of truth for execution order, the <code class="docutils literal notranslate"><span class="pre">--stage</span></code> choices, and the
+re-run rule. A <code class="docutils literal notranslate"><span class="pre">&quot;cast&quot;</span></code> stage runs once per cast; a <code class="docutils literal notranslate"><span class="pre">&quot;cruise&quot;</span></code> stage runs once
+per compiled product.</p>
+<p><strong>Principles</strong></p>
+<ul class="simple">
+<li><p><strong>Modular</strong> — each stage has defined inputs and outputs, and one job.</p></li>
+<li><p><strong>Cruise-ready</strong> — usable for quick-look processing at sea, with enough
+structure to carry into scientific analysis afterwards.</p></li>
+<li><p><strong>Reproducible</strong> — every transformation records itself in <code class="docutils literal notranslate"><span class="pre">history</span></code> with the
+parameters it used, not merely its name.</p></li>
+<li><p><strong>Incremental</strong> — a stage’s output is storable and reloadable, so processing can
+stop and resume rather than being one long run.</p></li>
+</ul>
+<p>Output files use CF-netCDF conventions with ACDD discovery metadata; the compiled
+products additionally carry an <code class="docutils literal notranslate"><span class="pre">expocode</span></code> variable over <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code>, in the CCHDO
+manner. It is a variable rather than a coordinate: it names the one cruise every
+profile already belongs to, so it indexes nothing.</p>
+<hr class="docutils" />
+<section id="the-stages">
+<h2>The stages<a class="headerlink" href="#the-stages" title="Link to this heading"></a></h2>
+<p>Two rules govern what may be a <em>stage</em> rather than a <em>product</em>:</p>
+<p><strong>Monotone in corrections.</strong> Each stage adds information — flags, calibrations,
+derived variables — and removes none. Stage 2 marks the soak; it does not delete
+those scans. This is why a later stage can always be re-run from an earlier one,
+and why the lineage on disk is meaningful rather than lossy.</p>
+<p>A sharper form of the same rule is worth stating, because it says exactly where
+numbers start moving: <strong>stages 1 and 2 change no measured value.</strong>
+Stage 1 renames and normalises units; stage 2 selects and flags. Neither alters a
+temperature, a conductivity or a pressure. <strong>Stage 3 is the first stage where a
+measured value changes</strong> — calibration adjusts conductivity, and salinity is
+re-derived from it. (Trimming a moored record does shift the <code class="docutils literal notranslate"><span class="pre">time</span></code> <em>coordinate</em>
+under a clock correction, which is why the rule is about measured values rather
+than about all numbers.) So a disagreement between two people’s stage-2 output is
+a disagreement about <em>selection</em>; a disagreement at stage 3 is a disagreement
+about <em>calibration</em>, and the two are diagnosed differently.</p>
+<p><strong>Constant in representation.</strong> A stage leaves the sampling representation
+untouched: same scans, same vertical axis. Anything that <em>changes</em> the
+representation — binning to a pressure grid, splitting into downcast and upcast
+halves, stacking casts into one array — is a <strong>terminal product</strong>, not a stage.</p>
+<p><strong>Parameters are found outside the stages and applied inside them.</strong> A stage never
+derives its own correction coefficients. For ctdcast they come from two places:</p>
+<ul class="simple">
+<li><p>the <strong>conductivity slope</strong>, from comparing CTD conductivity against <strong>bottle
+salinities</strong> analysed from the rosette samples;</p></li>
+<li><p>the <strong>align lags</strong> and <strong>cell-thermal-mass coefficients</strong>, from finder tools
+that use nothing but the CTD data itself.</p></li>
+</ul>
+<p>Both are recorded in config and <em>applied</em> at stage 3. A <strong>clock offset</strong> is found
+one stage earlier: <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">clock</span></code> compares each cast’s acquisition (System) clock
+against its GPS (NMEA) clock across the whole cruise, classifies the error
+(constant, step, or drift), and generates a paste-ready <code class="docutils literal notranslate"><span class="pre">processing.clock</span></code> block.
+Because a clock correction moves the <code class="docutils literal notranslate"><span class="pre">time</span></code> coordinate and no measured value,
+stage 2 is where it <em>belongs</em> — the exception noted above. Finding the offset is
+implemented; <strong>applying it is not yet</strong>, so today <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">clock</span></code> reports and
+suggests, and nothing shifts the coordinate. (oceanarray finds the
+analogous offset for a moored instrument at recovery instead; calibration-dip
+processing — <a class="reference external" href="https://github.com/ocean-uhh/caldip">caldip</a> — is its route for
+moored instruments, and is not part of the CTD workflow.)</p>
+<p>The align and cell-thermal-mass finders are the interesting case, because they
+read the very data the stage is processing — so why not derive them inside the
+stage? Three reasons the separation is structural rather than incidental:</p>
+<ul class="simple">
+<li><p><strong>the scopes differ.</strong> A finder examines <em>many casts</em> to settle one coefficient
+for the cruise; the applier then uses it on <em>one cast</em>. A cast-scope stage
+cannot see what a cruise-scope determination needs;</p></li>
+<li><p><strong>judgement.</strong> The result is inspected and chosen, once, not re-decided
+silently on every run;</p></li>
+<li><p><strong>reproducibility.</strong> A stage that re-derived its own parameters could give a
+different answer from the same input as the surrounding casts change, which is
+exactly what these rules exist to prevent.</p></li>
+</ul>
+<p>The slope has a fourth, simpler reason: bottle salinities are analysed data the
+stage has never seen.</p>
+<p>That second rule is what makes <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> a product rather than “stage 4”.
+It grids to 1 dbar and splits each cast into two profiles, so it cannot be an
+input to further per-cast processing. Terminal products sit beside the stage
+directories, not inside them.</p>
+</section>
+<hr class="docutils" />
+<section id="what-sea-bird-has-already-done-to-the-file">
+<h2>What Sea-Bird has already done to the file<a class="headerlink" href="#what-sea-bird-has-already-done-to-the-file" title="Link to this heading"></a></h2>
+<p>ctdcast does not <em>yet</em> receive raw measurements — ingesting the 24 Hz <code class="docutils literal notranslate"><span class="pre">.hex</span></code> is
+planned, and is the point at which ctdcast would run the full chain itself. Today a
+Sea-Bird CNV has usually been through two rounds of processing before ctdcast opens
+it, and <strong>neither of them announces itself in a way the stages can see</strong>:</p>
+<ul class="simple">
+<li><p>the <strong>deck unit</strong>, at acquisition, in hardware;</p></li>
+<li><p><strong>SBE Data Processing</strong>, ashore or at sea, as a chain of modules.</p></li>
+</ul>
+<p>Both are recorded in the CNV header, in two different namespaces:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16.0%" />
+<col style="width: 44.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Lines</p></th>
+<th class="head"><p>What they hold</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">*</span></code></p></td>
+<td><p>Seasave and deck-unit acquisition settings — <strong>including the conductivity
+time alignment</strong>, the system/NMEA clock pair, and the scan-averaging factor</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">*</span> <span class="pre">advance</span> <span class="pre">primary</span> <span class="pre">conductivity</span>&#160; <span class="pre">0.073</span> <span class="pre">seconds</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">*</span> <span class="pre">&lt;Sensors&gt;</span></code></p></td>
+<td><p>Sensor serials and calibration coefficients (kept verbatim as
+<code class="docutils literal notranslate"><span class="pre">raw_metadata</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">*</span> <span class="pre">&lt;sensor</span> <span class="pre">Channel=&quot;1&quot;</span> <span class="pre">&gt;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">#</span></code></p></td>
+<td><p>The SBE Data Processing module chain, in execution order, with the
+parameters each module used</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">celltm_alpha</span> <span class="pre">=</span> <span class="pre">0.0300,</span> <span class="pre">0.0300</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">**</span></code></p></td>
+<td><p>Free-text user header written on the ship</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">**</span>&#160; <span class="pre">Station:</span>&#160; <span class="pre">004</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<section id="why-the-block-matters-more-than-it-looks">
+<h3>Why the <code class="docutils literal notranslate"><span class="pre">*</span></code> block matters more than it looks<a class="headerlink" href="#why-the-block-matters-more-than-it-looks" title="Link to this heading"></a></h3>
+<p>The SBE 11plus deck unit is factory-set to advance primary conductivity by 1.75
+scans — at 24 Hz, 0.073 s — which is exactly the typical lag of conductivity behind
+temperature for a 9plus with a TC duct and a 3000 rpm pump. The Sea-Bird manual is
+explicit that this <em>“eliminates the need to run Align CTD”</em>.</p>
+<p>So a cast whose <code class="docutils literal notranslate"><span class="pre">#</span></code> chain shows no <code class="docutils literal notranslate"><span class="pre">alignctd</span></code> module may nonetheless be fully
+aligned. Applying an alignment on top of it does not fail loudly — it produces
+plausible, wrong numbers. This is the reason ctdcast reads the header at all, and
+the reason a stage may never assume that a correction absent from the module chain
+was not applied.</p>
+<p>Two consequences follow for the alignment specifically:</p>
+<ul class="simple">
+<li><p><strong>The 0.073 s figure is a configuration value, not a constant.</strong> The lag is
+dominated by water transit through the pumped plumbing, so a faster pump or a
+shorter tube shortens it. This is why the align lag is <em>found</em> from the data
+(see the stage rules above) rather than read from a table — the table value is
+the fallback and the sanity bound.</p></li>
+<li><p><strong>The advance is recorded per channel</strong>, and older deck units do not always set
+the two conductivity channels alike. Where they differ, the secondary channel
+carries a residual the primary does not, and salinity computed from it will
+show spiking the primary does not.</p></li>
+</ul>
+</section>
+<section id="the-correction-ledger">
+<h3>The correction ledger<a class="headerlink" href="#the-correction-ledger" title="Link to this heading"></a></h3>
+<p>Stage 1 parses both namespaces and records what it finds as a <strong>ledger</strong> of
+corrections already applied — see <a class="reference internal" href="data_files.html#data-files"><span class="std std-ref">Data files (netCDF)</span></a> for the attributes. The unit of
+record is the <em>correction</em> rather than the module, because the most consequential
+one — the deck-unit alignment — is not a module and lives in the other namespace
+entirely. Every module in the chain then contributes an entry of its own, and the
+order they ran in is recorded explicitly, since the deck-unit alignment carries no
+timestamp and some writers give their modules none either.</p>
+<p>The ledger is read, never merged. Config states what ctdcast <em>intends</em>; the header
+states what is <em>already irreversibly true</em>. A later stage reconciles the two and
+declines to act where they conflict — it does not combine them into one effective
+parameter set, which would let a config value look applied when it was not. In
+practice that means a stage <strong>skips</strong> work already done upstream rather than doing
+it and undoing it later, which is also what keeps the QC flags monotone.</p>
+</section>
+<section id="where-a-file-enters-the-sequence">
+<h3>Where a file enters the sequence<a class="headerlink" href="#where-a-file-enters-the-sequence" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">binavg</span></code> module is the one that decides this, and its <code class="docutils literal notranslate"><span class="pre">bintype</span></code> matters
+more than its size:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bintype</span> <span class="pre">=</span> <span class="pre">seconds</span></code> — the file is still a time series, decimated. It enters at
+stage 1 and every stage applies.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bintype</span> <span class="pre">=</span> <span class="pre">decibars</span></code> — the file has already been gridded onto a pressure axis.
+Its sampling representation has changed, which by the second rule above makes it
+a <strong>terminal product</strong> rather than a stage. Time-domain corrections cannot be
+applied to it: Sea-Bird states plainly that Align CTD <em>“cannot be run on files
+that have been averaged into pressure or depth bins”</em>, and Loop Edit needs three
+successive scans to compute velocity, which a 1 dbar grid has destroyed.</p></li>
+</ul>
+<p>ctdcast still reports on such a file — it simply cannot offer it the corrections
+that require a time axis, and says so rather than pretending.</p>
+</section>
+<section id="sea-bird-s-own-recommendation-for-comparison">
+<h3>Sea-Bird’s own recommendation, for comparison<a class="headerlink" href="#sea-bird-s-own-recommendation-for-comparison" title="Link to this heading"></a></h3>
+<p>The ledger says what <em>was</em> done. To judge whether that is ordinary, the useful
+comparison is against Sea-Bird’s <strong>published recommendation for the instrument</strong> —
+short, specific and citable, where a list of everything <em>not</em> done would be
+unbounded and mostly uninteresting. For an SBE 9plus with a TC duct and a 3000 rpm
+pump (manual rev 7.26.8):</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26.0%" />
+<col style="width: 34.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Module</p></th>
+<th class="head"><p>Recommended for a 9plus</p></th>
+<th class="head"><p>Reference</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Sequence</p></td>
+<td><p>Data Conversion → Filter → Align CTD → Cell Thermal Mass → Loop Edit →
+Derive → Bin Average. Wild Edit is deliberately absent and may run at any
+point.</p></td>
+<td><p>p.20</p></td>
+</tr>
+<tr class="row-odd"><td><p>Filter</p></td>
+<td><p>pressure <strong>0.15 s</strong>; temperature and conductivity <strong>not filtered</strong> (the
+table gives no value for a 9plus). The pressure constant is four times the
+scan interval, and exists to feed Loop Edit.</p></td>
+<td><p>p.100</p></td>
+</tr>
+<tr class="row-even"><td><p>Align CTD</p></td>
+<td><p>temperature <strong>0</strong>; conductivity <strong>0</strong>, because the deck unit already
+advances it; oxygen <strong>+2 to +5 s</strong> for an SBE 43.</p></td>
+<td><p>pp.84–86</p></td>
+</tr>
+<tr class="row-odd"><td><p>Cell Thermal Mass</p></td>
+<td><p>alpha <strong>0.03</strong>, 1/beta <strong>7.0</strong></p></td>
+<td><p>p.92</p></td>
+</tr>
+</tbody>
+</table>
+<p>A departure is <strong>not an error.</strong> Sea-Bird gives these as <em>typical</em> values and says
+plainly that judgement is required — a different pump, a different duct, or a
+deliberate choice all produce legitimate departures. What the table is good for is
+reading a cast’s provenance by hand: it tells you which of the values in front of
+you are the usual ones, and which were chosen.</p>
+<p>Two limits are worth knowing when using it that way. The recommendation is
+<strong>instrument-specific</strong> — a 19plus or a 25 has different values — so it applies
+only once the header has identified the instrument. And it says nothing about
+Window Filter: smoothing temperature and conductivity with <code class="docutils literal notranslate"><span class="pre">wfilter</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> is a legitimate alternative the manual neither recommends nor warns
+against.</p>
+</section>
+<section id="a-worked-example">
+<h3>A worked example<a class="headerlink" href="#a-worked-example" title="Link to this heading"></a></h3>
+<p>Upstream pipelines commonly <strong>fork</strong>, and which prong ctdcast is pointed at
+determines what work is left to do. A typical shipboard chain runs
+<code class="docutils literal notranslate"><span class="pre">datcnv</span> <span class="pre">→</span> <span class="pre">wildedit</span> <span class="pre">→</span> <span class="pre">filter</span> <span class="pre">→</span> <span class="pre">celltm</span> <span class="pre">→</span> <span class="pre">Derive</span></code> at full rate, then splits:</p>
+<ul class="simple">
+<li><p>one prong bin-averages to <strong>1 second</strong> — still a time series, all casts;</p></li>
+<li><p>the other splits into downcast and upcast, runs <strong>Loop Edit</strong>, then bin-averages
+to <strong>1 dbar</strong>.</p></li>
+</ul>
+<p>Pointed at the first prong, ctdcast receives a file that has <em>not</em> been loop-edited,
+so ship-heave reversals are still present and its own compiled product will carry
+them unless it removes them itself. Pointed at the second, it receives a finished
+gridded product and the stages have nothing left to add. Neither is wrong — but the
+difference is invisible without reading the header, which is the point.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cast-level-processing">
+<h2>Cast-level processing<a class="headerlink" href="#cast-level-processing" title="Link to this heading"></a></h2>
+<p>One cast in, one cast out, once per cast.</p>
+<ul>
+<li><p><strong>Stage 0 (planned):</strong> acquire and convert raw instrument files — hex → CNV for
+Sea-Bird CTDs. Not implemented in ctdcast; today ctdcast starts from calibrated
+CNV. <strong>This is what</strong> <a class="reference external" href="https://github.com/ocean-uhh/ctdam">ctdam</a> <strong>does</strong>: it
+drives the Sea-Bird processing chain (<code class="docutils literal notranslate"><span class="pre">wildedit</span></code>, <code class="docutils literal notranslate"><span class="pre">wfilter</span></code>, <code class="docutils literal notranslate"><span class="pre">alignctd</span></code>,
+<code class="docutils literal notranslate"><span class="pre">celltm</span></code>, bottle-file creation, gsw derivations) from a <code class="docutils literal notranslate"><span class="pre">proc_template.toml</span></code>
+and writes CNV. Stage 0 is therefore a <em>boundary</em> with a sibling package rather
+than a module to be written here.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>What arrives at stage 1 is not raw.</strong> ctdam’s chain does two different
+kinds of work. <code class="docutils literal notranslate"><span class="pre">datcnv</span></code> is conversion — hex to engineering units — which is
+stage-0/1 work. But <code class="docutils literal notranslate"><span class="pre">wildedit</span></code> (despike), <code class="docutils literal notranslate"><span class="pre">wfilter</span></code> (median filter),
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> (low-pass), <code class="docutils literal notranslate"><span class="pre">alignctd</span></code> (sensor time alignment) and <code class="docutils literal notranslate"><span class="pre">celltm</span></code>
+(cell thermal mass) all <strong>change measured values</strong>, which by the second rule
+above makes them <strong>stage-3-class corrections applied upstream</strong>,
+with per-variable parameters recorded only in the CNV header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># wfilter_action t090C = median, 10</span>
+<span class="c1"># filter_low_pass_tc_A = 0.030</span>
+<span class="c1"># filter_low_pass_A_vars = altM flECO-AFL turbWETntu0 …</span>
+</pre></div>
+</div>
+<p>Two consequences follow, and both matter more than the provenance:</p>
+<ul class="simple">
+<li><p><strong>Re-run scope is asymmetric.</strong> Changing a ctdcast stage-3 parameter
+invalidates stage 3. Changing a <em>ctdam</em> parameter regenerates the CNV and
+invalidates every ctdcast stage <strong>from stage 1</strong>, because the corrections
+sit below it. That is the practical cost of these steps living outside the
+framework.</p></li>
+<li><p><strong>Stage 3 must know what was already done.</strong> Applying a cell-thermal-mass
+correction or a time alignment twice is a silent error that produces
+plausible numbers. Stage 3 reading the upstream chain is a safety check,
+not only a record.</p></li>
+</ul>
+<p>The longer-term shape is to express these as ctdcast stage-3 modules with
+their parameters in ctdcast’s config, ingesting unfiltered <code class="docutils literal notranslate"><span class="pre">datcnv</span></code> output
+— one place for the parameters, and re-runnable within the stages.
+Importantly this needs <strong>no file round-trip</strong>: ctdam is a Python library
+whose appliers (<code class="docutils literal notranslate"><span class="pre">AlignCTD</span></code>, <code class="docutils literal notranslate"><span class="pre">WFilter</span></code>, <code class="docutils literal notranslate"><span class="pre">CellTM</span></code>, <code class="docutils literal notranslate"><span class="pre">LoopRemoval</span></code>)
+accept and return an in-memory <code class="docutils literal notranslate"><span class="pre">CTDData</span></code>, so ctdcast would call them
+directly rather than exporting CNV, invoking a tool, and re-reading. The
+cost is an xarray ↔ <code class="docutils literal notranslate"><span class="pre">CTDData</span></code> adapter, not an export/import cycle. Not a
+near-term change; noted so the current arrangement is understood as a
+boundary compromise rather than the design.</p>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>The boundary contract: ctdam runs without ``binavg`` and without
+``downcast_only``.</strong> Both are legitimate in ctdam’s own terms, but a CNV
+produced with either is <strong>already a terminal product</strong> by this framework’s
+second rule — ctdcast would be splitting downcast from upcast on a file that
+has neither, or re-binning binned data. Those two jobs belong to stage 2 and
+to the <code class="docutils literal notranslate"><span class="pre">profiles</span></code> compile, where they are reversible and recorded. A CNV
+arriving at stage 1 carries every scan of the full cast.</p>
+</div>
+</li>
+<li><p><strong>Stage 1 — standardisation.</strong> Convert raw CNV to CF-netCDF, faithfully: no
+trimming, no QC, and no channel dropped — every CNV column reaches the stage-1
+file, with Sea-Bird-derived channels (density, depth, flags) kept under an
+<code class="docutils literal notranslate"><span class="pre">sbe_</span></code> prefix rather than discarded. Canonical variable names, unit
+normalisation (conductivity to mS/cm, pressure to dbar), and single-sensor
+renaming — <code class="docutils literal notranslate"><span class="pre">ctd_temperature_1</span></code> becomes <code class="docutils literal notranslate"><span class="pre">ctd_temperature</span></code> when there is no
+second sensor to distinguish it from. The backend is pluggable (<code class="docutils literal notranslate"><span class="pre">CtdBackend</span></code>);
+<code class="docutils literal notranslate"><span class="pre">seasenselib</span></code> is the current implementation.</p></li>
+<li><p><strong>Stage 2 — trim.</strong> Decide which scans belong to the real cast: soak detection at
+the start and back-on-deck detection at the end. It does <strong>not</strong> split the cast
+into downcast and upcast — splitting changes the sampling representation, so by
+the second rule above it belongs to a terminal product, and it happens in the
+<code class="docutils literal notranslate"><span class="pre">profiles</span></code> compile. This
+is the profile analogue of trimming a moored record to its deployment window —
+same stage, same question, different domain (see the note below).
+QARTOD flag 4 is set on soak and post-recovery records — <strong>marked, not deleted</strong>,
+per the monotonicity rule — and the detection parameters are recorded in
+<code class="docutils literal notranslate"><span class="pre">history</span></code>. A curated drop step then removes the <code class="docutils literal notranslate"><span class="pre">sbe_</span></code> diagnostic channels
+stage 1 preserved (all of them by default, configurable via
+<code class="docutils literal notranslate"><span class="pre">processing.trim.drop_sbe</span></code>) — the one place columns are dropped, done
+explicitly and recorded in <code class="docutils literal notranslate"><span class="pre">history</span></code> and <code class="docutils literal notranslate"><span class="pre">dropped_channels</span></code>.</p></li>
+<li><p><strong>Stage 3 — QC and calibration.</strong> Gross-range and spike QC, then any conductivity
+calibration named in the cruise config, then salinity re-derived from the
+calibrated conductivity. Deliberately <strong>iterative</strong>: re-run it as calibration
+improves, which is why it must not consume its own output.</p></li>
+</ul>
+<p>LADCP has a single cast-level stage: the LDEO <code class="docutils literal notranslate"><span class="pre">.mat</span></code> solution is converted to
+per-cast netCDF. Its upstream processing happens outside ctdcast.</p>
+</section>
+<hr class="docutils" />
+<section id="cruise-level-processing">
+<h2>Cruise-level processing<a class="headerlink" href="#cruise-level-processing" title="Link to this heading"></a></h2>
+<p>Many casts in, one file out, once per product.</p>
+<ul class="simple">
+<li><p><strong>profiles</strong> — compile the per-cast files into <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code>: each cast split
+into downcast and upcast, binned to a common pressure grid, and stacked on an
+<code class="docutils literal notranslate"><span class="pre">N_PROF</span></code> dimension. The pressure coordinate is the <strong>bin centre</strong>, so a binned
+value sits at the mean depth of the samples it averages.</p></li>
+<li><p><strong>ladcp_profiles</strong> — the LADCP equivalent, gridded on depth in metres rather
+than pressure.</p></li>
+</ul>
+<p>Both carry the cruise-level metadata: ACDD discovery fields, contributors and
+institutions with their controlled-vocabulary roles, licence and embargo, derived
+spatiotemporal coverage, and the <code class="docutils literal notranslate"><span class="pre">expocode</span></code> coordinate.</p>
+</section>
+<hr class="docutils" />
+<section id="summary-table">
+<h2>Summary table<a class="headerlink" href="#summary-table" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Step</p></th>
+<th class="head"><p>Scope</p></th>
+<th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>cast</p></td>
+<td><p>Acquisition (planned)</p></td>
+<td><p>Raw instrument files to CNV</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>cast</p></td>
+<td><p>Standardisation</p></td>
+<td><p>CNV to CF-netCDF; canonical names and units; values preserved as-is</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>cast</p></td>
+<td><p>Trim</p></td>
+<td><p>Soak and back-on-deck flagged (not removed); no splitting</p></td>
+</tr>
+<tr class="row-odd"><td><p>3</p></td>
+<td><p>cast</p></td>
+<td><p>QC and calibration</p></td>
+<td><p>Gross-range and spike QC; conductivity calibration; salinity re-derived</p></td>
+</tr>
+<tr class="row-even"><td><p>profiles</p></td>
+<td><p>cruise</p></td>
+<td><p>Compile (CTD)</p></td>
+<td><p>Bin to a pressure grid, stack on <code class="docutils literal notranslate"><span class="pre">N_PROF</span></code>, attach cruise metadata</p></td>
+</tr>
+<tr class="row-odd"><td><p>profiles</p></td>
+<td><p>cruise</p></td>
+<td><p>Compile (LADCP)</p></td>
+<td><p>As above, gridded on depth</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>The stages line up with oceanarray’s</strong>, which processes moored time series
+rather than profiles:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Stage</p></th>
+<th class="head"><p>Both packages</p></th>
+<th class="head"><p>ctdcast (a profile)</p></th>
+<th class="head"><p>oceanarray (a moored record)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Standardisation — raw to CF-netCDF, values preserved</p></td>
+<td><p>CNV to netCDF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.cnv</span></code>/<code class="docutils literal notranslate"><span class="pre">.rsk</span></code>/<code class="docutils literal notranslate"><span class="pre">.aqd</span></code> to netCDF</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><strong>Trim</strong> — decide which records belong to the real measurement</p></td>
+<td><p>soak and back-on-deck</p></td>
+<td><p>deployment window, plus clock offset/drift</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>QC and derived variables</p></td>
+<td><p>gross-range QC, conductivity calibration, salinity</p></td>
+<td><p>QARTOD QC, pressure interpolation, salinity, velocity rotation</p></td>
+</tr>
+</tbody>
+</table>
+<p>The alignment is not a coincidence of numbering: each stage is a <em>kind</em> of
+transformation, so the same three appear whether the thing being processed is
+a cast or a mooring record. What differs is the domain — a cast’s “real
+measurement” begins after the soak, a mooring’s after deployment — and
+therefore the specific operations, not the intent of the stage.</p>
+<p>What genuinely does not transfer is the level above: oceanarray continues to
+mooring- and array-level steps (stack, grid, concatenate, boundary merge)
+where ctdcast has a single cruise level.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cli_reference.html" class="btn btn-neutral float-left" title="CLI reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="config_yaml.html" class="btn btn-neutral float-right" title="config.yaml" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
