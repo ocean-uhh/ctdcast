@@ -259,7 +259,7 @@ Examples:
         "dest",
         nargs="?",
         type=Path,
-        default=Path("."),
+        default=Path(),
         help=(
             "Destination: a directory (config.yaml written inside) "
             "or an explicit .yaml filename.  Default: current directory."

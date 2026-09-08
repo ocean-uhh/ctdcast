@@ -126,7 +126,7 @@ Examples:
         metavar=("MIN", "MAX"),
         default=None,
         help=(
-            "Salinity range [MIN MAX] for plot trimming.  Records with salinity_1 "
+            "Salinity range [MIN MAX] for plot trimming.  Records with ctd_salinity_1 "
             "outside this range are excluded from station page plots "
             "(NC files are not modified).  Example: --sal 30 36"
         ),
@@ -197,7 +197,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    with open(cfg_path) as f:
+    with cfg_path.open() as f:
         cfg = yaml.safe_load(f)
 
     data = cfg.get("data") or {}

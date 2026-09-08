@@ -100,7 +100,7 @@ Examples:
         metavar=("MIN", "MAX"),
         default=None,
         help=(
-            "Salinity range [MIN MAX] for plot trimming.  Records with salinity_1 "
+            "Salinity range [MIN MAX] for plot trimming.  Records with ctd_salinity_1 "
             "outside this range are excluded from all station page plots "
             "(NC files are not modified).  Example: --sal 30 36"
         ),

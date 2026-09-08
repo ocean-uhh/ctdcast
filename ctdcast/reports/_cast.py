@@ -132,7 +132,7 @@ def generate_station_page(
         Full cast identifier string, e.g. ``"011"`` or ``"004b"``.  Derived
         from *nc_path* if not provided.
     sal_range:
-        ``(sal_min, sal_max)`` — records with ``salinity_1`` outside this
+        ``(sal_min, sal_max)`` — records with ``ctd_salinity_1`` outside this
         range are excluded from all plots (but the NC file is not modified).
         The count of excluded records is shown in the page header.
     trim_soak:
@@ -326,7 +326,7 @@ def _cast_id_from_path(nc_path: Path) -> tuple[int, str]:
 
 
 # ---------------------------------------------------------------------------
-# Section manifest — the cast page as data (see .claude/rep-section-manifest-plan.md)
+# Section manifest — the cast page as data
 #
 # NOTE (2026-08-16, autonomous): this is the model layer only.  It is NOT yet
 # wired into generate_station_page() / cast.html — that template port is a

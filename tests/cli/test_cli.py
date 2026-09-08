@@ -71,7 +71,7 @@ def _validate_ns(**kwargs) -> argparse.Namespace:
 
 def _init_ns(**kwargs) -> argparse.Namespace:
     defaults = {
-        "dest": Path("."),
+        "dest": Path(),
         "sections": False,
         "force": False,
         "interactive": False,

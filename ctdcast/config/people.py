@@ -470,7 +470,7 @@ def institution_registry_paths(extra: Path | str | None = None) -> list[Path]:
 @lru_cache(maxsize=8)
 def _load_registry_file(path: Path) -> dict[str, dict[str, Any]]:
     """Load one institution registry file, keyed by slug."""
-    with open(path, encoding="utf-8") as fh:
+    with path.open(encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
     return data.get("institutions") or {}
 

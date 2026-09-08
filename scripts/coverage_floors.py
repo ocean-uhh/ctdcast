@@ -67,7 +67,7 @@ def load_floors(pyproject: Path) -> dict[str, float]:
     dict of str to float
         Module path (as written in the table) to its minimum percentage.
     """
-    with open(pyproject, "rb") as fh:
+    with pyproject.open("rb") as fh:
         data = tomllib.load(fh)
     floors = data.get("tool", {}).get("coverage_floors", {})
     return {str(k): float(v) for k, v in floors.items() if k != "default"}
@@ -86,7 +86,7 @@ def measured(coverage_json: Path) -> dict[str, float]:
     dict of str to float
         File path to percentage covered, keyed as coverage.py recorded it.
     """
-    with open(coverage_json) as fh:
+    with coverage_json.open() as fh:
         data = json.load(fh)
     return {
         path: float(info["summary"]["percent_covered"])

@@ -19,9 +19,12 @@ Directory layout
 
    <output.dir>/
        index.html              front page
-       casts.html      sortable table of all casts
+       casts.html              sortable table of all casts
        sections.html           section overview cards
-       timeseries.html         cruise-wide time series
+       timeseries.html         cruise-wide time series index
+       leaflet.html            interactive map
+       sbe_sensors.html        sensor inventory across casts
+       profiles_inventory.html netCDF variable + attribute inventory
        casts/
            cast_001.html
            cast_002.html
@@ -29,6 +32,9 @@ Directory layout
        sections/
            section_KTout.html
            section_FARDWO.html
+           ...
+       timeseries/
+           timeseries_<name>.html
            ...
 
 ----

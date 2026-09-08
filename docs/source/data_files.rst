@@ -92,7 +92,7 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``ctd_oxygen`` / ``ctd_oxygen_1`` / ``ctd_oxygen_2``
      - Dissolved oxygen in µmol kg⁻¹.
    * - ``ctd_fluor``
-     - Fluorescence in µg L⁻¹ (chlorophyll-a equivalent).
+     - Fluorescence in mg m⁻³ (chlorophyll-a equivalent; 1 mg m⁻³ = 1 µg L⁻¹).
    * - ``ctd_turbidity``
      - Turbidity in NTU.
    * - ``ctd_altimeter``
@@ -460,7 +460,7 @@ refinements come from the ``sensors:`` block in ``config.yaml`` (see above). The
 rewiring tables.
 
 Where it is built, and two kinds of provenance
-""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The catalog is resolved **once, at stage 1** — the per-cast netCDF files carry
 their own ``SENSOR_*`` entries — and the compile simply aggregates them; nothing

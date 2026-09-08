@@ -106,9 +106,17 @@ Reading raw Sea-Bird ``.hex`` is planned; it will arrive as a further input key
      - ``true``
      - Generate the cruise-wide time series page.  Requires a compiled
        ``profiles.nc``.
-   * - ``force``
-     - ``false``
-     - If ``true``, regenerate all pages even if they already exist.
+   * - ``index``
+     - ``true``
+     - Generate the navigation pages (``index.html``, ``casts.html``,
+       ``sections.html``).
+   * - ``leaflet``
+     - ``true``
+     - Generate the interactive Leaflet map page.
+
+``force`` (regenerate all pages even if they already exist) is a **top-level**
+config key, not part of the ``generate`` block; it defaults to ``false`` and is
+overridden by ``--force`` on the command line.
 
 ``processing`` block (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

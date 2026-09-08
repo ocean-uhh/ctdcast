@@ -4,8 +4,7 @@ Locates the ``.mat`` file for a cast (:func:`find_ladcp_file`), loads it with a
 single set of ``scipy.io.loadmat`` options (:func:`read_ladcp`), and maps the
 result struct to a single-cast :class:`xarray.Dataset` on the native 10 m depth
 grid (:func:`read_ladcp_cast`).  The ``.mat`` is the LDEO IX velocity *solution*;
-its ~50 fields are mapped to the compiled-dataset schema in
-``.claude/notes/2026-08-17-ladcp-compiled-dataset.md``.
+its ~50 fields are mapped to the compiled-dataset schema.
 """
 
 from __future__ import annotations
@@ -18,6 +17,12 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.identity import format_cast_id
+
+#: A field read from a ``scipy.io.loadmat`` mat-struct — an ndarray, a ``mat_struct``, or a
+#: scalar, depending on how MATLAB stored it.  Named once here so the struct accessors below
+#: read ``field: MatField`` with no per-signature noqa, the explanation travels into the docs,
+#: and a future narrowing happens in one place.
+MatField = Any
 
 #: Canonical variable name → source field in the LDEO ``.mat`` ``dr`` struct.
 #: Written onto each variable as ``source_variable`` so the .mat→canonical
@@ -62,12 +67,12 @@ def read_ladcp(path: Path | str) -> dict[str, Any]:
     return scipy.io.loadmat(str(path), squeeze_me=True, struct_as_record=False)
 
 
-def _field(struct: Any, name: str, default: Any = None) -> Any:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
+def _field(struct: MatField, name: str, default: MatField = None) -> MatField:
     """Return ``struct.name`` if present, else *default* (structs vary by cruise)."""
     return getattr(struct, name, default)
 
 
-def _profile(struct: Any, name: str, n: int) -> np.ndarray:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
+def _profile(struct: MatField, name: str, n: int) -> np.ndarray:
     """Return ``struct.name`` as a length-*n* float array, or all-NaN when absent."""
     val = _field(struct, name)
     if val is None:
@@ -78,7 +83,7 @@ def _profile(struct: Any, name: str, n: int) -> np.ndarray:  # noqa: ANN401  # s
     return arr
 
 
-def _instrument_config(dr: Any, ps: Any, n: int) -> str:  # noqa: ANN401  # scipy mat-structs (dr, ps) with dynamic fields
+def _instrument_config(dr: MatField, ps: MatField, n: int) -> str:
     """Return which ADCP(s) provided valid data for this cast.
 
     On OdB both were always installed but one was sometimes corrupted, so this is
@@ -240,7 +245,7 @@ def read_ladcp_cast(
         ),
     }
 
-    def _scalar(v: Any, dtype: type = float) -> Any:  # noqa: ANN401  # v is a mat field of unknown type; return is dtype(v)
+    def _scalar(v: MatField, dtype: type = float) -> MatField:
         return dtype(v) if v is not None and np.isscalar(v) else dtype(np.nan)
 
     scalars: dict[str, tuple] = {
@@ -325,7 +330,7 @@ def read_ladcp_cast(
     return ds
 
 
-def _ladcp_time(dr: Any) -> np.datetime64:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
+def _ladcp_time(dr: MatField) -> np.datetime64:
     """Return the cast time from ``dr.date`` ([Y, M, D, h, m, s]), or NaT."""
     date = _field(dr, "date")
     if date is None:
@@ -337,7 +342,7 @@ def _ladcp_time(dr: Any) -> np.datetime64:  # noqa: ANN401  # scipy mat-struct w
         return np.datetime64("NaT")
 
 
-def _provenance_attrs(dr: Any, ps: Any, da: Any) -> dict[str, Any]:  # noqa: ANN401  # scipy mat-structs (dr, ps, da) with dynamic fields
+def _provenance_attrs(dr: MatField, ps: MatField, da: MatField) -> dict[str, Any]:
     """Collect LADCP processing provenance from the structs into global attrs."""
     attrs: dict[str, Any] = {"source": "LDEO IXv14 LADCP .mat solution"}
     name = _field(dr, "name")

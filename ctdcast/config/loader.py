@@ -58,7 +58,7 @@ class SectionsConfig:
         p = Path(path)
         if not p.exists():
             return cls()
-        with open(p) as f:
+        with p.open() as f:
             data: dict[str, Any] = yaml.safe_load(f) or {}
         return cls(
             sections=data.get("sections") or {},

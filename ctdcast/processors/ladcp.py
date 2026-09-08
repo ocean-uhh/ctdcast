@@ -4,8 +4,7 @@ Mirrors the CTD pipeline (stage1 ``convert_cast`` → ``build_profiles``):
 :func:`convert_ladcp_cast` translates one LDEO ``.mat`` solution to a per-cast
 ``ladcp_<cast_id>.nc`` on the native 10 m depth grid, with storage dtypes reduced
 for file size; the compiler (added in :func:`build_ladcp_profiles`) concatenates
-those per-cast files onto a common depth axis.  Schema and rationale:
-``.claude/notes/2026-08-17-ladcp-compiled-dataset.md``.
+those per-cast files onto a common depth axis.
 """
 
 from __future__ import annotations

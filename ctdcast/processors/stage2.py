@@ -143,7 +143,7 @@ def apply_stage2(
         add_processing_level(ds[var].attrs, PL_RANGES_FLAGGED)
         flagged.append(var)
 
-    n_soak = i_soak if i_soak > 0 else 0
+    n_soak = max(0, i_soak)
     n_deck = n - i_deck if i_deck < n else 0
     params = (
         f"near_surface_dbar={near_surface_dbar}, search_seconds={search_seconds}, "
