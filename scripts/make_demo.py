@@ -21,11 +21,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import xarray as xr
 
+from ctdcast.plotters import plots
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.qc import apply_gross_range, apply_spike_test
 from ctdcast.processors.stage2 import apply_stage2
 from ctdcast.processors.stage_layout import stage_path
-from ctdcast.plotters import plots
 from ctdcast.reports._index import report
 
 REPO = Path(__file__).resolve().parent.parent

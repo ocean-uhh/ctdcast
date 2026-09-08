@@ -6,8 +6,8 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from conftest import FIXTURES_LADCP, FIXTURES_NC
+
 from ctdcast.processors import (
     STAGES,
     Stage,

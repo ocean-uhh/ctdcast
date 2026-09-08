@@ -56,6 +56,7 @@ def is_sbe_channel(name: str) -> bool:
     """Return whether *name* is a SeaBird-derived channel (carries :data:`SBE_PREFIX`)."""
     return str(name).startswith(SBE_PREFIX)
 
+
 # Slot widths, section aspect constants, and other presentation tokens now live
 # in the vendored, package-neutral ``config/report_tokens.py`` (spec §11/§14).
 # This file holds only scientific/variable metadata.
@@ -526,12 +527,12 @@ _SUPERSCRIPT_MAP = str.maketrans("0123456789+-=()n", "⁰¹²³⁴⁵⁶⁷⁸�
 
 
 def _mathtext_to_unicode(text: str) -> str:
-    """Convert the mathtext spans in *text* to their Unicode equivalents.
+    r"""Convert the mathtext spans in *text* to their Unicode equivalents.
 
-    ``VARIABLES`` labels carry subscripts as mathtext (``$\\sigma_0$``) so matplotlib
+    ``VARIABLES`` labels carry subscripts as mathtext (``$\sigma_0$``) so matplotlib
     renders them reliably; this rewrites those spans to Unicode (``σ₀``) for HTML
-    contexts, where mathtext would show as literal ``$…$``.  Handles the ``\\sigma``/
-    ``\\log`` tokens our labels use plus ``_`` subscripts and ``^`` superscripts; a
+    contexts, where mathtext would show as literal ``$…$``.  Handles the ``\sigma``/
+    ``\log`` tokens our labels use plus ``_`` subscripts and ``^`` superscripts; a
     label using an unmapped TeX command is caught by ``test_vlabel_html_round_trips``
     rather than leaking silently.
     """
@@ -547,18 +548,17 @@ def _mathtext_to_unicode(text: str) -> str:
         body = re.sub(
             r"\^\{([^}]*)\}", lambda m: m.group(1).translate(_SUPERSCRIPT_MAP), body
         )
-        body = re.sub(r"\^(.)", lambda m: m.group(1).translate(_SUPERSCRIPT_MAP), body)
-        return body
+        return re.sub(r"\^(.)", lambda m: m.group(1).translate(_SUPERSCRIPT_MAP), body)
 
     return re.sub(r"\$([^$]*)\$", _convert, text)
 
 
 def vlabel_html(var: str, prefix: str = "") -> str:
-    """Return :func:`vlabel` as HTML-ready text — mathtext subscripts as Unicode.
+    r"""Return :func:`vlabel` as HTML-ready text — mathtext subscripts as Unicode.
 
     Use this wherever a variable label is written into HTML (a figure caption, a
     table cell): matplotlib needs the mathtext form, but HTML must show ``σ₀``, not
-    the literal ``$\\sigma_0$``.  One helper so the label-form choice lives in one place.
+    the literal ``$\sigma_0$``.  One helper so the label-form choice lives in one place.
     """
     return _mathtext_to_unicode(vlabel(var, prefix))
 

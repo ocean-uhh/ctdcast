@@ -1,3 +1,5 @@
+"""Plot CTD cast positions by section over GEBCO bathymetry with mooring markers."""
+
 from collections import Counter
 from pathlib import Path
 
@@ -25,7 +27,7 @@ with open(_SECTIONS_YAML) as _f:
     _sec_cfg = yaml.safe_load(_f)["sections"]
 
 
-def _expand_casts(spec):
+def _expand_casts(spec: list) -> list[int]:
     """Expand [[a,b], c, ...] or [a,b,...] to a flat list of ints."""
     out = []
     for item in spec:
@@ -55,7 +57,7 @@ _ctd_sm.close()
 # ---- Load mooring positions from cruise_activities.yaml --------------------
 
 
-def _parse_coord_sm(raw):
+def _parse_coord_sm(raw: float | str | None) -> float | None:
     """Parse decimal-degree or DMS string to signed decimal degrees."""
     if raw is None:
         return None
@@ -118,7 +120,12 @@ _lon1 = _clons.max() + 0.3
 # ---- Cluster casts within CLUSTER_KM ---------------------------------------
 
 
-def _flat_dist_km(lat1, lon1, lat_arr, lon_arr):
+def _flat_dist_km(
+    lat1: float,
+    lon1: float,
+    lat_arr: np.ndarray,
+    lon_arr: np.ndarray,
+) -> np.ndarray:
     dlat = np.radians(lat1 - lat_arr)
     dlon = np.radians(lon1 - lon_arr)
     mlat_r = np.radians((lat1 + lat_arr) / 2)
@@ -138,7 +145,7 @@ for _i in range(len(_cnums)):
     _clusters.append(_near.tolist())
 
 
-def _fmt_cluster_label(cast_list):
+def _fmt_cluster_label(cast_list: list[int]) -> str:
     nums = sorted(cast_list)
     if len(nums) <= 5:
         return "\n".join(str(n) for n in nums)

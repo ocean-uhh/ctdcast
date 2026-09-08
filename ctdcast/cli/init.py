@@ -370,10 +370,7 @@ def run(args: argparse.Namespace) -> int:
         return _run_interactive(args)
 
     dest: Path = args.dest
-    if dest.suffix in {".yaml", ".yml"}:
-        config_path = dest
-    else:
-        config_path = dest / "config.yaml"
+    config_path = dest if dest.suffix in {".yaml", ".yml"} else dest / "config.yaml"
 
     if config_path.exists() and not args.force:
         print(
@@ -1439,7 +1436,7 @@ def _detect_groups(
     return sections, timeseries
 
 
-def _cast_range(cast_nums: Any) -> list[int | list[int]]:
+def _cast_range(cast_nums: Any) -> list[int | list[int]]:  # noqa: ANN401  # numpy int array; np imported lazily
     """Return compact cast_numbers list: single ``[first, last]`` range if fully consecutive, else individual ints."""
     nums = sorted(int(c) for c in cast_nums)
     if not nums:

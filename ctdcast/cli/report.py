@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import argparse
 import sys
-
-from ctdcast.config.loader import groupings_path
 from pathlib import Path
 
 import yaml
 
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+from ctdcast.config.loader import groupings_path
 
 
 def build_parser(

@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING, Any
 import gsw
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter, MultipleLocator
 import numpy as np
 import xarray as xr
+from matplotlib.ticker import FuncFormatter, MultipleLocator
 
 from ctdcast.analysis.bathymetry import (
     load_gebco,
@@ -34,14 +34,32 @@ from ctdcast.config.report_tokens import (
     CAST_LABEL_FS,
     CLABEL_FS,
     pen,
+)
+from ctdcast.config.report_tokens import (
     MAX_SECTION_H as _MAX_SECTION_H,
+)
+from ctdcast.config.report_tokens import (
     MIN_SECTION_H as _MIN_SECTION_H,
+)
+from ctdcast.config.report_tokens import (
     SECTION_STRETCH as _SECTION_STRETCH,
+)
+from ctdcast.config.report_tokens import (
     W_FULL as _W_FULL,
+)
+from ctdcast.config.report_tokens import (
     W_HALF as _W_HALF,
+)
+from ctdcast.config.report_tokens import (
     W_THIRD as _W_THIRD,
+)
+from ctdcast.config.report_tokens import (
     W_THREE_FIFTHS as _W_THREE_FIFTHS,
+)
+from ctdcast.config.report_tokens import (
     W_TWO_FIFTHS as _W_TWO_FIFTHS,
+)
+from ctdcast.config.report_tokens import (
     W_TWOTHIRDS as _W_TWOTHIRDS,
 )
 from ctdcast.plotters.primitives import (
@@ -54,6 +72,8 @@ from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
     from ctdcast.analysis.clock import CastClock, ClockVerdict
 
 # ---------------------------------------------------------------------------
@@ -129,7 +149,7 @@ def _square_map_limits(
     return yl0, yl1, xl0, xl1
 
 
-def _hide_outer_spines(*axes: Any, clean: bool) -> None:
+def _hide_outer_spines(*axes: Axes, clean: bool) -> None:
     """Hide top and right spines on *axes* when *clean* is True."""
     if not clean:
         return
@@ -270,8 +290,8 @@ def _map_layout(
 
 
 def map_panel(
-    ax: Any,
-    cax: Any,
+    ax: Axes,
+    cax: Axes,
     xl0: float,
     xl1: float,
     yl0: float,
@@ -321,12 +341,12 @@ def map_panel(
     cb.ax.invert_yaxis()
 
 
-def _fmt_lon(x: float, _pos: Any) -> str:
+def _fmt_lon(x: float, _pos: int | None) -> str:
     """Format a longitude tick as degrees East/West (no negative °E)."""
     return f"{abs(x):g}°W" if x < 0 else f"{x:g}°E"
 
 
-def _fmt_lat(y: float, _pos: Any) -> str:
+def _fmt_lat(y: float, _pos: int | None) -> str:
     """Format a latitude tick as degrees North/South."""
     return f"{abs(y):g}°S" if y < 0 else f"{y:g}°N"
 
@@ -358,7 +378,7 @@ def _deg_tick_step(lo: float, hi: float, max_ticks: int = 6) -> float:
 
 
 def _finish_map_axes(
-    ax: Any,
+    ax: Axes,
     xl0: float,
     xl1: float,
     yl0: float,
@@ -387,7 +407,7 @@ def _finish_map_axes(
     ax.grid(True)
 
 
-def _cast_markers(ax: Any, x_vals: np.ndarray, cast_labels: list) -> None:
+def _cast_markers(ax: Axes, x_vals: np.ndarray, cast_labels: list) -> None:
     """Draw ▼ cast markers and sparse numeric labels along the top edge of *ax*."""
     trans = ax.get_xaxis_transform()
     ax.plot(
@@ -452,7 +472,7 @@ def _discrete_norm(
     return cmap, norm, bounds, cmap_name
 
 
-def _sigma0_backdrop(ax: Any, n: int = 80) -> None:
+def _sigma0_backdrop(ax: Axes, n: int = 80) -> None:
     """Draw σ₀ density contours over the current axes extent, behind the data.
 
     Call this **after** the data has been plotted so the σ₀ grid spans the same

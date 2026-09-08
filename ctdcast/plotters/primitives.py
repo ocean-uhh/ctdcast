@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import matplotlib.ticker as mticker
 import numpy as np
@@ -16,9 +16,16 @@ from ctdcast.config.report_tokens import (
     CLABEL_FS,
 )
 
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colorbar import Colorbar
+    from matplotlib.colors import Colormap, Normalize
+    from matplotlib.figure import Figure
+
 
 def sigma0_isopycnals(
-    ax: Any, x: np.ndarray, y: np.ndarray, data2d: np.ndarray
+    ax: Axes, x: np.ndarray, y: np.ndarray, data2d: np.ndarray
 ) -> None:
     """Overlay the 27.7 and 27.8 σ₀ isopycnal contours (labelled) on *ax*, swallowing contour failures."""
     try:
@@ -68,15 +75,15 @@ def nice_colorbar_ticks(vmin: float, vmax: float, *, max_ticks: int = 6) -> np.n
 
 
 def unit_colorbar(
-    target: Any,
-    mappable: Any,
+    target: Axes,
+    mappable: ScalarMappable,
     *,
     unit: str = "",
     ticks: np.ndarray | None = None,
     extend: str = "neither",
     reserve: bool = False,
     title_loc: str = "center",
-) -> Any:
+) -> Colorbar:
     """Draw the report-standard colorbar with the unit as a title on top.
 
     One entry point, two placement strategies so the *appearance* (bar width, gap,
@@ -127,19 +134,19 @@ def unit_colorbar(
 
 
 def mesh_field(
-    ax: Any,
-    fig: Any,  # noqa: ARG001 — kept for signature stability; colorbar uses cax.figure
+    ax: Axes,
+    fig: Figure,  # noqa: ARG001 — kept for signature stability; colorbar uses cax.figure
     x: np.ndarray,
     y: np.ndarray,
     data2d: np.ndarray,
     *,
-    cmap: Any,
-    norm: Any,
+    cmap: Colormap,
+    norm: Normalize,
     cmap_name: str,
     bounds: np.ndarray,
     style: str,
     cbar_label: str = "",
-) -> Any:
+) -> Colorbar:
     """Draw a pcolormesh/contourf field with a matched discrete colorbar into *ax*; return the colorbar.
 
     The colorbar has a *fixed inch width* (not a fraction of the host axes), so its

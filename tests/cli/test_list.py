@@ -3,7 +3,6 @@
 import argparse
 from pathlib import Path
 
-
 from ctdcast.cli import list as list_cli
 from ctdcast.config.people import institutions_with_source
 

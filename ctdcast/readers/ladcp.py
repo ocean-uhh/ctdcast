@@ -62,12 +62,12 @@ def read_ladcp(path: Path | str) -> dict[str, Any]:
     return scipy.io.loadmat(str(path), squeeze_me=True, struct_as_record=False)
 
 
-def _field(struct: Any, name: str, default: Any = None) -> Any:
+def _field(struct: Any, name: str, default: Any = None) -> Any:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
     """Return ``struct.name`` if present, else *default* (structs vary by cruise)."""
     return getattr(struct, name, default)
 
 
-def _profile(struct: Any, name: str, n: int) -> np.ndarray:
+def _profile(struct: Any, name: str, n: int) -> np.ndarray:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
     """Return ``struct.name`` as a length-*n* float array, or all-NaN when absent."""
     val = _field(struct, name)
     if val is None:
@@ -78,7 +78,7 @@ def _profile(struct: Any, name: str, n: int) -> np.ndarray:
     return arr
 
 
-def _instrument_config(dr: Any, ps: Any, n: int) -> str:
+def _instrument_config(dr: Any, ps: Any, n: int) -> str:  # noqa: ANN401  # scipy mat-structs (dr, ps) with dynamic fields
     """Return which ADCP(s) provided valid data for this cast.
 
     On OdB both were always installed but one was sometimes corrupted, so this is
@@ -240,7 +240,7 @@ def read_ladcp_cast(
         ),
     }
 
-    def _scalar(v: Any, dtype: type = float) -> Any:
+    def _scalar(v: Any, dtype: type = float) -> Any:  # noqa: ANN401  # v is a mat field of unknown type; return is dtype(v)
         return dtype(v) if v is not None and np.isscalar(v) else dtype(np.nan)
 
     scalars: dict[str, tuple] = {
@@ -325,7 +325,7 @@ def read_ladcp_cast(
     return ds
 
 
-def _ladcp_time(dr: Any) -> np.datetime64:
+def _ladcp_time(dr: Any) -> np.datetime64:  # noqa: ANN401  # scipy mat-struct with dynamic attribute fields
     """Return the cast time from ``dr.date`` ([Y, M, D, h, m, s]), or NaT."""
     date = _field(dr, "date")
     if date is None:
@@ -337,7 +337,7 @@ def _ladcp_time(dr: Any) -> np.datetime64:
         return np.datetime64("NaT")
 
 
-def _provenance_attrs(dr: Any, ps: Any, da: Any) -> dict[str, Any]:
+def _provenance_attrs(dr: Any, ps: Any, da: Any) -> dict[str, Any]:  # noqa: ANN401  # scipy mat-structs (dr, ps, da) with dynamic fields
     """Collect LADCP processing provenance from the structs into global attrs."""
     attrs: dict[str, Any] = {"source": "LDEO IXv14 LADCP .mat solution"}
     name = _field(dr, "name")

@@ -64,5 +64,5 @@ def section_orientation(lats: list[float], lons: list[float]) -> bool:
     delta_lat = lats[-1] - lats[0]
     if abs(delta_lon) >= abs(delta_lat):  # E–W dominant
         return delta_lon < 0  # first cast is east → flip so west is left
-    else:  # N–S dominant
-        return delta_lat > 0  # first cast is south → flip so north is left
+    # N–S dominant
+    return delta_lat > 0  # first cast is south → flip so north is left

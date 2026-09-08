@@ -65,7 +65,7 @@ class StagePaths:
         return self.ladcp_root / "ladcp_profiles.nc" if self.ladcp_root else None
 
     @classmethod
-    def from_config(cls, data: dict) -> "StagePaths":
+    def from_config(cls, data: dict) -> StagePaths:
         """Resolve a config ``data:`` block, applying the flat-layout shim.
 
         The one place the ``nc_dir`` → ``ctd_root`` compatibility rule lives, so

@@ -108,7 +108,7 @@ def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
         return []
 
 
-def _range(lo: Any, hi: Any) -> str | None:
+def _range(lo: Any, hi: Any) -> str | None:  # noqa: ANN401  # xarray attr values of caller-decided type (float/numpy scalar/None)
     """Return ``"[lo, hi]"`` when both bounds are present, else ``None``."""
     return f"[{lo}, {hi}]" if lo is not None and hi is not None else None
 

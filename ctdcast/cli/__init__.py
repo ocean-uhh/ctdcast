@@ -10,9 +10,9 @@ from ctdcast._version import __version__
 from . import clock as _clock
 from . import convert as _convert
 from . import draft as _draft
-from . import list as _list
 from . import init as _init
 from . import inspect as _inspect
+from . import list as _list
 from . import process as _process
 from . import report as _report
 from . import run as _run

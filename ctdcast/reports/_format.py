@@ -5,8 +5,6 @@ Internal to ``reports/``; parallels oceanarray's ``report/_html_helpers.py``.
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import xarray as xr
 
@@ -23,7 +21,7 @@ def profile_cast_suffixes(ds: xr.Dataset) -> np.ndarray:
     return np.full(ds.sizes["N_PROF"], "", dtype="<U1")
 
 
-def _fmt_utc(t: Any) -> str:
+def _fmt_utc(t: np.datetime64) -> str:
     """Format a numpy datetime64 scalar as 'YYYY-MM-DD HH:MM UTC'.
 
     Returns '—' on any error.

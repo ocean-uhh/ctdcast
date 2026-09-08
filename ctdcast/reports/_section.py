@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from ctdcast.config.global_attrs import cruise_name
-
 import dataclasses
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -24,6 +23,7 @@ from ctdcast.analysis.geometry import (
     distance_from_km,
     section_orientation,
 )
+from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
@@ -35,6 +35,8 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters.plots import section_figsize_and_slot
+from ctdcast.reports._env import get_template
+from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._manifest import (
     Panel,
     PanelGroup,
@@ -43,9 +45,6 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports._env import get_template
-from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_ladcp_section_b64,
@@ -55,6 +54,7 @@ from ctdcast.reports._plots import (
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
 )
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 
 # Panel variables are defined in ctdcast.config.parameters:
 #   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _timeseries.py)
@@ -119,6 +119,10 @@ def generate_section_page(
         Name of the preceding section (for the ← nav button).  None omits the button.
     next_name:
         Name of the following section (for the → nav button).  None omits the button.
+    cruise_info:
+        Cruise-level metadata mapping used in the page header; ``None`` omits it.
+    cfg:
+        Report configuration (styling, paths, display) threaded to the plotters.
 
     Returns
     -------

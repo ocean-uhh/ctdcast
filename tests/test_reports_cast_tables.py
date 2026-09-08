@@ -4,6 +4,9 @@ These exercise the HTML builders over their display inputs (an attribute mapping
 sensor-info list) — the rendering logic, not instrument data.
 """
 
+import xarray as xr
+from conftest import FIXTURES_NC
+
 from ctdcast.config.cnv_header import (
     CONFORMANCE_DIFFER,
     CONFORMANCE_MATCH,
@@ -12,9 +15,6 @@ from ctdcast.config.cnv_header import (
     Correction,
     SensorCalibration,
 )
-import xarray as xr
-from conftest import FIXTURES_NC
-
 from ctdcast.reports._cast import (
     _has_sensor_catalog,
     _render_provenance_table,

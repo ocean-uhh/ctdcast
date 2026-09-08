@@ -20,7 +20,7 @@ An upstream Sea-Bird step overrides *producer* (``"SBE Data Processing"``), *tim
 from __future__ import annotations
 
 import datetime
-from typing import MutableMapping
+from collections.abc import MutableMapping
 
 from ctdcast._version import __version__
 

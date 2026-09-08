@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from ctdcast.config.global_attrs import cruise_name
-
+import contextlib
 import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,8 +17,8 @@ from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
+from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.loader import SectionsConfig
-from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
@@ -27,6 +26,7 @@ from ctdcast.config.parameters import (
     vlabel,
     vlabel_html,
 )
+from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import (
     cast_id_from_name,
     compact_cast_list,
@@ -37,7 +37,6 @@ from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._env import get_template
 from ctdcast.reports._manifest import (
     Panel,
@@ -47,7 +46,6 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
-from ctdcast.reports._qc import qc_summary
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
@@ -57,6 +55,8 @@ from ctdcast.reports._plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
+from ctdcast.reports._qc import qc_summary
+from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
 
@@ -250,10 +250,10 @@ def report(
         )
     else:
         print(f"No cast .nc files found in {nc_dir}")
-        return
+        return None
     if not all_meta:
         print(f"No casts found for {nc_dir}")
-        return
+        return None
     _nc_cruise = all_meta[0].get("cruise") if all_meta else None
     cruise = cruise_name(cruise_info) or _nc_cruise or "UNK"
 
@@ -318,7 +318,7 @@ def report(
         ]
         if _cast_set is not None and not targets:
             print(f"Cast(s) {cast_filter} not found in {nc_dir}")
-            return
+            return None
         for meta in targets:
             orig_i = all_meta.index(meta)
             prev_cast_str = cast_num_strs[orig_i - 1] if orig_i > 0 else None
@@ -1279,10 +1279,8 @@ def _write_sections_list(
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
         for f in ladcp_dir.glob("*.mat"):
-            try:
+            with contextlib.suppress(ValueError):
                 ladcp_cast_nums.add(int(f.stem))
-            except ValueError:
-                pass
 
     # Build cast → position lookup for the overview map
     cast_pos: dict[int, tuple[float, float]] = {}
@@ -1412,10 +1410,8 @@ def _write_timeseries_list(
     ladcp_cast_nums: set[int] = set()
     if ladcp_dir is not None and ladcp_dir.exists():
         for f in ladcp_dir.glob("*.mat"):
-            try:
+            with contextlib.suppress(ValueError):
                 ladcp_cast_nums.add(int(f.stem))
-            except ValueError:
-                pass
 
     # Build cast → position and time lookup
     cast_pos: dict[int, tuple[float, float]] = {}
@@ -1657,7 +1653,7 @@ def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
         return None
 
 
-def _decode_str(value: Any) -> str:
+def _decode_str(value: Any) -> str:  # noqa: ANN401  # netCDF scalar of caller-decided dtype (str/bytes/numpy scalar)
     """Return *value* as ``str``, decoding numpy/bytes scalars.
 
     netCDF string variables round-trip as ``bytes``/``numpy.bytes_`` under some
@@ -1671,7 +1667,7 @@ def _decode_str(value: Any) -> str:
     return str(item)
 
 
-def _nat_safe_min(a: Any, b: Any) -> Any:
+def _nat_safe_min(a: np.datetime64, b: np.datetime64) -> np.datetime64:
     """Return the earlier of two ``datetime64`` values, ignoring ``NaT``.
 
     ``NaT`` comparisons are always False, so a plain ``min()`` can return ``NaT``
@@ -1684,7 +1680,7 @@ def _nat_safe_min(a: Any, b: Any) -> Any:
     return min(a, b)
 
 
-def _nat_safe_max(a: Any, b: Any) -> Any:
+def _nat_safe_max(a: np.datetime64, b: np.datetime64) -> np.datetime64:
     """Return the later of two ``datetime64`` values, ignoring ``NaT``."""
     if np.isnat(a):
         return b

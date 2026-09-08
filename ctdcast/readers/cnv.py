@@ -46,5 +46,4 @@ def read(cnv_path: Path, *, backend: str = "seasenselib") -> xr.Dataset:
     with tempfile.TemporaryDirectory() as tmpdir:
         nc_path = Path(tmpdir) / (cnv_path.stem + ".nc")
         b.convert_cast(cnv_path, nc_path, force=True)
-        ds = xr.open_dataset(nc_path, engine="netcdf4").load()
-    return ds
+        return xr.open_dataset(nc_path, engine="netcdf4").load()
