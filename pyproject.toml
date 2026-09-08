@@ -55,6 +55,10 @@ docs = [
 test = ["pytest>=8", "pytest-cov>=5"]
 dev = ["ctdcast[test,docs]", "ruff>=0.3"]
 
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
 [tool.ruff.lint]
 select = [
     "E", "F", "W",          # pycodestyle + pyflakes
@@ -70,6 +74,10 @@ select = [
     "PTH",                  # pathlib over os.path / open()
     "RUF100",               # unused noqa
 ]
+# No preview rules in `select`.  A select entry for a preview family (FURB, PERF, …) can
+# silently start firing new checks on a ruff version bump, which breaks the rule that
+# `select` is the source of truth for what is enforced.  Individually-good preview fixes
+# are grafted by hand instead (e.g. max(0, x), min(seq), dict.values()).
 ignore = [
     "E501",   # line too long — formatter handles this
     "C901",   # complexity — ignored per CLAUDE.md
@@ -83,14 +91,19 @@ extend-select = ["D417"]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-# tests are not public API: no docstring rules (D), no annotations (ANN — documentation-only
-# with no type checker configured), no unused-argument rule (pytest fixtures look unused).
-# The requirement that a test docstring says which behaviour it asserts lives in CONTRIBUTING.md.
-"tests/*" = ["ARG", "ANN", "D", "PTH"]
+# tests are not public API — a class-level reason, and the only justification for exempting
+# them: no docstring rules (D), no annotations (ANN — documentation-only with no type checker
+# configured), no unused-argument rule (ARG — pytest fixtures look unused).  That reason does
+# NOT extend to the code-quality rules (I, SIM, PTH, …); tests keep those, as a ratchet.
+# CONTRIBUTING.md still asks that a test docstring say which behaviour it asserts — a review
+# norm with no lint backing here (D is off), not an oversight.
+"tests/*" = ["ARG", "ANN", "D"]
 "scripts/*" = ["E402"]    # scripts use late imports for optional deps
-# Vendored files (kept in sync with oceanarray) — the linter must not drive divergence,
-# so RUF100 (noqa managed upstream) and the docstring/annotation rules are off here; any
-# such change belongs in the shared source, applied to both packages together.
+# Vendored files, shared across the sibling packages (oceanarray/caldip) — the linter must
+# not drive divergence, so RUF100 (noqa managed upstream) and the docstring/annotation rules
+# are off here.  The copies currently differ (report_tokens matches all three; _css/_encode
+# diverge) and the canonical direction is undecided; any change belongs in the shared source,
+# reconciled across the packages together, not made unilaterally by a lint fix here.
 "ctdcast/config/report_tokens.py" = ["RUF100", "D", "ANN"]
 "ctdcast/reports/_css.py" = ["RUF100", "D", "ANN"]
 "ctdcast/reports/_encode.py" = ["RUF100", "D", "ANN"]

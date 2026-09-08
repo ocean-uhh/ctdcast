@@ -22,6 +22,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+#: A page's render context, threaded opaque through the resolver: the concrete keys are
+#: decided by each page's own registry (grid's ``Ctx``, etc.), never by this package-neutral
+#: module.  Named once so the resolver signatures read ``ctx: RenderContext`` with no
+#: per-signature noqa, and any future narrowing lands in one place.
+RenderContext = Any
+
 #: Panel content kinds.  ``"figure"`` renders a base64 PNG (escaped as an image
 #: ``src``); ``"html"`` and ``"table"`` render pre-built markup that the template
 #: macro emits with ``|safe``.  The discriminator keeps the ``autoescape=True``
@@ -29,12 +35,12 @@ from typing import Any, Literal
 PanelKind = Literal["figure", "html", "table"]
 
 
-def _always(_ctx: Any) -> bool:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _always(_ctx: RenderContext) -> bool:
     """Return True for any context (the default ``applies_to`` predicate)."""
     return True
 
 
-def _unavailable_never(_ctx: Any) -> str | None:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _unavailable_never(_ctx: RenderContext) -> str | None:
     """Return None for any context (the default ``unavailable_if`` predicate)."""
     return None
 
@@ -269,7 +275,7 @@ def _letter(n: int) -> str:
     return letters
 
 
-def _expand(entries: Sequence[Section | Expand], ctx: Any) -> list[Section]:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _expand(entries: Sequence[Section | Expand], ctx: RenderContext) -> list[Section]:
     """Splice every :class:`Expand` into the concrete sections it yields."""
     out: list[Section] = []
     for entry in entries:
@@ -280,7 +286,9 @@ def _expand(entries: Sequence[Section | Expand], ctx: Any) -> list[Section]:  # 
     return out
 
 
-def _section_panels(sec: Section, ctx: Any, panels: dict[str, Panel]) -> list[Panel]:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _section_panels(
+    sec: Section, ctx: RenderContext, panels: dict[str, Panel]
+) -> list[Panel]:
     """Flatten a section's entries to concrete panels: ids looked up, groups expanded.
 
     A :class:`PanelGroup` entry is expanded by calling ``over(ctx)`` and building
@@ -296,21 +304,23 @@ def _section_panels(sec: Section, ctx: Any, panels: dict[str, Panel]) -> list[Pa
     return out
 
 
-def _section_applies(sec: Section, ctx: Any, panels: dict[str, Panel]) -> bool:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _section_applies(
+    sec: Section, ctx: RenderContext, panels: dict[str, Panel]
+) -> bool:
     """Decide whether *sec* is included: explicit predicate, else any panel applies."""
     if sec.applies_to is not None:
         return bool(sec.applies_to(ctx))
     return any(p.applies_to(ctx) for p in _section_panels(sec, ctx, panels))
 
 
-def _resolve_slot(panel: Panel, ctx: Any) -> str:  # noqa: ANN401  # caller-decided per-page render context, opaque here
+def _resolve_slot(panel: Panel, ctx: RenderContext) -> str:
     """Return the panel's slot, calling it with *ctx* when it is a callable."""
     return panel.slot(ctx) if callable(panel.slot) else panel.slot
 
 
 def _resolve_panels(
     sec: Section,
-    ctx: Any,  # noqa: ANN401  # caller-decided per-page render context, opaque here
+    ctx: RenderContext,
     panels: dict[str, Panel],
 ) -> tuple[ResolvedPanel, ...]:
     """Render each applicable panel of a kept section; None output becomes a stub.
@@ -358,7 +368,7 @@ def _resolve_panels(
 
 def resolve(
     profile: Profile,
-    ctx: Any,  # noqa: ANN401  # caller-decided per-page render context, opaque here
+    ctx: RenderContext,
     panels: dict[str, Panel],
     *,
     drop_stub: bool = False,
