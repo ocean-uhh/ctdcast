@@ -4,6 +4,7 @@
 [![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%20–%203.13-blue?logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://ocean-uhh.github.io/ctdcast/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22846130.svg)](https://doi.org/10.5281/zenodo.22846130)
 
 Processing and reporting for shipboard CTD and LADCP data: from raw instrument files
 through QC'd, CF/CCHDO-aligned netCDF and a compiled profiles grid, to self-contained HTML.
