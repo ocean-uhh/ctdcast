@@ -12,8 +12,8 @@ authors:
   given-names: Angel
   orcid: https://orcid.org/0000-0002-7292-3002
   affiliation: "Institute of Earth Sciences, University of Iceland, Reykjavik, Iceland"
-version: "0.2.0"
-date-released: "2026-09-08"
+version: "0.2.1"
+date-released: "2026-09-25"
 url: "https://github.com/ocean-uhh/ctdcast"
 repository-code: "https://github.com/ocean-uhh/ctdcast"
 license: MIT

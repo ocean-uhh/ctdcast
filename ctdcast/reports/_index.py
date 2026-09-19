@@ -255,7 +255,7 @@ def report(
         print(f"No casts found for {nc_dir}")
         return None
     _nc_cruise = all_meta[0].get("cruise") if all_meta else None
-    cruise = cruise_name(cruise_info) or _nc_cruise or "UNK"
+    cruise = cruise_name(cruise_info) or _nc_cruise or UNKNOWN_CRUISE_ID
 
     # Pre-load GEBCO for the cruise area into memory so every map figure
     # subsets from numpy arrays rather than reopening the file from disk.

@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-09-25
+
+### Fixed
+
+- Cruise-name fallback in the report index now uses the `UNKNOWN_CRUISE_ID` constant (`"UNKCRUISE"`) instead of a literal `"UNK"`, matching the rest of the report paths.
+
 ## [0.2.0] — 2026-09-08
 
 ### Added
