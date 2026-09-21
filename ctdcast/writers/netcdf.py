@@ -37,6 +37,13 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
     replaces *path* so a failed write never leaves a partial file.
 
+    Every numeric variable with at least one dimension (coordinates included)
+    is written with lossless zlib compression at level 4.  The shuffle filter is
+    applied to all of them except ``float64``, where it was measured to enlarge
+    ctdcast's science columns.  Compression is transparent on read and changes
+    no stored values; a caller-supplied ``encoding`` for a variable is left
+    untouched.
+
     Parameters
     ----------
     ds:
