@@ -221,3 +221,16 @@ class TestCompression:
             np.testing.assert_array_equal(ds[v].values, back[v].values)
         assert back["ctd_temperature_1"].encoding.get("zlib") is True
         back.close()
+
+    def test_caller_supplied_encoding_wins(self, tmp_path):
+        """A per-variable encoding passed by the caller is used untouched; the
+        writer adds compression only to variables the caller did not name."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "c.nc"
+        write(ds, out, encoding={"pressure": {"zlib": False}})
+        back = _load(out)
+        assert not back["pressure"].encoding.get("zlib")
+        assert back["ctd_temperature_1"].encoding.get("zlib") is True
+        back.close()

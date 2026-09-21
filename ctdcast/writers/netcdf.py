@@ -173,7 +173,12 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
         if var.ndim >= 1 and (is_time or np.issubdtype(var.dtype, np.number)):
             entry["zlib"] = True
             entry["complevel"] = 4
-            entry["shuffle"] = var.dtype != np.dtype("float64")
+            # shuffle is a storage filter, so decide it from the on-disk dtype:
+            # a datetime variable is stored as float64 seconds (entry["dtype"]),
+            # so it falls under the float64 rule too, not its datetime64 in-memory
+            # dtype.
+            on_disk = np.dtype(entry.get("dtype", var.dtype))
+            entry["shuffle"] = on_disk != np.dtype("float64")
         if entry:
             enc[name] = entry
 
