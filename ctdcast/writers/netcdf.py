@@ -37,6 +37,13 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
     replaces *path* so a failed write never leaves a partial file.
 
+    Every numeric variable with at least one dimension (coordinates included)
+    is written with lossless zlib compression at level 4.  The shuffle filter is
+    applied to all of them except ``float64``, where it was measured to enlarge
+    ctdcast's science columns.  Compression is transparent on read and changes
+    no stored values; a caller-supplied ``encoding`` for a variable is left
+    untouched.
+
     Parameters
     ----------
     ds:
@@ -130,17 +137,50 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     # encoding, is faithful to sub-second precision, and silences the warning.
     # (CF always stores time as a numeric count since an epoch; it decodes back to
     # real datetimes on read — this is not "time as an integer".)
+    # Compression is applied at this single seam, so every stage file, the compiled
+    # profiles.nc and the LADCP outputs get it without per-module edits.  Lossless
+    # zlib on every numeric variable that has at least one dimension (coordinates
+    # included); netCDF4 cannot chunk a 0-d variable, and strings are left alone.
+    # shuffle helps integer and low-entropy data, but roughly doubles ctdcast's
+    # float64 science columns (measured 2026-09-21: temperature, salinity, fluor),
+    # so it is off for float64 and on for everything else.  Level 4: across 18 casts
+    # zlib 1/4/9 differed by under a point, so the cheapest useful level wins.
     enc: dict = dict(encoding or {})
     for name, var in ds.variables.items():
-        if np.issubdtype(var.dtype, np.datetime64) and name not in enc:
-            enc[name] = {
-                "units": "seconds since 1970-01-01T00:00:00",
-                "dtype": "float64",
-                "calendar": "proleptic_gregorian",
-                # A NaT (e.g. an incomplete cast) would otherwise write as a bare
-                # NaN a strict CF reader cannot flag as missing; declare it.
-                "_FillValue": np.nan,
-            }
+        # A caller-supplied encoding for this variable wins untouched.  No caller
+        # passes one today; this keeps that contract for future ones.
+        if name in enc:
+            continue
+        entry: dict = {}
+        is_time = np.issubdtype(var.dtype, np.datetime64)
+        if is_time:
+            # Explicit CF time encoding.  Without it xarray guesses
+            # ``units="days since <first timestamp>"`` as int64, which cannot hold
+            # sub-day cast times, so it warns and falls back to seconds.  Pinning a
+            # fixed epoch in float64 seconds is CF-standard and faithful to
+            # sub-second precision.  (CF stores time as a numeric count since an
+            # epoch and decodes it back to datetimes on read.)
+            entry.update(
+                {
+                    "units": "seconds since 1970-01-01T00:00:00",
+                    "dtype": "float64",
+                    "calendar": "proleptic_gregorian",
+                    # A NaT (e.g. an incomplete cast) would otherwise write as a bare
+                    # NaN a strict CF reader cannot flag as missing; declare it.
+                    "_FillValue": np.nan,
+                }
+            )
+        if var.ndim >= 1 and (is_time or np.issubdtype(var.dtype, np.number)):
+            entry["zlib"] = True
+            entry["complevel"] = 4
+            # shuffle is a storage filter, so decide it from the on-disk dtype:
+            # a datetime variable is stored as float64 seconds (entry["dtype"]),
+            # so it falls under the float64 rule too, not its datetime64 in-memory
+            # dtype.
+            on_disk = np.dtype(entry.get("dtype", var.dtype))
+            entry["shuffle"] = on_disk != np.dtype("float64")
+        if entry:
+            enc[name] = entry
 
     kw: dict = {"encoding": enc} if enc else {}
     ds.to_netcdf(str(tmp), **kw)

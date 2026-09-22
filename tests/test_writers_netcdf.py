@@ -141,3 +141,96 @@ class TestWrite:
                     ds[v].values, ds_back[v].values, rtol=1e-5, equal_nan=True
                 )
         ds_back.close()
+
+
+class TestCompression:
+    """write() applies lossless zlib, with shuffle off for float64."""
+
+    def test_every_dimensioned_numeric_var_compressed(self, tmp_path):
+        """Numeric variables with a dimension (coordinates included) get zlib 4;
+        0-d variables, which netCDF4 cannot chunk, are left uncompressed."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "c.nc"
+        write(ds, out)
+        back = _load(out)
+        numeric = 0
+        for name, var in back.variables.items():
+            is_numeric = np.issubdtype(var.dtype, np.number) or np.issubdtype(
+                var.dtype, np.datetime64
+            )
+            if is_numeric and var.ndim >= 1:
+                numeric += 1
+                assert back[name].encoding.get("zlib") is True, name
+                assert back[name].encoding.get("complevel") == 4, name
+            elif var.ndim == 0:
+                assert not back[name].encoding.get("zlib"), name
+        assert numeric > 0
+        back.close()
+
+    def test_shuffle_off_for_float64_on_for_integers(self, tmp_path):
+        """shuffle roughly doubles ctdcast's float64 science columns, so it is off
+        for float64 and on for integer variables (the QARTOD flag arrays)."""
+        from ctdcast.processors.stage2 import apply_stage2
+        from ctdcast.writers.netcdf import write
+
+        ds = apply_stage2(_load(CAST_011))
+        out = tmp_path / "c.nc"
+        write(ds, out)
+        back = _load(out)
+        assert back["ctd_temperature_1"].dtype == np.float64
+        assert not back["ctd_temperature_1"].encoding.get("shuffle")
+        qc = [n for n in back.variables if n.endswith("_qc")]
+        assert qc, "stage2 should have produced _qc flag variables"
+        for n in qc:
+            assert back[n].dtype == np.int8
+            assert back[n].encoding.get("shuffle") is True, n
+        back.close()
+
+    def test_datetime_encoding_survives_compression(self, tmp_path):
+        """The CF time encoding (epoch, float64, calendar, NaT fill) is merged with
+        the compression settings, not replaced by them."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "c.nc"
+        write(ds, out)
+        back = _load(out)
+        enc = back["time"].encoding
+        assert "seconds since 1970-01-01" in enc["units"]
+        assert np.dtype(enc["dtype"]) == np.float64
+        assert enc["calendar"] == "proleptic_gregorian"
+        assert np.isnan(enc.get("_FillValue"))
+        assert enc.get("zlib") is True
+        np.testing.assert_array_equal(ds["time"].values, back["time"].values)
+        back.close()
+
+    def test_compression_is_lossless(self, tmp_path):
+        """Compressed float values equal the source exactly (zlib is lossless),
+        NaN-aware, across every floating variable."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "compressed.nc"
+        write(ds, out)
+        back = _load(out)
+        floats = [v for v in ds.variables if np.issubdtype(ds[v].dtype, np.floating)]
+        assert floats
+        for v in floats:
+            np.testing.assert_array_equal(ds[v].values, back[v].values)
+        assert back["ctd_temperature_1"].encoding.get("zlib") is True
+        back.close()
+
+    def test_caller_supplied_encoding_wins(self, tmp_path):
+        """A per-variable encoding passed by the caller is used untouched; the
+        writer adds compression only to variables the caller did not name."""
+        from ctdcast.writers.netcdf import write
+
+        ds = _load(CAST_011)
+        out = tmp_path / "c.nc"
+        write(ds, out, encoding={"pressure": {"zlib": False}})
+        back = _load(out)
+        assert not back["pressure"].encoding.get("zlib")
+        assert back["ctd_temperature_1"].encoding.get("zlib") is True
+        back.close()
