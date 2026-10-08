@@ -44,6 +44,7 @@ from ctdcast.reports._manifest import (
     Profile,
     ResolvedReport,
     Section,
+    Stub,
     resolve,
 )
 from ctdcast.reports._navs import nav_for
@@ -457,7 +458,7 @@ def _section_slot(c: SectionPageCtx) -> str:
 
 def _field_render(
     var: str, *, canonical: str | None, optional: bool
-) -> Callable[[SectionPageCtx], str | None]:
+) -> Callable[[SectionPageCtx], str | Stub | None]:
     """Build the render closure for one section pcolormesh field.
 
     *var* is resolved at render time for biogeo fields (single-sensor casts promote
@@ -465,7 +466,7 @@ def _field_render(
     the colour-limit fallback from resolved name to canonical name.
     """
 
-    def _render(c: SectionPageCtx) -> str | None:
+    def _render(c: SectionPageCtx) -> str | Stub | None:
         resolved = resolve_sensor_var(c.ds_sec, var) if optional else var
         key = canonical or var
         _vmin = (

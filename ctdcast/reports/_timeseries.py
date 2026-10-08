@@ -56,6 +56,7 @@ from ctdcast.reports._manifest import (
     Profile,
     ResolvedReport,
     Section,
+    Stub,
     resolve,
 )
 from ctdcast.reports._navs import nav_for
@@ -396,10 +397,10 @@ def _ts_slot(c: TimeseriesPageCtx) -> str:
 
 def _ts_field_render(
     var: str, *, canonical: str | None, optional: bool
-) -> Callable[[TimeseriesPageCtx], str | None]:
+) -> Callable[[TimeseriesPageCtx], str | Stub | None]:
     """Build the render closure for one timeseries field (var vs cast time)."""
 
-    def _render(c: TimeseriesPageCtx) -> str | None:
+    def _render(c: TimeseriesPageCtx) -> str | Stub | None:
         resolved = resolve_sensor_var(c.ds_ts, var) if optional else var
         key = canonical or var
         _vmin = (

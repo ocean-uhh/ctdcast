@@ -166,6 +166,24 @@ def as_panel(make: Callable[[], str | None]) -> str | Stub | None:
     that merely returns ``None`` (an absent variable) stays ``None``.  This is the one place
     a ``Stub`` is produced, and only ``Panel.render`` adapters call it; the direct figure
     embeds call :func:`render_b64` outside any scope and keep their ``str | None`` result.
+
+    The capture sink is per scope, not per encode: *make* must issue **at most one**
+    :func:`render_b64`, and the scope must not nest (no wrapped draw may itself call
+    :func:`render_b64` or :func:`as_panel`).  Both hold for every current adapter — each wraps
+    a single ``_make_*_b64`` and no ``draw_*`` re-enters the encoder.  A composed adapter that
+    broke either would mis-attribute a reason; wrap each draw in its own ``as_panel`` instead.
+
+    Parameters
+    ----------
+    make : callable
+        Zero-argument thunk that performs the panel's single ``render_b64`` call and returns
+        its ``str | None`` result (typically ``lambda: _make_x_b64(...)``).
+
+    Returns
+    -------
+    str or Stub or None
+        The base64 PNG on success, ``Stub(reason)`` when the draw raised and was swallowed,
+        or ``None`` when the draw produced nothing without raising.
     """
     with _capture_scope() as sink:
         result = make()
