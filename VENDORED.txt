@@ -1,0 +1,9 @@
+# sha256 of the report-design files vendored byte-identical across
+# ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.
+# Regenerate after an intentional edit: python scripts/check_vendored.py --update
+3c5c758e0b013639c6887fdb73639229dc75cc37690abc93a6ecd066e41597e2  ctdcast/reports/_encode.py
+6804280ebe2f25b1d958cbf01ddfb8c19b12b423f4650cb8a494a7697bfa96f4  ctdcast/reports/_css.py
+0ed04cad55ef34b6d845344b1b7e9877b7bf5df54cd848ca9c561103c4af2acf  ctdcast/reports/_manifest.py
+001356617e2129e2a0010e831a7a47e6f97e2cf0062b65ea0cf0f3db3f0f86b8  ctdcast/config/report_tokens.py
+18cba25d288c74129f4e393199fb0b005f7e0c926a11a4c67aba3104f72e7f61  ctdcast/config/report.mplstyle
+ab5ee1964e0a0aebba73f28bbbaf5a4036450d2be821803d357c9d6ba294a10a  ctdcast/reports/templates/_nav.html
