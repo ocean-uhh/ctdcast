@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 import warnings
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -66,6 +67,32 @@ from ctdcast.reports._figdebug import render_b64
 from ctdcast.reports._manifest import Stub
 
 
+def render_panel_b64(
+    draw: Callable[..., object],
+    /,
+    *args: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
+    optional: bool = False,
+    **kwargs: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
+) -> str | Stub | None:
+    """Encode *draw* for a Panel, returning a :class:`Stub` with the cause when it raises.
+
+    Wraps :func:`render_b64` (so debug geometry is still recorded) with an ``on_error``
+    closure.  A draw that *raises* (with ``RAISE_ON_PLOT_ERROR`` unset) yields
+    ``Stub("<ExcType>: <message>")`` instead of ``None``, so the resolver renders a stub that
+    says *why*.  A draw that merely returns ``None`` (an absent variable) still yields
+    ``None``.  This is the one place a ``Stub`` is produced; only ``Panel.render`` adapters
+    should call it.  Direct figure embeds (maps, the ``if p.b64`` panels) call
+    :func:`render_b64`, which never returns a ``Stub``.
+    """
+    err: dict[str, str] = {}
+
+    def _capture(exc: BaseException) -> None:
+        err["reason"] = f"{type(exc).__name__}: {exc}"
+
+    b64 = render_b64(draw, *args, optional=optional, on_error=_capture, **kwargs)
+    return Stub(err["reason"]) if err else b64
+
+
 @dataclasses.dataclass(frozen=True)
 class RenderedPanel:
     """A rendered figure plus the layout metadata the HTML template needs."""
@@ -87,7 +114,7 @@ def _make_ts_density_b64(
     ladcp_path: Path | None = None,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of CT/SA/σ₀ profiles, optionally alongside LADCP U/V.
 
     When *ladcp_path* is ``None``, renders a single-column CT/SA/σ₀ triple-axis
@@ -100,35 +127,35 @@ def _make_ts_density_b64(
 
 def _make_ts_diagram_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of a T-S diagram colored by O₂ saturation."""
     return render_b64(draw_ts_diagram_fig, ds, cfg=cfg)
 
 
 def _make_stability_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of N² and Turner angle (2-panel)."""
     return render_b64(draw_stability_fig, ds, cfg=cfg)
 
 
 def _make_qc_histogram_b64(
     nc_path: Path, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of per-variable data-value distributions with QC thresholds."""
     return render_b64(draw_qc_histogram_fig, nc_path, optional=True, cfg=cfg)
 
 
 def _make_aux_profiles_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
     return render_b64(draw_aux_profiles_fig, ds, optional=True, cfg=cfg)
 
 
 def _make_ct_sa_sigma0_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of CT, SA, σ₀ profiles side-by-side (downcast + grey upcast).
 
     Three-panel figure matching the style of ``_make_aux_profiles_b64``.
@@ -138,7 +165,7 @@ def _make_ct_sa_sigma0_b64(
 
 def _make_ts_updown_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of CT–SA scatter: downcast in blue, upcast in red, σ₀ contours."""
     return render_b64(draw_ts_updown_fig, ds, cfg=cfg)
 
@@ -150,7 +177,7 @@ def _make_station_map_b64(
     target_h: float = 4.5,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
 
     The figure is laid out deterministically at a fixed slot width (see
@@ -165,7 +192,7 @@ def _make_cruise_map_b64(
     *,
     target_h: float = 4.0,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of all cast positions (no single-cast highlight).
 
     Casts are drawn as grey scatter over GEBCO bathymetry.  Cast numbers are
@@ -191,7 +218,7 @@ def _make_section_b64(
     optional: bool = False,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of *var* vs pressure × *x_vals*.
 
     Parameters
@@ -629,7 +656,7 @@ def _make_section_ts_profiles_b64(
     x_vals: np.ndarray,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of per-cast CT–SA profiles coloured by along-track distance.
 
     Each downcast in *ds_prof* is drawn as a CT–SA line with σ₀ background contours.
@@ -640,7 +667,7 @@ def _make_section_ts_profiles_b64(
 
 def _make_ts_diagram_timeseries_b64(
     ds_ts: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of a CT–SA diagram for all timeseries profiles, coloured by time.
 
     Each profile (N_PROF) is drawn as a line in CT–SA space.  Colour encodes hours
@@ -660,14 +687,14 @@ def _make_ts_diagram_timeseries_b64(
 
 def _make_section_ts_histogram_b64(
     ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
     return render_b64(draw_section_ts_histogram_fig, ds_prof, cfg=cfg)
 
 
 def _make_section_ts_o2_b64(
     ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
     return render_b64(draw_section_ts_o2_fig, ds_prof, optional=True, cfg=cfg)
 
@@ -681,7 +708,7 @@ def _make_section_map_b64(
     min_margin_lon: float | None = None,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of a GEBCO map with the section track.
 
     *min_margin* sets a floor on the geographic margin for the latitude axis.
@@ -721,7 +748,7 @@ def _make_overview_panel_b64(
     optional: bool = False,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
 
     *ds_prof* must already be filtered to downcasts and sorted by cast_number.
@@ -772,7 +799,7 @@ def _make_all_sections_map_b64(
     *,
     target_h: float = 4.5,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG showing all section tracks coloured by section.
 
     Parameters
@@ -833,7 +860,7 @@ def _make_timeseries_b64(
     optional: bool = False,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
 
     Parameters
@@ -871,7 +898,7 @@ def _make_timeseries_b64(
 
 def _make_sensor_diff_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of primary minus secondary sensor difference profiles.
 
     Shows T₁–T₂ and S₁–S₂ vs pressure with a fixed ±0.01 x-axis.
@@ -882,14 +909,14 @@ def _make_sensor_diff_b64(
 
 def _make_pressure_time_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of pressure vs elapsed time (cast trajectory + bottle stops)."""
     return render_b64(draw_pressure_time_fig, ds, cfg=cfg)
 
 
 def _make_updown_diff_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of downcast minus upcast profiles: ΔCT, ΔSA, Δσ₀.
 
     Both casts are interpolated to a shared 1-dbar pressure grid before differencing.
@@ -900,7 +927,7 @@ def _make_updown_diff_b64(
 
 def _make_ladcp_bottomtrack_b64(
     ladcp_path: Path | None, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
-) -> str | Stub | None:
+) -> str | None:
     """Return a base64 PNG of LADCP bottom-track U and V vs depth.
 
     Returns None if *ladcp_path* is None or the .mat file lacks ``zbot``, ``ubot``,

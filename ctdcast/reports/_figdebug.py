@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 
 from ctdcast.config.report_tokens import FIG_DPI
 from ctdcast.reports import _encode
-from ctdcast.reports._manifest import Stub
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -91,26 +90,21 @@ def render_b64(
     /,
     *args: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
     optional: bool = False,
+    on_error: Callable[[BaseException], None] | None = None,
     **kwargs: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
-) -> str | Stub | None:
+) -> str | None:
     """Encode *draw* via the vendored encoder; when debug is on, record its geometry.
 
-    Drop-in for :func:`ctdcast.reports._encode.render_b64`. When disabled, delegates
-    straight through (zero overhead). When enabled, wraps *draw* to capture the Figure it
-    returns, then records the figsize/png_px under the returned base64 PNG.
-
-    When *draw* raises (and ``RAISE_ON_PLOT_ERROR`` is unset), returns a
-    :class:`~ctdcast.reports._manifest.Stub` carrying ``"<ExcType>: <message>"`` so the
-    resolver can show *why* the panel is absent, instead of a bare ``None``.
+    Drop-in for :func:`ctdcast.reports._encode.render_b64` and keeps its ``str | None``
+    contract: a failed or empty draw returns ``None`` (the informative warning still fires
+    in the encoder).  ``on_error`` is forwarded so a caller — :func:`render_panel_b64` — can
+    capture the cause; this wrapper itself never returns a :class:`Stub`.  When debug is on,
+    wraps *draw* to capture the Figure and records the figsize/png_px under the base64 PNG.
     """
-    err: dict[str, str] = {}
-
-    def _capture(exc: BaseException) -> None:
-        err["reason"] = f"{type(exc).__name__}: {exc}"
-
     if not enabled():
-        b64 = _encode.render_b64(draw, *args, optional=optional, on_error=_capture, **kwargs)
-        return Stub(err["reason"]) if err else b64
+        return _encode.render_b64(
+            draw, *args, optional=optional, on_error=on_error, **kwargs
+        )
 
     captured: dict[str, Any] = {}
 
@@ -123,7 +117,7 @@ def render_b64(
         return fig
 
     b64 = _encode.render_b64(
-        _wrapped, *args, optional=optional, on_error=_capture, **kwargs
+        _wrapped, *args, optional=optional, on_error=on_error, **kwargs
     )
     record(b64, _draw_name(draw), captured.get("fig"))
-    return Stub(err["reason"]) if err else b64
+    return b64

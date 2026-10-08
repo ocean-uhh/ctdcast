@@ -274,6 +274,12 @@ class Stub:
     Carries the reason the panel is empty (e.g. the exception a draw function
     raised) so the page can say *why* a panel is absent, not merely that it is.
     A bare ``None`` from ``render`` still means the generic stub.
+
+    Parameters
+    ----------
+    reason : str
+        Human-readable cause, appended to the generic stub text as
+        ``"applicable but unavailable: <reason>"`` by :func:`_resolve_panels`.
     """
 
     reason: str
@@ -536,6 +542,4 @@ def validate_nav(nav: Mapping) -> None:
 
     n_current = sum(1 for pill in counted if pill.get("state") == "current")
     if n_current > 1:
-        raise ValueError(
-            f"nav must have at most one 'current' pill, found {n_current}"
-        )
+        raise ValueError(f"nav must have at most one 'current' pill, found {n_current}")

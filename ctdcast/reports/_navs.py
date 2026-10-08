@@ -25,6 +25,38 @@ _PAGES: tuple[tuple[str, str, str, str], ...] = (
 )
 
 
+def inventory_sources(
+    profiles_path: Path | str | None, ladcp_profiles_path: Path | str | None
+) -> tuple[list[Path], bool]:
+    """Return ``(dataset_srcs, has_sensors)`` — the compiled products present on disk.
+
+    The single definition of "which compiled products exist": the dataset netCDFs
+    that exist, and whether a sensor catalog is available (it lives in
+    ``profiles.nc``).  Both the inventory strip (:func:`inventory_pills`) and the
+    caller's page-generation loop read this, so the two cannot disagree about which
+    products are present.
+
+    Parameters
+    ----------
+    profiles_path : pathlib.Path or str or None
+        The compiled ``profiles.nc`` path, or None.
+    ladcp_profiles_path : pathlib.Path or str or None
+        The compiled ``ladcp_profiles.nc`` path, or None.
+
+    Returns
+    -------
+    tuple of (list of pathlib.Path, bool)
+        The existing dataset paths, and whether the SBE sensors page applies.
+    """
+    srcs = [
+        Path(s)
+        for s in (profiles_path, ladcp_profiles_path)
+        if s is not None and Path(s).exists()
+    ]
+    has_sensors = profiles_path is not None and Path(profiles_path).exists()
+    return srcs, has_sensors
+
+
 def inventory_pills(
     profiles_path: Path | str | None, ladcp_profiles_path: Path | str | None
 ) -> list[dict[str, str]]:
@@ -32,7 +64,8 @@ def inventory_pills(
 
     One pill per compiled dataset that exists (``profiles.nc``,
     ``ladcp_profiles.nc``), plus an ``SBE sensors`` pill when ``profiles.nc`` is
-    present (the sensor catalog lives in it).  Hrefs are bare (no path prefix);
+    present.  Built from :func:`inventory_sources` so the strip and the caller's
+    generation loop share one existence rule.  Hrefs are bare (no path prefix);
     :func:`nav_for` applies the per-page prefix.
 
     Parameters
@@ -47,12 +80,9 @@ def inventory_pills(
     list of dict
         ``{"label", "href"}`` entries, one per inventory page.
     """
-    pills: list[dict[str, str]] = []
-    for src in (profiles_path, ladcp_profiles_path):
-        if src is not None and Path(src).exists():
-            p = Path(src)
-            pills.append({"label": p.name, "href": f"{p.stem}_inventory.html"})
-    if profiles_path is not None and Path(profiles_path).exists():
+    srcs, has_sensors = inventory_sources(profiles_path, ladcp_profiles_path)
+    pills = [{"label": p.name, "href": f"{p.stem}_inventory.html"} for p in srcs]
+    if has_sensors:
         pills.append({"label": "SBE sensors", "href": "sbe_sensors.html"})
     return pills
 

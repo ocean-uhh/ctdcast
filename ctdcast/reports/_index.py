@@ -46,7 +46,7 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
-from ctdcast.reports._navs import inventory_pills, nav_for
+from ctdcast.reports._navs import inventory_pills, inventory_sources, nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
@@ -526,16 +526,13 @@ def report(
         print(f"  [timeseries: {perf_counter() - _t0:.1f}s]")
 
     if gen["index"]:
-        # Generate a netCDF inventory page per compiled dataset present.  The
-        # strip pills themselves (``inventory_datasets``) were built once at the
-        # top of report() so every page can render them; these two locals drive
-        # which inventory pages to *generate* and coincide with the strip pills.
-        _dataset_srcs = [
-            Path(s)
-            for s in (profiles_path, ladcp_profiles_path)
-            if s is not None and Path(s).exists()
-        ]
-        _has_sensors = profiles_path is not None and Path(profiles_path).exists()
+        # Generate a netCDF inventory page per compiled dataset present.  Both the
+        # strip pills (``inventory_datasets``, built at the top of report()) and this
+        # generation loop read the same existence rule via inventory_sources(), so a
+        # strip pill can never point at a page that was not generated, or vice versa.
+        _dataset_srcs, _has_sensors = inventory_sources(
+            profiles_path, ladcp_profiles_path
+        )
 
         for _src in _dataset_srcs:
             _href = f"{_src.stem}_inventory.html"

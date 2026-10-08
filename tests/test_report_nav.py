@@ -64,13 +64,23 @@ def test_current_may_live_in_the_strip():
 
 
 def test_unknown_role_rejected():
-    rows = [{"label": "Pages:", "pills": [_pill("Summary", "index.html", "nope", "current")]}]
+    rows = [
+        {
+            "label": "Pages:",
+            "pills": [_pill("Summary", "index.html", "nope", "current")],
+        }
+    ]
     with pytest.raises(ValueError, match="not a ROLE_ACCENT key"):
         validate_nav(_nav(rows=rows, inventory=[]))
 
 
 def test_invalid_state_rejected():
-    rows = [{"label": "Pages:", "pills": [_pill("Summary", "index.html", "landing", "active")]}]
+    rows = [
+        {
+            "label": "Pages:",
+            "pills": [_pill("Summary", "index.html", "landing", "active")],
+        }
+    ]
     with pytest.raises(ValueError, match="state"):
         validate_nav(_nav(rows=rows, inventory=[]))
 

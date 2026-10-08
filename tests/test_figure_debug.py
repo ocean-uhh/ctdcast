@@ -51,3 +51,27 @@ def test_figdbg_empty_for_unrecorded_key():
     _figdebug.clear()
     assert _figdebug.figdbg("never-recorded-key") == ""
     assert _figdebug.figdbg(None) == ""
+
+
+def _boom():
+    """A draw function that raises, to exercise the error branch."""
+    raise ValueError("no data")
+
+
+def test_render_b64_returns_none_not_stub_when_draw_raises(monkeypatch):
+    """_figdebug.render_b64 keeps the str|None contract — a raising draw yields None."""
+    from ctdcast.config import report_tokens
+
+    monkeypatch.setattr(report_tokens, "RAISE_ON_PLOT_ERROR", False)
+    monkeypatch.delenv("CTDCAST_REPORT_DEBUG", raising=False)
+    assert _figdebug.render_b64(_boom) is None
+
+
+def test_render_b64_returns_none_not_stub_when_draw_raises_debug_on(monkeypatch):
+    """The str|None contract holds on the debug-enabled path too (no Stub leak)."""
+    from ctdcast.config import report_tokens
+
+    monkeypatch.setattr(report_tokens, "RAISE_ON_PLOT_ERROR", False)
+    monkeypatch.setenv("CTDCAST_REPORT_DEBUG", "1")
+    _figdebug.clear()
+    assert _figdebug.render_b64(_boom) is None
