@@ -44,6 +44,7 @@ from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
 from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._env import get_template
+from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._navs import nav_for
@@ -1065,46 +1066,52 @@ CAST_PANELS: dict[str, Panel] = {
     "ts_density": Panel(
         id="ts_density",
         slot="three-fifths",
-        render=lambda c: _make_ts_density_b64(
-            c.ds, c.ladcp_path if c.ladcp_configured else None, cfg=c.cfg
+        render=lambda c: as_panel(
+            lambda: _make_ts_density_b64(
+                c.ds, c.ladcp_path if c.ladcp_configured else None, cfg=c.cfg
+            )
         ),
     ),
     "station_map": Panel(
         id="station_map",
         slot="two-fifths",
-        render=lambda c: _make_station_map_b64(
-            c.lat, c.lon, c.all_meta, target_h=2.75, cfg=c.cfg
+        render=lambda c: as_panel(
+            lambda: _make_station_map_b64(
+                c.lat, c.lon, c.all_meta, target_h=2.75, cfg=c.cfg
+            )
         ),
     ),
     "ts_updown": Panel(
         id="ts_updown",
         slot="two-fifths",
-        render=lambda c: _make_ts_updown_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_ts_updown_b64(c.ds, cfg=c.cfg)),
     ),
     "ct_sa_sigma0": Panel(
         id="ct_sa_sigma0",
         slot="full",
-        render=lambda c: _make_ct_sa_sigma0_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_ct_sa_sigma0_b64(c.ds, cfg=c.cfg)),
     ),
     "aux": Panel(
-        id="aux", slot="full", render=lambda c: _make_aux_profiles_b64(c.ds, cfg=c.cfg)
+        id="aux",
+        slot="full",
+        render=lambda c: as_panel(lambda: _make_aux_profiles_b64(c.ds, cfg=c.cfg)),
     ),
     "ts_diagram": Panel(
         id="ts_diagram",
         slot="third",
         caption="Contours: σ₀ (kg m⁻³) — potential density referenced to surface",
-        render=lambda c: _make_ts_diagram_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_ts_diagram_b64(c.ds, cfg=c.cfg)),
     ),
     "stability": Panel(
         id="stability",
         slot="twothirds",
-        render=lambda c: _make_stability_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_stability_b64(c.ds, cfg=c.cfg)),
     ),
     "ladcp_bottomtrack": Panel(
         id="ladcp_bottomtrack",
         slot="third",
         render=lambda c: (
-            _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg)
+            as_panel(lambda: _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg))
             if c.ladcp_exists
             else None
         ),
@@ -1113,7 +1120,7 @@ CAST_PANELS: dict[str, Panel] = {
         id="pressure_time",
         slot="third",
         caption="Cast trajectory: pressure vs elapsed time",
-        render=lambda c: _make_pressure_time_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_pressure_time_b64(c.ds, cfg=c.cfg)),
     ),
     "sensor_diff": Panel(
         id="sensor_diff",
@@ -1123,7 +1130,7 @@ CAST_PANELS: dict[str, Panel] = {
             "T₁−T₂, S₁−S₂: primary minus secondary sensor. "
             "Ideal: scatter around zero with ±0.01 spread."
         ),
-        render=lambda c: _make_sensor_diff_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_sensor_diff_b64(c.ds, cfg=c.cfg)),
     ),
     "updown_diff": Panel(
         id="updown_diff",
@@ -1132,7 +1139,7 @@ CAST_PANELS: dict[str, Panel] = {
             "ΔCT, ΔSA, Δσ₀ downcast minus upcast on 1-dbar grid — "
             "measures hysteresis from pump lag or sensor response time"
         ),
-        render=lambda c: _make_updown_diff_b64(c.ds, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_updown_diff_b64(c.ds, cfg=c.cfg)),
     ),
     "sensors_table": Panel(
         id="sensors_table",
@@ -1159,7 +1166,7 @@ CAST_PANELS: dict[str, Panel] = {
             "(soak/deck and missing excluded); orange dashed = gross-range "
             "suspect threshold. A threshold outside the data flags a mis-set bound."
         ),
-        render=lambda c: _make_qc_histogram_b64(c.nc_path, cfg=c.cfg),
+        render=lambda c: as_panel(lambda: _make_qc_histogram_b64(c.nc_path, cfg=c.cfg)),
     ),
     "qc_flags": Panel(
         id="qc_flags",

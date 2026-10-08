@@ -36,6 +36,7 @@ from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.plotters.plots import section_figsize_and_slot
 from ctdcast.reports._env import get_template
+from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._manifest import (
     Panel,
@@ -477,21 +478,23 @@ def _field_render(
             if c.vmax.get(resolved) is not None
             else c.vmax.get(key)
         )
-        return _make_section_b64(
-            c.ds_sec,
-            resolved,
-            vlabel(var),
-            c.x_vals,
-            c.x_label,
-            style=c.section_style,
-            bathy_depths=c.bathy_depths,
-            bathy_x=c.bathy_x,
-            cast_labels=c.cast_labels,
-            vmin=_vmin,
-            vmax=_vmax,
-            figsize=c.section_figsize,
-            optional=optional,
-            cfg=c.cfg,
+        return as_panel(
+            lambda: _make_section_b64(
+                c.ds_sec,
+                resolved,
+                vlabel(var),
+                c.x_vals,
+                c.x_label,
+                style=c.section_style,
+                bathy_depths=c.bathy_depths,
+                bathy_x=c.bathy_x,
+                cast_labels=c.cast_labels,
+                vmin=_vmin,
+                vmax=_vmax,
+                figsize=c.section_figsize,
+                optional=optional,
+                cfg=c.cfg,
+            )
         )
 
     return _render

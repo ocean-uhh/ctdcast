@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import dataclasses
 import warnings
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -64,33 +63,6 @@ from ctdcast.reports._encode import _fig_to_base64
 # straight to the encoder when off.
 from ctdcast.reports._figdebug import record as _figdebug_record
 from ctdcast.reports._figdebug import render_b64
-from ctdcast.reports._manifest import Stub
-
-
-def render_panel_b64(
-    draw: Callable[..., object],
-    /,
-    *args: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
-    optional: bool = False,
-    **kwargs: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
-) -> str | Stub | None:
-    """Encode *draw* for a Panel, returning a :class:`Stub` with the cause when it raises.
-
-    Wraps :func:`render_b64` (so debug geometry is still recorded) with an ``on_error``
-    closure.  A draw that *raises* (with ``RAISE_ON_PLOT_ERROR`` unset) yields
-    ``Stub("<ExcType>: <message>")`` instead of ``None``, so the resolver renders a stub that
-    says *why*.  A draw that merely returns ``None`` (an absent variable) still yields
-    ``None``.  This is the one place a ``Stub`` is produced; only ``Panel.render`` adapters
-    should call it.  Direct figure embeds (maps, the ``if p.b64`` panels) call
-    :func:`render_b64`, which never returns a ``Stub``.
-    """
-    err: dict[str, str] = {}
-
-    def _capture(exc: BaseException) -> None:
-        err["reason"] = f"{type(exc).__name__}: {exc}"
-
-    b64 = render_b64(draw, *args, optional=optional, on_error=_capture, **kwargs)
-    return Stub(err["reason"]) if err else b64
 
 
 @dataclasses.dataclass(frozen=True)

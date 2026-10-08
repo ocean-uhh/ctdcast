@@ -48,6 +48,7 @@ from ctdcast.config.report_tokens import (
 )
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._env import get_template
+from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
 from ctdcast.reports._manifest import (
     Panel,
@@ -411,16 +412,18 @@ def _ts_field_render(
             if c.vmax.get(resolved) is not None
             else c.vmax.get(key)
         )
-        return _make_timeseries_b64(
-            c.ds_ts,
-            resolved,
-            vlabel(var),
-            style=c.section_style,
-            vmin=_vmin,
-            vmax=_vmax,
-            figw=c.ts_figw,
-            optional=optional,
-            cfg=c.cfg,
+        return as_panel(
+            lambda: _make_timeseries_b64(
+                c.ds_ts,
+                resolved,
+                vlabel(var),
+                style=c.section_style,
+                vmin=_vmin,
+                vmax=_vmax,
+                figw=c.ts_figw,
+                optional=optional,
+                cfg=c.cfg,
+            )
         )
 
     return _render
