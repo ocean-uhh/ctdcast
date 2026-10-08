@@ -15,6 +15,7 @@ from ctdcast.reports._manifest import (
     PanelGroup,
     Profile,
     Section,
+    Stub,
     _letter,
     resolve,
 )
@@ -203,6 +204,17 @@ def test_render_none_still_gets_generic_reason():
     report = resolve(profile, ctx=None, panels={"p": panel})
     rp = report.sections[0].panels[0]
     assert rp.is_stub and rp.stub_reason == "applicable but unavailable"
+
+
+def test_render_returning_stub_carries_its_reason():
+    """A render returning Stub(reason) stubs with the generic reason plus that reason."""
+    panel = Panel(id="p", render=lambda _c: Stub("TypeError: boom"))
+    profile = Profile(entries=(Section("s", "S", ("p",)),))
+    report = resolve(profile, ctx=None, panels={"p": panel})
+    rp = report.sections[0].panels[0]
+    assert rp.is_stub
+    assert rp.payload is None
+    assert rp.stub_reason == "applicable but unavailable: TypeError: boom"
 
 
 def test_panel_kind_is_carried_to_resolved_panel():

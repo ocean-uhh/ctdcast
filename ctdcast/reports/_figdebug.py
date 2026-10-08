@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from ctdcast.config.report_tokens import FIG_DPI
 from ctdcast.reports import _encode
+from ctdcast.reports._manifest import Stub
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -91,15 +92,25 @@ def render_b64(
     *args: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
     optional: bool = False,
     **kwargs: Any,  # noqa: ANN401  # forwarded verbatim to *draw*
-) -> str | None:
+) -> str | Stub | None:
     """Encode *draw* via the vendored encoder; when debug is on, record its geometry.
 
     Drop-in for :func:`ctdcast.reports._encode.render_b64`. When disabled, delegates
     straight through (zero overhead). When enabled, wraps *draw* to capture the Figure it
     returns, then records the figsize/png_px under the returned base64 PNG.
+
+    When *draw* raises (and ``RAISE_ON_PLOT_ERROR`` is unset), returns a
+    :class:`~ctdcast.reports._manifest.Stub` carrying ``"<ExcType>: <message>"`` so the
+    resolver can show *why* the panel is absent, instead of a bare ``None``.
     """
+    err: dict[str, str] = {}
+
+    def _capture(exc: BaseException) -> None:
+        err["reason"] = f"{type(exc).__name__}: {exc}"
+
     if not enabled():
-        return _encode.render_b64(draw, *args, optional=optional, **kwargs)
+        b64 = _encode.render_b64(draw, *args, optional=optional, on_error=_capture, **kwargs)
+        return Stub(err["reason"]) if err else b64
 
     captured: dict[str, Any] = {}
 
@@ -111,6 +122,8 @@ def render_b64(
         captured["fig"] = fig
         return fig
 
-    b64 = _encode.render_b64(_wrapped, *args, optional=optional, **kwargs)
+    b64 = _encode.render_b64(
+        _wrapped, *args, optional=optional, on_error=_capture, **kwargs
+    )
     record(b64, _draw_name(draw), captured.get("fig"))
-    return b64
+    return Stub(err["reason"]) if err else b64

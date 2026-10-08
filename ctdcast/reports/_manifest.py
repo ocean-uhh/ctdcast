@@ -65,8 +65,9 @@ class Panel:
         ``"figure"``, or ready-to-emit markup for ``"html"``/``"table"`` — or
         ``None`` when the panel applies but no output could be produced (a plot
         raised, or the variable is absent), which the resolver turns into a
-        ``.warn`` stub.  Figure adapters wrap the existing ``_make_*_b64``
-        functions unchanged.
+        ``.warn`` stub.  May instead return a :class:`Stub` to carry the reason
+        the panel is empty, so the stub says *why*.  Figure adapters wrap the
+        existing ``_make_*_b64`` functions unchanged.
     kind : {"figure", "html", "table"}, optional
         Content discriminator.  The template macro branches on it so that only
         ``"html"``/``"table"`` payloads are emitted ``|safe``; a ``"figure"``
@@ -96,7 +97,7 @@ class Panel:
     """
 
     id: str
-    render: Callable[[Any], str | None]
+    render: Callable[[Any], str | Stub | None]
     kind: PanelKind = "figure"
     slot: str | Callable[[Any], str] | None = "full"
     caption: str | None = None
@@ -266,6 +267,18 @@ class ResolvedReport:
 _STUB_REASON = "applicable but unavailable"
 
 
+@dataclass(frozen=True)
+class Stub:
+    """Returned by a panel's ``render`` when the panel applies but could not be produced.
+
+    Carries the reason the panel is empty (e.g. the exception a draw function
+    raised) so the page can say *why* a panel is absent, not merely that it is.
+    A bare ``None`` from ``render`` still means the generic stub.
+    """
+
+    reason: str
+
+
 def _letter(n: int) -> str:
     """Return the appendix letter for a zero-based index (0 -> 'A', 25 -> 'Z', 26 -> 'AA')."""
     letters = ""
@@ -340,7 +353,10 @@ def _resolve_panels(
             payload, stub_reason = None, reason
         else:
             payload = panel.render(ctx)
-            stub_reason = None if payload is not None else _STUB_REASON
+            if isinstance(payload, Stub):
+                payload, stub_reason = None, f"{_STUB_REASON}: {payload.reason}"
+            else:
+                stub_reason = None if payload is not None else _STUB_REASON
         resolved.append(
             ResolvedPanel(
                 id=panel.id,

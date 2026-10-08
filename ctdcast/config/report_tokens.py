@@ -168,7 +168,7 @@ TYPE: dict[str, dict[str, str]] = {
     "meta": {"size": "0.84rem"},  # meta-grid <dd>
     "note": {"size": "0.92rem"},  # .note, .caption, .explainer
     "nav": {"size": "0.8rem"},  # jump-nav, .btn-nav
-    "cap": {"size": "0.86rem"},  # figcaption
+    "cap": {"size": "0.92rem"},  # figcaption
     "xs": {"size": "0.75rem"},  # breadcrumb, footer
     "top": {"size": "0.72rem"},  # ↑ top link
     "dt": {"size": "0.7rem"},  # meta-grid <dt>, jump-nav ▸

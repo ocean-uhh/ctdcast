@@ -85,6 +85,7 @@ def render_b64(
     /,
     *args: Any,
     optional: bool = False,
+    on_error: Callable[[BaseException], None] | None = None,
     **kwargs: Any,
 ) -> str | None:
     """Run *draw* under the report mplstyle and return a base64 PNG, or None.
@@ -101,6 +102,12 @@ def render_b64(
         secondary sensor fitted, a biogeochemical variable not measured).  When
         ``False`` (default) and :data:`report_tokens.RAISE_ON_PLOT_ERROR` is set,
         a ``None`` return raises so tests catch silently dropped required panels.
+    on_error : callable or None
+        Called with the caught exception when *draw* raises and
+        :data:`report_tokens.RAISE_ON_PLOT_ERROR` is unset — before the warning —
+        so a caller can capture the cause (e.g. to turn a bare stub into one that
+        says why).  Not called when ``RAISE_ON_PLOT_ERROR`` re-raises.  ``None``
+        (default) keeps every existing call site valid.
 
     Returns
     -------
@@ -122,11 +129,13 @@ def render_b64(
             if not _manages_own_layout(fig):
                 fig.tight_layout()
             return _fig_to_base64(fig)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         if _tok.RAISE_ON_PLOT_ERROR:
             raise
+        if on_error is not None:
+            on_error(exc)
         warnings.warn(
-            f"{draw.__name__} failed; panel omitted",
+            f"{draw.__name__} failed; panel omitted: {type(exc).__name__}: {exc}",
             RuntimeWarning,
             stacklevel=2,
         )
