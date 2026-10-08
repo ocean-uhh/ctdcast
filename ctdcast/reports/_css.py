@@ -69,6 +69,18 @@ def _emit_slots() -> str:
     return "\n".join(out)
 
 
+def _emit_nav_pills() -> str:
+    """Return one ``.nav-<role>`` background rule per :data:`ROLE_ACCENT` key.
+
+    The masthead page-nav pills take their colour from their *role*, never their
+    page, so the class set is generated from the same table as ``--role-*`` — a
+    new role in the tokens yields its pill rule with no edit here.
+    """
+    return "\n".join(
+        f".nav-{key} {{ background: var(--role-{key}); }}" for key in ROLE_ACCENT
+    )
+
+
 def emit_css(package_accent: str) -> str:
     """Return the full shared stylesheet as a string, generated from the tokens.
 
@@ -90,6 +102,7 @@ def emit_css(package_accent: str) -> str:
     """
     root = _emit_root(package_accent)
     slots = _emit_slots()
+    nav_pills = _emit_nav_pills()
     return f"""\
 {root}
 * {{ box-sizing: border-box; }}
@@ -225,6 +238,33 @@ td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
   border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
 }}
 .btn-nav:hover {{ opacity: 0.85; }}
+/* Masthead page-nav (vendored): the row of role pills under the masthead, and the
+   "Data inventory:" file strip.  A pill's colour is its role, never its page; the
+   current page's pill and an already-viewed file pill are muted the same way. */
+.page-nav {{ margin: 0.65rem 0 0.5rem; }}
+.page-nav-label {{ font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }}
+.nav-pill {{
+  display: inline-block; padding: 0.2em 0.65em; border-radius: var(--radius-btn);
+  font-size: var(--fs-nav); font-weight: 700; text-decoration: none; color: #fff;
+  margin: 0 0.2rem 0.25rem 0;
+}}
+{nav_pills}
+.nav-current {{ opacity: 0.5; pointer-events: none; }}
+.nav-missing {{ background: var(--gray-3); opacity: 0.5; pointer-events: none; }}
+.inventory-strip {{ margin: 0 0 1rem; }}
+.inventory-strip .label {{ font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }}
+.file-pill {{
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}}
+.file-pill:hover {{ opacity: 0.85; }}
+.file-pill-active {{ opacity: 0.5; pointer-events: none; }}
+/* Opt-in plain masthead (vendored) for landing / navigator pages: white panel,
+   ink text, rule border, wordmark hidden.  No ctdcast page uses it yet. */
+.masthead-plain {{ background: #fff; color: var(--text); border: 1px solid var(--rule); }}
+.masthead-plain .wordmark {{ display: none; }}
 footer {{
   text-align: center; padding: 1rem;
   border-top: 1px solid var(--package-accent);
