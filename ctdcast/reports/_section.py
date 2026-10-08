@@ -45,6 +45,7 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
+from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_ladcp_section_b64,
@@ -84,6 +85,7 @@ def generate_section_page(
     prev_name: str | None = None,
     next_name: str | None = None,
     cruise_info: dict[str, Any] | None = None,
+    inventory: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a section HTML report page.
@@ -121,6 +123,9 @@ def generate_section_page(
         Name of the following section (for the → nav button).  None omits the button.
     cruise_info:
         Cruise-level metadata mapping used in the page header; ``None`` omits it.
+    inventory:
+        The "Data inventory:" strip pills (``{"label", "href"}``) shown beneath the
+        masthead; see :func:`~ctdcast.reports._navs.inventory_pills`.
     cfg:
         Report configuration (styling, paths, display) threaded to the plotters.
 
@@ -397,7 +402,7 @@ def generate_section_page(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
-        nav_current="sections",
+        nav=nav_for("sections", prefix="../", inventory=inventory or ()),
         masthead_bg=ROLE_ACCENT["aggregate-a"],
     )
     out_file.write_text(html, encoding="utf-8")

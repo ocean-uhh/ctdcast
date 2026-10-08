@@ -20,12 +20,6 @@
 {% endblock %}
 
 {% block content %}
-{% if inventory_datasets %}
-<div class="inventory-strip">
-  <span class="label">Data inventory:</span>
-  {% for d in inventory_datasets %}<a class="file-pill" href="{{ d.href }}">{{ d.label }}</a>{% endfor %}
-</div>
-{% endif %}
 {% if station_pages_note %}
 <p class="warn">{{ station_pages_note }}</p>
 {% endif %}

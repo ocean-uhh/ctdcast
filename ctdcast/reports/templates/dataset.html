@@ -32,7 +32,6 @@ details.attrs td { font-size: var(--fs-xs); }
 {% endblock %}
 
 {% block content %}
-{{ m.inventory_pills(inventory_pills, current_href) }}
 {% if meta.error %}
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}

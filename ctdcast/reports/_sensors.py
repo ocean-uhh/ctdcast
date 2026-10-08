@@ -27,6 +27,7 @@ from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.config.sensors import role_label as _role_label
 from ctdcast.config.sensors import role_sort_key as _role_sort_key
 from ctdcast.reports._env import get_template
+from ctdcast.reports._navs import nav_for
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 
 
@@ -215,6 +216,16 @@ def generate_sensors_page(
     this page's own pill as the non-link active one.
     """
     meta = read_sensor_tables(profiles_path)
+    nav = (
+        nav_for(
+            None,
+            prefix=nav_prefix,
+            inventory=inventory_pills or (),
+            inventory_current=current_href,
+        )
+        if show_nav
+        else None
+    )
     html = get_template("sensors.html").render(
         meta=meta,
         page_title=f"SBE sensors — {cruise}" if cruise else "SBE sensors",
@@ -222,10 +233,7 @@ def generate_sensors_page(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix=nav_prefix,
-        nav_current="sensors",
-        show_nav=show_nav,
-        inventory_pills=inventory_pills or [],
-        current_href=current_href,
+        nav=nav,
         masthead_bg=ROLE_ACCENT.get("component", ""),
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),

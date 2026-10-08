@@ -46,6 +46,7 @@ from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
+from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
     _make_ct_sa_sigma0_b64,
@@ -101,6 +102,7 @@ def generate_station_page(
     cast_notes: list[str] | None = None,
     cruise_info: dict | None = None,
     drop_stub: bool = False,
+    inventory: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/casts/*.
@@ -148,6 +150,9 @@ def generate_station_page(
         Optional cruise-level metadata used in the page header.
     drop_stub : bool
         If True, omit sections whose figure returned None instead of rendering a stub.
+    inventory : list of dict or None
+        The "Data inventory:" strip pills (``{"label", "href"}``) shown beneath the
+        masthead; see :func:`~ctdcast.reports._navs.inventory_pills`.
     cfg : ReportConfig
         Report configuration (styling, paths, display options) threaded to the plotters.
 
@@ -308,7 +313,7 @@ def generate_station_page(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
-        nav_current="casts",
+        nav=nav_for("casts", prefix="../", inventory=inventory or ()),
         masthead_bg=ROLE_ACCENT["entity"],
     )
     out_file.write_text(html, encoding="utf-8")

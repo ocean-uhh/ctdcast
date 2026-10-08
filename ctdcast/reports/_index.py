@@ -46,6 +46,7 @@ from ctdcast.reports._manifest import (
     Section,
     resolve,
 )
+from ctdcast.reports._navs import inventory_pills, nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
@@ -200,6 +201,12 @@ def report(
     vmax_override = vmax_override or {}
 
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # The "Data inventory:" strip pills (one per compiled product present) are
+    # built once here so every page — not just the inventory pages — can render
+    # the strip beneath its masthead.  Derived from the compiled paths, so it is
+    # available before the first page is written.
+    inventory_datasets = inventory_pills(profiles_path, ladcp_profiles_path)
 
     # Load sections YAML once. SectionsConfig returns empty defaults when absent.
     _sections_cfg = (
@@ -367,6 +374,7 @@ def report(
                 cast_notes=all_cast_notes.get(meta["cast_num"]),
                 cruise_info=cruise_info,
                 drop_stub=drop_stub,
+                inventory=inventory_datasets,
                 cfg=cfg,
             )
             if _skip_reason:
@@ -435,6 +443,7 @@ def report(
                 prev_name=_sec_prev,
                 next_name=_sec_next,
                 cruise_info=cruise_info,
+                inventory=inventory_datasets,
                 cfg=cfg,
             )
             if _sec_skip:
@@ -496,6 +505,7 @@ def report(
                 prev_name=_ts_prev,
                 next_name=_ts_next,
                 cruise_info=cruise_info,
+                inventory=inventory_datasets,
                 cfg=cfg,
             )
             if _ts_skip:
@@ -516,28 +526,16 @@ def report(
         print(f"  [timeseries: {perf_counter() - _t0:.1f}s]")
 
     if gen["index"]:
-        # Generate a netCDF inventory page per compiled dataset present, and
-        # collect (label, href) pills for the summary page.  One pill per file
-        # keeps a single discovery point on the summary rather than a top-nav
-        # pill per single-target page (which does not scale as more compiled
-        # products — e.g. ladcp_profiles.nc — are added).
-        # Build the full inventory-pill set FIRST — one pill per compiled dataset
-        # plus the SBE sensors page — so every inventory page can render a
-        # cross-navigation bar to every other one (and mark its own pill active),
-        # not just the summary page.
+        # Generate a netCDF inventory page per compiled dataset present.  The
+        # strip pills themselves (``inventory_datasets``) were built once at the
+        # top of report() so every page can render them; these two locals drive
+        # which inventory pages to *generate* and coincide with the strip pills.
         _dataset_srcs = [
             Path(s)
             for s in (profiles_path, ladcp_profiles_path)
             if s is not None and Path(s).exists()
         ]
         _has_sensors = profiles_path is not None and Path(profiles_path).exists()
-        inventory_datasets: list[dict[str, str]] = [
-            {"label": s.name, "href": f"{s.stem}_inventory.html"} for s in _dataset_srcs
-        ]
-        if _has_sensors:
-            inventory_datasets.append(
-                {"label": "SBE sensors", "href": "sbe_sensors.html"}
-            )
 
         for _src in _dataset_srcs:
             _href = f"{_src.stem}_inventory.html"
@@ -618,6 +616,7 @@ def report(
             cruise_info=cruise_info,
             no_station_pages=not have_per_cast,
             nc_dir=nc_dir,
+            inventory_datasets=inventory_datasets,
             cfg=cfg,
         )
         print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
@@ -629,6 +628,7 @@ def report(
             all_meta=all_meta,
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
+            inventory_datasets=inventory_datasets,
             cfg=cfg,
         )
         print(f"  [sections.html: {perf_counter() - _t0:.1f}s]")
@@ -640,6 +640,7 @@ def report(
             all_meta=all_meta,
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
+            inventory_datasets=inventory_datasets,
             cfg=cfg,
         )
         print(f"  [timeseries.html: {perf_counter() - _t0:.1f}s]")
@@ -655,6 +656,7 @@ def report(
                 force=force,
                 ship_track_nc=ship_track_nc,
                 cruise=cruise,
+                inventory=inventory_datasets,
                 cfg=cfg,
             )
             print(f"  leaflet map: {'regenerated' if lf_out else 'skipped (no casts)'}")
@@ -889,7 +891,7 @@ def _write_index(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="summary",
+        nav=nav_for("summary", prefix="", inventory=inventory_datasets or ()),
     )
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
@@ -1149,6 +1151,7 @@ def _write_stations_list(
     cruise_info: dict[str, Any] | None = None,
     no_station_pages: bool = False,
     nc_dir: Path | None = None,
+    inventory_datasets: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write casts.html with cruise map, depth pills, and section/timeseries links.
@@ -1261,7 +1264,7 @@ def _write_stations_list(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="casts",
+        nav=nav_for("casts", prefix="", inventory=inventory_datasets or ()),
     )
     (out_dir / "casts.html").write_text(html, encoding="utf-8")
 
@@ -1273,6 +1276,7 @@ def _write_sections_list(
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
+    inventory_datasets: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write sections.html with overview map and cards for each section."""
@@ -1392,7 +1396,7 @@ def _write_sections_list(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="sections",
+        nav=nav_for("sections", prefix="", inventory=inventory_datasets or ()),
     )
     (out_dir / "sections.html").write_text(html, encoding="utf-8")
 
@@ -1404,6 +1408,7 @@ def _write_timeseries_list(
     all_meta: list[dict[str, Any]] | None = None,
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
+    inventory_datasets: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
@@ -1524,7 +1529,7 @@ def _write_timeseries_list(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="",
-        nav_current="timeseries",
+        nav=nav_for("timeseries", prefix="", inventory=inventory_datasets or ()),
     )
     (out_dir / "timeseries.html").write_text(html, encoding="utf-8")
 

@@ -35,6 +35,7 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
+from ctdcast.reports._navs import nav_for
 from ctdcast.reports._report_css import SHARED_CSS
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
@@ -422,6 +423,7 @@ def generate_leaflet_map(
     force: bool = False,  # noqa: ARG001
     ship_track_nc: Path | None = None,
     cruise: str = "UNK",
+    inventory: list[dict[str, str]] | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
@@ -539,9 +541,8 @@ def generate_leaflet_map(
 
     html = get_template("leaflet.html").render(
         css=SHARED_CSS,
-        nav_current="interactive",
+        nav=nav_for("interactive", prefix="", inventory=inventory or ()),
         nav_prefix="",
-        show_nav=True,
         masthead_bg=ROLE_ACCENT.get("map", ""),
         cruise=cruise,
         leaflet_inline=bool(leaflet_js),

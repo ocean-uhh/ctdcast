@@ -252,7 +252,7 @@ td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
 .nav-current {{ opacity: 0.5; pointer-events: none; }}
 .nav-missing {{ background: var(--gray-3); opacity: 0.5; pointer-events: none; }}
 .inventory-strip {{ margin: 0 0 1rem; }}
-.inventory-strip .label {{ font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }}
+.inventory-strip .label {{ font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }}
 .file-pill {{
   display: inline-block; background: var(--role-component); color: #fff;
   padding: 0.2rem 0.7rem; border-radius: var(--radius-pill);

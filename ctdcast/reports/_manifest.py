@@ -481,11 +481,13 @@ def validate_nav(nav: Mapping) -> None:
          "inventory": [pill, ...]}
 
     where a *pill* is ``{"label", "href", "role", "state"}``.  The checks:
-    exactly one pill across the rows and the inventory strip has
-    ``state == "current"``; every pill's ``role`` is a :data:`ROLE_ACCENT` key;
-    every ``state`` is one of ``link``/``current``/``missing``; every ``link``
-    pill has a non-empty ``href``.  The ``back`` up-link is field-checked but is
-    not counted toward the single current.
+    at most one pill across the rows and the inventory strip has
+    ``state == "current"`` (two would be an ambiguous highlight; zero is valid —
+    an inventory page rendered without its own strip highlights nothing and still
+    shows the row to get back); every pill's ``role`` is a :data:`ROLE_ACCENT`
+    key; every ``state`` is one of ``link``/``current``/``missing``; every
+    ``link`` pill has a non-empty ``href``.  The ``back`` up-link is field-checked
+    but is not counted toward the current tally.
 
     Parameters
     ----------
@@ -517,7 +519,7 @@ def validate_nav(nav: Mapping) -> None:
             raise ValueError(f"nav link pill {pill.get('label')!r} has no href")
 
     n_current = sum(1 for pill in counted if pill.get("state") == "current")
-    if n_current != 1:
+    if n_current > 1:
         raise ValueError(
-            f"nav must have exactly one 'current' pill, found {n_current}"
+            f"nav must have at most one 'current' pill, found {n_current}"
         )

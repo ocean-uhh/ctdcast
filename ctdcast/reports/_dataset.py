@@ -25,6 +25,7 @@ from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports._env import get_template
+from ctdcast.reports._navs import nav_for
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 
 
@@ -216,6 +217,16 @@ def generate_dataset_page(
         The written *out_path*.
     """
     meta = read_dataset_meta(nc_path)
+    nav = (
+        nav_for(
+            None,
+            prefix=nav_prefix,
+            inventory=inventory_pills or (),
+            inventory_current=current_href,
+        )
+        if show_nav
+        else None
+    )
     html = get_template("dataset.html").render(
         meta=meta,
         page_title=title or nc_path.name,
@@ -223,10 +234,7 @@ def generate_dataset_page(
         css=SHARED_CSS,
         js_top_links=_JS_TOP_LINKS,
         nav_prefix=nav_prefix,
-        nav_current="inventory",
-        show_nav=show_nav,
-        inventory_pills=inventory_pills or [],
-        current_href=current_href,
+        nav=nav,
         masthead_bg=ROLE_ACCENT.get("component", ""),
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
