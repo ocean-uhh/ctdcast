@@ -31,6 +31,7 @@
   --role-aggregate-a: #8e44ad;
   --role-aggregate-b: #27ae60;
   --role-map: #ee3377;
+  --role-up: #5d6d7e;
   --package-accent: var(--ocean);
   --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
@@ -39,9 +40,9 @@
   --fs-type: 1.35rem;
   --fs-h2: 1rem;
   --fs-meta: 0.84rem;
-  --fs-note: 0.82rem;
+  --fs-note: 0.92rem;
   --fs-nav: 0.8rem;
-  --fs-cap: 0.76rem;
+  --fs-cap: 0.92rem;
   --fs-xs: 0.75rem;
   --fs-top: 0.72rem;
   --fs-dt: 0.7rem;
@@ -196,6 +197,40 @@ td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
   border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
 }
 .btn-nav:hover { opacity: 0.85; }
+/* Masthead page-nav (vendored): the row of role pills under the masthead, and the
+   "Data inventory:" file strip.  A pill's colour is its role, never its page; the
+   current page's pill and an already-viewed file pill are muted the same way. */
+.page-nav { margin: 0.65rem 0 0.5rem; }
+.page-nav-label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.nav-pill {
+  display: inline-block; padding: 0.2em 0.65em; border-radius: var(--radius-btn);
+  font-size: var(--fs-nav); font-weight: 700; text-decoration: none; color: #fff;
+  margin: 0 0.2rem 0.25rem 0;
+}
+.nav-landing { background: var(--role-landing); }
+.nav-entity { background: var(--role-entity); }
+.nav-collection { background: var(--role-collection); }
+.nav-component { background: var(--role-component); }
+.nav-aggregate-a { background: var(--role-aggregate-a); }
+.nav-aggregate-b { background: var(--role-aggregate-b); }
+.nav-map { background: var(--role-map); }
+.nav-up { background: var(--role-up); }
+.nav-current { opacity: 0.5; pointer-events: none; }
+.nav-missing { background: var(--gray-3); opacity: 0.5; pointer-events: none; }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { opacity: 0.5; pointer-events: none; }
+/* Opt-in plain masthead (vendored) for landing / navigator pages: white panel,
+   ink text, rule border, wordmark hidden.  No ctdcast page uses it yet. */
+.masthead-plain { background: #fff; color: var(--text); border: 1px solid var(--rule); }
+.masthead-plain .wordmark { display: none; }
 footer {
   text-align: center; padding: 1rem;
   border-top: 1px solid var(--package-accent);
@@ -231,16 +266,6 @@ td.was { color: var(--muted); }
 .scroll-x { overflow-x: auto; }
 table.config td.range { white-space: nowrap; font-weight: 600; }
 table.config th { white-space: nowrap; }
-.inventory-strip { margin: 0 0 1rem; }
-.inventory-strip .label { font-size: var(--fs-note); color: var(--muted); margin-right: 0.4rem; }
-.file-pill {
-  display: inline-block; background: var(--role-component); color: #fff;
-  padding: 0.2rem 0.7rem; border-radius: 999px;
-  font-family: var(--font-mono); font-size: 0.78rem;
-  text-decoration: none; margin: 0.1rem 0.05rem;
-}
-.file-pill:hover { opacity: 0.85; }
-.file-pill-active { background: var(--muted); cursor: default; }
 </style>
 
 </head>
@@ -254,16 +279,25 @@ table.config th { white-space: nowrap; }
     <h1>SBE sensors</h1>
     <span class="masthead-type">sensor inventory &amp; change log</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-09-08 14:37 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-10 21:15 UTC</p>
   
-  <div style="margin-top:0.65rem;margin-bottom:0.5rem">
-    <span style="font-size:var(--fs-top);opacity:0.75;margin-right:0.3rem;">Pages:</span>
-    <a href="index.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-landing)">Summary</a>
-    <a href="casts.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-collection)">Casts</a>
-    <a href="sections.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-a)">Sections</a>
-    <a href="timeseries.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-aggregate-b)">Timeseries</a>
-    <a href="leaflet.html" style="display:inline-block;padding:0.2em 0.65em;border-radius:var(--radius-btn);font-size:var(--fs-nav);font-weight:700;text-decoration:none;color:#fff;margin:0 0.2rem 0.25rem 0;background:var(--role-map)">Interactive</a>
-  </div>
+  
+
+<nav class="page-nav">
+  <span class="page-nav-label">Pages:</span>
+  
+  <a class="nav-pill nav-landing" href="index.html">Summary</a><a class="nav-pill nav-collection" href="casts.html">Casts</a><a class="nav-pill nav-aggregate-a" href="sections.html">Sections</a><a class="nav-pill nav-aggregate-b" href="timeseries.html">Timeseries</a><a class="nav-pill nav-map" href="leaflet.html">Interactive</a>
+</nav>
+
+
+  
+
+<nav class="inventory-strip">
+  <span class="label">Data inventory:</span>
+  <a class="file-pill" href="profiles_demo_inventory.html">profiles_demo.nc</a><span class="file-pill file-pill-active">SBE sensors</span>
+</nav>
+
+
   
   
   <dl class="meta-grid">
@@ -276,14 +310,6 @@ table.config th { white-space: nowrap; }
 
   <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
 </div>
-
-
-
-
-<nav class="inventory-strip">
-  <span class="label">Data inventory:</span>
-  <a class="file-pill" href="profiles_demo_inventory.html">profiles_demo.nc</a><span class="file-pill file-pill-active">SBE sensors</span>
-</nav>
 
 
 
@@ -452,6 +478,6 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-09-08 14:37 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.1.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-10 21:15 UTC</footer>
 </body>
 </html>
