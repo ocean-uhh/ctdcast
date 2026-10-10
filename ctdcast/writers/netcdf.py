@@ -29,8 +29,8 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
 
     For each variable present in both *ds* and ``VARIABLES`` — including
     coordinate variables such as ``latitude``/``longitude`` — applies
-    ``units``, ``long_name``, ``standard_name``, and ``label_units`` (when
-    defined).  For each ``{var}_qc`` variable, generates complete CF flag
+    ``units``, ``long_name``, ``standard_name``, ``label_units``, and
+    ``comment`` (when defined).  For each ``{var}_qc`` variable, generates complete CF flag
     attributes.  Sets ``Conventions = "CF-1.13"`` unless the caller already
     declared one (a richer value such as ``"CF-1.13, ACDD-1.3"`` is preserved).
 
@@ -70,6 +70,10 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
             # Unicode display form for figure axes (e.g. "S m⁻¹"); complements the
             # CF-canonical ASCII ``units``.  Kept if the file already carries one.
             existing.setdefault("label_units", meta["label_units"])
+        if meta.get("comment"):
+            # Free-text provenance (e.g. the oxygen line-plumbing assumption); kept if
+            # the variable already carries a more specific comment.
+            existing.setdefault("comment", meta["comment"])
         ds[var].attrs = existing
 
     # Apply CF flag metadata for QARTOD _qc variables.

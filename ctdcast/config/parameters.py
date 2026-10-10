@@ -207,6 +207,15 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Dissolved oxygen (primary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
+        # Assumed plumbed on the primary temperature/conductivity line (Sea-Bird sbox0,
+        # with primary T/S), so oxygen_saturation/AOU derive from the primary-line T/S.
+        "comment": (
+            "primary oxygen sensor; assumed plumbed on the primary "
+            "temperature/conductivity line (Sea-Bird sbox0 with primary T/S), so "
+            "oxygen_saturation and AOU derive from the primary-line T/S. If a cruise is "
+            "plumbed differently, the derived saturation/AOU for this sensor would use the "
+            "wrong line's T/S."
+        ),
         "cmap": "RdYlGn",
         "vmin": 0,
         "vmax": 350,
@@ -217,6 +226,13 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Dissolved oxygen (secondary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
+        "comment": (
+            "secondary oxygen sensor; assumed plumbed on the secondary "
+            "temperature/conductivity line (Sea-Bird sbox1 with secondary T/S), so "
+            "oxygen_saturation and AOU derive from the secondary-line T/S. If a cruise is "
+            "plumbed differently, the derived saturation/AOU for this sensor would use the "
+            "wrong line's T/S."
+        ),
         "cmap": "RdYlGn",
         "vmin": 0,
         "vmax": 350,
