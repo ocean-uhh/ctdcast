@@ -11,8 +11,15 @@ import yaml
 from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.loader import SectionsConfig, groupings_path
 from ctdcast.config.people import check_contributors, contributor_attrs
+from ctdcast.config.preferred_sensors import GROUPS
 from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
 from ctdcast.processors import StagePaths
+from ctdcast.processors.profiles import validate_preferred_against_catalog
+from ctdcast.processors.sensor_catalog import (
+    catalog_by_cast_number,
+    read_cast_sensor_catalog,
+)
+from ctdcast.processors.stage_layout import select_best_available
 
 
 def build_parser(
@@ -354,6 +361,22 @@ def run(args: argparse.Namespace) -> int:
                         f"section '{sec_name}': cast {cast_num} not found in {nc_dir}"
                     )
 
+    # Preferred-sensor declaration (processing.preferred_pair / preferred_oxygen)
+    # reconciled against the per-cast sensor serials, so a bad declaration surfaces here
+    # rather than at compile.  Read-only: warnings, never an error.  Uses the same
+    # reconciliation the compile runs, so both report identically.
+    processing_cfg = cfg.get("processing") or {}
+    if (
+        nc_dir
+        and nc_dir.exists()
+        and any(processing_cfg.get(g.config_key) for g in GROUPS)
+    ):
+        catalog_by_cast = _read_catalog_by_cast(nc_dir, warnings)
+        if catalog_by_cast:
+            warnings.extend(
+                validate_preferred_against_catalog(processing_cfg, catalog_by_cast)
+            )
+
     # Report
     for w in warnings:
         print(f"  WARNING: {w}")
@@ -366,6 +389,34 @@ def run(args: argparse.Namespace) -> int:
 
     print("\nValidation passed.")
     return 0
+
+
+def _read_catalog_by_cast(nc_dir: Path, warnings: list[str]) -> dict[int, list[dict]]:
+    """Read each cast's ``SENSOR_*`` catalog, keyed by integer cast number.
+
+    Uses :func:`~ctdcast.processors.stage_layout.select_best_available` — the one place the
+    best-available stage precedence lives — so validate reconciles against the same file the
+    compile does, and opens one file per cast (not one per stage).  Collapses to one catalog
+    per cast number via :func:`~ctdcast.processors.sensor_catalog.catalog_by_cast_number`,
+    which also warns when a lettered sibling (010/010b) carries different serials.  Serials
+    are stage-invariant, so any stage file answers the reconciliation.  A file that fails to
+    open is reported as a warning and skipped — this is a read-only check, never an error.
+    """
+    import xarray as xr
+
+    per_identity: list[tuple[tuple[int, str], list[dict]]] = []
+    for cast_id, path, _stage in select_best_available(nc_dir):
+        try:
+            with xr.open_dataset(path, engine="netcdf4") as ds:
+                records = read_cast_sensor_catalog(ds)
+        except Exception as exc:  # noqa: BLE001  # I/O boundary: skip, do not fail validate
+            warnings.append(f"could not read sensor catalog from {path.name}: {exc}")
+            continue
+        if records:
+            per_identity.append((cast_id, records))
+    catalog_by_cast, sibling_warnings = catalog_by_cast_number(per_identity)
+    warnings.extend(sibling_warnings)
+    return catalog_by_cast
 
 
 def _duplicate_top_level_keys(path: Path) -> dict[str, int]:

@@ -17,6 +17,12 @@ from pathlib import Path
 import xarray as xr
 
 from ctdcast.analysis.derive import derive_salinity
+from ctdcast.config.preferred_sensors import (
+    GROUPS,
+    has_use,
+    preferred_sensor_names,
+    resolve_preferred,
+)
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
 from ctdcast.processors.history import (
@@ -24,6 +30,7 @@ from ctdcast.processors.history import (
     add_processing_level,
     append_history,
 )
+from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import (
     group_by_cast,
     is_up_to_date,
@@ -127,6 +134,63 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
     return ds
 
 
+def _stamp_preferred_sensors(
+    ds: xr.Dataset, cruise_cfg: dict | None, cast_number: int
+) -> None:
+    """Stamp the per-cast preferred-sensor choice onto *ds* in place (stage 3 only).
+
+    For each sensor group, resolve the config declaration (cruise-wide ``default`` plus
+    per-cast-range exceptions) to ``primary`` / ``secondary`` for this cast, then record
+    both the choice word (``preferred_pair`` / ``preferred_oxygen``) and the resolved
+    physical sensors as ``sensor_<role>_preferred`` — the ``SENSOR_*`` catalog variable
+    names.  Holding the catalog names (rather than bare serials) lets a consumer verify, at
+    read time, that the named channel still carries the expected serial.
+
+    An **explicit range** naming a channel the cast lacks raises (the operator asked for a
+    sensor that is not there); a cruise-wide **default** that lands on a cast without that
+    channel is left silently absent (a mixed dual/single cruise is normal).  An undeclared
+    group leaves no attribute — never the string ``"undeclared"``.
+
+    Parameters
+    ----------
+    ds:
+        The stage-3 dataset, carrying the ``SENSOR_*`` catalog stage 1 built; mutated in
+        place.
+    cruise_cfg:
+        The ``processing:`` config block (``cruise_cfg[group.config_key]`` is the nested
+        declaration, or absent).
+    cast_number:
+        The cast's integer number; a lettered cast resolves by its number.
+
+    Raises
+    ------
+    ValueError
+        On a declaration that is not a mapping, a range missing its ``casts`` key, a config
+        value outside the closed set, conflicting overlapping ranges, or an explicit range
+        naming a channel the cast lacks.
+    """
+    cfg = cruise_cfg or {}
+    records = read_cast_sensor_catalog(ds)
+    for group in GROUPS:
+        use, source = resolve_preferred(group, cfg, cast_number)
+        if use is None:
+            continue
+        if not has_use(group, records, use):
+            if source == "range":
+                raise ValueError(
+                    f"{group.config_key}: cast {cast_number} is declared {use!r} by an "
+                    f"explicit range, but it has no {use} sensor for "
+                    f"{', '.join(group.preferred_roles)} (a single-sensor cast)."
+                )
+            continue  # cruise-wide default grazing a single-sensor cast -> absent
+        # Names come from this cast's own catalog records, so each is a SENSOR_* variable
+        # present in ds by construction — no re-check needed here; the read-time check is
+        # the consumer's (a stamped name whose channel serial later disagrees = corruption).
+        ds.attrs[group.config_key] = use
+        for role, catalog_name in preferred_sensor_names(group, records, use).items():
+            ds.attrs[f"sensor_{role}_preferred"] = catalog_name
+
+
 def run(
     root: Path,
     *,
@@ -220,6 +284,7 @@ def run(
             if _src_id:
                 ds_out.attrs["source_tracking_id"] = _src_id
             ds_out.attrs["processing_stage"] = 3
+            _stamp_preferred_sensors(ds_out, cruise_cfg, cast_id[0])
             if declare_delayed:
                 ds_out.attrs["data_mode"] = "D"
                 # The claim is backed only if a calibration was actually applied — detected by

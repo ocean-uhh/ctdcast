@@ -22,9 +22,14 @@ from ctdcast.config.global_attrs import (
     cruise_name,
 )
 from ctdcast.config.parameters import VARIABLES, is_sbe_channel
+from ctdcast.config.preferred_sensors import GROUPS, validate_preferred
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
+from ctdcast.processors.sensor_catalog import (
+    catalog_by_cast_number,
+    read_cast_sensor_catalog,
+)
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
 from ctdcast.writers.netcdf import write as _write_nc
 
@@ -59,38 +64,6 @@ _MIXED_PROCESSING_LEVEL = (
     "mixed across casts — see per-profile source_stage, source_data_mode "
     "and source_tracking_id"
 )
-
-
-def _read_cast_sensor_catalog(ds: xr.Dataset) -> list[dict]:
-    """Return one record per ``SENSOR_*`` catalog entry in a per-cast dataset.
-
-    Reads the catalog stage 1 built: each dimensionless ``SENSOR_<TYPE>_<SERIAL>``
-    variable, taking its ``sensor_role`` and ``sensor_channel`` off the entry itself
-    (not off the data variables). A sensor with no stored variable — pH, a
-    transmissometer — is therefore read exactly like one that has a variable, which
-    is what lets the compile aggregate without re-parsing the CNV header. Returns
-    ``[]`` when the cast carries no catalog.
-
-    Each record has ``name`` (the catalog variable name, already resolved at stage
-    1), ``role``, ``channel`` (int, or ``-1`` if unstated) and ``attrs`` (the full
-    entry attributes, verbatim).
-    """
-    records: list[dict] = []
-    for name in ds.variables:
-        if not str(name).startswith("SENSOR_"):
-            continue
-        attrs = dict(ds[name].attrs)
-        records.append(
-            {
-                "name": str(name),
-                "role": attrs.get("sensor_role", ""),
-                "channel": (
-                    int(attrs["sensor_channel"]) if "sensor_channel" in attrs else -1
-                ),
-                "attrs": attrs,
-            }
-        )
-    return records
 
 
 # Header-native attributes are physically fixed for a serial: a mismatch across
@@ -155,7 +128,7 @@ def _build_sensor_catalog(
     Attribute names follow OG1 conventions for interoperability, but this is
     shipboard CTD data and the per-profile linkage has no OG1 equivalent.
 
-    *cast_catalogs* is one :func:`_read_cast_sensor_catalog` result per cast, in the
+    *cast_catalogs* is one :func:`read_cast_sensor_catalog` result per cast, in the
     same rank order as *cast_list*. Each cast contributes to two profiles (down,
     up), so a cast at rank ``r`` fills profile indices ``2r`` and ``2r+1``. Sensor
     identity, model and calibration were all resolved at stage 1, so this is a merge
@@ -231,6 +204,91 @@ def _build_sensor_catalog(
             },
         )
     return catalog_vars, linkage_vars
+
+
+def _build_preferred_vars(per_cast_attrs: list[dict], n_profiles: int) -> dict:
+    """Aggregate stage-3 preferred-sensor stamps into per-profile (N_PROF) variables.
+
+    Each cast fills its two profiles (down, up) at indices ``2r`` / ``2r+1``, mirroring
+    :func:`_build_sensor_catalog`.  For every :data:`~ctdcast.config.preferred_sensors.GROUPS`
+    group a cast declared, emits ``<config_key>(N_PROF)`` text (``"primary"`` / ``"secondary"``;
+    ``""`` where the cast was undeclared) and ``sensor_<role>_preferred(N_PROF)`` naming the
+    resolved catalog variable per preferred role.  A group **no** cast declared contributes
+    nothing — an undeclared cruise gains no variables.
+
+    Returns xarray-style ``{name: (dims, data, attrs)}``.
+    """
+    out: dict = {}
+    for group in GROUPS:
+        if not any(a.get(group.config_key) for a in per_cast_attrs):
+            continue
+        words = np.array([""] * n_profiles, dtype=object)
+        role_names = {
+            role: np.array([""] * n_profiles, dtype=object)
+            for role in group.preferred_roles
+        }
+        for rank, a in enumerate(per_cast_attrs):
+            word = str(a.get(group.config_key, ""))
+            for k in (rank * 2, rank * 2 + 1):
+                words[k] = word
+                for role in group.preferred_roles:
+                    role_names[role][k] = str(a.get(f"sensor_{role}_preferred", ""))
+        out[group.config_key] = (
+            ["N_PROF"],
+            words.astype(str),
+            {
+                "long_name": f"preferred-sensor choice ({group.config_key}) per profile",
+                "comment": (
+                    'one of "primary" / "secondary"; empty where the cast was undeclared'
+                ),
+            },
+        )
+        for role in group.preferred_roles:
+            out[f"sensor_{role}_preferred"] = (
+                ["N_PROF"],
+                role_names[role].astype(str),
+                {
+                    "long_name": (
+                        f"catalog variable naming the preferred {role} sensor per profile"
+                    ),
+                    "comment": (
+                        "value is a SENSOR_* variable name in this file; empty where the "
+                        "cast was undeclared or lacks the channel"
+                    ),
+                },
+            )
+    return out
+
+
+def validate_preferred_against_catalog(
+    cruise_cfg: dict | None, catalog_by_cast: dict[int, list[dict]]
+) -> list[str]:
+    """Reconcile the preferred-sensor declaration against the per-cast sensor serials.
+
+    Runs :func:`~ctdcast.config.preferred_sensors.validate_preferred` for every group and
+    returns the collected messages — it does **not** emit them, so each caller chooses how
+    (the profiles compile re-raises them as warnings; ``ctdcast validate`` collects them
+    into its own report).  Reporting at both call sites catches a bad declaration before
+    compiling.  The conditions reported: a declared range crossing a hardware-segment
+    boundary, and a derived segment the declaration does not cover.  A partial declaration
+    is a normal mid-processing state, never an error.
+
+    Parameters
+    ----------
+    cruise_cfg:
+        The ``processing:`` config block (``None`` or absent declarations → no messages).
+    catalog_by_cast:
+        Per-cast ``SENSOR_*`` catalog records keyed by integer cast number.
+
+    Returns
+    -------
+    list of str
+        The reconciliation messages (empty when the declaration is coherent).
+    """
+    messages: list[str] = []
+    for group in GROUPS:
+        messages.extend(validate_preferred(group, cruise_cfg or {}, catalog_by_cast))
+    return messages
 
 
 def _select_cast_files(root: Path) -> list[tuple[int, str, Path, int]]:
@@ -313,6 +371,7 @@ def build_profiles(
     gebco_path: Path | None = None,
     dbar: int = 1,
     cruise_info: dict | None = None,
+    cruise_cfg: dict | None = None,
     refuse_catalog_less: bool = False,
 ) -> bool:
     """Compile per-cast netCDF files into a single profiles.nc on a *dbar*-spaced grid.
@@ -362,6 +421,12 @@ def build_profiles(
         fields, people, embargo, and the ``ship``/``start_date`` from which the
         EXPOCODE coordinate is derived.  Coverage bounds and creation time are
         computed from the data, not taken from here.
+    cruise_cfg:
+        The ``processing:`` config block.  Used only to reconcile the
+        ``preferred_pair`` / ``preferred_oxygen`` declaration against the per-cast
+        sensor serials (:func:`~ctdcast.config.preferred_sensors.validate_preferred`);
+        a declared range crossing a hardware swap, or a swap segment the declaration
+        does not cover, is warned — never an error, never a block on compiling.
     refuse_catalog_less:
         Policy for a CTD cast whose per-cast file carries no ``SENSOR_*`` catalog
         (it predates sensor provenance).  The default ``False`` is the library
@@ -504,7 +569,7 @@ def build_profiles(
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
-        cast_catalog = _read_cast_sensor_catalog(ds)
+        cast_catalog = read_cast_sensor_catalog(ds)
         cast_catalogs.append(cast_catalog)
         if not cast_catalog:
             catalog_less.append(path.name)
@@ -810,6 +875,21 @@ def build_profiles(
     )
     data_vars.update(catalog_vars)
     data_vars.update(linkage_vars)
+    # Per-profile preferred-sensor choice (preferred_pair / preferred_oxygen and the
+    # resolved sensor_<role>_preferred), aggregated from each cast's stage-3 stamp.
+    data_vars.update(_build_preferred_vars(per_cast_attrs, n_profiles))
+    # Reconcile the declaration against the serials now that every cast is in hand, and
+    # re-raise the messages as warnings; a partial declaration is a normal mid-cruise state,
+    # so these never block the compile.  Collapsing to one catalog per cast number also warns
+    # when a lettered sibling (010/010b) carries different serials — the declaration is per
+    # number and cannot distinguish them.
+    catalog_by_cast, _sibling_warnings = catalog_by_cast_number(
+        ((cast_list[rank][:2], records) for rank, records in enumerate(cast_catalogs))
+    )
+    for _msg in _sibling_warnings + validate_preferred_against_catalog(
+        cruise_cfg, catalog_by_cast
+    ):
+        warnings.warn(_msg, stacklevel=2)
 
     # Identity (cruise, platform_*, expocode) lifted from the per-cast files,
     # strictly: constant across casts → lifted; varying → error (two cruises in

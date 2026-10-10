@@ -252,6 +252,7 @@ def _run_profiles(
     gebco_path: Path | None = None,
     profiles_dbar: int = 1,
     cruise_info: dict | None = None,
+    cruise_cfg: dict | None = None,
     **_kw: object,
 ) -> bool:
     """Compile per-cast netCDF → gridded products for every configured source.
@@ -260,6 +261,8 @@ def _run_profiles(
     True if any product was written.  ``cruise_info`` (the config ``cruise_info:``
     block) supplies the cruise id, discovery metadata, people, embargo, and the
     ship/date from which the EXPOCODE is derived; it is threaded to both builders.
+    ``cruise_cfg`` (the ``processing:`` block) is threaded to the CTD builder so the
+    preferred-sensor declaration can be reconciled against the per-cast serials.
 
     Sensor provenance is resolved at stage 1, so ``sensor_overrides`` is not
     forwarded here (it arrives in ``**_kw`` from the shared tuning bag and is
@@ -279,6 +282,7 @@ def _run_profiles(
                     gebco_path=gebco_path,
                     dbar=profiles_dbar,
                     cruise_info=cruise_info,
+                    cruise_cfg=cruise_cfg,
                     refuse_catalog_less=True,
                 )
             )
