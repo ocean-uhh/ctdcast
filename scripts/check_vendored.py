@@ -45,8 +45,14 @@ MANIFEST = REPO_ROOT / "VENDORED.txt"
 
 
 def sha256(path: Path) -> str:
-    """Return the hex sha256 of a file's bytes."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """Return the hex sha256 of a file's *content*, normalized to LF line endings.
+
+    The vendored files are text, and "byte-identical across packages" means identical
+    text — not identical line endings.  CRLF (a Windows checkout, or a sibling with a
+    different ``core.autocrlf``) is normalized to LF before hashing so the hash is the same
+    on every platform; otherwise the guard would fail on Windows CI for every file.
+    """
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def load_expected() -> dict[str, str]:
