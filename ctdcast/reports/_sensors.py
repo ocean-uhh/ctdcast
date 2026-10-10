@@ -53,6 +53,9 @@ def read_sensor_tables(profiles_path: Path) -> dict[str, Any]:
                 for v in ds.variables
                 if str(v).startswith("sensor_")
                 and not str(v).startswith("sensor_channel_")
+                # `sensor_<role>_preferred` records the preferred line per profile, not a
+                # role linkage — exclude it so it is not read as a spurious role.
+                and not str(v).endswith("_preferred")
             ),
             key=_role_sort_key,
         )

@@ -73,6 +73,10 @@ Plotting parameters
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.config.preferred_sensors
+   :members:
+   :undoc-members:
+
 File-level metadata
 -------------------
 
@@ -206,6 +210,10 @@ Cast processing
    :undoc-members:
 
 .. automodule:: ctdcast.processors.profiles
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.processors.sensor_catalog
    :members:
    :undoc-members:
 

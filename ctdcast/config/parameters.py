@@ -133,19 +133,34 @@ VARIABLES: dict[str, dict] = {
         "vmin": -2,
         "vmax": 20,
     },
-    # Best-sensor composite: copy of ctd_temperature_1 or ctd_temperature_2, whichever
-    # is set as preferred in config.yaml. Which sensor is in attrs["preferred_sensor"].
-    # Created by stage3 when preferred_temperature_sensor is configured; absent otherwise.
+    # Preferred-pair composite: a per-cast copy of ctd_temperature_1 or ctd_temperature_2,
+    # whichever the cast's processing.preferred_pair declaration selects. Built by stage 3
+    # for a dual-sensor cast where a choice is declared; a single-sensor cast carries this
+    # plain name natively (stage-1 promotion). Absent on an undeclared dual cast (never a
+    # silent _1 fallback). The chosen sensor is recorded in sensor_temperature_preferred.
     "ctd_temperature": {
         "label": "T",
         "label_units": "°C",
-        "long_name": "In-situ temperature (preferred sensor)",
+        "long_name": "In-situ temperature (preferred pair)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
         "reference_scale": "ITS-90",
         "cmap": "RdYlBu_r",
         "vmin": -2,
         "vmax": 20,
+    },
+    # conductivity: preferred-pair composite (or a single sensor's native channel) — see
+    # the ctd_temperature note above. No CCHDO equivalent (CCHDO stores salinity); kept so
+    # the plain name is self-describing wherever stage 3 builds or stage 1 promotes it.
+    "conductivity": {
+        "label": "$C$",
+        "label_units": "mS/cm",
+        "long_name": "Conductivity (preferred pair)",
+        "units": "mS cm-1",
+        "standard_name": "sea_water_electrical_conductivity",
+        "cmap": None,
+        "vmin": None,
+        "vmax": None,
     },
     "conductivity_1": {
         "label": "$C_1$",
@@ -189,11 +204,11 @@ VARIABLES: dict[str, dict] = {
         "vmin": 34.0,
         "vmax": 35.5,
     },
-    # ctd_salinity: preferred sensor composite — see ctd_temperature note above.
+    # ctd_salinity: preferred-pair composite — see ctd_temperature note above.
     "ctd_salinity": {
         "label": "SP",
         "label_units": "PSU",
-        "long_name": "Practical salinity (preferred sensor)",
+        "long_name": "Practical salinity (preferred pair)",
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
         "reference_scale": "PSS-78",
@@ -237,11 +252,12 @@ VARIABLES: dict[str, dict] = {
         "vmin": 0,
         "vmax": 350,
     },
-    # ctd_oxygen: preferred sensor composite — see ctd_temperature note above.
+    # ctd_oxygen: preferred-oxygen composite — see ctd_temperature note above, driven by
+    # processing.preferred_oxygen (independent of the T/C pair).
     "ctd_oxygen": {
         "label": "$O_2$",
         "label_units": "µmol/kg",
-        "long_name": "Dissolved oxygen (preferred sensor)",
+        "long_name": "Dissolved oxygen (preferred)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
         "cmap": "RdYlGn",
@@ -703,10 +719,12 @@ CNV_ALIASES: dict[str, str] = {
 # N_PROF = one element per cast/profile; N_LEVELS = pressure levels per cast.
 CCHDO_DIMS: tuple[str, str] = ("N_PROF", "N_LEVELS")
 
-# Best-sensor composite: maps the plain (unsuffixed) ctdcast name to the CCHDO
-# nc_var name. The plain name exists only when preferred_sensor is configured in
-# config.yaml and stage3 has promoted one of the suffixed channels. If not set,
-# the CCHDO writer falls back to the _1 sensor.
+# Preferred-channel composite: maps the plain (unsuffixed) ctdcast name to the CCHDO
+# nc_var name. The plain name is a single-sensor cast's native channel, or — for a
+# dual-sensor cast — the channel selected by processing.preferred_pair /
+# preferred_oxygen and built at stage 3. An undeclared dual cast has no plain name
+# (so an export sees it absent, never a silent _1). conductivity is not here: CCHDO
+# stores salinity, not conductivity, so the conductivity composite is internal only.
 # Under the CCHDO naming scheme these are identity mappings — the names already match.
 CCHDO_COMPOSITE: dict[str, str] = {
     "ctd_temperature": "ctd_temperature",
@@ -762,8 +780,8 @@ CCHDO_VARIABLES: dict[str, dict] = {
         "units": "dbar",
         "C_format": "%.1f",
     },
-    # ctd_temperature: written directly (names already match CCHDO nc_var).
-    # Prefer the plain name (preferred sensor); fall back to ctd_temperature_1.
+    # ctd_temperature: written directly (names already match CCHDO nc_var). The plain name
+    # is the preferred-pair composite (or a single sensor's native channel).
     "ctd_temperature": {
         "whp_name": "CTDTMP",
         "whp_unit": "ITS-90",

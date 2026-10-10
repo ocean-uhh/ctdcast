@@ -23,7 +23,10 @@ from ctdcast.processors.profiles import (
     validate_preferred_against_catalog,
 )
 from ctdcast.processors.stage1 import _build_cast_sensor_catalog
-from ctdcast.processors.stage3 import _stamp_preferred_sensors
+from ctdcast.processors.stage3 import (
+    _build_preferred_composites,
+    _stamp_preferred_sensors,
+)
 
 # The fixture's resolved catalog names (see _build_cast_sensor_catalog on mixsed2_011).
 T1, T2 = "SENSOR_TEMPERATURE_6435", "SENSOR_TEMPERATURE_6000"
@@ -67,11 +70,16 @@ def test_pair_range_overrides_default() -> None:
     assert ds.attrs["sensor_temperature_preferred"] == T2
 
 
-def test_oxygen_default_primary_stamps_the_single_sensor() -> None:
+def test_single_oxygen_cast_gets_no_preferred_oxygen() -> None:
+    # The fixture has one oxygen sensor (catalog role oxygen_1, data var the plain
+    # ctd_oxygen). There is no primary-vs-secondary choice, so even a cruise-wide
+    # default: primary must NOT stamp preferred_oxygen, and ctd_oxygen is left untouched.
     ds = _catalog_ds()
+    oxy_before = ds["ctd_oxygen"].values.copy()
     _stamp_preferred_sensors(ds, {"preferred_oxygen": {"default": "primary"}}, CAST)
-    assert ds.attrs["preferred_oxygen"] == "primary"
-    assert ds.attrs["sensor_oxygen_preferred"] == O1
+    assert "preferred_oxygen" not in ds.attrs
+    assert "sensor_oxygen_preferred" not in ds.attrs
+    assert (ds["ctd_oxygen"].values == oxy_before).all()
 
 
 def test_explicit_range_naming_absent_secondary_oxygen_raises() -> None:
@@ -101,6 +109,32 @@ def test_out_of_set_value_raises() -> None:
     ds = _catalog_ds()
     with pytest.raises(ValueError, match="not one of"):
         _stamp_preferred_sensors(ds, {"preferred_pair": {"default": "secundary"}}, CAST)
+
+
+# --- composites (per-cast selection) -----------------------------------------
+
+
+def test_composites_copy_the_preferred_pair_channel() -> None:
+    # Dual T/C fixture, preferred_pair=secondary -> plain composites equal the _2 channel.
+    ds = _catalog_ds()
+    cfg = {"preferred_pair": {"default": "secondary"}}
+    _build_preferred_composites(ds, cfg, CAST)
+    import numpy as np
+
+    assert np.array_equal(ds["ctd_temperature"].values, ds["ctd_temperature_2"].values)
+    assert np.array_equal(ds["ctd_salinity"].values, ds["ctd_salinity_2"].values)
+    assert np.array_equal(ds["conductivity"].values, ds["conductivity_2"].values)
+    # Provenance recorded on the composite.
+    assert "secondary" in ds["ctd_temperature"].attrs["comment"]
+
+
+def test_undeclared_dual_cast_gets_no_composite() -> None:
+    # No declaration -> no plain composite built (never a silent _1 fallback).
+    ds = _catalog_ds()
+    assert "ctd_temperature" not in ds  # fixture is dual T/C, no native plain name
+    _build_preferred_composites(ds, {}, CAST)
+    assert "ctd_temperature" not in ds
+    assert "ctd_salinity" not in ds
 
 
 # --- flow into profiles.nc ---------------------------------------------------
@@ -137,6 +171,25 @@ def test_preferred_vars_land_per_profile_in_profiles_nc(tmp_path) -> None:
         assert "sensor_oxygen_preferred" not in ds.variables
     finally:
         ds.close()
+
+
+def test_sensor_page_does_not_treat_preferred_vars_as_roles(tmp_path) -> None:
+    """The sensor catalog page must not read `sensor_<role>_preferred` as a role."""
+    from ctdcast.reports._sensors import read_sensor_tables
+
+    cfg = {"preferred_pair": {"default": "secondary"}}
+    for f in sorted(FIXTURES_NC.glob("mixsed2_01[12].nc")):
+        ds = _build_cast_sensor_catalog(
+            xr.open_dataset(f, engine="netcdf4"), SensorOverrides()
+        )
+        _stamp_preferred_sensors(ds, cfg, int(ds.attrs["cast_id"]))
+        ds.to_netcdf(tmp_path / f.name)
+    out = tmp_path / "profiles.nc"
+    build_profiles(tmp_path, out, force=True, cruise_cfg=cfg)
+    tables = read_sensor_tables(out)
+    assert not [c for c in tables["role_cols"] if c["key"].endswith("_preferred")]
+    # The genuine roles are still present.
+    assert any(c["key"] == "temperature_1" for c in tables["role_cols"])
 
 
 def test_undeclared_cruise_adds_no_preferred_variables(tmp_path) -> None:

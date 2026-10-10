@@ -7,9 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Preferred sensor per cast** — `processing.preferred_pair` and `processing.preferred_oxygen` declare which channel (`primary`/`secondary`) is the better one on a dual-sensor cast, as a cruise-wide `default` plus per-cast-range exceptions. Stage 3 builds the plain composites `ctd_temperature` / `ctd_salinity` / `conductivity` / `ctd_oxygen` from the chosen channel (per-cast selection, never a blend; an undeclared dual cast gets no plain name, never a silent `_1`), stamps the choice and the resolved sensor (`sensor_<role>_preferred`), and `profiles.nc` records `preferred_pair`/`preferred_oxygen` and `sensor_<role>_preferred` per profile. `oxygen_saturation`/AOU are derived per oxygen line from that line's own T/S, with the composite following `preferred_oxygen` (an undeclared dual-oxygen cast's figure falls back to the primary line; the composite records the line and that it was undeclared). The declaration is reconciled against the per-cast sensor serials at compile and in `ctdcast validate` (warnings only; a lettered-sibling serial mismatch is flagged). `ctd_oxygen_1`/`_2` carry the line-plumbing assumption (`oxygen_1` = primary line / Sea-Bird `sbox0`) as a `comment`.
+
 ### Changed
 
 - netCDF output is written with lossless zlib compression (level 4) on every numeric variable with a dimension, coordinates included; the shuffle filter is applied to all except `float64`, where it was measured to enlarge the science columns. Transparent to readers; no schema or value change.
+
+### Fixed
+
+- `oxygen_saturation` derivation passed latitude and longitude to `gsw.O2sol` in the wrong order (`O2sol(SA, CT, p, lon, lat)` expects longitude first), evaluating solubility at a transposed position. The effect is a small, systematic bias in the derived % saturation; fixing it changes `oxygen_saturation` (and the AOU proxy) slightly. These are derived-on-demand report quantities, not stored, so no on-disk file changes.
 
 ## [0.2.1] — 2026-09-19
 

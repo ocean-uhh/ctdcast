@@ -153,6 +153,19 @@ back to a built-in default.
    * - ``calibration.conductivity_slope``
      - Multiplicative conductivity calibration applied at stage 3; salinity is
        re-derived from the calibrated conductivity.
+   * - ``preferred_pair.default`` / ``preferred_pair.ranges``
+     - On a dual-sensor cast, which temperature/conductivity pair (and the salinity derived
+       from it) is the better one: ``primary`` (the ``_1`` channel) or ``secondary`` (``_2``).
+       A cruise-wide ``default`` plus per-cast-range exceptions
+       (``- {casts: [[first, last]], use: secondary}``).  Stage 3 builds the plain
+       ``ctd_temperature`` / ``ctd_salinity`` / ``conductivity`` as a per-cast copy of the
+       selected channel and records the chosen sensor in ``sensor_<role>_preferred``.  Values
+       are exactly ``primary`` / ``secondary``; a single-sensor cast has no choice and is left
+       untouched; an undeclared dual cast gets no plain name (never a silent ``_1``).
+   * - ``preferred_oxygen.default`` / ``preferred_oxygen.ranges``
+     - The same grammar for the oxygen sensor, declared independently of the pair (oxygen
+       preference can flip cast-to-cast on fouling/drift — a single-cast range
+       ``[[15, 15]]`` is valid).  Builds the plain ``ctd_oxygen``.
    * - ``clock.segments``
      - Stage-2 acquisition-clock correction: a list of
        ``{casts: [[first, last]], clock_offset_seconds: N}`` entries, each shifting
@@ -188,6 +201,41 @@ back to a built-in default.
            clock_offset_seconds: -2.07
            n_casts: 150
            clock_offset_sd_seconds: 0.69
+
+Preferred sensor
+^^^^^^^^^^^^^^^^
+
+A dual-sensor cast records both a primary (``_1``) and a secondary (``_2``) channel; which
+is the better one is a judgement about noise that only the operator can make.  Declare it
+cruise-wide with per-cast exceptions:
+
+.. code-block:: yaml
+
+   processing:
+     preferred_pair:                 # temperature + conductivity + salinity move together
+       default: primary              # cruise-wide; "primary" | "secondary"
+       ranges:                       # exceptions by cast number; [[first, last]] inclusive
+         - casts: [[31, 60]]
+           use: secondary
+     preferred_oxygen:               # independent oxygen choice, same grammar
+       default: primary
+       ranges:
+         - casts: [[15, 15]]         # a single-cast range is valid
+           use: secondary
+
+Notes:
+
+* Values are exactly ``primary`` / ``secondary`` — a digit or any other spelling is refused
+  at stage 3 (a clear error, not a silent guess).
+* ``casts`` needs an explicit last number (no open-ended range).  So declare the
+  **latest / ongoing** configuration as the unbounded ``default`` and the **earlier** casts
+  as explicit ``ranges`` — then the config need not be edited as new casts are added.
+* Declaring one group, both, or neither is valid, and ``preferred_oxygen`` may differ from
+  ``preferred_pair``.  An **explicit range** naming a channel a single-sensor cast lacks is
+  an error; a **default** that lands on a single-sensor cast is silently skipped.
+* Where the per-cast serials of a declared range do not match where the hardware actually
+  changed, the compile and ``ctdcast validate`` warn (never block) — reconcile the range
+  with the sensor-change log on the cast page.
 
 ``sensors`` block (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -287,6 +287,30 @@ def has_use(group: SensorGroup, records: list[dict], use: str) -> bool:
     return all(f"{role}_{idx}" in names for role in group.preferred_roles)
 
 
+def has_choice(group: SensorGroup, records: list[dict]) -> bool:
+    """Return True if this cast has a genuine primary-vs-secondary choice for *group*.
+
+    A choice exists only when **both** channels are present (e.g. ``oxygen_1`` *and*
+    ``oxygen_2``).  A single-sensor cast has no choice: its one sensor is already the plain
+    composite (stage-1 promotes a lone sensor to the unsuffixed name), so no preferred
+    declaration applies and nothing is stamped.
+
+    Parameters
+    ----------
+    group : SensorGroup
+        The group to test.
+    records : list of dict
+        The cast's ``SENSOR_*`` catalog records.
+
+    Returns
+    -------
+    bool
+        True only when both ``primary`` and ``secondary`` sensors are present for every
+        preferred role of *group*.
+    """
+    return has_use(group, records, "primary") and has_use(group, records, "secondary")
+
+
 def _segment_key(group: SensorGroup, records: list[dict]) -> tuple[str | None, ...]:
     """Return the catalog-name tuple identifying a cast's hardware for *group*.
 

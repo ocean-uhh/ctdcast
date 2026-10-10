@@ -12,6 +12,7 @@ from ctdcast.config.preferred_sensors import (
     PREFERRED_OXYGEN,
     PREFERRED_PAIR,
     derive_segments,
+    has_choice,
     has_use,
     index_of,
     preferred_sensor_names,
@@ -161,6 +162,15 @@ def test_has_use_false_for_missing_secondary_on_single_sensor_cast():
     # oxygen: single cast has only oxygen_1
     assert has_use(PREFERRED_OXYGEN, _single(), "secondary") is False
     assert has_use(PREFERRED_OXYGEN, _dual(o2="SENSOR_OXYGEN_B"), "secondary") is True
+
+
+def test_has_choice_true_only_for_dual_casts():
+    # A genuine primary-vs-secondary choice needs both channels present.
+    assert has_choice(PREFERRED_PAIR, _dual()) is True
+    assert has_choice(PREFERRED_PAIR, _single()) is False
+    # oxygen: single cast has only oxygen_1 -> no choice; add oxygen_2 -> choice.
+    assert has_choice(PREFERRED_OXYGEN, _single()) is False
+    assert has_choice(PREFERRED_OXYGEN, _dual(o2="SENSOR_OXYGEN_B")) is True
 
 
 def test_index_of():

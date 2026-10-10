@@ -37,6 +37,8 @@ import gsw
 import numpy as np
 import xarray as xr
 
+from ctdcast.config.preferred_sensors import index_of as _OXY_INDEX_OF
+
 # ---------------------------------------------------------------------------
 # Variable-resolution helpers
 # ---------------------------------------------------------------------------
@@ -47,6 +49,12 @@ _TEMP_CANDIDATES = ("ctd_temperature", "ctd_temperature_1", "temperature_1")
 _SAL_CANDIDATES = ("ctd_salinity", "ctd_salinity_1", "salinity_1")
 _OXY_CANDIDATES = ("ctd_oxygen", "ctd_oxygen_1", "oxygen_1")
 _OXSAT_CANDIDATES = ("oxygen_saturation", "oxsat_1")
+
+#: Map the preferred-oxygen word to its line index (single source in preferred_sensors).
+_OXY_INDEX = {
+    "primary": _OXY_INDEX_OF("primary"),
+    "secondary": _OXY_INDEX_OF("secondary"),
+}
 
 
 def _resolve_var(ds: xr.Dataset, *candidates: str) -> str | None:
@@ -250,9 +258,10 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with SA, CT, sigma0 added (1-D per-cast Dataset, dim=time).
 
     Convenience function that calls :func:`derive_SA` → :func:`derive_CT` →
-    :func:`derive_sigma0` in order.  Also derives ``oxygen_saturation`` (% sat)
-    from the first available oxygen variable (``ctd_oxygen``, ``ctd_oxygen_1``,
-    or ``oxygen_1``) when that variable carries molar units.
+    :func:`derive_sigma0` in order.  Also derives ``oxygen_saturation`` (% sat) via
+    :func:`_derive_oxygen_saturation` — per oxygen line, from that line's own T/S, with the
+    composite selected by the ``preferred_oxygen`` attribute (never pairing the oxygen with
+    the pair composite, which may be the other line).
 
     Parameters
     ----------
@@ -268,31 +277,7 @@ def derive_teos10(ds: xr.Dataset) -> xr.Dataset:
     ds = derive_SA(ds)
     ds = derive_CT(ds)
     ds = derive_sigma0(ds)
-    oxy_var = _resolve_var(ds, *_OXY_CANDIDATES)
-    if oxy_var is not None:
-        units = ds[oxy_var].attrs.get("units", "")
-        u_lower = units.lower()
-        if "umol" in u_lower or "µmol" in u_lower:
-            sa = ds["absolute_salinity"].values.astype(float)
-            ct = ds["conservative_temperature"].values.astype(float)
-            p = ds["pressure"].values.astype(float)
-            lat = float(np.nanmedian(ds["latitude"].values))
-            lon = float(np.nanmedian(ds["longitude"].values))
-            ds = _derive_oxsat_from_oxygen(ds, oxy_var, sa, ct, p, lat, lon)
-        elif "%" in u_lower or "sat" in u_lower or "percent" in u_lower:
-            # Pre-rename NC files stored % saturation under "oxygen_1".
-            # Rename to the canonical oxygen_saturation name.
-            if oxy_var != "oxygen_saturation":
-                ds = ds.rename({oxy_var: "oxygen_saturation"})
-        else:
-            warnings.warn(
-                f"{oxy_var!r} has unrecognised units {units!r}; "
-                "oxygen_saturation not derived. "
-                "Expected 'umol', 'µmol', '%', 'sat', or 'percent'.",
-                UserWarning,
-                stacklevel=4,
-            )
-    return ds
+    return _derive_oxygen_saturation(ds)
 
 
 # ---------------------------------------------------------------------------
@@ -413,25 +398,28 @@ def _derive_oxsat_from_oxygen(
     p: np.ndarray,
     lat: float,
     lon: float,
+    out_name: str = "oxygen_saturation",
 ) -> xr.Dataset:
-    """Derive ``oxygen_saturation`` (% sat) from an oxygen variable in molar units.
+    """Derive an oxygen-saturation variable (% sat) from an oxygen variable in molar units.
 
-    Adds ``oxygen_saturation`` to *ds*; leaves *oxy_var* unchanged.  Does
-    nothing if *oxy_var* units do not indicate a molar concentration.  Records
-    the conversion method in ``oxygen_saturation`` attributes for provenance.
+    Adds *out_name* to *ds*; leaves *oxy_var* unchanged.  Does nothing if *oxy_var* units do
+    not indicate a molar concentration.  Records the conversion method and the source oxygen
+    and T/S variables in the output's attributes for provenance.
 
     Parameters
     ----------
     ds:
-        Dataset containing *oxy_var* in molar units; must already have SA/CT
-        computed (i.e. call after :func:`derive_SA` / :func:`derive_CT`).
+        Dataset containing *oxy_var* in molar units.
     oxy_var:
-        Name of the oxygen variable in molar units (e.g. ``"ctd_oxygen"``).
+        Name of the oxygen variable in molar units (e.g. ``"ctd_oxygen"`` / ``"ctd_oxygen_2"``).
     sa, ct, p:
-        Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar)
-        arrays matching the *oxy_var* dimension.
+        Absolute Salinity (g/kg), Conservative Temperature (°C), pressure (dbar) arrays — of
+        the oxygen sensor's **own line**, matching the *oxy_var* dimension.
     lat, lon:
         Representative cast latitude and longitude for ``gsw.O2sol``.
+    out_name:
+        Name to store the result under (``oxygen_saturation`` for a single/plain sensor,
+        ``oxygen_saturation_1`` / ``_2`` per line).
     """
     units = ds[oxy_var].attrs.get("units", "")
     if not units:
@@ -442,7 +430,10 @@ def _derive_oxsat_from_oxygen(
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
-        o2_sat_umol_kg = gsw.O2sol(sa, ct, p, lat, lon)
+        # gsw.O2sol signature is (SA, CT, p, lon, lat) — longitude before latitude, as
+        # gsw.SA_from_SP above. Passing them in the wrong order evaluates solubility at the
+        # wrong position (a small but systematic saturation bias).
+        o2_sat_umol_kg = gsw.O2sol(sa, ct, p, lon, lat)
 
     measured = ds[oxy_var].values.astype(float)
 
@@ -465,9 +456,128 @@ def _derive_oxsat_from_oxygen(
     }
     dim = ds[oxy_var].dims[0]
     ds = ds.copy()
-    ds["oxygen_saturation"] = xr.DataArray(
+    ds[out_name] = xr.DataArray(
         pct_sat.astype(np.float32),
         dims=[dim],
         attrs=new_attrs,
     )
+    return ds
+
+
+def _line_ts_vars(ds: xr.Dataset, idx: int) -> tuple[str | None, str | None]:
+    """Return the (temperature, salinity) variable names for oxygen line *idx*.
+
+    Prefers the indexed channel (``ctd_temperature_{idx}``) — the oxygen sensor's own line —
+    and falls back to the plain/first-available T/S for a fully single-sensor cast.
+    """
+    temp = f"ctd_temperature_{idx}"
+    sal = f"ctd_salinity_{idx}"
+    if temp not in ds:
+        temp = _resolve_var(ds, *_TEMP_CANDIDATES)
+    if sal not in ds:
+        sal = _resolve_var(ds, *_SAL_CANDIDATES)
+    return temp, sal
+
+
+def _sa_ct_p(
+    ds: xr.Dataset, temp_var: str, sal_var: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, float]:
+    """Return (SA, CT, p, lat, lon) computed from *temp_var*/*sal_var* for a 1-D cast."""
+    p = ds["pressure"].values.astype(float)
+    sp = ds[sal_var].values.astype(float)
+    t = ds[temp_var].values.astype(float)
+    lat = float(np.nanmedian(ds["latitude"].values))
+    lon = float(np.nanmedian(ds["longitude"].values))
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
+        sa = gsw.SA_from_SP(sp, p, lon, lat)
+        ct = gsw.CT_from_t(sa, t, p)
+    return sa, ct, p, lat, lon
+
+
+def _derive_oxygen_saturation(ds: xr.Dataset) -> xr.Dataset:
+    """Derive ``oxygen_saturation`` per oxygen line, then select the composite by preference.
+
+    Each oxygen line's saturation is computed from **its own line's** T/S (never the pair
+    composite, which may be the other line): ``oxygen_saturation_1`` from
+    ``(ctd_oxygen_1, ctd_temperature_1, ctd_salinity_1)`` and ``_2`` from line 2 (``oxygen_1``
+    is the primary line — the plumbing assumption).  A single oxygen line (plain
+    ``ctd_oxygen``, or just one of ``ctd_oxygen_1`` / ``ctd_oxygen_2``) gives the plain
+    ``oxygen_saturation`` directly.
+
+    When both lines are present the composite ``oxygen_saturation`` is the line named by the
+    ``preferred_oxygen`` attribute — the same per-cast selection as the ``ctd_oxygen``
+    composite.  ``oxygen_saturation`` is an on-the-fly **report** quantity (never stored), so
+    an undeclared dual cast falls back to the primary line for the figure (recorded in the
+    ``preferred_oxygen`` attribute of the result) — matching how the report resolves raw
+    oxygen; unlike the stored ``ctd_oxygen`` composite, which is absent when undeclared.  A
+    ``%``-saturation oxygen variable (legacy pre-rename files) is copied under the saturation
+    name with saturation metadata, not recomputed.
+    """
+    # Collect whichever indexed oxygen lines are present; a lone _1 or _2 is a single line.
+    lines = [(f"ctd_oxygen_{i}", i) for i in (1, 2) if f"ctd_oxygen_{i}" in ds]
+    if not lines:
+        plain = _resolve_var(ds, *_OXY_CANDIDATES)
+        lines = [(plain, 1)] if plain is not None else []
+    dual = len(lines) == 2
+
+    for oxy_var, idx in lines:
+        out_name = f"oxygen_saturation_{idx}" if dual else "oxygen_saturation"
+        units = ds[oxy_var].attrs.get("units", "")
+        u_lower = units.lower()
+        if "umol" in u_lower or "µmol" in u_lower:
+            temp_var, sal_var = _line_ts_vars(ds, idx)
+            if temp_var is None or sal_var is None:
+                continue
+            sa, ct, p, lat, lon = _sa_ct_p(ds, temp_var, sal_var)
+            ds = _derive_oxsat_from_oxygen(
+                ds, oxy_var, sa, ct, p, lat, lon, out_name=out_name
+            )
+        elif "%" in u_lower or "sat" in u_lower or "percent" in u_lower:
+            # Already % saturation: copy under the saturation name with saturation metadata
+            # (not the source's oxygen-concentration long_name), and drop the source when it
+            # held the plain single oxygen so a stale %-under-oxygen var cannot be re-read as
+            # molar oxygen downstream.
+            ds = ds.copy()
+            src_attrs = dict(ds[oxy_var].attrs)
+            ds[out_name] = xr.DataArray(
+                ds[oxy_var].values,
+                dims=ds[oxy_var].dims,
+                attrs={
+                    "units": "% saturation",
+                    "long_name": "O₂ saturation",
+                    "source_units": src_attrs.get("units", ""),
+                    "oxygen_conversion": f"copied from {oxy_var} (already % saturation)",
+                },
+            )
+            if not dual and oxy_var != out_name:
+                ds = ds.drop_vars(oxy_var)
+        else:
+            warnings.warn(
+                f"{oxy_var!r} has unrecognised units {units!r}; "
+                f"{out_name} not derived. Expected 'umol', 'µmol', '%', 'sat', or 'percent'.",
+                UserWarning,
+                stacklevel=4,
+            )
+
+    # Composite for a dual cast: the preferred line if it was derived, else whichever line is
+    # available (prefer the primary).  Guarded so a cast where one line failed still shows the
+    # other rather than nothing.  The source line's provenance travels with the copy; the
+    # chosen line is recorded in the composite's ``preferred_oxygen`` attribute.
+    if dual:
+        present = [i for i in (1, 2) if f"oxygen_saturation_{i}" in ds]
+        if present:
+            pref = ds.attrs.get("preferred_oxygen")
+            chosen = _OXY_INDEX.get(pref) if pref in _OXY_INDEX else None
+            if chosen not in present:
+                chosen = present[0]
+            ds = ds.copy()
+            ds["oxygen_saturation"] = ds[f"oxygen_saturation_{chosen}"]
+            # Record which line the figure shows and whether it was a declared preference,
+            # so the oxygen panel can label an undeclared cast distinctly from a declared one
+            # (a display fallback must not imply a choice was made).
+            ds["oxygen_saturation"].attrs["oxygen_line"] = chosen
+            ds["oxygen_saturation"].attrs["preferred_oxygen"] = (
+                pref if pref in _OXY_INDEX else "undeclared"
+            )
     return ds

@@ -54,6 +54,22 @@ cruise_info:
   # map_lon_min: -30.0
   # map_lon_max: -27.0
 
+processing:
+  # Which temperature/conductivity pair (and the salinity derived from it) is preferred on
+  # a dual-sensor cast: "primary" (the _1 channel) or "secondary" (_2). Stage 3 builds the
+  # plain ctd_temperature / ctd_salinity / conductivity from the chosen channel and records
+  # it in sensor_<role>_preferred.
+  preferred_pair:
+    default: primary
+    ranges:
+      # Illustrative only — shows how a range exception is written; NOT a real sensor
+      # assessment of the demo casts. Casts 128-129 use the secondary pair here so the demo
+      # shows a per-cast difference (casts 11-12 primary, 128-129 secondary).
+      - casts: [[128, 129]]
+        use: secondary
+  # The demo fixtures carry a single oxygen sensor, so there is no oxygen choice to make; a
+  # real dual-oxygen cruise would declare preferred_oxygen with the same grammar.
+
 data:
   nc_dir:       tests/fixtures/nc
   profiles_nc:  tests/fixtures/profiles_demo.nc
