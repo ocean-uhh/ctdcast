@@ -23,6 +23,7 @@ from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
+    resolve_sensor_var,
     vlabel,
     vlabel_html,
 )
@@ -803,31 +804,32 @@ def _write_index(
             vmin = vmin_override or {}
             vmax = vmax_override or {}
 
-            def _idx_panel(var: str, label: str) -> RenderedPanel:
+            def _idx_panel(var: str) -> RenderedPanel:
+                # Resolve the single/dual-sensor form actually present (e.g. a
+                # single-oxygen cruise stores plain ``ctd_oxygen``, not
+                # ``ctd_oxygen_1``), the way the section page does — otherwise the
+                # overview silently drops a variable it holds under the other form.
+                resolved = resolve_sensor_var(ds_sorted, var)
                 b64 = _make_overview_panel_b64(
                     ds_sorted,
-                    var,
-                    label,
+                    resolved,
+                    vlabel(resolved),
                     bathy_depths=bathy,
                     style=section_style,
-                    vmin=vmin.get(var),
-                    vmax=vmax.get(var),
+                    vmin=vmin.get(resolved),
+                    vmax=vmax.get(resolved),
                     cast_groups=cast_groups,
                     cfg=cfg,
                 )
                 # title is the panel's HTML caption on index.html, so use the
                 # HTML-ready label (mathtext subscripts rendered as Unicode).
-                return RenderedPanel(b64=b64, title=vlabel_html(var), short=var)
+                return RenderedPanel(b64=b64, title=vlabel_html(resolved), short=resolved)
 
             physics_panels_idx = tuple(
-                p
-                for p in (_idx_panel(v, vlabel(v)) for v in SECTION_PHYSICS_VARS)
-                if p.b64
+                p for p in (_idx_panel(v) for v in SECTION_PHYSICS_VARS) if p.b64
             )
             biogeo_panels_idx = tuple(
-                p
-                for p in (_idx_panel(v, vlabel(v)) for v in SECTION_BIOGEO_VARS)
-                if p.b64
+                p for p in (_idx_panel(v) for v in SECTION_BIOGEO_VARS) if p.b64
             )
 
             _ts_b64 = _make_section_ts_histogram_b64(ds_sorted, cfg=cfg)
