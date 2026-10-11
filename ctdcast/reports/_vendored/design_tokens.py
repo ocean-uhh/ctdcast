@@ -214,6 +214,21 @@ ROLE_ACCENT: dict[str, str] = {
     "up": "#5d6d7e",  # back / up-link pill (masthead nav)
 }
 
+# Okabe–Ito qualitative palette for track / section colours — colour-blind-safe,
+# in a fixed order so the Nth track is the same colour across packages.  Data
+# only; a package assigns them (e.g. per section / per track) at its own call
+# sites.  Yellow is last: faint as a thin line on a light map.
+TRACK_COLORS: list[str] = [
+    "#0072B2",  # blue
+    "#E69F00",  # orange
+    "#009E73",  # bluish green
+    "#D55E00",  # vermillion
+    "#CC79A7",  # reddish purple
+    "#56B4E9",  # sky blue
+    "#000000",  # black
+    "#F0E442",  # yellow
+]
+
 # The package accent (spec §12.2) — a small masthead wordmark, the table header
 # and the footer's border-top — is NOT a value in this vendored file.  Each
 # package chooses it locally and passes it to ``emit_css(package_accent)`` (see

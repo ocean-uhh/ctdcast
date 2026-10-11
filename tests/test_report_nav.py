@@ -4,9 +4,20 @@ These cover the plain-mapping nav shape and its validator; the rendered-macro an
 emitted-CSS checks arrive with the nav swap (plan steps 4-5).
 """
 
+from pathlib import Path
+
 import pytest
+from jinja2 import Environment, FileSystemLoader
 
 from ctdcast.reports._vendored.page_model import validate_nav
+
+_VENDORED_TEMPLATES = (
+    Path(__file__).resolve().parent.parent
+    / "ctdcast"
+    / "reports"
+    / "_vendored"
+    / "templates"
+)
 
 
 def _pill(label, href, role, state="link"):
@@ -118,3 +129,28 @@ def test_back_pill_field_checked_but_not_counted():
     validate_nav(_nav(back=_pill("All cruises", "../index.html", "up")))
     with pytest.raises(ValueError, match="not a ROLE_ACCENT key"):
         validate_nav(_nav(back=_pill("All cruises", "../index.html", "bogus")))
+
+
+def test_missing_state_rejected():
+    """A pill with no ``state`` is rejected, not silently treated as a link."""
+    rows = [
+        {
+            "label": "Pages:",
+            "pills": [{"label": "Summary", "href": "index.html", "role": "landing"}],
+        }
+    ]
+    with pytest.raises(ValueError, match="has no 'state'"):
+        validate_nav(_nav(rows=rows, inventory=[]))
+
+
+def test_back_pill_renders_without_rows():
+    """A page with a back pill and no rows still renders the back pill."""
+    env = Environment(
+        loader=FileSystemLoader(str(_VENDORED_TEMPLATES)), autoescape=True
+    )
+    tmpl = env.from_string('{% import "_nav.html" as nav_m %}{{ nav_m.page_nav(nav) }}')
+    out = tmpl.render(
+        nav={"rows": [], "back": _pill("All cruises", "../index.html", "up")}
+    )
+    assert out.count("nav-pill") == 1
+    assert "All cruises" in out

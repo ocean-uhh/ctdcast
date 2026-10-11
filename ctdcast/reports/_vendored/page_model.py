@@ -266,6 +266,22 @@ class ResolvedReport:
 
 _STUB_REASON = "applicable but unavailable"
 
+#: Longest reason kept on a Stub before it is truncated with an ellipsis.
+_STUB_REASON_LIMIT = 140
+
+
+def _shape_reason(reason: str, limit: int = _STUB_REASON_LIMIT) -> str:
+    """Return the first non-empty line of *reason*, stripped and length-capped.
+
+    A reason often comes straight from ``str(exc)``: it may have a blank leading
+    line, span several lines, or run long.  The page shows it on one line, so it
+    is normalized here — at construction — rather than at each display site.
+    """
+    first = next((ln.strip() for ln in str(reason).splitlines() if ln.strip()), "")
+    if len(first) > limit:
+        return first[: limit - 1].rstrip() + "…"
+    return first
+
 
 @dataclass(frozen=True)
 class Stub:
@@ -273,7 +289,9 @@ class Stub:
 
     Carries the reason the panel is empty (e.g. the exception a draw function
     raised) so the page can say *why* a panel is absent, not merely that it is.
-    A bare ``None`` from ``render`` still means the generic stub.
+    A bare ``None`` from ``render`` still means the generic stub.  The ``reason``
+    is shaped on construction to a single line, capped at
+    :data:`_STUB_REASON_LIMIT` characters.
 
     Parameters
     ----------
@@ -283,6 +301,16 @@ class Stub:
     """
 
     reason: str
+
+    def __post_init__(self) -> None:
+        """Normalize ``reason`` to a single trimmed, length-capped line."""
+        object.__setattr__(self, "reason", _shape_reason(self.reason))
+
+    @classmethod
+    def from_exc(cls, exc: BaseException) -> Stub:
+        """Build a stub from an exception: its message, or its type name if blank."""
+        message = str(exc).strip()
+        return cls(message if message else type(exc).__name__)
 
 
 def _letter(n: int) -> str:
@@ -507,7 +535,8 @@ def validate_nav(nav: Mapping) -> None:
     ``state == "current"`` (two would be an ambiguous highlight; zero is valid —
     an inventory page rendered without its own strip highlights nothing and still
     shows the row to get back); every pill's ``role`` is a :data:`ROLE_ACCENT`
-    key; every ``state`` is one of ``link``/``current``/``missing``; every
+    key; every pill has a ``state`` (required, not defaulted) that is one of
+    ``link``/``current``/``missing``; every
     ``link`` pill has a non-empty ``href``.  The ``back`` up-link is field-checked
     but is not counted toward the current tally.
 
@@ -532,7 +561,9 @@ def validate_nav(nav: Mapping) -> None:
         role = pill.get("role")
         if role not in ROLE_ACCENT:
             raise ValueError(f"nav pill role {role!r} is not a ROLE_ACCENT key")
-        state = pill.get("state", "link")
+        state = pill.get("state")
+        if state is None:
+            raise ValueError(f"nav pill {pill.get('label')!r} has no 'state'")
         if state not in _NAV_STATES:
             raise ValueError(
                 f"nav pill state {state!r} is not one of {sorted(_NAV_STATES)}"

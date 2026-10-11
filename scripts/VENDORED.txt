@@ -2,10 +2,11 @@
 # ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.
 # The set is the contents of ctdcast/reports/_vendored/.
 # Regenerate after an intentional edit: python scripts/check_vendored.py --update
+e6cf8a3b4d3cb876a2012937083b94a8897c2a80ca053447f38c28d317971111  ctdcast/reports/_vendored/README.md
 5508d967bc70e20b712b78a5fb5a016e3039c1f2e4879ed7464b986f8250c1c0  ctdcast/reports/_vendored/__init__.py
 27c8a378e376db0619fcf153d5f1976cca4f43d3f4cde1dfb424984b0e587c62  ctdcast/reports/_vendored/css.py
-752c4d4245b7ac4b82a63ea7245707c24deae2c088d03bf9bb6ea7a325ce5f1b  ctdcast/reports/_vendored/design_tokens.py
+0250338ae131b9277ed1a2e309a27a65f8537083f723808cdfc10c3ee478d867  ctdcast/reports/_vendored/design_tokens.py
 f22a09c2f530e14a0d9acc1fbe3dfc08a1ead61d1a23ec5f234d71b9b49914c3  ctdcast/reports/_vendored/figure_png.py
-002443fb8937837a13596c0e603800c00603b6225a65d1254a540c5f736bf37c  ctdcast/reports/_vendored/page_model.py
+e8b8593c7db2bd3fabd15687a35c52f402d2c42b596db5648f6fa83decba2467  ctdcast/reports/_vendored/page_model.py
 18cba25d288c74129f4e393199fb0b005f7e0c926a11a4c67aba3104f72e7f61  ctdcast/reports/_vendored/report.mplstyle
-ab5ee1964e0a0aebba73f28bbbaf5a4036450d2be821803d357c9d6ba294a10a  ctdcast/reports/_vendored/templates/_nav.html
+8290463895aa9c3d9e7846bb9c0fa1f5fe30e9c58641f2b19f647a7dd0fa36a4  ctdcast/reports/_vendored/templates/_nav.html

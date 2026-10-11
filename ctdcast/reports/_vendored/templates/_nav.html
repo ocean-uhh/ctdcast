@@ -12,6 +12,11 @@
   {% for p in row.pills %}{{ _pill(p) }}{% endfor %}
 </nav>
 {% endfor %}
+{% if not nav.rows and nav.back %}
+<nav class="page-nav">
+  {{ _pill(nav.back) }}
+</nav>
+{% endif %}
 {% endmacro %}
 
 {% macro inventory_strip(nav) %}

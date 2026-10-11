@@ -42,7 +42,10 @@ from pathlib import Path
 VENDORED_DIR = "ctdcast/reports/_vendored"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = REPO_ROOT / "VENDORED.txt"
+# Lives beside this script, not at the repo root: the manifest is per-repo check
+# infrastructure (it records this package's paths), not a vendored file itself,
+# so it must not sit inside the rsync'd directory or clutter the root.
+MANIFEST = Path(__file__).resolve().parent / "VENDORED.txt"
 
 
 def vendored_files() -> list[str]:
