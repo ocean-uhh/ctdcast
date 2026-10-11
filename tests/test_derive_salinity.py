@@ -63,3 +63,28 @@ class TestDeriveSalinity:
         # Function should return the original object unchanged
         assert ds_out is ds
         assert set(ds_out.data_vars) == ds_vars_before
+
+    def test_each_line_paired_with_its_own_temperature(self):
+        """Salinity needs a matched T/C pair: ctd_salinity_2 must use ctd_temperature_2,
+        not the primary temperature (a dual cast with distinct T lines would otherwise mix).
+        """
+        import gsw
+
+        from ctdcast.analysis.derive import derive_salinity
+
+        ds = _load(CAST_011)  # dual T/C fixture
+        assert "ctd_temperature_2" in ds and "conductivity_2" in ds
+        # Make the two temperature lines clearly distinct so a mispairing is visible.
+        ds["ctd_temperature_2"] = ds["ctd_temperature_2"] + 3.0
+        out = derive_salinity(ds)
+        # Expected salinity_2 computed from conductivity_2 paired with ctd_temperature_2.
+        c2 = ds["conductivity_2"].values.astype(float)
+        _cu = ds["conductivity_2"].attrs.get("units", "").lower().replace(" ", "")
+        c2_ms = c2 if _cu in ("mscm-1", "ms/cm") else c2 * 10.0
+        expect = gsw.SP_from_C(
+            c2_ms,
+            ds["ctd_temperature_2"].values.astype(float),
+            ds["pressure"].values.astype(float),
+        )
+        assert np.allclose(out["ctd_salinity_2"].values, expect, equal_nan=True)
+        assert "ctd_temperature_2" in out["ctd_salinity_2"].attrs["derived_from"]

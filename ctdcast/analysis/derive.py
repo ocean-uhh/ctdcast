@@ -102,19 +102,27 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
 
     ds = ds.copy()
     p = ds["pressure"].values.astype(float)
-    t = ds[temp_var].values.astype(float)
 
     # On single-sensor casts _normalise promotes ctd_salinity_1 → ctd_salinity;
     # write to whichever name is live in ds so the promoted plain name is kept current.
     _sal1_out = _resolve_var(ds, "ctd_salinity", "ctd_salinity_1") or "ctd_salinity_1"
+    # Salinity needs a *matched* T/C pair, so each conductivity line pairs with its OWN
+    # temperature line (never the other line's): conductivity_1 with ctd_temperature_1,
+    # conductivity_2 with ctd_temperature_2. A single-T cast falls back to the resolved temp.
+    _t1 = (
+        _resolve_var(ds, "ctd_temperature_1", "ctd_temperature", "temperature_1")
+        or temp_var
+    )
+    _t2 = _resolve_var(ds, "ctd_temperature_2") or _t1
     pairs = [
-        ("conductivity_1", _sal1_out),
-        ("conductivity_2", "ctd_salinity_2"),
+        ("conductivity_1", _sal1_out, _t1),
+        ("conductivity_2", "ctd_salinity_2", _t2),
     ]
-    for c_var, s_out in pairs:
+    for c_var, s_out, t_var in pairs:
         if c_var not in ds:
             continue
         c = ds[c_var].values.astype(float)
+        t = ds[t_var].values.astype(float)
         # gsw.SP_from_C wants conductivity in mS/cm.  Stored conductivity is
         # mS/cm since stage1; convert only when a file still carries S/m.
         _cu = ds[c_var].attrs.get("units", "").lower().replace(" ", "")
@@ -124,9 +132,7 @@ def derive_salinity(ds: xr.Dataset) -> xr.Dataset:
             sp = gsw.SP_from_C(c_ms_cm, t, p)
 
         existing_attrs = dict(ds[s_out].attrs) if s_out in ds else {}
-        existing_attrs["derived_from"] = (
-            f"{c_var}, {temp_var}, pressure via gsw.SP_from_C"
-        )
+        existing_attrs["derived_from"] = f"{c_var}, {t_var}, pressure via gsw.SP_from_C"
         existing_attrs.setdefault("units", "1")
         existing_attrs.setdefault("standard_name", "sea_water_practical_salinity")
         existing_attrs.setdefault("reference_scale", "PSS-78")

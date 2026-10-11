@@ -222,8 +222,10 @@ def _build_preferred_composites(
     and likewise ``ctd_salinity``, ``conductivity``, ``ctd_oxygen`` — carrying the channel's
     ``{var}_qc`` companion so QC propagates.  The composite is a **per-cast selection, never a
     blend**; an undeclared dual cast gets no composite (so downstream it is absent, never a
-    silent ``_1`` fallback).  A single-sensor cast already carries the plain name from stage-1
-    promotion and is left untouched.
+    silent ``_1`` fallback).  A single-sensor cast has no choice and is left untouched: its
+    T/S/O already carry the plain name (stage-1 promotion), while conductivity keeps
+    ``conductivity_1`` (stage 1 does not promote it), so such a cast has no plain
+    ``conductivity``.
 
     Parameters
     ----------

@@ -199,7 +199,11 @@ def resolve_preferred(
         (a conflicting overlap).
     """
     raw = cruise_cfg.get(group.config_key) if cruise_cfg else None
-    if not raw:
+    # Distinguish an ABSENT declaration (key missing → None) from a present-but-falsey one
+    # (``preferred_pair: 0`` / ``false``): the latter is malformed and must be refused by
+    # _as_declaration, not silently treated as undeclared. An empty mapping ``{}`` is a
+    # dict, passes _as_declaration, and resolves to undeclared below.
+    if raw is None:
         return None, None
     decl = _as_declaration(raw, group.config_key)
 

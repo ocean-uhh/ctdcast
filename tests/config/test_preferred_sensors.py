@@ -140,6 +140,16 @@ def test_range_missing_casts_key_refused():
         resolve_preferred(PREFERRED_PAIR, cfg, 1)
 
 
+def test_falsey_declaration_refused_not_silently_absent():
+    # `preferred_pair: 0` / `false` is malformed, not "absent" — refuse it (a dual cast must
+    # not be silently left unstamped). A missing key or empty mapping is undeclared (None).
+    for bad in (0, False):
+        with pytest.raises(ValueError, match="must be a mapping"):
+            resolve_preferred(PREFERRED_PAIR, {"preferred_pair": bad}, 1)
+    assert resolve_preferred(PREFERRED_PAIR, {}, 1) == (None, None)
+    assert resolve_preferred(PREFERRED_PAIR, {"preferred_pair": {}}, 1) == (None, None)
+
+
 # --- preferred_sensor_names / has_use (single-sensor reconciliation) ---------
 
 

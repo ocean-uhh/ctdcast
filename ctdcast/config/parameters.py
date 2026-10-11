@@ -149,9 +149,11 @@ VARIABLES: dict[str, dict] = {
         "vmin": -2,
         "vmax": 20,
     },
-    # conductivity: preferred-pair composite (or a single sensor's native channel) — see
-    # the ctd_temperature note above. No CCHDO equivalent (CCHDO stores salinity); kept so
-    # the plain name is self-describing wherever stage 3 builds or stage 1 promotes it.
+    # conductivity: the dual-cast preferred-pair composite ONLY. Unlike ctd_temperature/
+    # ctd_salinity/ctd_oxygen, a single-sensor cast is NOT promoted to this plain name —
+    # stage 1 keeps conductivity_1 ("intermediate quantity", stage1 Step 3). So this entry
+    # exists so the composite stage 3 builds is self-describing (no CCHDO equivalent — CCHDO
+    # stores salinity, not conductivity).
     "conductivity": {
         "label": "$C$",
         "label_units": "mS/cm",
