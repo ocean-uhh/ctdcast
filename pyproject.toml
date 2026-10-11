@@ -110,10 +110,12 @@ convention = "numpy"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# --timeout turns a hung test into a loud per-test failure instead of stalling the whole job;
-# the "thread" method works cross-platform (the default signal method is Unix-only, and the
-# hangs we have seen are on Windows). 120 s is well above the slowest legitimate test.
-addopts = "--cov=ctdcast --cov-report=term-missing --timeout=120 --timeout-method=thread"
+# --timeout turns a runaway test into a loud per-test failure instead of stalling the whole
+# job; the "thread" method works cross-platform (the default signal method is Unix-only). The
+# cap must clear the slowest legitimate test: Windows netCDF I/O is ~10x slower than Linux, so
+# the full-pipeline CLI tests (stage 2/3/profiles + report, some run twice) take minutes there
+# -- 300 s clears them while still catching a true (unbounded) hang.
+addopts = "--cov=ctdcast --cov-report=term-missing --timeout=300 --timeout-method=thread"
 markers = ["slow: marks tests as slow integration tests (deselect with '-m not slow')"]
 filterwarnings = ["ignore::RuntimeWarning:importlib"]
 

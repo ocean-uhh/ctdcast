@@ -67,12 +67,6 @@ jobs:
           ruff check .
 
       - name: Test with pytest
-        # HDF5 takes a file lock on open; on Windows a per-cast netCDF handle not
-        # yet released blocks the next open of the same file, which stalls the
-        # single-process test suite. Disabling the lock is safe here (sequential,
-        # no concurrent writers) and the pytest --timeout still catches real hangs.
-        env:
-          HDF5_USE_FILE_LOCKING: ${{ matrix.os == 'windows-latest' && 'FALSE' || 'TRUE' }}
         run: |
           pytest -m "not slow"
 
