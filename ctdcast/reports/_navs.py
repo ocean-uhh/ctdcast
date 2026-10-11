@@ -1,7 +1,7 @@
 """Builder for the masthead page-nav mapping — ctdcast's page set.
 
 The nav is a plain mapping rendered by the vendored ``templates/_nav.html`` macros
-and validated by :func:`ctdcast.reports._manifest.validate_nav`.  This module is
+and validated by :func:`ctdcast.reports._vendored.page_model.validate_nav`.  This module is
 the one place that knows ctdcast's pages and their roles; the *shape* it builds is
 the shared cross-package contract, so each sibling package carries its own
 ``_navs.py`` building the same shape for its own pages.
@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from ctdcast.reports._manifest import validate_nav
+from ctdcast.reports._vendored.page_model import validate_nav
 
 #: The masthead row, in rendered order: (current-key, label, bare href, role).
 #: ``current-key`` is what a page passes as ``current`` to light its pill.

@@ -31,34 +31,10 @@ from ctdcast.config.parameters import (
     vlabel,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
-from ctdcast.config.report_tokens import (
-    MAX_SECTION_H as _MAX_SECTION_H,
-)
-from ctdcast.config.report_tokens import (
-    ROLE_ACCENT,
-)
-from ctdcast.config.report_tokens import (
-    W_FULL as _W_FULL,
-)
-from ctdcast.config.report_tokens import (
-    W_HALF as _W_HALF,
-)
-from ctdcast.config.report_tokens import (
-    W_THIRD as _W_THIRD,
-)
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
-from ctdcast.reports._manifest import (
-    Panel,
-    PanelGroup,
-    Profile,
-    ResolvedReport,
-    Section,
-    Stub,
-    resolve,
-)
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
@@ -68,6 +44,30 @@ from ctdcast.reports._plots import (
     _make_ts_diagram_timeseries_b64,
 )
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._vendored.design_tokens import (
+    MAX_SECTION_H as _MAX_SECTION_H,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    ROLE_ACCENT,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_FULL as _W_FULL,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_HALF as _W_HALF,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_THIRD as _W_THIRD,
+)
+from ctdcast.reports._vendored.page_model import (
+    Panel,
+    PanelGroup,
+    Profile,
+    ResolvedReport,
+    Section,
+    Stub,
+    resolve,
+)
 
 # Panel variables are defined in ctdcast.config.parameters:
 #   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _section.py)

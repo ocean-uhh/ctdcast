@@ -11,8 +11,8 @@ import warnings
 
 import pytest
 
-from ctdcast.config import report_tokens
-from ctdcast.reports._encode import render_b64
+from ctdcast.reports._vendored import design_tokens as report_tokens
+from ctdcast.reports._vendored.figure_png import render_b64
 
 
 def _boom():

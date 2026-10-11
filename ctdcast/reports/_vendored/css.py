@@ -1,13 +1,13 @@
 """Shared CSS for the report HTML pages, generated from the design tokens.
 
 ``emit_css(package_accent)`` builds the whole stylesheet string from
-``..config.report_tokens`` — colours, typography, spacing, radii and the slot
+the sibling ``design_tokens`` module — colours, typography, spacing, radii and the slot
 table — so no value is restated here.  Its output is concatenated into each page
 template's ``<style>`` block (``{{ css | safe }}``).
 
 This module is written to be **vendored** across the packages that share the
 report design system: it names no package and holds no per-package colour table,
-reading shared values only through ``..config.report_tokens``.  The accent
+reading shared values only through the sibling ``design_tokens`` module.  The accent
 colour to render is an argument to ``emit_css``, supplied by the
 (package-specific) caller — so the file itself carries no package-specific edit
 (Phase A; no cross-repo hash test yet, spec §9).
@@ -15,7 +15,7 @@ colour to render is an argument to ``emit_css``, supplied by the
 
 from __future__ import annotations
 
-from ..config.report_tokens import (
+from .design_tokens import (
     COLORS,
     CONTENT_MAX_PX,
     FONT_MONO,

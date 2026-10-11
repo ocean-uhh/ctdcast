@@ -11,7 +11,7 @@ import xarray as xr
 # initialise the Tk backend on a runner where Tcl/Tk is not installed.
 matplotlib.use("Agg")
 
-import ctdcast.config.report_tokens as _report_tokens
+import ctdcast.reports._vendored.design_tokens as _report_tokens
 
 # Surface plotting failures as test errors rather than silently returning None.
 # The flag lives in report_tokens (a leaf both plotters and the encoder read

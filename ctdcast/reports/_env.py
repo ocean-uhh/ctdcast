@@ -7,7 +7,9 @@ Two environments are required:
 - ``_env_raw`` (autoescape=False) — for ``leaflet.html`` only, which embeds
   Leaflet JS and raw GeoJSON that must not be escaped.
 
-Both load templates from the ``templates/`` subdirectory of this package.
+Both load templates from the owned ``templates/`` subdirectory first, then the
+vendored ``_vendored/templates/`` (so ``_nav.html`` and other shared partials
+resolve); an owned template shadows a vendored one of the same name.
 
 Usage::
 
@@ -20,15 +22,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, Template
+from jinja2 import ChoiceLoader, Environment, FileSystemLoader, Template
 
 from ctdcast.reports import _figdebug
 from ctdcast.reports._anchors import legacy_anchor_spans
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_VENDORED_TEMPLATES_DIR = Path(__file__).parent / "_vendored" / "templates"
+
+# Owned templates first, then the vendored shared partials (``_nav.html``).
+_loader = ChoiceLoader(
+    [
+        FileSystemLoader(str(_TEMPLATES_DIR)),
+        FileSystemLoader(str(_VENDORED_TEMPLATES_DIR)),
+    ]
+)
 
 _env: Environment = Environment(
-    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+    loader=_loader,
     autoescape=True,
 )
 # Per-figure debug overlay (opt-in via CTDCAST_REPORT_DEBUG); figdbg() returns "" when off,
@@ -39,7 +50,7 @@ _env.globals["figdbg"] = _figdebug.figdbg
 _env.globals["legacy_anchor_spans"] = legacy_anchor_spans
 
 _env_raw: Environment = Environment(
-    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+    loader=_loader,
     autoescape=False,
 )
 

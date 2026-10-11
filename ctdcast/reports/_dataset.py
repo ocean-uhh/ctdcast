@@ -22,11 +22,11 @@ import xarray as xr
 from ctdcast._version import __version__ as _VERSION
 from ctdcast.config.global_attrs import group_attrs
 from ctdcast.config.parameters import VARIABLES
-from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)

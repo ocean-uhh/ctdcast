@@ -37,7 +37,6 @@ from ctdcast.config.parameters import (
     resolve_sensor_var,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
-from ctdcast.config.report_tokens import ROLE_ACCENT
 from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
@@ -46,7 +45,6 @@ from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc
-from ctdcast.reports._manifest import Panel, Profile, ResolvedReport, Section, resolve
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
@@ -64,6 +62,14 @@ from ctdcast.reports._plots import (
 )
 from ctdcast.reports._qc import qc_summary, qc_thresholds
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+from ctdcast.reports._vendored.page_model import (
+    Panel,
+    Profile,
+    ResolvedReport,
+    Section,
+    resolve,
+)
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:

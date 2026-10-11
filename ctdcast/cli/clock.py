@@ -144,8 +144,8 @@ def _write_figure(series: list, verdict: object, path: Path) -> None:
     """Render the offset-vs-cast figure under the report style and save it to *path*."""
     import matplotlib.pyplot as plt
 
-    from ctdcast.config.report_tokens import FIG_DPI, MPLSTYLE_PATH
     from ctdcast.plotters.plots import draw_clock_offset_fig
+    from ctdcast.reports._vendored.design_tokens import FIG_DPI, MPLSTYLE_PATH
 
     with plt.style.context(str(MPLSTYLE_PATH)):
         fig = draw_clock_offset_fig(series, verdict)

@@ -9,7 +9,7 @@ import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_size import Fixed
 
-from ctdcast.config.report_tokens import (
+from ctdcast.reports._vendored.design_tokens import (
     ANNOT_FS,
     CBAR_PAD_IN,
     CBAR_WIDTH_IN,

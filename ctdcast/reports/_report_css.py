@@ -1,6 +1,6 @@
 """ctdcast's concrete report stylesheet, from the package-neutral ``emit_css``.
 
-This is the package-specific wiring the vendored :mod:`ctdcast.reports._css`
+This is the package-specific wiring the vendored :mod:`ctdcast.reports._vendored.css`
 deliberately omits: the single place ctdcast's name is applied to the shared
 generator.  Another package supplies its own name the same way; the vendored
 ``_css.py`` carries no package-specific edit.
@@ -8,7 +8,7 @@ generator.  Another package supplies its own name the same way; the vendored
 
 from __future__ import annotations
 
-from ctdcast.reports._css import _JS_TOP_LINKS, emit_css
+from ctdcast.reports._vendored.css import _JS_TOP_LINKS, emit_css
 
 #: ctdcast's package accent — chosen here, locally, not in the vendored tokens.
 #: Points at ``--ocean`` so the accent (wordmark, table header, footer rule) is

@@ -24,7 +24,6 @@ from ctdcast.analysis.bathymetry import (
     dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
-from ctdcast.config import report_tokens
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.plots import (
     _cast_markers,
@@ -56,13 +55,14 @@ from ctdcast.plotters.plots import (
 )
 from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
 from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp
-from ctdcast.reports._encode import _fig_to_base64
 
 # render_b64 is imported from _figdebug (a package-local wrapper around the vendored
 # encoder) so figures are geometry-recorded when CTDCAST_REPORT_DEBUG is set; it delegates
 # straight to the encoder when off.
 from ctdcast.reports._figdebug import record as _figdebug_record
 from ctdcast.reports._figdebug import render_b64
+from ctdcast.reports._vendored import design_tokens as report_tokens
+from ctdcast.reports._vendored.figure_png import _fig_to_base64
 
 
 @dataclasses.dataclass(frozen=True)

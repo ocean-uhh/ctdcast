@@ -1,9 +1,14 @@
 """Check the report-design files that are vendored byte-identical across packages.
 
-ctdcast ``main`` is the source of truth for the shared report-design files
-(the encoder, CSS generator, page-manifest model, design tokens, mplstyle, and
-the masthead-nav template).  oceanarray and glidertest carry byte-identical
-copies and re-vendor from here; they never edit their copies in place.
+ctdcast ``main`` is the source of truth for the shared report-design files under
+``ctdcast/reports/_vendored/`` (design tokens, the figure encoder, the CSS
+generator, the page model, the mplstyle, and the masthead-nav template).
+oceanarray and glidertest carry byte-identical copies under their own
+``<pkg>/reports/_vendored/`` and re-vendor from here; they never edit their
+copies in place.
+
+The vendored set is the *contents of the directory*, not a hand-kept list: every
+file under ``ctdcast/reports/_vendored/`` (minus ``__pycache__``) is checked.
 
 Usage
 -----
@@ -19,29 +24,40 @@ Regenerate ``VENDORED.txt`` after an intentional edit to a vendored file::
 
     venv/bin/python scripts/check_vendored.py --update
 
-Exit code is 1 if any file drifts (local hash mismatch, or a sibling differs),
-0 otherwise.  A sibling repo or file that is absent is reported and skipped, not
-counted as a mismatch.
+Exit code is 1 if any file drifts (local hash mismatch, a recorded file missing
+on disk, or a sibling file that is absent or differs), 0 otherwise.  A sibling
+*repository* that is absent is reported and skipped; a sibling *file* that is
+missing counts as drift.
 """
 
 from __future__ import annotations
 
 import hashlib
+import re
 import sys
 from pathlib import Path
 
-#: Repo-relative paths of the vendored files.  The single source of this list.
-VENDORED: tuple[str, ...] = (
-    "ctdcast/reports/_encode.py",
-    "ctdcast/reports/_css.py",
-    "ctdcast/reports/_manifest.py",
-    "ctdcast/config/report_tokens.py",
-    "ctdcast/config/report.mplstyle",
-    "ctdcast/reports/templates/_nav.html",
-)
+#: Repo-relative directory holding every vendored file.  The directory is the
+#: source of the set — add a file to it and it is checked, no list to update.
+VENDORED_DIR = "ctdcast/reports/_vendored"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "VENDORED.txt"
+
+
+def vendored_files() -> list[str]:
+    """Return the repo-relative path of every vendored file, sorted.
+
+    Walks :data:`VENDORED_DIR` and skips ``__pycache__`` and compiled files, so
+    the returned list is exactly what should be byte-identical across packages.
+    """
+    root = REPO_ROOT / VENDORED_DIR
+    out: list[str] = []
+    for p in sorted(root.rglob("*")):
+        if p.is_dir() or "__pycache__" in p.parts or p.suffix == ".pyc":
+            continue
+        out.append(p.relative_to(REPO_ROOT).as_posix())
+    return out
 
 
 def sha256(path: Path) -> str:
@@ -56,15 +72,59 @@ def sha256(path: Path) -> str:
 
 
 def load_expected() -> dict[str, str]:
-    """Parse ``VENDORED.txt`` into a ``{relative-path: sha256}`` mapping."""
+    """Parse ``VENDORED.txt`` into a ``{relative-path: sha256}`` mapping.
+
+    Exits 1 with a clear message on a missing manifest, a malformed line, or a
+    duplicate path — a silent last-wins would hide a contradictory entry.
+    """
+    if not MANIFEST.exists():
+        raise SystemExit(
+            f"{MANIFEST.name} not found — run: python scripts/check_vendored.py --update"
+        )
     expected: dict[str, str] = {}
-    for line in MANIFEST.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for n, raw in enumerate(MANIFEST.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        digest, rel = line.split(maxsplit=1)
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            raise SystemExit(
+                f"{MANIFEST.name}:{n}: malformed line "
+                f"(expected '<sha256>  <path>'): {raw!r}"
+            )
+        digest, rel = parts
+        if rel in expected:
+            raise SystemExit(f"{MANIFEST.name}:{n}: duplicate path {rel}")
         expected[rel] = digest
     return expected
+
+
+def package_name(repo: Path) -> str:
+    """Return the sibling's import package from its ``pyproject.toml`` ``[project].name``.
+
+    Deriving the package from the project name — not the checkout directory name
+    — means a sibling checked out as ``../oceanarray-review`` or a git worktree
+    still maps its vendored paths correctly.
+    """
+    text = (repo / "pyproject.toml").read_text(encoding="utf-8")
+    try:
+        import tomllib
+
+        return tomllib.loads(text)["project"]["name"]
+    except ModuleNotFoundError:  # Python < 3.11
+        in_project = False
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("["):
+                in_project = stripped == "[project]"
+                continue
+            if in_project:
+                m = re.match(r'name\s*=\s*"([^"]+)"', stripped)
+                if m:
+                    return m.group(1)
+        raise SystemExit(
+            f"could not read [project].name from {repo}/pyproject.toml"
+        ) from None
 
 
 def write_manifest() -> None:
@@ -72,28 +132,37 @@ def write_manifest() -> None:
     lines = [
         "# sha256 of the report-design files vendored byte-identical across",
         "# ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.",
+        "# The set is the contents of ctdcast/reports/_vendored/.",
         "# Regenerate after an intentional edit: "
         "python scripts/check_vendored.py --update",
     ]
-    lines += [f"{sha256(REPO_ROOT / rel)}  {rel}" for rel in VENDORED]
+    lines += [f"{sha256(REPO_ROOT / rel)}  {rel}" for rel in vendored_files()]
     MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def verify_local() -> int:
-    """Check each local file against its recorded hash.  Return a failure count."""
+    """Check each local file against its recorded hash.  Return a failure count.
+
+    Flags both directions: a file on disk not in ``VENDORED.txt`` (ran without
+    ``--update``) and a recorded file missing from disk.
+    """
     expected = load_expected()
+    present = vendored_files()
     failures = 0
-    for rel in VENDORED:
+    for rel in present:
         want = expected.get(rel)
-        have = sha256(REPO_ROOT / rel)
         if want is None:
             print(f"NOT RECORDED  {rel} (run --update)")
             failures += 1
-        elif want != have:
+        elif want != sha256(REPO_ROOT / rel):
             print(f"DRIFTED       {rel} (edited since --update)")
             failures += 1
+    for rel in expected:
+        if rel not in present:
+            print(f"MISSING       {rel} (recorded but not on disk)")
+            failures += 1
     if not failures:
-        print(f"OK            {len(VENDORED)} vendored files match VENDORED.txt")
+        print(f"OK            {len(present)} vendored files match VENDORED.txt")
     return failures
 
 
@@ -101,16 +170,17 @@ def compare_sibling(sibling: Path) -> int:
     """Byte-compare every vendored file against *sibling*.  Return a mismatch count.
 
     The vendored files live under each repo's own package directory, so the
-    leading ``ctdcast/`` of each path is mapped to the sibling's package name
-    (taken from the checkout directory name — ``../oceanarray`` → ``oceanarray``).
+    leading package segment of each path is mapped to the sibling's package name
+    (from its ``pyproject.toml``).  A vendored file missing in the sibling counts
+    as drift.
     """
     print(f"\n== {sibling} ==")
     if not sibling.exists():
         print("  absent — skipped")
         return 0
-    pkg = sibling.name
+    pkg = package_name(sibling)
     mismatches = 0
-    for rel in VENDORED:
+    for rel in vendored_files():
         here = REPO_ROOT / rel
         there = sibling / rel.replace("ctdcast/", f"{pkg}/", 1)
         if not there.exists():
@@ -128,7 +198,9 @@ def main(argv: list[str]) -> int:
     """Run the check; see the module docstring for the argument forms."""
     if "--update" in argv:
         write_manifest()
-        print(f"wrote {MANIFEST.relative_to(REPO_ROOT)} ({len(VENDORED)} files)")
+        print(
+            f"wrote {MANIFEST.relative_to(REPO_ROOT)} ({len(vendored_files())} files)"
+        )
         return 0
     siblings = [a for a in argv if not a.startswith("-")]
     if not siblings:

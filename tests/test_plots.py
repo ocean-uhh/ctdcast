@@ -128,12 +128,12 @@ def test_section_figsize_width_equals_slot_canonical_width():
     canonical SLOTS width across a spread of section geometries (shallow/wide to
     deep/short).
     """
-    from ctdcast.config.report_tokens import (
+    from ctdcast.plotters.plots import section_figsize_and_slot
+    from ctdcast.reports._vendored.design_tokens import (
         MAX_SECTION_H,
         MIN_SECTION_H,
         SLOTS,
     )
-    from ctdcast.plotters.plots import section_figsize_and_slot
 
     canonical = {f"slot-{name}": inch for name, (_frac, inch) in SLOTS.items()}
     cases = [
@@ -155,8 +155,8 @@ def test_section_figsize_width_equals_slot_canonical_width():
 
 def test_section_figsize_deep_short_is_narrower_than_shallow_wide():
     """A deep, short section lands on a narrower slot than a shallow, wide one."""
-    from ctdcast.config.report_tokens import SLOTS
     from ctdcast.plotters.plots import section_figsize_and_slot
+    from ctdcast.reports._vendored.design_tokens import SLOTS
 
     (wide_w, _), _ = section_figsize_and_slot(400, 300)
     (deep_w, _), _ = section_figsize_and_slot(2336, 103.6)

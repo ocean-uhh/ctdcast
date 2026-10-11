@@ -24,7 +24,7 @@ _spec.loader.exec_module(check_vendored)
 def test_manifest_lists_exactly_the_vendored_set():
     """VENDORED.txt records every vendored file and no others."""
     recorded = set(check_vendored.load_expected())
-    assert recorded == set(check_vendored.VENDORED)
+    assert recorded == set(check_vendored.vendored_files())
 
 
 def test_vendored_files_match_recorded_hashes():
@@ -32,10 +32,25 @@ def test_vendored_files_match_recorded_hashes():
     expected = check_vendored.load_expected()
     drifted = [
         rel
-        for rel in check_vendored.VENDORED
+        for rel in check_vendored.vendored_files()
         if check_vendored.sha256(_REPO_ROOT / rel) != expected[rel]
     ]
     assert not drifted, (
         f"vendored files edited without --update: {drifted}; "
         "run `python scripts/check_vendored.py --update`"
+    )
+
+
+def test_no_owned_template_shadows_a_vendored_one():
+    """No template filename exists in both the owned and vendored template dirs.
+
+    The report environment loads owned templates first, so an owned partial with
+    a vendored one's name would silently fork the shared copy.
+    """
+    owned = _REPO_ROOT / "ctdcast" / "reports" / "templates"
+    vendored = _REPO_ROOT / "ctdcast" / "reports" / "_vendored" / "templates"
+    owned_names = {p.name for p in owned.glob("*") if p.is_file()}
+    vendored_names = {p.name for p in vendored.glob("*") if p.is_file()}
+    assert not (owned_names & vendored_names), (
+        f"owned templates shadow vendored ones: {sorted(owned_names & vendored_names)}"
     )

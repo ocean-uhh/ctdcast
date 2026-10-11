@@ -101,12 +101,9 @@ convention = "numpy"
 "scripts/*" = ["E402"]    # scripts use late imports for optional deps
 # Vendored files, shared across the sibling packages (oceanarray/caldip) — the linter must
 # not drive divergence, so RUF100 (noqa managed upstream) and the docstring/annotation rules
-# are off here.  The copies currently differ (report_tokens matches all three; _css/_encode
-# diverge) and the canonical direction is undecided; any change belongs in the shared source,
+# are off here.  The whole directory is the shared source; any change belongs there,
 # reconciled across the packages together, not made unilaterally by a lint fix here.
-"ctdcast/config/report_tokens.py" = ["RUF100", "D", "ANN"]
-"ctdcast/reports/_css.py" = ["RUF100", "D", "ANN"]
-"ctdcast/reports/_encode.py" = ["RUF100", "D", "ANN"]
+"ctdcast/reports/_vendored/*" = ["RUF100", "D", "ANN"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -130,8 +127,8 @@ where = ["."]
 include = ["ctdcast*"]
 
 [tool.setuptools.package-data]
-"ctdcast.config" = ["*.mplstyle"]
 "ctdcast.reports" = ["leaflet/*", "templates/*"]
+"ctdcast.reports._vendored" = ["*.mplstyle", "templates/*", "leaflet/*"]
 
 # Per-module coverage floors, checked by scripts/coverage_floors.py after the
 # suite.  coverage.py only offers a GLOBAL fail_under, which a new module can

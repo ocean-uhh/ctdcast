@@ -29,39 +29,6 @@ from ctdcast.config.parameters import (
     vunit,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
-from ctdcast.config.report_tokens import (
-    ANNOT_FS,
-    CAST_LABEL_FS,
-    CLABEL_FS,
-    pen,
-)
-from ctdcast.config.report_tokens import (
-    MAX_SECTION_H as _MAX_SECTION_H,
-)
-from ctdcast.config.report_tokens import (
-    MIN_SECTION_H as _MIN_SECTION_H,
-)
-from ctdcast.config.report_tokens import (
-    SECTION_STRETCH as _SECTION_STRETCH,
-)
-from ctdcast.config.report_tokens import (
-    W_FULL as _W_FULL,
-)
-from ctdcast.config.report_tokens import (
-    W_HALF as _W_HALF,
-)
-from ctdcast.config.report_tokens import (
-    W_THIRD as _W_THIRD,
-)
-from ctdcast.config.report_tokens import (
-    W_THREE_FIFTHS as _W_THREE_FIFTHS,
-)
-from ctdcast.config.report_tokens import (
-    W_TWO_FIFTHS as _W_TWO_FIFTHS,
-)
-from ctdcast.config.report_tokens import (
-    W_TWOTHIRDS as _W_TWOTHIRDS,
-)
 from ctdcast.plotters.primitives import (
     mesh_field,
     nice_colorbar_ticks,
@@ -70,6 +37,39 @@ from ctdcast.plotters.primitives import (
 )
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
+from ctdcast.reports._vendored.design_tokens import (
+    ANNOT_FS,
+    CAST_LABEL_FS,
+    CLABEL_FS,
+    pen,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    MAX_SECTION_H as _MAX_SECTION_H,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    MIN_SECTION_H as _MIN_SECTION_H,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    SECTION_STRETCH as _SECTION_STRETCH,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_FULL as _W_FULL,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_HALF as _W_HALF,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_THIRD as _W_THIRD,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_THREE_FIFTHS as _W_THREE_FIFTHS,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_TWO_FIFTHS as _W_TWO_FIFTHS,
+)
+from ctdcast.reports._vendored.design_tokens import (
+    W_TWOTHIRDS as _W_TWOTHIRDS,
+)
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes

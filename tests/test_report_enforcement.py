@@ -22,8 +22,8 @@ from PIL import Image
 
 import ctdcast.plotters.plots as P
 from ctdcast.analysis.derive import derive_teos10
-from ctdcast.config.report_tokens import FIG_DPI, SLOTS, W_FULL
-from ctdcast.reports._encode import render_b64
+from ctdcast.reports._vendored.design_tokens import FIG_DPI, SLOTS, W_FULL
+from ctdcast.reports._vendored.figure_png import render_b64
 
 _ROOT = Path(__file__).resolve().parent.parent
 _PKG = _ROOT / "ctdcast"
@@ -43,7 +43,7 @@ def test_slot_contract() -> None:
 
 def test_width_aliases_match_slots() -> None:
     """Ergonomic ``W_*`` aliases equal their ``SLOTS`` inch width (incl. the quarter slot)."""
-    from ctdcast.config.report_tokens import (
+    from ctdcast.reports._vendored.design_tokens import (
         W_HALF,
         W_QUARTER,
         W_THIRD,
@@ -99,7 +99,7 @@ def test_encoder_defaults_to_full_canvas() -> None:
     all-sections map's outside legend) may pass ``bbox_inches="tight"`` explicitly
     — they are exempt from the exact-width invariant.
     """
-    from ctdcast.reports._encode import _fig_to_base64
+    from ctdcast.reports._vendored.figure_png import _fig_to_base64
 
     default = inspect.signature(_fig_to_base64).parameters["bbox_inches"].default
     assert default is None, "encoder must default to the full canvas (bbox_inches=None)"
@@ -194,7 +194,7 @@ def test_optional_guard_ratio() -> None:
 # ---------------------------------------------------------------------------
 def test_pen_ladder() -> None:
     """pen() maps GMT pen-width names to matplotlib points; an unknown name raises."""
-    from ctdcast.config.report_tokens import pen
+    from ctdcast.reports._vendored.design_tokens import pen
 
     assert pen("thin") == 0.75
     assert pen("thicker") == 1.5
@@ -205,7 +205,7 @@ def test_pen_ladder() -> None:
 
 def test_print_css_terse() -> None:
     """print_css() emits the injected print rules; --pdf-terse hides .explainer, default keeps all."""
-    from ctdcast.reports._css import print_css
+    from ctdcast.reports._vendored.css import print_css
 
     default = print_css()
     assert "@page" in default and ".jump-nav" in default

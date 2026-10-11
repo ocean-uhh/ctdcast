@@ -1,6 +1,6 @@
 """Package-local wrapper around the vendored encoder: debug overlay and panel capture.
 
-Two owned concerns layered on :mod:`ctdcast.reports._encode` without editing it:
+Two owned concerns layered on :mod:`ctdcast.reports._vendored.figure_png` without editing it:
 
 - **Debug overlay** (``CTDCAST_REPORT_DEBUG=1``): every embedded figure gets a ``.debug``
   line showing **slot | draw-func · figsize · png_px**, so a figsize-vs-display-slot
@@ -22,9 +22,9 @@ import contextvars
 import os
 from typing import TYPE_CHECKING, Any
 
-from ctdcast.config.report_tokens import FIG_DPI
-from ctdcast.reports import _encode
-from ctdcast.reports._manifest import Stub
+from ctdcast.reports._vendored import figure_png as _encode
+from ctdcast.reports._vendored.design_tokens import FIG_DPI
+from ctdcast.reports._vendored.page_model import Stub
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -109,7 +109,7 @@ def render_b64(
 ) -> str | None:
     """Encode *draw* via the vendored encoder; when debug is on, record its geometry.
 
-    Drop-in for :func:`ctdcast.reports._encode.render_b64` and keeps its ``str | None``
+    Drop-in for :func:`ctdcast.reports._vendored.figure_png.render_b64` and keeps its ``str | None``
     contract: a failed or empty draw returns ``None`` (the informative warning still fires
     in the encoder); this wrapper never returns a :class:`Stub`.  With no explicit
     ``on_error`` and inside an :func:`as_panel` scope, a draw failure's cause is recorded in

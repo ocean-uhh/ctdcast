@@ -6,7 +6,7 @@ emitted-CSS checks arrive with the nav swap (plan steps 4-5).
 
 import pytest
 
-from ctdcast.reports._manifest import validate_nav
+from ctdcast.reports._vendored.page_model import validate_nav
 
 
 def _pill(label, href, role, state="link"):

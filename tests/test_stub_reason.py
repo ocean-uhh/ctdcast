@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from ctdcast.config import report_tokens
 from ctdcast.reports._figdebug import as_panel, render_b64
-from ctdcast.reports._manifest import Panel, Profile, Section, Stub, resolve
+from ctdcast.reports._vendored import design_tokens as report_tokens
+from ctdcast.reports._vendored.page_model import Panel, Profile, Section, Stub, resolve
 
 _HERE = Path(__file__).resolve().parent
 _CAST_011 = _HERE / "fixtures" / "nc" / "mixsed2_011.nc"

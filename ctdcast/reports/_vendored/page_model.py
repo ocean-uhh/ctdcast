@@ -21,7 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ..config.report_tokens import ROLE_ACCENT
+from .design_tokens import ROLE_ACCENT
 
 #: A page's render context, threaded opaque through the resolver: the concrete keys are
 #: decided by each page's own registry (grid's ``Ctx``, etc.), never by this package-neutral

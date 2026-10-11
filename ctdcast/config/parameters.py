@@ -58,7 +58,7 @@ def is_sbe_channel(name: str) -> bool:
 
 
 # Slot widths, section aspect constants, and other presentation tokens now live
-# in the vendored, package-neutral ``config/report_tokens.py`` (spec §11/§14).
+# in the vendored, package-neutral ``reports/_vendored/design_tokens.py`` (spec §11/§14).
 # This file holds only scientific/variable metadata.
 
 # ---------------------------------------------------------------------------

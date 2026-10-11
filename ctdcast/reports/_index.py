@@ -38,14 +38,6 @@ from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._env import get_template
-from ctdcast.reports._manifest import (
-    Panel,
-    PanelGroup,
-    Profile,
-    ResolvedReport,
-    Section,
-    resolve,
-)
 from ctdcast.reports._navs import inventory_pills, inventory_sources, nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
@@ -60,6 +52,14 @@ from ctdcast.reports._qc import qc_summary
 from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
+from ctdcast.reports._vendored.page_model import (
+    Panel,
+    PanelGroup,
+    Profile,
+    ResolvedReport,
+    Section,
+    resolve,
+)
 
 # ---------------------------------------------------------------------------
 # Public entry point
@@ -1059,7 +1059,7 @@ def _make_clock_section(
     from ctdcast.config.cnv_header import header_from_raw_metadata, parse_start_time
     from ctdcast.plotters.plots import draw_clock_offset_fig
     from ctdcast.processors.stage_layout import group_by_cast
-    from ctdcast.reports._encode import render_b64
+    from ctdcast.reports._vendored.figure_png import render_b64
 
     # Discover casts the same way clock_offsets does (nested, flat, or stage-2/3-only trees); absent
     # only when there are no casts at all, in which case the section is simply not shown.

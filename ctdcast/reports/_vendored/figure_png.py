@@ -2,7 +2,7 @@
 
 This module is written to be **vendored** across the packages that share the
 report design system.  It is package-neutral — it references shared values only
-through ``..config.report_tokens`` (textually identical in each package) and
+through the sibling ``design_tokens`` module (textually identical in each package) and
 names no package — so the copies can be frozen and checked later; for now this
 document and convention are the shared reference (no cross-repo hash test yet).
 
@@ -22,8 +22,8 @@ from typing import Any
 import matplotlib.pyplot as plt
 from PIL import Image
 
-from ..config import report_tokens as _tok
-from ..config.report_tokens import FIG_DPI, MPLSTYLE_PATH, PNG_PALETTE_COLORS
+from . import design_tokens as _dt
+from .design_tokens import FIG_DPI, MPLSTYLE_PATH, PNG_PALETTE_COLORS
 
 
 def _manages_own_layout(fig: Any) -> bool:
@@ -100,11 +100,11 @@ def render_b64(
     optional : bool
         ``True`` when this panel is legitimately absent for some inputs (no
         secondary sensor fitted, a biogeochemical variable not measured).  When
-        ``False`` (default) and :data:`report_tokens.RAISE_ON_PLOT_ERROR` is set,
+        ``False`` (default) and :data:`design_tokens.RAISE_ON_PLOT_ERROR` is set,
         a ``None`` return raises so tests catch silently dropped required panels.
     on_error : callable or None
         Called with the caught exception when *draw* raises and
-        :data:`report_tokens.RAISE_ON_PLOT_ERROR` is unset — before the warning —
+        :data:`design_tokens.RAISE_ON_PLOT_ERROR` is unset — before the warning —
         so a caller can capture the cause (e.g. to turn a bare stub into one that
         says why).  Not called when ``RAISE_ON_PLOT_ERROR`` re-raises.  ``None``
         (default) keeps every existing call site valid.
@@ -120,7 +120,7 @@ def render_b64(
         with plt.style.context(str(MPLSTYLE_PATH)):
             fig = draw(*args, **kwargs)
             if fig is None:
-                if _tok.RAISE_ON_PLOT_ERROR and not optional:
+                if _dt.RAISE_ON_PLOT_ERROR and not optional:
                     raise RuntimeError(
                         f"{draw.__name__} returned None for a required panel; "
                         "check that all required variables are present in the dataset."
@@ -130,7 +130,7 @@ def render_b64(
                 fig.tight_layout()
             return _fig_to_base64(fig)
     except Exception as exc:  # noqa: BLE001
-        if _tok.RAISE_ON_PLOT_ERROR:
+        if _dt.RAISE_ON_PLOT_ERROR:
             raise
         if on_error is not None:
             on_error(exc)
