@@ -23,18 +23,11 @@ PACKAGE_ACCENT: str = "var(--ocean)"
 SHARED_CSS: str = emit_css(PACKAGE_ACCENT)
 
 #: ctdcast's per-quantity colormap overrides on the vendored family defaults — its
-#: current science choices, kept so this change moves no pixel.  Removing an entry
-#: lets that quantity fall through to the family default; that visible step is a
-#: later commit, not this one.
-CMAP_OVERRIDES: dict[str, str] = {
-    "temperature": "RdYlBu_r",
-    "salinity": "YlGnBu_r",
-    "density": "Purples",
-    "oxygen": "RdYlGn",
-    "oxygen_saturation": "RdYlGn",
-    "chlorophyll": "YlGn",
-    "turbidity": "YlOrBr",
-}
+#: current science choices.  Empty: ctdcast takes the vendored family defaults for
+#: every quantity.  Add a ``quantity -> colormap`` entry here to override one for
+#: ctdcast's science (e.g. a different density map for casts) without touching the
+#: shared table; the key must be a quantity in the vendored CMAPS.
+CMAP_OVERRIDES: dict[str, str] = {}
 
 #: Effective per-quantity table: vendored family defaults, then ctdcast's overrides.
 CMAPS: dict[str, str] = {**_FAMILY_CMAPS, **CMAP_OVERRIDES}

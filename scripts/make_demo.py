@@ -32,7 +32,7 @@ from ctdcast.processors.stage3 import (
     _stamp_preferred_sensors,
 )
 from ctdcast.processors.stage_layout import stage_path
-from ctdcast.reports._index import report
+from ctdcast.reports.index import report
 
 REPO = Path(__file__).resolve().parent.parent
 NC_DIR = REPO / "tests" / "fixtures" / "nc"

@@ -1,46 +1,49 @@
-"""Guard the colormap adoption: resolving through the layers changes no colormap.
+"""Pin the per-variable colormap resolution through the design layers.
 
 The vendored ``design_tokens.CMAPS`` carries the family default per quantity, the
-owned ``reports/design.py`` overrides it with ctdcast's current science choices
-(seeded so this change is pixel-identical), and ``cmap_for`` resolves each
-variable.  These tests pin that every variable that has a colormap today resolves
-to exactly the same colormap name, and that nothing resolves to nothing.
+owned ``reports/design.py`` may override it (``CMAP_OVERRIDES`` — empty for
+ctdcast, which takes the family defaults), and ``cmap_for`` resolves each
+variable.  These tests pin the resolved colormap name per variable and that
+nothing resolves to nothing.
 """
 
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.reports._vendored.design_tokens import CMAPS as _FAMILY
 from ctdcast.reports.design import CMAP_OVERRIDES, VAR_CMAPS, cmap_for
 
-#: The colormap name each variable carried before the quantity indirection — the
-#: names that must survive adoption unchanged.
-_ORIGINAL = {
+#: The colormap each variable resolves to.  ctdcast overrides nothing, so these
+#: are the vendored family defaults (temperature ``RdYlBu_r``, salinity
+#: ``YlGnBu_r``, density ``BuPu``, oxygen ``cmo.oxy``, oxygen saturation ``BrBG``,
+#: chlorophyll ``YlGn``, turbidity ``YlOrBr``); ``AOU`` keeps its literal
+#: ``RdBu_r`` (no family quantity).
+_EXPECTED = {
     "ctd_temperature_1": "RdYlBu_r",
     "ctd_temperature_2": "RdYlBu_r",
     "ctd_temperature": "RdYlBu_r",
     "ctd_salinity_1": "YlGnBu_r",
     "ctd_salinity_2": "YlGnBu_r",
     "ctd_salinity": "YlGnBu_r",
-    "ctd_oxygen_1": "RdYlGn",
-    "ctd_oxygen_2": "RdYlGn",
-    "ctd_oxygen": "RdYlGn",
-    "oxygen_saturation": "RdYlGn",
+    "ctd_oxygen_1": "cmo.oxy",
+    "ctd_oxygen_2": "cmo.oxy",
+    "ctd_oxygen": "cmo.oxy",
+    "oxygen_saturation": "BrBG",
     "ctd_fluor": "YlGn",
     "ctd_turbidity": "YlOrBr",
     "conservative_temperature": "RdYlBu_r",
     "absolute_salinity": "YlGnBu_r",
-    "sigma0": "Purples",
+    "sigma0": "BuPu",
     "AOU": "RdBu_r",
 }
 
 
-def test_resolved_table_matches_the_original_names_exactly():
-    """VAR_CMAPS resolves to the same keys and names as before the change."""
-    assert VAR_CMAPS == _ORIGINAL
+def test_resolved_table_matches_expected_names_exactly():
+    """VAR_CMAPS resolves each variable to the expected (family-default) colormap."""
+    assert VAR_CMAPS == _EXPECTED
 
 
-def test_cmap_for_resolves_each_variable_to_its_original_name():
-    """Adoption moves no pixel: every variable resolves to today's colormap."""
-    for var, expected in _ORIGINAL.items():
+def test_cmap_for_resolves_each_variable_to_its_expected_name():
+    """Every variable resolves through the layers to the expected colormap name."""
+    for var, expected in _EXPECTED.items():
         assert cmap_for(var) == expected, f"{var}: {cmap_for(var)!r} != {expected!r}"
 
 
@@ -52,7 +55,7 @@ def test_no_cmap_variable_resolves_to_nothing():
 
 
 def test_overrides_are_a_subset_of_the_vendored_quantities():
-    """A typo in CMAP_OVERRIDES must not invent a quantity."""
+    """Any CMAP_OVERRIDES key must be a vendored quantity (a typo cannot invent one)."""
     assert set(CMAP_OVERRIDES) <= set(_FAMILY), (
         f"override keys not in vendored CMAPS: {set(CMAP_OVERRIDES) - set(_FAMILY)}"
     )
