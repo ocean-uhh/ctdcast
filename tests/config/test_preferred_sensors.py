@@ -274,6 +274,11 @@ def test_validate_never_raises_on_malformed_config():
     cfg = {"preferred_pair": {"ranges": [{"use": "secondary"}]}}
     result = validate_preferred(PREFERRED_PAIR, cfg, cats)  # must not raise
     assert isinstance(result, list)
+    # A malformed (not merely missing) casts spec must also not raise out of validate —
+    # the stamp (resolve_preferred) is what refuses it loudly.
+    for bad in ("oops", [[1]], [1, 2], None):
+        cfg_bad = {"preferred_pair": {"ranges": [{"casts": bad, "use": "secondary"}]}}
+        assert isinstance(validate_preferred(PREFERRED_PAIR, cfg_bad, cats), list)
 
 
 def test_entirely_undeclared_group_is_silent():

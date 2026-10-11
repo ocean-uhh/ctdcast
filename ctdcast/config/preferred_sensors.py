@@ -395,12 +395,18 @@ def validate_preferred(
     warnings: list[str] = []
 
     # Each range's actual covered cast numbers, expanded once and reused by both checks.
-    # A range missing a usable `casts` key is skipped here (the stamp refuses it); the empty
-    # set keeps this range from matching any segment.
-    range_casts: list[set[int]] = [
-        set(expand_cast_numbers(rng["casts"])) if _has_casts(rng) else set()
-        for rng in (decl.get("ranges") or [])
-    ]
+    # A range whose `casts` is missing OR malformed is skipped (the empty set matches no
+    # segment) — reconciliation is advisory and must never raise; the stamp
+    # (resolve_preferred) is what refuses a malformed spec loudly.
+    range_casts: list[set[int]] = []
+    for rng in decl.get("ranges") or []:
+        try:
+            covered = (
+                set(expand_cast_numbers(rng["casts"])) if _has_casts(rng) else set()
+            )
+        except (ValueError, TypeError, KeyError):
+            covered = set()
+        range_casts.append(covered)
 
     for i, rng in enumerate(decl.get("ranges") or []):
         covered = range_casts[i]

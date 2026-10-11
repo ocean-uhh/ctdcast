@@ -19,6 +19,7 @@ import xarray as xr
 from ctdcast.analysis.derive import derive_salinity
 from ctdcast.config.preferred_sensors import (
     GROUPS,
+    SensorGroup,
     has_choice,
     has_use,
     index_of,
@@ -137,7 +138,7 @@ def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
 
 
 def _preferred_use(
-    group: object, records: list[dict], cruise_cfg: dict, cast_number: int
+    group: SensorGroup, records: list[dict], cruise_cfg: dict, cast_number: int
 ) -> str | None:
     """Return the use (``primary`` / ``secondary``) that applies to this cast, or None.
 
@@ -245,22 +246,29 @@ def _build_preferred_composites(
             if src not in ds:
                 continue
             da = ds[src]
-            # Carry the source channel's attrs (units, standard_name, and any calibration
-            # provenance such as calibration_slope / processing_level) so the composite is
-            # self-describing — the writer only refills metadata for VARIABLES names, and the
-            # plain `conductivity` is not one. Drop long_name so the writer sets the
-            # composite's own ("… (preferred pair)"), and add the selection provenance.
-            attrs = {k: v for k, v in da.attrs.items() if k != "long_name"}
+            # Carry the source channel's attrs (units, standard_name, calibration provenance,
+            # processing_level) so the composite is self-describing before the writer runs.
+            # But a composite is a per-cast *selection* of one channel, not a renamed source
+            # column, so drop the CNV-origin attrs: `cnv_original_name` / `source_variable` are
+            # the rename-table keys (readers.metadata.source_to_canonical) and would collide
+            # with the indexed channel's own entry, mislabeling which CNV column became which
+            # variable. Drop long_name too, so the writer sets the composite's own
+            # ("… (preferred pair)"), and add the selection provenance.
+            _drop = {"long_name", "cnv_original_name", "source_variable"}
+            attrs = {k: v for k, v in da.attrs.items() if k not in _drop}
             attrs["comment"] = (
                 f"preferred {use} channel; copied from {src} per {group.config_key}"
             )
             ds[member] = xr.DataArray(da.values, dims=da.dims, attrs=attrs)
             qc_src = f"{src}_qc"
             if qc_src in ds:
+                # Drop the source's long_name ("Quality flag for conductivity_1") so the
+                # writer sets the composite's ("Quality flag for conductivity").
+                qc_attrs = {
+                    k: v for k, v in ds[qc_src].attrs.items() if k != "long_name"
+                }
                 ds[f"{member}_qc"] = xr.DataArray(
-                    ds[qc_src].values,
-                    dims=ds[qc_src].dims,
-                    attrs=dict(ds[qc_src].attrs),
+                    ds[qc_src].values, dims=ds[qc_src].dims, attrs=qc_attrs
                 )
 
 

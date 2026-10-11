@@ -126,6 +126,12 @@ def test_composites_copy_the_preferred_pair_channel() -> None:
     assert np.array_equal(ds["conductivity"].values, ds["conductivity_2"].values)
     # Provenance recorded on the composite.
     assert "secondary" in ds["ctd_temperature"].attrs["comment"]
+    # The composite is a selection, not a renamed source column: it must NOT carry the
+    # source channel's CNV-origin attrs (they key the rename table and would collide).
+    assert "cnv_original_name" not in ds["conductivity"].attrs
+    assert "source_variable" not in ds["conductivity"].attrs
+    # but it stays self-describing (units survive).
+    assert ds["conductivity"].attrs.get("units") == "mS cm-1"
 
 
 def test_undeclared_dual_cast_gets_no_composite() -> None:

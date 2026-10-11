@@ -13,6 +13,7 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+import pytest
 import xarray as xr
 from conftest import FIXTURES_NC
 
@@ -147,6 +148,23 @@ def test_oxygen_saturation_derived_per_line_and_selected_by_preference() -> None
     pri = derive_teos10(_dual_line_cast("primary"))
     assert np.array_equal(
         pri["oxygen_saturation"].values, pri["oxygen_saturation_1"].values
+    )
+    # Provenance records the T/S line each saturation was paired with.
+    assert "ctd_temperature_2" in sec["oxygen_saturation_2"].attrs["oxygen_conversion"]
+    assert "ctd_temperature_1" in sec["oxygen_saturation_1"].attrs["oxygen_conversion"]
+
+
+def test_dual_oxygen_without_matching_line_ts_skips_not_cross_pairs() -> None:
+    # Dual oxygen but only line-1 T/S present: oxygen_saturation_2 must NOT be computed from
+    # line-1 T/S (silent cross-pairing) — it is skipped with a warning instead.
+    ds = _dual_line_cast("primary").drop_vars(["ctd_temperature_2", "ctd_salinity_2"])
+    with pytest.warns(UserWarning, match="avoid pairing it with the other line"):
+        out = derive_teos10(ds)
+    assert "oxygen_saturation_1" in out
+    assert "oxygen_saturation_2" not in out
+    # the composite falls back to the one line that was derived
+    assert np.array_equal(
+        out["oxygen_saturation"].values, out["oxygen_saturation_1"].values
     )
 
 

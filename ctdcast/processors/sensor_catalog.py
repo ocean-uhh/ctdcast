@@ -88,7 +88,16 @@ def catalog_by_cast_number(
     first_seen: dict[int, tuple[str, dict[str, str]]] = {}
     warnings: list[str] = []
     for (num, suffix), records in per_identity:
+        # Keep a catalogued sibling over a catalog-less one for the same number (a
+        # catalog-less sibling must not clobber real records).
+        if records or num not in by_number:
+            by_number[num] = records
         signature = _role_signature(records)
+        # A catalog-less cast (no SENSOR_* records) has an empty signature; comparing it
+        # against a sibling's would raise a spurious "different serials" warning. Only
+        # catalogued casts carry a sibling signature to compare.
+        if not signature:
+            continue
         if num in first_seen:
             prev_suffix, prev_signature = first_seen[num]
             if signature != prev_signature:
@@ -100,5 +109,4 @@ def catalog_by_cast_number(
                 )
         else:
             first_seen[num] = (suffix, signature)
-        by_number[num] = records
     return by_number, warnings

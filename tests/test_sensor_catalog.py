@@ -28,6 +28,17 @@ def test_siblings_with_same_serials_do_not_warn() -> None:
     assert warnings == []
 
 
+def test_catalog_less_sibling_does_not_warn() -> None:
+    # A catalog-less cast (empty records) sharing a number with a catalogued sibling must
+    # NOT raise a spurious "different serials" warning — an empty signature isn't a mismatch.
+    per_identity = [((10, ""), _pair("T_A", "C_A")), ((10, "b"), [])]
+    by_number, warnings = catalog_by_cast_number(per_identity)
+    assert set(by_number) == {10}
+    assert warnings == []
+    # the catalogued sibling's records are kept, not clobbered by the empty one
+    assert by_number[10] == _pair("T_A", "C_A")
+
+
 def test_siblings_with_different_serials_warn() -> None:
     # 010 and 010b swapped the temperature sensor -> the per-number declaration cannot
     # distinguish them, so the collapse flags it explicitly (decision J caveat).

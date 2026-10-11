@@ -399,6 +399,7 @@ def _derive_oxsat_from_oxygen(
     lat: float,
     lon: float,
     out_name: str = "oxygen_saturation",
+    ts_vars: tuple[str, str] | None = None,
 ) -> xr.Dataset:
     """Derive an oxygen-saturation variable (% sat) from an oxygen variable in molar units.
 
@@ -420,6 +421,9 @@ def _derive_oxsat_from_oxygen(
     out_name:
         Name to store the result under (``oxygen_saturation`` for a single/plain sensor,
         ``oxygen_saturation_1`` / ``_2`` per line).
+    ts_vars:
+        The ``(temperature, salinity)`` variable names SA/CT were computed from, recorded in
+        ``oxygen_conversion`` so the pairing (which line's T/S) is reconstructable from the file.
     """
     units = ds[oxy_var].attrs.get("units", "")
     if not units:
@@ -437,16 +441,17 @@ def _derive_oxsat_from_oxygen(
 
     measured = ds[oxy_var].values.astype(float)
 
+    ts_note = f" with T/S from {ts_vars[0]}/{ts_vars[1]}" if ts_vars else ""
     if "/l" in u_lower or "l-1" in u_lower:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning, module="gsw")
             rho = gsw.rho(sa, ct, p)  # kg/m³
         o2_sat_umol_l = o2_sat_umol_kg * rho / 1000.0
         pct_sat = measured / o2_sat_umol_l * 100.0
-        method = f"derived from {oxy_var} ({units}) via gsw.O2sol + gsw.rho"
+        method = f"derived from {oxy_var} ({units}) via gsw.O2sol + gsw.rho{ts_note}"
     else:
         pct_sat = measured / o2_sat_umol_kg * 100.0
-        method = f"derived from {oxy_var} ({units}) via gsw.O2sol"
+        method = f"derived from {oxy_var} ({units}) via gsw.O2sol{ts_note}"
 
     new_attrs = {
         "units": "% saturation",
@@ -526,12 +531,39 @@ def _derive_oxygen_saturation(ds: xr.Dataset) -> xr.Dataset:
         units = ds[oxy_var].attrs.get("units", "")
         u_lower = units.lower()
         if "umol" in u_lower or "µmol" in u_lower:
-            temp_var, sal_var = _line_ts_vars(ds, idx)
-            if temp_var is None or sal_var is None:
-                continue
+            if dual:
+                # Each oxygen line must use its OWN line's T/S — never fall back to the
+                # other line, which would silently cross-pair. If this line's indexed T/S
+                # is absent (e.g. dual oxygen but single T/C), skip it with a warning
+                # rather than compute a wrong saturation.
+                temp_var = (
+                    f"ctd_temperature_{idx}" if f"ctd_temperature_{idx}" in ds else None
+                )
+                sal_var = f"ctd_salinity_{idx}" if f"ctd_salinity_{idx}" in ds else None
+                if temp_var is None or sal_var is None:
+                    warnings.warn(
+                        f"oxygen line {idx} ({oxy_var}) has no matching ctd_temperature_{idx}"
+                        f"/ctd_salinity_{idx}; skipping its saturation to avoid pairing it "
+                        f"with the other line's T/S.",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                    continue
+            else:
+                temp_var, sal_var = _line_ts_vars(ds, idx)
+                if temp_var is None or sal_var is None:
+                    continue
             sa, ct, p, lat, lon = _sa_ct_p(ds, temp_var, sal_var)
             ds = _derive_oxsat_from_oxygen(
-                ds, oxy_var, sa, ct, p, lat, lon, out_name=out_name
+                ds,
+                oxy_var,
+                sa,
+                ct,
+                p,
+                lat,
+                lon,
+                out_name=out_name,
+                ts_vars=(temp_var, sal_var),
             )
         elif "%" in u_lower or "sat" in u_lower or "percent" in u_lower:
             # Already % saturation: copy under the saturation name with saturation metadata
@@ -573,9 +605,10 @@ def _derive_oxygen_saturation(ds: xr.Dataset) -> xr.Dataset:
                 chosen = present[0]
             ds = ds.copy()
             ds["oxygen_saturation"] = ds[f"oxygen_saturation_{chosen}"]
-            # Record which line the figure shows and whether it was a declared preference,
-            # so the oxygen panel can label an undeclared cast distinctly from a declared one
-            # (a display fallback must not imply a choice was made).
+            # Provenance on the composite: which line it came from, and whether that was a
+            # declared preference or the undeclared-fallback to the primary line. Read by the
+            # deferred report display (a rep/ follow-up) to label an undeclared cast distinctly
+            # from a declared one; carried now so the figure's source is reconstructable.
             ds["oxygen_saturation"].attrs["oxygen_line"] = chosen
             ds["oxygen_saturation"].attrs["preferred_oxygen"] = (
                 pref if pref in _OXY_INDEX else "undeclared"
