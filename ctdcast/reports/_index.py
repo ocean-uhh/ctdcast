@@ -1621,36 +1621,39 @@ def _cast_qc_pct(nc_path: Path | None) -> float | None:
 def _read_cast_meta(nc_path: Path) -> dict[str, Any] | None:
     """Read scalar metadata from a cast .nc file without loading all data."""
     try:
-        ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
-        _id = cast_id_from_name(nc_path.stem)
-        if _id is None:
-            return None
-        cast_num, cast_suffix = _id
-        import warnings as _w
+        # Context-managed so the handle always closes -- on an early return or an
+        # exception as well as the success path.  A leaked netCDF handle locks the
+        # file on Windows (HDF5 file locking), blocking the next open of the same
+        # cast (e.g. qc_summary) indefinitely.
+        with xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4") as ds:
+            _id = cast_id_from_name(nc_path.stem)
+            if _id is None:
+                return None
+            cast_num, cast_suffix = _id
+            import warnings as _w
 
-        with _w.catch_warnings():
-            _w.filterwarnings("ignore", "All-NaN slice encountered")
-            lat = float(np.nanmedian(ds["latitude"].values))
-            lon = float(np.nanmedian(ds["longitude"].values))
-        max_depth = float(np.nanmax(ds["pressure"].values))
-        time_start = ds["time"].values[0]
-        time_end = ds["time"].values[-1]
-        raw_filename = ds.attrs.get("raw_filename", nc_path.stem + ".cnv")
-        cruise = ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
-        ds.close()
-        return {
-            "cast_num": cast_num,
-            "cast_suffix": cast_suffix,
-            "cast_num_str": format_cast_id(cast_num, cast_suffix),
-            "path": nc_path,
-            "lat": lat,
-            "lon": lon,
-            "max_depth": max_depth,
-            "time_start": time_start,
-            "time_end": time_end,
-            "raw_filename": raw_filename,
-            "cruise": cruise,
-        }
+            with _w.catch_warnings():
+                _w.filterwarnings("ignore", "All-NaN slice encountered")
+                lat = float(np.nanmedian(ds["latitude"].values))
+                lon = float(np.nanmedian(ds["longitude"].values))
+            max_depth = float(np.nanmax(ds["pressure"].values))
+            time_start = ds["time"].values[0]
+            time_end = ds["time"].values[-1]
+            raw_filename = ds.attrs.get("raw_filename", nc_path.stem + ".cnv")
+            cruise = ds.attrs.get("cruise", UNKNOWN_CRUISE_ID)
+            return {
+                "cast_num": cast_num,
+                "cast_suffix": cast_suffix,
+                "cast_num_str": format_cast_id(cast_num, cast_suffix),
+                "path": nc_path,
+                "lat": lat,
+                "lon": lon,
+                "max_depth": max_depth,
+                "time_start": time_start,
+                "time_end": time_end,
+                "raw_filename": raw_filename,
+                "cruise": cruise,
+            }
     except Exception:  # noqa: BLE001
         return None
 
