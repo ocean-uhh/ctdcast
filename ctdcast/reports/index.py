@@ -823,7 +823,9 @@ def _write_index(
                 )
                 # title is the panel's HTML caption on index.html, so use the
                 # HTML-ready label (mathtext subscripts rendered as Unicode).
-                return RenderedPanel(b64=b64, title=vlabel_html(resolved), short=resolved)
+                return RenderedPanel(
+                    b64=b64, title=vlabel_html(resolved), short=resolved
+                )
 
             physics_panels_idx = tuple(
                 p for p in (_idx_panel(v) for v in SECTION_PHYSICS_VARS) if p.b64
