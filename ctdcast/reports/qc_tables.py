@@ -69,6 +69,9 @@ def _flag_vocab(qc_var: xr.DataArray) -> list[tuple[int, str]]:
     return vocab
 
 
+__all__ = ["qc_summary", "qc_thresholds"]
+
+
 def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
     """Return the per-variable QC flag-count breakdown for a per-cast file.
 

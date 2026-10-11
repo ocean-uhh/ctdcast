@@ -322,7 +322,7 @@ def run(args: argparse.Namespace) -> int:
         k: v for k, v in (display.get("vmax") or {}).items() if v is not None
     }
 
-    from ctdcast.reports._index import report
+    from ctdcast.reports.index import report
 
     failed = report(
         nc_dir,

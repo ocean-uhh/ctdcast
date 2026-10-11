@@ -45,7 +45,7 @@ def __getattr__(name: str) -> object:
     ``ctdcast.report`` still resolves on first access.
     """
     if name == "report":
-        from ctdcast.reports._index import report
+        from ctdcast.reports.index import report
 
         return report
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

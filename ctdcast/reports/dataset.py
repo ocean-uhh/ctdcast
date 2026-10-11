@@ -84,6 +84,9 @@ def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
     }
 
 
+__all__ = ["generate_dataset_page", "read_dataset_meta"]
+
+
 def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     """Read *nc_path* into a plain-data inventory (dims, coords, vars, attrs).
 

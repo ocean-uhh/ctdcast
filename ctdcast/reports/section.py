@@ -72,6 +72,9 @@ from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 # ---------------------------------------------------------------------------
 
 
+__all__ = ["generate_section_page"]
+
+
 def generate_section_page(
     section_name: str,
     section_cfg: dict[str, Any],

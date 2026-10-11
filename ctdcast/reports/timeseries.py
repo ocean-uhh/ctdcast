@@ -81,6 +81,9 @@ from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 # ---------------------------------------------------------------------------
 
 
+__all__ = ["generate_timeseries_page"]
+
+
 def generate_timeseries_page(
     ts_name: str,
     ts_cfg: dict,

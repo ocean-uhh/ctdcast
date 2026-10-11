@@ -17,7 +17,7 @@ from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info
-from ctdcast.reports._cast import CAST_DEFAULT, CAST_PANELS, PageCtx, resolve_cast
+from ctdcast.reports.cast import CAST_DEFAULT, CAST_PANELS, PageCtx, resolve_cast
 
 _FIX = Path(__file__).resolve().parent / "fixtures"
 _CAST_011 = _FIX / "nc" / "mixsed2_011.nc"

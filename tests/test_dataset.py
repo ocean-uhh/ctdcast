@@ -6,7 +6,7 @@ import pytest
 from conftest import CAST_011, FIXTURES_NC
 
 from ctdcast.readers.metadata import _SOURCE_NAME_ATTRS
-from ctdcast.reports._dataset import (
+from ctdcast.reports.dataset import (
     generate_dataset_page,
     read_dataset_meta,
 )
@@ -154,8 +154,8 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     Sensors (A) and File provenance (B) precede it for a fixture that carries sensor
     information and identity attributes, so data ranges is the third appendix (C).
     """
-    from ctdcast.reports._cast import generate_station_page
-    from ctdcast.reports._index import _read_cast_meta
+    from ctdcast.reports.cast import generate_station_page
+    from ctdcast.reports.index import _read_cast_meta
 
     meta = _read_cast_meta(CAST_011)
     assert meta is not None
@@ -172,8 +172,8 @@ def test_cast_page_shows_file_provenance_and_processing_level(tmp_path):
     data-ranges table carries a Processing level column populated from the variables."""
     import xarray as xr
 
-    from ctdcast.reports._cast import generate_station_page
-    from ctdcast.reports._index import _read_cast_meta
+    from ctdcast.reports.cast import generate_station_page
+    from ctdcast.reports.index import _read_cast_meta
 
     src = tmp_path / "mixsed2_011_stage3.nc"
     ds = xr.open_dataset(CAST_011, engine="netcdf4").load()
@@ -204,8 +204,8 @@ def test_cast_page_shows_source_provenance(tmp_path):
     """The cast page names the source file (stage in the name) and a Processed date."""
     import shutil
 
-    from ctdcast.reports._cast import generate_station_page
-    from ctdcast.reports._index import _read_cast_meta
+    from ctdcast.reports.cast import generate_station_page
+    from ctdcast.reports.index import _read_cast_meta
 
     src = tmp_path / "mixsed2_011_stage2.nc"
     shutil.copy(CAST_011, src)
@@ -228,7 +228,7 @@ def test_var_meta_label_units_from_registry():
 
 def test_report_generates_inventory_pill_and_page(tmp_path):
     """report() writes a per-file inventory page and a matching summary pill."""
-    from ctdcast.reports._index import report
+    from ctdcast.reports.index import report
 
     report(
         FIXTURES_NC,

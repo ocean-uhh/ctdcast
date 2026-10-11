@@ -15,14 +15,14 @@ from types import SimpleNamespace
 import yaml
 
 from ctdcast.reports._anchors import LEGACY_ANCHORS
-from ctdcast.reports._section import (
+from ctdcast.reports._vendored.design_tokens import SLOTS
+from ctdcast.reports.section import (
     SECTION_DEFAULT,
     SECTION_PANELS,
     _field_panel,
     _section_slot,
     generate_section_page,
 )
-from ctdcast.reports._vendored.design_tokens import SLOTS
 
 _FIX = Path(__file__).resolve().parent / "fixtures"
 _PROFILES = _FIX / "profiles_demo.nc"

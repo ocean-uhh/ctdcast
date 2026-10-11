@@ -416,6 +416,9 @@ def _safe_json(obj: Any) -> str:  # noqa: ANN401  # arbitrary JSON-serialisable 
 # ---------------------------------------------------------------------------
 
 
+__all__ = ["generate_leaflet_map"]
+
+
 def generate_leaflet_map(
     all_meta: list[dict[str, Any]],
     sections_cfg: dict[str, Any],

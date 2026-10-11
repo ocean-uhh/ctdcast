@@ -8,8 +8,8 @@ import re
 from pathlib import Path
 
 from ctdcast.reports import _figdebug
-from ctdcast.reports._cast import generate_station_page
-from ctdcast.reports._index import _read_cast_meta
+from ctdcast.reports.cast import generate_station_page
+from ctdcast.reports.index import _read_cast_meta
 
 _HERE = Path(__file__).resolve().parent
 _CAST_011 = _HERE / "fixtures" / "nc" / "mixsed2_011.nc"

@@ -15,7 +15,7 @@ from ctdcast.config.cnv_header import (
     Correction,
     SensorCalibration,
 )
-from ctdcast.reports._cast import (
+from ctdcast.reports.cast import (
     _has_sensor_catalog,
     _render_provenance_table,
     _render_sensor_calibration_table,

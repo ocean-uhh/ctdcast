@@ -19,10 +19,10 @@ from ctdcast.analysis.derive import derive_teos10 as add_teos10
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.stage1 import stage1 as convert_ctd_files
 from ctdcast.processors.stage_layout import stage_path
-from ctdcast.reports._cast import generate_station_page
-from ctdcast.reports._index import _read_cast_meta, report
-from ctdcast.reports._section import generate_section_page
-from ctdcast.reports._timeseries import generate_timeseries_page
+from ctdcast.reports.cast import generate_station_page
+from ctdcast.reports.index import _read_cast_meta, report
+from ctdcast.reports.section import generate_section_page
+from ctdcast.reports.timeseries import generate_timeseries_page
 
 pytestmark = pytest.mark.slow
 

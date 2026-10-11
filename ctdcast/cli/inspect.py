@@ -65,7 +65,7 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast inspect``."""
-    from ctdcast.reports._dataset import generate_dataset_page
+    from ctdcast.reports.dataset import generate_dataset_page
 
     nc_file: Path = args.nc_file
     if not nc_file.exists():

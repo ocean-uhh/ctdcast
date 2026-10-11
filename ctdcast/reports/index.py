@@ -36,7 +36,6 @@ from ctdcast.identity import (
 from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
-from ctdcast.reports._cast import generate_station_page
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import inventory_pills, inventory_sources, nav_for
 from ctdcast.reports._plots import (
@@ -48,9 +47,6 @@ from ctdcast.reports._plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
-from ctdcast.reports._qc import qc_summary
-from ctdcast.reports._section import generate_section_page
-from ctdcast.reports._timeseries import generate_timeseries_page
 from ctdcast.reports._vendored.page_model import (
     Panel,
     PanelGroup,
@@ -59,11 +55,18 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
+from ctdcast.reports.cast import generate_station_page
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports.qc_tables import qc_summary
+from ctdcast.reports.section import generate_section_page
+from ctdcast.reports.timeseries import generate_timeseries_page
 
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
+
+__all__ = ["report"]
 
 
 def report(
@@ -153,7 +156,7 @@ def report(
     trim_soak:
         If True, apply pre-soak detection on each cast: cut the first 60 s
         (pump activation) and any records up to the last near-surface record
-        after pump-on.  Passed through to :func:`~ctdcast.reports._cast.generate_station_page`.
+        after pump-on.  Passed through to :func:`~ctdcast.reports.cast.generate_station_page`.
     dbar_step:
         Subsample the pressure axis by this step for section and timeseries
         plots (default 1, full 1-dbar resolution).  ``build_profiles()``
@@ -162,7 +165,7 @@ def report(
         If True, a cast-page section that applies but whose figures all failed
         to render is dropped and the survivors renumber over it, instead of
         keeping the heading with an "unavailable" placeholder.  Passed through
-        to :func:`~ctdcast.reports._cast.generate_station_page`.
+        to :func:`~ctdcast.reports.cast.generate_station_page`.
 
     Returns
     -------
@@ -538,7 +541,7 @@ def report(
             _href = f"{_src.stem}_inventory.html"
             _t0 = perf_counter()
             try:
-                from ctdcast.reports._dataset import generate_dataset_page
+                from ctdcast.reports.dataset import generate_dataset_page
 
                 generate_dataset_page(
                     _src,
@@ -644,7 +647,7 @@ def report(
 
     if gen["map"]:
         try:
-            from ctdcast.reports._leaflet import generate_leaflet_map
+            from ctdcast.reports.cruise_map import generate_leaflet_map
 
             lf_out = generate_leaflet_map(
                 all_meta,

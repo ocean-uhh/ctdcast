@@ -6,7 +6,7 @@ not analysis: it decides which scans belong to the real cast.
 ``apply_stage2()`` is the pipeline entry point: it sets QARTOD flag 4 on soak
 and post-recovery deck records and records the parameters used in
 ``ds.attrs["history"]``.  ``find_soak_end`` and ``find_cast_end`` are kept public
-because ``reports._cast`` calls them directly for report-time plot trimming (that
+because ``reports.cast`` calls them directly for report-time plot trimming (that
 coupling will be removed in a later phase when reports read flags from the files).
 
 The turnaround convention (last pressure within 2 dbar of the maximum) and the

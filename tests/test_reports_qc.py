@@ -5,8 +5,8 @@ from conftest import CAST_011
 
 from ctdcast.processors.qc import apply_gross_range
 from ctdcast.processors.stage2 import apply_stage2
-from ctdcast.reports._cast import _render_qc_table
-from ctdcast.reports._qc import qc_summary, qc_thresholds
+from ctdcast.reports.cast import _render_qc_table
+from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
 
 
 def _qc_file(tmp_path, name="cast_qc.nc"):
@@ -90,8 +90,8 @@ class TestCastPageWiring:
     """The QC section shows on a flagged cast page and is omitted otherwise."""
 
     def test_section_appears_on_a_flagged_cast(self, tmp_path):
-        from ctdcast.reports._cast import generate_station_page
-        from ctdcast.reports._index import _read_cast_meta
+        from ctdcast.reports.cast import generate_station_page
+        from ctdcast.reports.index import _read_cast_meta
 
         src = _qc_file(tmp_path, "mixsed2_011.nc")
         meta = _read_cast_meta(src)
@@ -103,8 +103,8 @@ class TestCastPageWiring:
 
     def test_section_omitted_when_no_flags(self, tmp_path):
         # CAST_011 is a stage-1 fixture: no _qc, so the section is not applicable.
-        from ctdcast.reports._cast import generate_station_page
-        from ctdcast.reports._index import _read_cast_meta
+        from ctdcast.reports.cast import generate_station_page
+        from ctdcast.reports.index import _read_cast_meta
 
         meta = _read_cast_meta(CAST_011)
         out = generate_station_page(
@@ -118,7 +118,7 @@ class TestCastsIndexQCColumn:
     """The casts index gains a per-cast QC-flagged percentage column."""
 
     def test_column_shows_percent_for_a_flagged_cast(self, tmp_path):
-        from ctdcast.reports._index import (
+        from ctdcast.reports.index import (
             _cast_qc_pct,
             _read_cast_meta,
             _write_stations_list,
@@ -133,7 +133,7 @@ class TestCastsIndexQCColumn:
         assert f"{pct}%" in html  # the aggregated suspect+fail percentage
 
     def test_column_shows_dash_for_stage1_cast(self, tmp_path):
-        from ctdcast.reports._index import _read_cast_meta, _write_stations_list
+        from ctdcast.reports.index import _read_cast_meta, _write_stations_list
 
         _write_stations_list([_read_cast_meta(CAST_011)], "MSM142", tmp_path)
         html = (tmp_path / "casts.html").read_text(encoding="utf-8")

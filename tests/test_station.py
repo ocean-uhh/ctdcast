@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from conftest import CAST_011, CAST_012, FIXTURES_LADCP
 
-from ctdcast.reports._cast import _cast_id_from_path, generate_station_page
-from ctdcast.reports._index import _read_cast_meta
+from ctdcast.reports.cast import _cast_id_from_path, generate_station_page
+from ctdcast.reports.index import _read_cast_meta
 
 
 @pytest.fixture
@@ -149,7 +149,7 @@ def test_report_select_cast_files_picks_best_available(tmp_path):
     import shutil
 
     from ctdcast.processors.stage_layout import stage_path
-    from ctdcast.reports._index import _select_cast_files
+    from ctdcast.reports.index import _select_cast_files
 
     root = tmp_path / "CTD"
     # cast 011 present at stage 1 and stage 3; cast 012 only at stage 1.
@@ -177,7 +177,7 @@ def test_read_cast_meta_lettered_sibling_keeps_suffix_under_stage_name(tmp_path)
     import shutil
 
     from ctdcast.processors.stage_layout import stage_path
-    from ctdcast.reports._index import _read_cast_meta
+    from ctdcast.reports.index import _read_cast_meta
 
     dst = stage_path(tmp_path, "mixsed2_011_b", 1)  # stage1/mixsed2_011_b_stage1.nc
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +192,7 @@ def test_decode_str_handles_numpy_bytes():
     """cast_suffix read from netCDF as bytes/numpy scalars decodes to a clean str."""
     import numpy as np
 
-    from ctdcast.reports._index import _decode_str
+    from ctdcast.reports.index import _decode_str
 
     assert _decode_str("b") == "b"
     assert _decode_str(np.str_("b")) == "b"
@@ -204,7 +204,7 @@ def test_nat_safe_min_max_ignore_nat():
     """Merging down/up times tolerates a NaT on either profile."""
     import numpy as np
 
-    from ctdcast.reports._index import _nat_safe_max, _nat_safe_min
+    from ctdcast.reports.index import _nat_safe_max, _nat_safe_min
 
     a = np.datetime64("2026-07-09T00:00")
     b = np.datetime64("2026-07-10T00:00")

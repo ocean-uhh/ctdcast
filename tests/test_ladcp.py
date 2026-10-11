@@ -48,7 +48,7 @@ def test_source_map_covers_present_variables(cast_011):
 def test_inventory_renaming_table_from_source_variable(tmp_path):
     """The netCDF-inventory renaming table is built from source_variable."""
     from ctdcast.processors.ladcp import convert_ladcp_cast
-    from ctdcast.reports._dataset import read_dataset_meta
+    from ctdcast.reports.dataset import read_dataset_meta
 
     out = tmp_path / "ladcp_011.nc"
     with warnings.catch_warnings():

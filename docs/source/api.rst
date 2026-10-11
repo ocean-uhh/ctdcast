@@ -11,7 +11,7 @@ The primary public entry point is :func:`ctdcast.report`.
 Main entry point
 ----------------
 
-.. autofunction:: ctdcast.reports._index.report
+.. autofunction:: ctdcast.reports.index.report
 
 ----
 
@@ -129,15 +129,15 @@ correction is a stage-2 step.
 Section manifest
 ----------------
 
-Each report page is described by a :class:`~ctdcast.reports._manifest.Profile` of
-:class:`~ctdcast.reports._manifest.Section` and
-:class:`~ctdcast.reports._manifest.Panel` entries, resolved by
-:func:`~ctdcast.reports._manifest.resolve` into a numbered, rendered report.  The
+Each report page is described by a :class:`~ctdcast.reports._vendored.page_model.Profile` of
+:class:`~ctdcast.reports._vendored.page_model.Section` and
+:class:`~ctdcast.reports._vendored.page_model.Panel` entries, resolved by
+:func:`~ctdcast.reports._vendored.page_model.resolve` into a numbered, rendered report.  The
 model is package-neutral; each page's concrete registry lives in its own generator
 module.  ``_anchors`` maps the old hand-authored ``#s-*`` anchors onto the new
 section ids for one release.
 
-.. automodule:: ctdcast.reports._manifest
+.. automodule:: ctdcast.reports._vendored.page_model
    :members:
    :undoc-members:
 
@@ -150,15 +150,19 @@ section ids for one release.
 Page generators
 ---------------
 
-.. automodule:: ctdcast.reports._cast
+.. automodule:: ctdcast.reports.cast
    :members:
    :undoc-members:
 
-.. automodule:: ctdcast.reports._section
+.. automodule:: ctdcast.reports.section
    :members:
    :undoc-members:
 
-.. automodule:: ctdcast.reports._timeseries
+.. automodule:: ctdcast.reports.timeseries
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.reports.dataset
    :members:
    :undoc-members:
 
@@ -167,7 +171,34 @@ Page generators
 Interactive map
 ---------------
 
-.. automodule:: ctdcast.reports._leaflet
+.. automodule:: ctdcast.reports.cruise_map
+   :members:
+   :undoc-members:
+
+----
+
+QC tables
+---------
+
+.. automodule:: ctdcast.reports.qc_tables
+   :members:
+   :undoc-members:
+
+----
+
+Report design — colormaps and accent
+-------------------------------------
+
+``design`` is ctdcast's owned hook onto the vendored report layer: the package
+accent for the shared CSS, and the effective per-quantity colormap table
+(vendored family defaults, overridden by ctdcast's choices, resolved per
+variable).  ``design_tokens`` is the vendored source of those family defaults.
+
+.. automodule:: ctdcast.reports.design
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.reports._vendored.design_tokens
    :members:
    :undoc-members:
 

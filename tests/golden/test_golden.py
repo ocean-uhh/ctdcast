@@ -38,7 +38,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from ctdcast.processors.profiles import build_profiles
-from ctdcast.reports._index import report
+from ctdcast.reports.index import report
 
 _HERE = Path(__file__).resolve().parent
 _FIXTURES = _HERE.parent / "fixtures"

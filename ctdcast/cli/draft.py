@@ -242,7 +242,7 @@ def _run_pipeline(
     """Convert CNV files then generate HTML; return exit code."""
     from ctdcast.processors.profiles import build_profiles
     from ctdcast.processors.stage1 import stage1 as convert_ctd_files
-    from ctdcast.reports._index import report
+    from ctdcast.reports.index import report
 
     n = convert_ctd_files(
         cnv_dir, nc_dir, backend="seasenselib", force=force, pattern=pattern

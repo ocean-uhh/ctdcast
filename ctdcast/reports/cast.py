@@ -41,7 +41,6 @@ from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
-from ctdcast.reports._dataset import read_dataset_meta
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc
@@ -60,7 +59,6 @@ from ctdcast.reports._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
-from ctdcast.reports._qc import qc_summary, qc_thresholds
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.page_model import (
     Panel,
@@ -69,7 +67,9 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
+from ctdcast.reports.dataset import read_dataset_meta
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
+from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -92,6 +92,9 @@ def _dec_to_ddm(deg: float, axis: str) -> str:
 # ---------------------------------------------------------------------------
 # Public function
 # ---------------------------------------------------------------------------
+
+
+__all__ = ["generate_station_page"]
 
 
 def generate_station_page(
