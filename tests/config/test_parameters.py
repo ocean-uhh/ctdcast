@@ -11,7 +11,6 @@ from pathlib import Path
 import xarray as xr
 
 from ctdcast.config.parameters import (
-    _VAR_CMAPS,
     CCHDO_COMPOSITE,
     CCHDO_QC,
     CCHDO_VARIABLES,
@@ -23,14 +22,15 @@ from ctdcast.config.parameters import (
     resolve_sensor_var,
     vlabel_html,
 )
+from ctdcast.reports.design import VAR_CMAPS
 
 _FIXTURE_NC = Path(__file__).resolve().parents[1] / "fixtures" / "nc" / "mixsed2_011.nc"
 
 
 def test_var_cmaps_derived_from_variables() -> None:
-    """_VAR_CMAPS is a subset of VARIABLES with no extra keys."""
-    assert set(_VAR_CMAPS) <= set(VARIABLES), (
-        f"_VAR_CMAPS has keys not in VARIABLES: {set(_VAR_CMAPS) - set(VARIABLES)}"
+    """The resolved VAR_CMAPS keys are a subset of VARIABLES with no extra keys."""
+    assert set(VAR_CMAPS) <= set(VARIABLES), (
+        f"VAR_CMAPS has keys not in VARIABLES: {set(VAR_CMAPS) - set(VARIABLES)}"
     )
 
 

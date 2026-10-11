@@ -8,19 +8,21 @@ the copies can be frozen and checked later; for now this document and convention
 are the shared reference (no cross-repo hash test yet).  A value that belongs to
 one package (a scientific variable registry) does **not** live here.
 
-Layering: this is a leaf, and it lives in ``config/`` for that reason — its only
-import is :mod:`pathlib`.  Both the plotters (which size figures from
-:data:`SLOTS`) and the report/CSS layer read it; it reads nothing of theirs.
-Placing it under ``reports/`` would form an import cycle
-(``plotters.plots -> reports -> reports._index -> plotters.plots``).
+Layering: this is a leaf — it imports only :mod:`pathlib` and :mod:`cmocean`
+(the latter solely to register the ``cmo.*`` colormap names with matplotlib, so
+a :data:`CMAPS` value like ``"cmo.deep"`` resolves through
+``matplotlib.colormaps`` like any built-in name).  Both the plotters (which size
+figures from :data:`SLOTS` and read :data:`CMAPS`) and the report/CSS layer read
+it; it reads nothing of theirs.
 
-Part II of ``2026-08-12-report-spec.md`` is the prose behind these numbers.
-Templates and plotters read them; they never restate them.
+Templates and plotters read these values; they never restate them.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+
+import cmocean  # noqa: F401  # registers the cmo.* colormap names with matplotlib
 
 # ---------------------------------------------------------------------------
 # Style file and error policy
@@ -36,7 +38,7 @@ MPLSTYLE_PATH: Path = Path(__file__).with_name("report.mplstyle")
 RAISE_ON_PLOT_ERROR: bool = False
 
 # ---------------------------------------------------------------------------
-# Geometry (spec §11)
+# Geometry
 # ---------------------------------------------------------------------------
 CONTENT_MAX_PX: int = 1150  # body max-width
 CONTENT_PAD_PX: int = 32  # body padding, each side
@@ -53,7 +55,7 @@ OVERSAMPLE: float = W_FULL * FIG_DPI / USABLE_PX  # ≈ 1.2431
 PNG_PALETTE_COLORS: int = 256  # 8-bit palette quantization in the encoder
 
 # ---------------------------------------------------------------------------
-# Slot table (spec §14)
+# Slot table
 # ---------------------------------------------------------------------------
 # name -> (fraction of USABLE_PX, figure width in inches).
 # Invariant asserted by the slot-contract test: inches == W_FULL * fraction, so
@@ -78,7 +80,7 @@ W_TWO_FIFTHS: float = SLOTS["two-fifths"][1]
 W_THIRD: float = SLOTS["third"][1]
 W_QUARTER: float = SLOTS["quarter"][1]
 
-# Aspect-locked figure constants (spec §14).
+# Aspect-locked figure constants.
 SECTION_STRETCH: float = (
     16.0  # calibrated: 416 dbar × 94 km → 2.5 in tall at full width
 )
@@ -92,7 +94,7 @@ CBAR_WIDTH_IN: float = 0.12  # colorbar bar thickness
 CBAR_PAD_IN: float = 0.10  # gap between the axes and the colorbar
 
 # ---------------------------------------------------------------------------
-# Figure annotation font sizes (points, spec §13.3)
+# Figure annotation font sizes (points)
 # ---------------------------------------------------------------------------
 # The only per-call font sizes a plotter may set: matplotlib does not route
 # annotation text through a style key, so these cannot come from the mplstyle.
@@ -137,7 +139,7 @@ def pen(name: str) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Spacing and radii (spec §15)  [data; applied by emit_css() in rep/vis-system]
+# Spacing and radii  [data; applied by emit_css()]
 # ---------------------------------------------------------------------------
 SPACE: dict[str, str] = {
     "1": "4px",
@@ -151,12 +153,12 @@ SPACE: dict[str, str] = {
 RADII: dict[str, str] = {"card": "8px", "btn": "4px", "pill": "999px"}
 
 # ---------------------------------------------------------------------------
-# Typography (spec §13.2)  [data; applied by emit_css() in rep/vis-system]
+# Typography  [data; applied by emit_css()]
 # ---------------------------------------------------------------------------
 # THE single source of page font sizes.  Nothing else in the repository sets a
 # page font size.  Values in rem (the browser's 16px root, exactly as the current
 # CSS uses them) plus one absolute px for the body base.  This is the established,
-# reviewed page scale (spec §13.2) — the values to match, not a redesign.  Keyed
+# reviewed page scale — the values to match, not a redesign.  Keyed
 # by role, matching the CSS custom
 # properties emit_css() generates.  Figure font sizes are a *separate* knob (the
 # mplstyle, in points).
@@ -175,7 +177,7 @@ TYPE: dict[str, dict[str, str]] = {
     "dt": {"size": "0.7rem"},  # meta-grid <dt>, jump-nav ▸
 }
 
-# Page font stacks (spec §13.1).  The CSS uses the native `system-ui` stack —
+# Page font stacks.  The CSS uses the native `system-ui` stack —
 # zero-install, matches the host OS.  The *figure* font is separate (the mplstyle
 # names a Helvetica stack); figure text is baked into a raster, so the two need
 # not match.
@@ -185,7 +187,7 @@ FONT_MONO: str = (
 )
 
 # ---------------------------------------------------------------------------
-# Colour — base tokens (spec §12.1)  [data; applied in rep/vis-system]
+# Colour — base tokens  [data; applied]
 # ---------------------------------------------------------------------------
 COLORS: dict[str, str] = {
     "ocean": "#1a3a5c",  # headings, structural dark
@@ -200,7 +202,7 @@ COLORS: dict[str, str] = {
     "error": "#c0392b",  # failed QC, sentinel values
 }
 
-# Role accent (spec §12.2): masthead background + nav pill.  `landing` is the
+# Role accent: masthead background + nav pill.  `landing` is the
 # summary/index accent; entity/collection/component share the structural dark
 # --ocean; the aggregate and map roles have their own colours.  The `landing`
 # value is a per-package choice (see the spec's role table).
@@ -230,10 +232,64 @@ TRACK_COLORS: list[str] = [
     "#F0E442",  # yellow
 ]
 
-# The package accent (spec §12.2) — a small masthead wordmark, the table header
+# Per-quantity colormaps — the family default for each physical quantity, by a
+# short quantity word.  A package's variable registry points its "cmap" at a
+# quantity (resolved through here) or carries a literal colormap name; a package
+# may override a default in its own reports/design.py.  QC_COLORS and
+# TRACK_COLORS are deliberately NOT here — they encode meaning, not a scale.
+# cmo.* names come from cmocean (imported above).  Values: family-colormaps note.
+CMAPS: dict[str, str] = {
+    "temperature": "RdYlBu_r",
+    "salinity": "YlGnBu_r",
+    "conductivity": "GnBu",
+    "density": "BuPu",
+    "depth": "cmo.deep",
+    "velocity": "RdBu_r",  # diverging about zero
+    "speed": "plasma",
+    "oxygen": "cmo.oxy",
+    "oxygen_saturation": "BrBG",  # plain scale over range, not centred on 100 %
+    "chlorophyll": "YlGn",
+    "turbidity": "YlOrBr",
+    "backscatter": "OrRd",
+    "par": "cmo.solar",
+    "stratification": "plasma",
+    "direction": "twilight",  # cyclic
+}
+
+# Bridge from a variable's CF standard_name to a quantity, so a package whose
+# registry carries standard_names resolves to a colormap without restating the
+# quantity per variable.  A variable with no standard name gives an explicit
+# "cmap" (a quantity word or a literal) in its own registry instead.
+QUANTITY_BY_STANDARD_NAME: dict[str, str] = {
+    "sea_water_temperature": "temperature",
+    "sea_water_conservative_temperature": "temperature",
+    "sea_water_potential_temperature": "temperature",
+    "sea_water_practical_salinity": "salinity",
+    "sea_water_absolute_salinity": "salinity",
+    "sea_water_electrical_conductivity": "conductivity",
+    "sea_water_sigma_theta": "density",
+    "sea_water_density": "density",
+    "sea_water_pressure": "depth",
+    "depth": "depth",
+    "eastward_sea_water_velocity": "velocity",
+    "northward_sea_water_velocity": "velocity",
+    "upward_sea_water_velocity": "velocity",
+    "sea_water_speed": "speed",
+    "sea_water_velocity_to_direction": "direction",
+    "sea_water_velocity_from_direction": "direction",
+    "direction_of_sea_water_velocity": "direction",  # deprecated CF name, mapped for old files
+    "moles_of_oxygen_per_unit_mass_in_sea_water": "oxygen",
+    "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water": "oxygen",
+    "mass_concentration_of_chlorophyll_in_sea_water": "chlorophyll",
+    "concentration_of_chlorophyll_in_sea_water": "chlorophyll",
+    "sea_water_turbidity": "turbidity",
+    "square_of_brunt_vaisala_frequency_in_sea_water": "stratification",
+}
+
+# The package accent — a small masthead wordmark, the table header
 # and the footer's border-top — is NOT a value in this vendored file.  Each
 # package chooses it locally and passes it to ``emit_css(package_accent)`` (see
-# each repo's ``reports/_report_css.py``), so no per-package colour is encoded here.
+# each repo's ``reports/design.py``), so no per-package colour is encoded here.
 
 # Neutral gray scale — consolidates the ad-hoc grays that the per-page template
 # <style> blocks used (text shades, hairlines, sunken fills).  Emitted as

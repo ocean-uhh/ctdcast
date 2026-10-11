@@ -58,7 +58,7 @@ def is_sbe_channel(name: str) -> bool:
 
 
 # Slot widths, section aspect constants, and other presentation tokens now live
-# in the vendored, package-neutral ``reports/_vendored/design_tokens.py`` (spec §11/§14).
+# in the vendored, package-neutral ``reports/_vendored/design_tokens.py``.
 # This file holds only scientific/variable metadata.
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ VARIABLES: dict[str, dict] = {
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
         "reference_scale": "ITS-90",
-        "cmap": "RdYlBu_r",
+        "cmap": "temperature",
         "vmin": -2,
         "vmax": 20,
     },
@@ -129,7 +129,7 @@ VARIABLES: dict[str, dict] = {
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
         "reference_scale": "ITS-90",
-        "cmap": "RdYlBu_r",
+        "cmap": "temperature",
         "vmin": -2,
         "vmax": 20,
     },
@@ -145,7 +145,7 @@ VARIABLES: dict[str, dict] = {
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
         "reference_scale": "ITS-90",
-        "cmap": "RdYlBu_r",
+        "cmap": "temperature",
         "vmin": -2,
         "vmax": 20,
     },
@@ -191,7 +191,7 @@ VARIABLES: dict[str, dict] = {
         "units": "1",  # PSS-78 is dimensionless per CF
         "standard_name": "sea_water_practical_salinity",
         "reference_scale": "PSS-78",
-        "cmap": "YlGnBu_r",
+        "cmap": "salinity",
         "vmin": 34.0,
         "vmax": 35.5,
     },
@@ -202,7 +202,7 @@ VARIABLES: dict[str, dict] = {
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
         "reference_scale": "PSS-78",
-        "cmap": "YlGnBu_r",
+        "cmap": "salinity",
         "vmin": 34.0,
         "vmax": 35.5,
     },
@@ -214,7 +214,7 @@ VARIABLES: dict[str, dict] = {
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
         "reference_scale": "PSS-78",
-        "cmap": "YlGnBu_r",
+        "cmap": "salinity",
         "vmin": 34.0,
         "vmax": 35.5,
     },
@@ -233,7 +233,7 @@ VARIABLES: dict[str, dict] = {
             "plumbed differently, the derived saturation/AOU for this sensor would use the "
             "wrong line's T/S."
         ),
-        "cmap": "RdYlGn",
+        "cmap": "oxygen",
         "vmin": 0,
         "vmax": 350,
     },
@@ -250,7 +250,7 @@ VARIABLES: dict[str, dict] = {
             "plumbed differently, the derived saturation/AOU for this sensor would use the "
             "wrong line's T/S."
         ),
-        "cmap": "RdYlGn",
+        "cmap": "oxygen",
         "vmin": 0,
         "vmax": 350,
     },
@@ -262,7 +262,7 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Dissolved oxygen (preferred)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
-        "cmap": "RdYlGn",
+        "cmap": "oxygen",
         "vmin": 0,
         "vmax": 350,
     },
@@ -274,7 +274,9 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Dissolved oxygen saturation",
         "units": "percent",
         "standard_name": None,
-        "cmap": "RdYlGn",
+        # No standard_name, so the quantity is named explicitly (resolved through
+        # design.CMAPS); seeded override keeps it RdYlGn until the family default lands.
+        "cmap": "oxygen_saturation",
         "vmin": 0,
         "vmax": 110,
     },
@@ -284,7 +286,7 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Chlorophyll fluorescence",
         "units": "mg m-3",
         "standard_name": "mass_concentration_of_chlorophyll_in_sea_water",
-        "cmap": "YlGn",
+        "cmap": "chlorophyll",
         "vmin": 0,
         "vmax": None,
     },
@@ -294,7 +296,7 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Turbidity",
         "units": "1",  # dimensionless per CF for NTU
         "standard_name": "sea_water_turbidity",
-        "cmap": "YlOrBr",
+        "cmap": "turbidity",
         "vmin": 0,
         "vmax": None,
     },
@@ -390,7 +392,7 @@ VARIABLES: dict[str, dict] = {
         "units": "degree_Celsius",
         "standard_name": "sea_water_conservative_temperature",
         "reference_scale": "TEOS-10",
-        "cmap": "RdYlBu_r",
+        "cmap": "temperature",
         "vmin": -2,
         "vmax": 20,
     },
@@ -401,7 +403,7 @@ VARIABLES: dict[str, dict] = {
         "units": "g kg-1",
         "standard_name": "sea_water_absolute_salinity",
         "reference_scale": "TEOS-10",
-        "cmap": "YlGnBu_r",
+        "cmap": "salinity",
         "vmin": 34.0,
         "vmax": 35.5,
     },
@@ -411,7 +413,7 @@ VARIABLES: dict[str, dict] = {
         "long_name": "Potential density anomaly (ref 0 dbar)",
         "units": "kg m-3",
         "standard_name": "sea_water_sigma_theta",
-        "cmap": "Purples",
+        "cmap": "density",
         "vmin": 26.5,
         "vmax": 28.2,
     },
@@ -488,11 +490,6 @@ VAR_COLORS: dict[str, str] = {
     "ctd_turbidity": "#661100",  # dark red     — Paul Tol
     "N2": "#000000",
     "Turner": "#000000",
-}
-
-#: Plotter-facing colormap lookup, derived from VARIABLES so the two cannot drift.
-_VAR_CMAPS: dict[str, str] = {
-    k: v["cmap"] for k, v in VARIABLES.items() if v.get("cmap") is not None
 }
 
 

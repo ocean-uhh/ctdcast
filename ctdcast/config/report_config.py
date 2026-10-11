@@ -17,11 +17,20 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
 
-from ctdcast.config.parameters import _VAR_CMAPS
 
-#: Read-only view of the default colormap lookup, so the frozen config cannot be
-#: mutated through its ``var_cmaps`` field.
-_DEFAULT_VAR_CMAPS: Mapping[str, str] = MappingProxyType(dict(_VAR_CMAPS))
+def _default_var_cmaps() -> Mapping[str, str]:
+    """Return the resolved default ``variable -> colormap`` lookup, read-only.
+
+    The resolver lives in the owned design layer (``reports/design.py``), which
+    maps each variable's quantity through the vendored family defaults and
+    ctdcast's overrides.  It is imported here lazily, on the first config build:
+    importing it at module load would cycle (``reports`` imports back into
+    ``report_config``).  The returned mapping is read-only so the frozen config
+    cannot be mutated through its ``var_cmaps`` field.
+    """
+    from ctdcast.reports.design import VAR_CMAPS
+
+    return MappingProxyType(dict(VAR_CMAPS))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,9 +62,7 @@ class ReportConfig:
     map_lat_max: float | None = None
     map_lon_min: float | None = None
     map_lon_max: float | None = None
-    var_cmaps: Mapping[str, str] = dataclasses.field(
-        default_factory=lambda: _DEFAULT_VAR_CMAPS
-    )
+    var_cmaps: Mapping[str, str] = dataclasses.field(default_factory=_default_var_cmaps)
 
     @property
     def map_bounds(

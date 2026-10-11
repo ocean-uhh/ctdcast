@@ -27,8 +27,8 @@ from ctdcast.config.sensors import role_label as _role_label
 from ctdcast.config.sensors import role_sort_key as _role_sort_key
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
 def read_sensor_tables(profiles_path: Path) -> dict[str, Any]:

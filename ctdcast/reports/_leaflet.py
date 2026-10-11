@@ -35,8 +35,8 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._report_css import SHARED_CSS
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+from ctdcast.reports.design import SHARED_CSS
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
 _LEAFLET_VERSION = "1.9.4"

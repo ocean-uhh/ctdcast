@@ -49,7 +49,6 @@ from ctdcast.reports._plots import (
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
 from ctdcast.reports._qc import qc_summary
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._section import generate_section_page
 from ctdcast.reports._timeseries import generate_timeseries_page
 from ctdcast.reports._vendored.page_model import (
@@ -60,6 +59,7 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 # ---------------------------------------------------------------------------
 # Public entry point

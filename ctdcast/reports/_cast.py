@@ -61,7 +61,6 @@ from ctdcast.reports._plots import (
     _make_updown_diff_b64,
 )
 from ctdcast.reports._qc import qc_summary, qc_thresholds
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.page_model import (
     Panel,
@@ -70,6 +69,7 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:

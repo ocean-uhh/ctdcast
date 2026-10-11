@@ -43,7 +43,6 @@ from ctdcast.reports._plots import (
     _make_timeseries_b64,
     _make_ts_diagram_timeseries_b64,
 )
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._vendored.design_tokens import (
     MAX_SECTION_H as _MAX_SECTION_H,
 )
@@ -68,6 +67,7 @@ from ctdcast.reports._vendored.page_model import (
     Stub,
     resolve,
 )
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 # Panel variables are defined in ctdcast.config.parameters:
 #   SECTION_PHYSICS_VARS / SECTION_BIOGEO_VARS  (shared with _index.py, _section.py)

@@ -9,8 +9,7 @@ This module is written to be **vendored** across the packages that share the
 report design system: it names no package and holds no per-package colour table,
 reading shared values only through the sibling ``design_tokens`` module.  The accent
 colour to render is an argument to ``emit_css``, supplied by the
-(package-specific) caller — so the file itself carries no package-specific edit
-(Phase A; no cross-repo hash test yet, spec §9).
+(package-specific) caller — so the file itself carries no package-specific edit.
 """
 
 from __future__ import annotations
@@ -84,8 +83,8 @@ def _emit_nav_pills() -> str:
 def emit_css(package_accent: str) -> str:
     """Return the full shared stylesheet as a string, generated from the tokens.
 
-    Reproduces the established page look from the design tokens (spec §12–15 v2.0
-    are the current values, not a redesign).  The only additions over
+    Reproduces the established page look from the design tokens (the current
+    values, not a redesign).  The only additions over
     the previous hand-written stylesheet are the package accent's two homes — a
     masthead ``.wordmark`` and the footer's ``border-top`` — plus the ``78ch``
     reading measure and the ``@media print`` rules for browser printing.  (The
@@ -298,7 +297,7 @@ footer a {{ color: var(--muted); }}
 
 
 def print_css(*, terse: bool = False) -> str:
-    """Return the print stylesheet, injected at PDF render time (spec §8.1).
+    """Return the print stylesheet, injected at PDF render time.
 
     These WeasyPrint-specific rules are kept out of the screen stylesheet so
     screen output is byte-identical; a PDF renderer appends them at render time.

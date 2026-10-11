@@ -25,8 +25,8 @@ from ctdcast.config.parameters import VARIABLES
 from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._report_css import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)
