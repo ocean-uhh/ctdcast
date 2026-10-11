@@ -9,14 +9,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Shared report layer vendored under `reports/_vendored/`** — the design tokens, matplotlib style, figure encoder, CSS generator, page model and nav template, kept byte-identical across ctdcast, oceanarray and glidertest; `scripts/check_vendored.py` walks the directory and gates drift against `scripts/VENDORED.txt`.
+- **Per-quantity colormaps** — a vendored `CMAPS` table keyed by physical quantity with a `QUANTITY_BY_STANDARD_NAME` bridge, resolved per variable by the owned `reports/design.py`, which a package can override for its own science without editing the shared table. `cmocean` is now a dependency (for the `cmo.*` defaults).
 - **Preferred sensor per cast** — `processing.preferred_pair` and `processing.preferred_oxygen` declare which channel (`primary`/`secondary`) is the better one on a dual-sensor cast, as a cruise-wide `default` plus per-cast-range exceptions. Stage 3 builds the plain composites `ctd_temperature` / `ctd_salinity` / `conductivity` / `ctd_oxygen` from the chosen channel (per-cast selection, never a blend; an undeclared dual cast gets no plain name, never a silent `_1`), stamps the choice and the resolved sensor (`sensor_<role>_preferred`), and `profiles.nc` records `preferred_pair`/`preferred_oxygen` and `sensor_<role>_preferred` per profile. `oxygen_saturation`/AOU are derived per oxygen line from that line's own T/S, with the composite following `preferred_oxygen` (an undeclared dual-oxygen cast's figure falls back to the primary line; the composite records the line and that it was undeclared). The declaration is reconciled against the per-cast sensor serials at compile and in `ctdcast validate` (warnings only; a lettered-sibling serial mismatch is flagged). `ctd_oxygen_1`/`_2` carry the line-plumbing assumption (`oxygen_1` = primary line / Sea-Bird `sbox0`) as a `comment`.
 
 ### Changed
 
+- **QC flag colours** are now a colour-blind-safe Okabe–Ito set (good teal `#009E73`, suspect orange `#E69F00`, fail vermillion `#D55E00`, plus the rest of the 0–9 scale), replacing the red/green pair a deuteranope could not separate; visible on every QC table.
+- **Section and profile colormaps** moved to the shared family defaults: oxygen off red–green `RdYlGn` to `cmo.oxy`, density `Purples` to `BuPu`, oxygen saturation `RdYlGn` to `BrBG`; temperature, salinity, chlorophyll and turbidity unchanged.
+- **Report page modules renamed to public names** — `reports.index` / `cast` / `section` / `timeseries` / `dataset` / `cruise_map` / `qc_tables` (were underscore-prefixed) and `reports/_report_css` to `reports/design`; the public API (`ctdcast.report`) is unchanged.
+- Masthead-nav and heading styling: a back pill that renders without rows, pill hover hints and a contrast edge for same-colour mastheads, tighter multi-row spacing, and an `h3` subsection-heading rule; `Stub` panel reasons are shaped to one length-capped line on construction; `validate_nav` requires an explicit pill `state`.
 - netCDF output is written with lossless zlib compression (level 4) on every numeric variable with a dimension, coordinates included; the shuffle filter is applied to all except `float64`, where it was measured to enlarge the science columns. Transparent to readers; no schema or value change.
 
 ### Fixed
 
+- The cruise-overview panels now resolve the single/dual-sensor variable form, so oxygen is no longer dropped from the overview on single-sensor cruises (the section pages already resolved it).
 - `oxygen_saturation` derivation passed latitude and longitude to `gsw.O2sol` in the wrong order (`O2sol(SA, CT, p, lon, lat)` expects longitude first), evaluating solubility at a transposed position. The effect is a small, systematic bias in the derived % saturation; fixing it changes `oxygen_saturation` (and the AOU proxy) slightly. These are derived-on-demand report quantities, not stored, so no on-disk file changes.
 
 ## [0.2.1] — 2026-09-19
