@@ -572,7 +572,7 @@ def _render_qc_table(nc_path: Path) -> str | None:
         )
 
     # Self-contained layout CSS for the distribution bar and legend; the flag
-    # colours are inline hex (from QC_FLAG_COLORS), so this needs no CSS vars.
+    # colours are inline hex (from the vendored QC_COLORS), so this needs no CSS vars.
     style = (
         "<style>"
         ".qc-bar{display:flex;width:200px;height:13px;border-radius:3px;"

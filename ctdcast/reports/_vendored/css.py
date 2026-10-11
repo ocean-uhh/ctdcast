@@ -20,6 +20,8 @@ from .design_tokens import (
     FONT_MONO,
     FONT_SANS,
     GRAYS,
+    QC_COLORS,
+    QC_TEXT_COLORS,
     RADII,
     ROLE_ACCENT,
     SEMANTIC,
@@ -47,6 +49,13 @@ def _emit_root(package_accent: str) -> str:
         lines.append(f"  --sp-{key}: {value};")
     for key, value in RADII.items():
         lines.append(f"  --radius-{key}: {value};")
+    # QC-flag colours, mirrored from the same dict so HTML (``--qc-<flag>``) and
+    # matplotlib (QC_COLORS) cannot drift.  ``--qc-<flag>-text`` are the darkened
+    # text variants.
+    for flag, value in QC_COLORS.items():
+        lines.append(f"  --qc-{flag}: {value};")
+    for flag, value in QC_TEXT_COLORS.items():
+        lines.append(f"  --qc-{flag}-text: {value};")
     lines.append("}")
     return "\n".join(lines)
 

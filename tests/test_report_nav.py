@@ -187,3 +187,21 @@ def test_css_carries_the_vendored_sync_rules():
     assert "h3 {" in css and "var(--fs-h3)" in css
     assert "box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55)" in css
     assert ".page-nav + .page-nav" in css
+
+
+def test_css_qc_variables_mirror_the_qc_colour_dicts():
+    """Every ``--qc-<flag>`` in the CSS equals the vendored QC colour dict — one source."""
+    import re
+
+    from ctdcast.reports._vendored.css import emit_css
+    from ctdcast.reports._vendored.design_tokens import QC_COLORS, QC_TEXT_COLORS
+
+    css = emit_css("#123456")
+    emitted = {
+        int(f): c for f, c in re.findall(r"--qc-(\d+):\s*(#[0-9A-Fa-f]{6});", css)
+    }
+    emitted_text = {
+        int(f): c for f, c in re.findall(r"--qc-(\d+)-text:\s*(#[0-9A-Fa-f]{6});", css)
+    }
+    assert emitted == QC_COLORS
+    assert emitted_text == QC_TEXT_COLORS

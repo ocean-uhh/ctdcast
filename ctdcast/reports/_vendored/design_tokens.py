@@ -286,6 +286,31 @@ QUANTITY_BY_STANDARD_NAME: dict[str, str] = {
     "square_of_brunt_vaisala_frequency_in_sea_water": "stratification",
 }
 
+# QARTOD / OceanSITES QC-flag colours — colour-blind-safe (Okabe-Ito good/suspect/
+# fail: teal green / orange / vermillion, which the old red/green pair was not).
+# Keyed by flag value.  Like TRACK_COLORS these encode meaning, so they are NOT
+# overridable — a flag colour must read the same in every report.  The colour is
+# carried by the bar/marker/chip, never on its own (tables also carry the word);
+# flag 2 "probably good" is sky blue where a solid fill is needed.  emit_css()
+# mirrors this into the ``--qc-<flag>`` CSS variables from the same dict.
+QC_COLORS: dict[int, str] = {
+    0: "#999999",  # no QC performed — neutral grey
+    1: "#009E73",  # good — teal green
+    2: "#56B4E9",  # probably good — sky blue
+    3: "#E69F00",  # suspect — orange
+    4: "#D55E00",  # fail — vermillion
+    7: "#CC79A7",  # nominal — reddish purple
+    8: "#0072B2",  # interpolated — blue
+    9: "#bdbdbd",  # missing — light grey
+}
+
+# Darkened text variants, for a QC colour used as small text ink rather than a
+# fill (orange is only 2.25:1 on white as text; this is 4.7:1).  Only suspect
+# needs one; vermillion and teal are acceptable for bold/large text.
+QC_TEXT_COLORS: dict[int, str] = {
+    3: "#9A6B00",  # suspect orange, darkened for text
+}
+
 # The package accent — a small masthead wordmark, the table header
 # and the footer's border-top — is NOT a value in this vendored file.  Each
 # package chooses it locally and passes it to ``emit_css(package_accent)`` (see

@@ -20,20 +20,16 @@ from typing import Any
 import numpy as np
 import xarray as xr
 
+from ctdcast.reports._vendored.design_tokens import QC_COLORS
+
 #: Trailing sensor number (``conductivity_1`` → family ``conductivity``).
 _SENSOR_SUFFIX = re.compile(r"_\d+$")
 
-#: ctdcast-local display colours for the QARTOD flag values it declares.  A file
-#: states its flag *values and meanings*; colour is the one thing it does not
-#: carry, so it is chosen here — semantically: pass green, suspect amber, fail
-#: red, missing grey.  Unlisted flags fall back to :data:`_DEFAULT_COLOR`.
-QC_FLAG_COLORS: dict[int, str] = {
-    1: "#27ae60",
-    2: "#a8e6cf",
-    3: "#f39c12",
-    4: "#e74c3c",
-    9: "#bdc3c7",
-}
+#: A flag's display colour comes from the vendored, colour-blind-safe QC palette
+#: (:data:`~ctdcast.reports._vendored.design_tokens.QC_COLORS`), shared across the
+#: packages so a flag reads the same in every report.  A file states its flag
+#: *values and meanings*; the colour is the one thing it does not carry.  Unlisted
+#: flags fall back to :data:`_DEFAULT_COLOR`.
 _DEFAULT_COLOR = "#999999"
 
 #: Short display glosses of the QARTOD ``flag_meanings`` tokens ctdcast writes.
@@ -100,7 +96,7 @@ def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
                         {
                             "flag": val,
                             "label": label,
-                            "color": QC_FLAG_COLORS.get(val, _DEFAULT_COLOR),
+                            "color": QC_COLORS.get(val, _DEFAULT_COLOR),
                             "n": n,
                             "pct": round(100.0 * n / total, 1),
                         }
