@@ -154,3 +154,36 @@ def test_back_pill_renders_without_rows():
     )
     assert out.count("nav-pill") == 1
     assert "All cruises" in out
+
+
+def test_non_link_pills_carry_a_title_hint():
+    """A missing pill and a current pill get a hover ``title``; a link pill does not."""
+    env = Environment(
+        loader=FileSystemLoader(str(_VENDORED_TEMPLATES)), autoescape=True
+    )
+    tmpl = env.from_string('{% import "_nav.html" as nav_m %}{{ nav_m.page_nav(nav) }}')
+    rows = [
+        {
+            "label": "Pages:",
+            "pills": [
+                _pill("Summary", "index.html", "landing", "current"),
+                _pill("Grid", "", "aggregate-a", "missing"),
+                _pill("Casts", "casts.html", "collection"),
+            ],
+        }
+    ]
+    out = tmpl.render(nav={"rows": rows, "back": None})
+    assert 'title="current page"' in out
+    assert 'title="not yet generated"' in out
+    # the plain link pill carries no title
+    assert out.count("title=") == 2
+
+
+def test_css_carries_the_vendored_sync_rules():
+    """emit_css renders the h3 rule, the pill contrast edge and multi-row spacing."""
+    from ctdcast.reports._vendored.css import emit_css
+
+    css = emit_css("#123456")
+    assert "h3 {" in css and "var(--fs-h3)" in css
+    assert "box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55)" in css
+    assert ".page-nav + .page-nav" in css

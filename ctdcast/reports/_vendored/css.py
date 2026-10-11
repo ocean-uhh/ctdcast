@@ -155,6 +155,13 @@ h2 {{
    figure block, so it spans the content width rather than the 78ch prose measure a
    paragraph would otherwise inherit — which left it stranded under full-width figures. */
 h2 + .caption {{ margin-top: -0.5rem; max-width: none; }}
+/* Subsection headings inside a panel's own HTML — un-numbered, outside the jump
+   nav (the page model numbers Sections, not these).  Same navy as h2, smaller. */
+h3 {{
+  color: var(--ocean); font-size: var(--fs-h3); margin: 1.2rem 0 0.4rem;
+}}
+h3 + .caption {{ margin-top: -0.2rem; }}
+figure h3, .fig-row > h3 {{ margin-top: 0.6rem; }}  /* first heading inside a panel sits closer */
 .explainer {{
   font-size: var(--fs-note); color: var(--text);
   background: var(--bg-sunken); border-left: 3px solid var(--muted);
@@ -242,11 +249,17 @@ td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
    "Data inventory:" file strip.  A pill's colour is its role, never its page; the
    current page's pill and an already-viewed file pill are muted the same way. */
 .page-nav {{ margin: 0.65rem 0 0.5rem; }}
+/* Consecutive nav rows (a multi-row masthead) stack tighter than the first row's
+   top margin, which is sized for a single row. */
+.page-nav + .page-nav {{ margin-top: 0.15rem; }}
 .page-nav-label {{ font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }}
 .nav-pill {{
   display: inline-block; padding: 0.2em 0.65em; border-radius: var(--radius-btn);
   font-size: var(--fs-nav); font-weight: 700; text-decoration: none; color: #fff;
   margin: 0 0.2rem 0.25rem 0;
+  /* A contrasting inner edge keeps a pill visible when its role colour matches the
+     masthead background, so colour-is-role holds on any masthead. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }}
 {nav_pills}
 .nav-current {{ opacity: 0.5; pointer-events: none; }}
@@ -277,6 +290,7 @@ footer a {{ color: var(--muted); }}
   .masthead-header h1, .masthead h1 {{ font-size: 1.35rem; }}
   .meta-grid {{ grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }}
   h2 {{ page-break-after: avoid; }}
+  h3 {{ page-break-after: avoid; }}
   .fig-row, figure, table {{ break-inside: avoid; }}
   .jump-nav {{ display: none; }}
 }}

@@ -165,6 +165,7 @@ TYPE: dict[str, dict[str, str]] = {
     "h1": {"size": "1.75rem", "weight": "700"},  # masthead title
     "type": {"size": "1.35rem", "weight": "700"},  # .masthead-type page label
     "h2": {"size": "1rem"},  # section headings — colour/weight/underline, not size
+    "h3": {"size": "0.88rem"},  # subsection headings inside a panel (un-numbered)
     "meta": {"size": "0.84rem"},  # meta-grid <dd>
     "note": {"size": "0.92rem"},  # .note, .caption, .explainer
     "nav": {"size": "0.8rem"},  # jump-nav, .btn-nav

@@ -2,7 +2,7 @@
    file strip, both rendered from the plain nav mapping built per page.  No colour
    or package name lives here — a pill's class is nav-<role>, styled by emit_css. #}
 
-{% macro _pill(p) %}{% if p.state == "link" %}<a class="nav-pill nav-{{ p.role }}" href="{{ p.href }}">{{ p.label }}</a>{% else %}<span class="nav-pill nav-{{ p.role }} nav-{{ p.state }}">{{ p.label }}</span>{% endif %}{% endmacro %}
+{% macro _pill(p) %}{% if p.state == "link" %}<a class="nav-pill nav-{{ p.role }}" href="{{ p.href }}">{{ p.label }}</a>{% else %}<span class="nav-pill nav-{{ p.role }} nav-{{ p.state }}"{% if p.state == "missing" %} title="not yet generated"{% elif p.state == "current" %} title="current page"{% endif %}>{{ p.label }}</span>{% endif %}{% endmacro %}
 
 {% macro page_nav(nav) %}
 {% for row in nav.rows %}
