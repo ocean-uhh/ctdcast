@@ -67,8 +67,12 @@ jobs:
           ruff check .
 
       - name: Test with pytest
+        # --no-cov: the matrix cells check platform/version behaviour, not coverage.
+        # Coverage (and its fail-under gate) run in the dedicated `coverage` job below,
+        # so tracing here is pure overhead -- ~1.8x on the I/O-heavy pipeline tests, which
+        # dominates the slow Windows cell.
         run: |
-          pytest -m "not slow"
+          pytest -m "not slow" --no-cov
 
   integration:
     name: Integration tests / ubuntu / Py 3.11
