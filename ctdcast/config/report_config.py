@@ -23,10 +23,10 @@ def _default_var_cmaps() -> Mapping[str, str]:
 
     The resolver lives in the owned design layer (``reports/design.py``), which
     maps each variable's quantity through the vendored family defaults and
-    ctdcast's overrides.  It is imported here lazily, on the first config build:
-    importing it at module load would cycle (``reports`` imports back into
-    ``report_config``).  The returned mapping is read-only so the frozen config
-    cannot be mutated through its ``var_cmaps`` field.
+    ctdcast's overrides.  It is imported inside the factory, not at module top, so
+    ``config/report_config`` carries no module-level dependency on the reports
+    layer.  The returned mapping is read-only so the frozen config cannot be
+    mutated through its ``var_cmaps`` field.
     """
     from ctdcast.reports.design import VAR_CMAPS
 

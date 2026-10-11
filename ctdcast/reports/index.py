@@ -810,14 +810,28 @@ def _write_index(
                 # ``ctd_oxygen_1``), the way the section page does — otherwise the
                 # overview silently drops a variable it holds under the other form.
                 resolved = resolve_sensor_var(ds_sorted, var)
+                # An override may be keyed by the resolved name or by the registry
+                # name (`var`); honour the resolved form first, then fall back to
+                # the registry key, the way the section page does — otherwise an
+                # override set under `ctd_oxygen_1` is dropped on the overview.
+                _vmin = (
+                    vmin.get(resolved)
+                    if vmin.get(resolved) is not None
+                    else vmin.get(var)
+                )
+                _vmax = (
+                    vmax.get(resolved)
+                    if vmax.get(resolved) is not None
+                    else vmax.get(var)
+                )
                 b64 = _make_overview_panel_b64(
                     ds_sorted,
                     resolved,
                     vlabel(resolved),
                     bathy_depths=bathy,
                     style=section_style,
-                    vmin=vmin.get(resolved),
-                    vmax=vmax.get(resolved),
+                    vmin=_vmin,
+                    vmax=_vmax,
                     cast_groups=cast_groups,
                     cfg=cfg,
                 )

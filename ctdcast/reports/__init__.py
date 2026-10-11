@@ -48,4 +48,8 @@ def __getattr__(name: str) -> object:
     module = _EXPORTS.get(name)
     if module is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    return getattr(importlib.import_module(f"ctdcast.reports.{module}"), name)
+    obj = getattr(importlib.import_module(f"ctdcast.reports.{module}"), name)
+    globals()[name] = (
+        obj  # bind so later accesses are a normal attribute hit, not a re-import
+    )
+    return obj

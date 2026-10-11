@@ -275,7 +275,7 @@ VARIABLES: dict[str, dict] = {
         "units": "percent",
         "standard_name": None,
         # No standard_name, so the quantity is named explicitly (resolved through
-        # design.CMAPS); seeded override keeps it RdYlGn until the family default lands.
+        # design.CMAPS); the family default is BrBG (brown low, blue-green high).
         "cmap": "oxygen_saturation",
         "vmin": 0,
         "vmax": 110,

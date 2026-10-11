@@ -1,4 +1,4 @@
-"""Tests for the section-manifest model and resolver (``reports/_manifest.py``).
+"""Tests for the section-manifest model and resolver (``reports/_vendored/page_model.py``).
 
 These exercise the resolution algorithm in isolation with synthetic panels and
 sections — no rendered page needed.  They pin the invariants from the design

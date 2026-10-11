@@ -1,4 +1,4 @@
-"""Tests for the vendored masthead-nav contract (``reports._manifest.validate_nav``).
+"""Tests for the vendored masthead-nav contract (``reports._vendored.page_model.validate_nav``).
 
 These cover the plain-mapping nav shape and its validator; the rendered-macro and
 emitted-CSS checks arrive with the nav swap (plan steps 4-5).

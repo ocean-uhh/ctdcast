@@ -42,9 +42,10 @@ _GLOSS: dict[str, str] = {
     "missing_data": "missing",
 }
 
-#: Fallback flag vocabulary when a ``_qc`` variable declares none (should not
-#: happen for a ctdcast file, but keeps the reader robust).
-_FALLBACK_VALUES = (1, 2, 3, 4, 9)
+#: Fallback flag vocabulary when a ``_qc`` variable declares no ``flag_values``
+#: (should not happen for a ctdcast file).  Derived from the colour table so the
+#: two cannot drift — every flag with a colour is countable on the fallback path.
+_FALLBACK_VALUES = tuple(QC_COLORS)
 
 
 def _flag_vocab(qc_var: xr.DataArray) -> list[tuple[int, str]]:
@@ -72,9 +73,20 @@ def qc_summary(nc_path: Path) -> list[dict[str, Any]]:
     """Return the per-variable QC flag-count breakdown for a per-cast file.
 
     One row per ``{var}`` that has a ``{var}_qc`` companion and exists as a data
-    variable: ``{var, total, flags: [{flag, label, color, n, pct}, …]}``, with
-    one entry per flag value the qc variable declares.  Returns ``[]`` on any
-    read error (a missing or unreadable file is not a report-time failure).
+    variable, with one entry per flag value the qc variable declares.
+
+    Parameters
+    ----------
+    nc_path : pathlib.Path
+        A per-cast netCDF file (a best-available stage file, not ``profiles.nc``,
+        which drops the ``_qc`` companions).
+
+    Returns
+    -------
+    list of dict
+        ``{var, total, flags: [{flag, label, color, n, pct}, …]}`` per variable;
+        ``[]`` on any read error (a missing or unreadable file is not a
+        report-time failure).
     """
     try:
         with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:
@@ -144,11 +156,20 @@ def qc_thresholds(nc_path: Path) -> list[dict[str, Any]]:
 
     Reads the ``qc_gross_range_*`` and ``qc_spike_*`` attrs that
     :func:`ctdcast.processors.qc.apply_gross_range` /
-    :func:`ctdcast.processors.qc.apply_spike_test` stamp, as
-    ``{var, test, suspect, fail}`` rows — so the table shows the suspect and fail
-    tiers side by side, reflecting the values actually applied (defaults, config,
-    or per-cast overrides) without parsing the ``history`` prose.  A tier with no
-    value renders as an en-dash.  Returns ``[]`` on any read error.
+    :func:`ctdcast.processors.qc.apply_spike_test` stamp, so the table shows the
+    values actually applied (defaults, config, or per-cast overrides) without
+    parsing the ``history`` prose.  A tier with no value renders as an en-dash.
+
+    Parameters
+    ----------
+    nc_path : pathlib.Path
+        A per-cast netCDF file carrying the ``{var}_qc`` companions.
+
+    Returns
+    -------
+    list of dict
+        ``{var, test, suspect, fail}`` rows (suspect and fail tiers side by side);
+        ``[]`` on any read error.
     """
     try:
         with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:

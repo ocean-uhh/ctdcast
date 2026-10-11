@@ -1,4 +1,4 @@
-"""Tests for the vendored encoder's error policy (``reports/_encode.render_b64``).
+"""Tests for the vendored encoder's error policy (``reports/_vendored/figure_png.render_b64``).
 
 When a draw function raises and ``RAISE_ON_PLOT_ERROR`` is unset, the panel is
 omitted: the warning now names the cause, and an ``on_error`` callback (used by

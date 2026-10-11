@@ -455,7 +455,15 @@ def _discrete_norm(
     colormap name string, needed when calling ``ax.contourf`` which accepts a
     name rather than a ``Colormap`` object.
     """
-    cmap_name = var_cmaps.get(var, "viridis")
+    cmap_name = var_cmaps.get(var)
+    if cmap_name is None:
+        # Not in the resolved table (a registry gap): resolve through the one
+        # resolver, which warns naming the variable and falls back to viridis —
+        # a gap should not stop a report (a bad name in a config is rejected at
+        # load instead, where cmap_for is called without a default).
+        from ctdcast.reports.design import cmap_for
+
+        cmap_name = cmap_for(var, default="viridis")
     v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
     v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
     if v0 >= v1:

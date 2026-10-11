@@ -108,3 +108,65 @@ def test_legacy_anchor_spans_emitted_for_rendered_sections(tmp_path: Path) -> No
     html = _render(tmp_path)
     for old in ("s-map", "s-physics", "s-biogeo", "s-ladcp", "s-ts"):
         assert f'id="{old}"' in html
+
+
+def test_vmin_override_by_registry_name_reaches_both_pages(monkeypatch, tmp_path):
+    """A vmin override keyed by the registry name (``ctd_oxygen_1``) is honoured on
+    both the section page and the cruise overview.
+
+    The demo is single-oxygen, so the data is stored as plain ``ctd_oxygen`` while
+    ``SECTION_BIOGEO_VARS`` names ``ctd_oxygen_1``; both pages must resolve the
+    sensor var and then fall back to the registry key for the override lookup.
+    """
+    import ctdcast.reports.index as index_mod
+    import ctdcast.reports.section as section_mod
+    from ctdcast.reports.index import report
+
+    seen: dict[str, float | None] = {}
+
+    def _fake_overview(ds, var, label, **kw):
+        if "oxygen" in var:
+            seen["overview"] = kw.get("vmin")
+        return "data:image/png;base64,stub"
+
+    def _fake_section(ds, var, *args, **kw):
+        if "oxygen" in var:
+            seen["section"] = kw.get("vmin")
+        return "data:image/png;base64,stub"
+
+    monkeypatch.setattr(index_mod, "_make_overview_panel_b64", _fake_overview)
+    monkeypatch.setattr(section_mod, "_make_section_b64", _fake_section)
+
+    override = {"ctd_oxygen_1": 50.0}
+
+    secs = yaml.safe_load(_SECTIONS.read_text())
+    secs = secs.get("sections", secs)
+    name, cfg = next(iter(secs.items()))
+    generate_section_page(
+        name,
+        cfg,
+        _PROFILES,
+        tmp_path / "sec",
+        force=True,
+        ladcp_dir=_LADCP,
+        vmin_override=override,
+    )
+
+    report(
+        _FIX / "nc",
+        tmp_path / "ov",
+        profiles_path=_PROFILES,
+        section_yaml=_SECTIONS,
+        force=True,
+        vmin_override=override,
+        generate={
+            "stations": False,
+            "sections": False,
+            "timeseries": False,
+            "index": True,
+            "map": False,
+        },
+    )
+
+    assert seen.get("section") == 50.0, f"section vmin: {seen.get('section')!r}"
+    assert seen.get("overview") == 50.0, f"overview vmin: {seen.get('overview')!r}"

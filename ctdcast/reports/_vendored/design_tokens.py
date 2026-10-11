@@ -8,12 +8,12 @@ the copies can be frozen and checked later; for now this document and convention
 are the shared reference (no cross-repo hash test yet).  A value that belongs to
 one package (a scientific variable registry) does **not** live here.
 
-Layering: this is a leaf — it imports only :mod:`pathlib` and :mod:`cmocean`
-(the latter solely to register the ``cmo.*`` colormap names with matplotlib, so
-a :data:`CMAPS` value like ``"cmo.deep"`` resolves through
-``matplotlib.colormaps`` like any built-in name).  Both the plotters (which size
-figures from :data:`SLOTS` and read :data:`CMAPS`) and the report/CSS layer read
-it; it reads nothing of theirs.
+Layering: this is a leaf — it imports only :mod:`pathlib` at module load.
+``cmocean`` (which provides the ``cmo.*`` entries in :data:`CMAPS`) is imported
+lazily by :func:`register_cmocean`, only when such a name is actually requested,
+so no CSS- or geometry-only importer pays its cost.  Both the plotters (which
+size figures from :data:`SLOTS` and read :data:`CMAPS`) and the report/CSS layer
+read this module; it reads nothing of theirs.
 
 Templates and plotters read these values; they never restate them.
 """
@@ -21,8 +21,6 @@ Templates and plotters read these values; they never restate them.
 from __future__ import annotations
 
 from pathlib import Path
-
-import cmocean  # noqa: F401  # registers the cmo.* colormap names with matplotlib
 
 # ---------------------------------------------------------------------------
 # Style file and error policy
@@ -310,6 +308,33 @@ QC_COLORS: dict[int, str] = {
 QC_TEXT_COLORS: dict[int, str] = {
     3: "#9A6B00",  # suspect orange, darkened for text
 }
+
+_CMOCEAN_REGISTERED = False
+
+
+def register_cmocean() -> None:
+    """Register cmocean's ``cmo.*`` colormaps with matplotlib, once.
+
+    Called only when a ``cmo.*`` name is actually requested (from a colormap
+    resolver, or a config validator's colormap check), so neither the import
+    cost nor cmocean's own import-time deprecation warnings are paid on an
+    import of this module that never touches a cmocean map.  cmocean 3.x builds
+    its colormaps with the deprecated ``ListedColormap(N=...)`` (its code, not
+    ours), emitting one ``MatplotlibDeprecationWarning`` per map; those are
+    silenced here at their source — the import — rather than by a global filter.
+    """
+    global _CMOCEAN_REGISTERED
+    if _CMOCEAN_REGISTERED:
+        return
+    import warnings
+
+    import matplotlib
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", matplotlib.MatplotlibDeprecationWarning)
+        import cmocean  # noqa: F401  # the import registers the cmo.* names
+    _CMOCEAN_REGISTERED = True
+
 
 # The package accent — a small masthead wordmark, the table header
 # and the footer's border-top — is NOT a value in this vendored file.  Each
