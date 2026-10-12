@@ -53,6 +53,18 @@ To check an installation, run the bundled demo against the committed fixture cas
 ctdcast run config_demo.yaml      # writes demo_report/index.html
 ```
 
+## Python API
+
+```python
+import ctdcast
+
+ctdcast.report("ctd_nc", "report", profiles_path="profiles.nc",
+               groupings_yaml="ctd_groupings.yaml")
+```
+
+See the [API reference](https://ocean-uhh.github.io/ctdcast/api.html) for `process`,
+`stage1`, `profiles` and the full interface.
+
 ## Acknowledgements
 
 Development of this package started during the Odón de Buen cruise of AEI-DFG DS-MIXSED.
