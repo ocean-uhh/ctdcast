@@ -39,9 +39,8 @@ Three separate things.
 **Copyright** stays with whoever wrote the code. You are not asked to assign it.
 
 **Contributor credit** is automatic and generous. Everyone whose pull request is
-merged appears in the git history and in `CONTRIBUTORS.md`. If your name or
-preferred email in the git log is wrong, open a PR against `.mailmap` — that is
-the correct fix and it is welcome.
+merged appears in the git history. If your name or preferred email in the git log
+is wrong, open an issue — the fix is a `.mailmap` entry, and it is welcome.
 
 **Citation authorship** is the list in `CITATION.cff`, which propagates into the
 Zenodo DOI for every release and therefore into other people's bibliographies. It
@@ -58,8 +57,44 @@ Being asked is better than being resented.
 
 Where a contribution is adapted from someone else's work rather than written from
 scratch, we credit it **in the docstring of the code itself**, so the attribution
-travels with the code rather than living only in a file nobody reads. See
-`ctdcast/readers/` for the existing examples of that wording.
+travels with the code rather than living only in a file nobody reads.
+
+---
+
+## Scope
+
+ctdcast owns the CTD lifecycle from a proprietary instrument file to a QC'd,
+CF/CCHDO-aligned netCDF and a compiled profiles grid, plus the self-contained HTML
+report. Some of that is settled; some is open to contribution; a few things are
+deliberately out of scope.
+
+**Fixed** — changing these changes every user's output files, so open an issue
+before a pull request:
+
+- CCHDO variable naming on disk.
+- One QC stream, QARTOD-native; WOCE and OceanSITES flags are write-time
+  translations of it.
+- Salinity is always derived from C/T/P, never stored, and re-derived whenever any
+  of them changes.
+- Provenance reconstructable from the output file alone: a calibration slope or
+  threshold lives on the variable's own attributes.
+- The per-stage file layout and the stage registry.
+- Canonical unit spellings (from 0.4.0).
+
+**Open** — selectable methods, added with the existing default unchanged:
+
+- Stage-3 processing-chain steps: alignment and cell-thermal-mass parameter
+  finders, bottle-stop conductivity-slope fits (the ctdproc ports).
+- QC tests and thresholds — config-driven, recorded in the output attributes.
+- Report figures — new panels through the section manifest.
+- Readers for other instrument formats. The `.hex` / `.xmlcon` path is deferred on
+  purpose, pending the Sea-Bird processing chain.
+
+**Out of scope, on purpose** — cruise-level gridded products (sections and time
+series as interpolated fields). The interpolation choice *is* the product, so
+gridding irregular casts would invent data. This is where ctdcast's scope differs
+in kind from the sibling `oceanarray`, whose grid step is an open, central part of
+what it does.
 
 ---
 
@@ -72,18 +107,18 @@ python -m venv venv && source venv/bin/activate      # or conda
 pip install -e ".[dev]"                              # runtime + test + docs + ruff
 ```
 
-Python 3.10–3.13 are supported; CI tests 3.10 and 3.13 on Linux, macOS and
-Windows.
+Python 3.10–3.13 are supported; CI runs the full range on Ubuntu and Python 3.11
+on macOS and Windows.
 
 ## Before you open a pull request
 
 Run what CI runs:
 
 ```bash
-ruff check .                      # lint  (E, F, W, B, BLE, ARG)
-pytest -m "not slow"              # unit tests
+ruff check .                      # lint (rule families configured in pyproject.toml)
+pytest -m "not slow"              # unit tests (addopts already adds --cov)
 pytest tests/integration/ -v --no-cov   # integration tests (excluded from the matrix)
-pytest --cov-fail-under=70        # the coverage gate
+pytest --cov-fail-under=79        # the coverage gate CI enforces, plus the per-module floors
 ```
 
 The integration suite is marked `slow` and is skipped by `-m "not slow"`, so it
@@ -137,9 +172,11 @@ the data are not yours to publish, open an issue rather than committing them.
 
 ## Commit messages
 
-Conventional-commit prefixes (`fix:`, `feat:`, `refactor:`, `docs:`, `test:`,
-`chore:`) and an imperative subject. If you worked with someone, or adapted their
-code, add a trailer:
+Conventional-commit prefixes (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`,
+`ci:`, `cleanup:`) and an imperative subject. Pull requests are squash-merged under
+a bracket-tagged title (`[FEAT]`, `[FIX]`, `[REFACTOR]`, `[CLEANUP]`, …), so that
+tag is what appears on `main` and what the changelog groups by. If you worked with
+someone, or adapted their code, add a trailer:
 
 ```
 Co-authored-by: Name <email@example.com>

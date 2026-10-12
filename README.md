@@ -1,161 +1,67 @@
 # ctdcast
 
+[![PyPI](https://img.shields.io/pypi/v/ctdcast.svg)](https://pypi.org/project/ctdcast/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ctdcast.svg)](https://pypi.org/project/ctdcast/)
+[![License: MIT](https://img.shields.io/pypi/l/ctdcast.svg)](https://github.com/ocean-uhh/ctdcast/blob/main/LICENSE)
 [![Tests](https://github.com/ocean-uhh/ctdcast/actions/workflows/tests.yml/badge.svg)](https://github.com/ocean-uhh/ctdcast/actions/workflows/tests.yml)
-[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%20–%203.13-blue?logo=python&logoColor=white)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
-[![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://ocean-uhh.github.io/ctdcast/)
+[![Documentation](https://img.shields.io/badge/docs-ocean--uhh.github.io-blue.svg)](https://ocean-uhh.github.io/ctdcast/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22846130.svg)](https://doi.org/10.5281/zenodo.22846130)
 
-Processing and reporting for shipboard CTD and LADCP data: from raw instrument files
-through QC'd, CF/CCHDO-aligned netCDF and a compiled profiles grid, to self-contained HTML.
-The reports are portable HTML files — all figures embedded as base64 PNGs, no external
-requests — in three types: per-cast station pages, transect section pages, and a cruise-wide
-time series page.
+Processing and reporting for shipboard CTD and LADCP data: raw Sea-Bird files → per-cast
+netCDF at each stage (read, trim, process/QC) → a compiled `profiles.nc` aligned with CF and
+CCHDO naming → self-contained HTML reports. Built for use at sea: every output works offline,
+with no external requests.
 
-Designed for use at sea where internet connectivity is limited or absent.
-All output files are fully self-contained and work offline.
+**Documentation**: https://ocean-uhh.github.io/ctdcast/ · [example report](https://ocean-uhh.github.io/ctdcast/_static/demo/index.html)
 
----
-
-## Install
+## Installation
 
 ```bash
 pip install ctdcast
 ```
 
-For development (editable install from source):
-
-```bash
-git clone https://github.com/ocean-uhh/ctdcast
-cd ctdcast
-python -m venv venv
-source venv/bin/activate        # macOS / Linux
-# venv\Scripts\activate         # Windows
-pip install -e ".[dev]"         # runtime + tests + docs + ruff
-```
-
-Dependencies: `gsw`, `matplotlib`, `pillow`, `numpy`, `xarray`, `netcdf4`, `jinja2`, `pyyaml`, `ruamel.yaml`, `scipy`
-
-CTD conversion: `seasenselib` converts raw CNV files to the netCDF format expected by ctdcast (`ctdcast draft` or `ctdcast run`). Install with `pip install seasenselib`. Pre-converted netCDF files from other tools must match ctdcast's variable naming convention (see docs).
-
-To verify the installation, run the bundled demo against the committed fixture casts:
-
-```bash
-ctdcast run config_demo.yaml   # writes demo_report/index.html
-```
-
-For a full walkthrough see the [Quickstart guide](https://ocean-uhh.github.io/ctdcast/quickstart.html).
-
----
+Reading raw `.cnv` files needs `seasenselib` (`pip install seasenselib`). Python 3.10–3.13 is
+supported. See the [installation notes](https://ocean-uhh.github.io/ctdcast/quickstart.html)
+for isolated-environment and from-source options.
 
 ## Quick start
 
-### Quick look (no config file needed)
-
-Raw CNV files fresh off the instrument? One command gives you station pages + index + map:
+Raw CNV files fresh off the instrument — one command gives station pages, an index and a map:
 
 ```bash
-ctdcast draft /path/to/cnv/           # generates ./ctd_draft/index.html
-ctdcast draft /path/to/cnv/ out/ --cruise odb2026   # with cruise ID
-ctdcast draft /path/to/cnv/ --dry-run               # preview what would happen
+ctdcast draft /path/to/cnv/ --cruise odb2026     # writes ./ctd_draft/index.html
 ```
 
-Requires `seasenselib` for CNV conversion (`pip install seasenselib`).
-
-### Full workflow (with config)
-
-For sections, time series, and LADCP panels you need a `config.yaml`:
-
-#### 1. Write a config
+For the full pipeline — sections, time series, LADCP, the sensor inventory — write a config
+and process stage by stage:
 
 ```bash
-ctdcast init                        # writes a template config.yaml
-ctdcast init --interactive          # guided setup: prompts for paths and
-                                      # auto-detects sections/timeseries from profiles.nc
-ctdcast validate config.yaml        # check paths before the first run
+ctdcast init --interactive        # guided config.yaml
+ctdcast validate config.yaml      # check paths before the first run
+ctdcast process config.yaml --stage 1 2 3 profiles
+ctdcast run config.yaml           # the report; --force rebuilds, --only 42 one cast
 ```
 
-#### 2. Generate
+`ctdcast clock config.yaml` diagnoses the acquisition-clock error and prints a paste-ready
+`processing.clock` block. See the [quickstart](https://ocean-uhh.github.io/ctdcast/quickstart.html)
+for the recommended first-cruise workflow, the [config reference](https://ocean-uhh.github.io/ctdcast/config_yaml.html)
+and the [CLI reference](https://ocean-uhh.github.io/ctdcast/cli_reference.html).
+
+To check an installation, run the bundled demo against the committed fixture casts:
 
 ```bash
-ctdcast run config.yaml             # smart update — skips up-to-date pages
-ctdcast run config.yaml --force     # rebuild everything
-ctdcast run config.yaml --only 42   # rebuild one cast page
+ctdcast run config_demo.yaml      # writes demo_report/index.html
 ```
-
-Open `<output.dir>/index.html` in any browser.
-
-Diagnose the acquisition-clock error (System vs GPS clock) for a cruise with `ctdcast clock config.yaml` — it prints a verdict and a paste-ready `processing.clock` block without writing anything.
-
----
-
-## Input data
-
-| File | Description |
-|---|---|
-| `ctd_nc/stageN/*_stageN.nc` | Per-cast netCDF files, one per CTD cast per stage |
-| `profiles.nc` | Compiled profiles on a 1 dbar grid |
-| `ctd_sections.yaml` | Section definitions — which casts belong to each transect |
-
-### ctd_sections.yaml format
-
-```yaml
-sections:
-  KTout:
-    description: "Kögur Transect outflow"
-    color: "#e41a1c"
-    cast_numbers: [[1, 12], 15]   # ranges and/or individual cast numbers
-  FARDWO:
-    description: "FARDWO mooring array"
-    color: "#377eb8"
-    cast_numbers: [[20, 35], "22b"]   # add "NNNb" to include a lettered sibling cast
-```
-
-Cast numbers are kept in the order written. An integer or range selects the
-plain casts; a lettered sibling event (from a ``NNNb`` / ``NNN_b`` file) is a
-distinct cast and must be named explicitly as a quoted ``"NNNb"`` string.
-
----
-
-## Output structure
-
-```
-<output.dir>/
-    index.html              front page — map + stats + navigation
-    casts.html      table of all casts (latest first)
-    sections.html           section cards with links
-    timeseries.html         T, S, O₂ vs time × pressure
-    sbe_sensors.html        sensor inventory + which sensor was used on which cast
-    casts/
-        cast_001.html
-        cast_002.html
-        ...
-    sections/
-        section_KTout.html
-        ...
-```
-
-Each station page shows: CT profile, T/S/σ₀ triple-axis profile, T-S diagram coloured by
-O₂ saturation, auxiliary profiles (O₂, fluorescence, turbidity), N²/Turner-angle stability
-panels, and a cruise-track map with the cast highlighted.
-
----
-
-## GEBCO bathymetry
-
-Maps show GEBCO 2025 bathymetry when `gebco_nc` is set in `config.yaml`.
-The file (~8 GB) is not bundled. Maps render without bathymetry if the path is missing — not an error.
-
----
-
-## Documentation
-
-Full documentation: [ocean-uhh.github.io/ctdcast](https://ocean-uhh.github.io/ctdcast/)
-
----
 
 ## Acknowledgements
 
-Development of this package started during the Odón de Buen cruise of AEI-DFG DS-MIXSED. DS-MIXSED is funded by the Agencia Estatal de Investigación (AEI) through the PCI 2024 call — projects PCI2024-155022-2 and PCI2024-155084-2 — and the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) — Projektnummer 541914507.
+Development of this package started during the Odón de Buen cruise of AEI-DFG DS-MIXSED.
+DS-MIXSED is funded by the Agencia Estatal de Investigación (AEI) through the PCI 2024 call —
+projects PCI2024-155022-2 and PCI2024-155084-2 — and the Deutsche Forschungsgemeinschaft
+(DFG, German Research Foundation) — Projektnummer 541914507.
 
 Development was assisted by Claude Code (Anthropic) and GitHub Copilot code review.
+
+## License
+
+MIT License
