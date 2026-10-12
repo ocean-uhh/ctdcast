@@ -2,12 +2,14 @@
 
 import datetime
 
+from ctdcast import __version__
+
 year = datetime.datetime.now(tz=datetime.timezone.utc).date().year
 
 project = "ctdcast"
 author = "Eleanor Frajka-Williams"
 copyright = f"{year}, {author}"
-release = "v0.2.1"
+release = f"v{__version__}"
 
 extensions = [
     "sphinx.ext.autodoc",
