@@ -55,17 +55,6 @@ a panel shared by more than one page type has a single implementation.
    :members:
    :undoc-members:
 
-Base64 encoders
----------------
-
-``_make_*_b64`` wrappers render a figure builder's Figure to an embedded base64 PNG,
-returning ``None`` on any exception so a missing figure never prevents a page from
-being written.
-
-.. automodule:: ctdcast.reports._plots
-   :members:
-   :undoc-members:
-
 Plotting parameters
 -------------------
 
@@ -134,14 +123,9 @@ Each report page is described by a :class:`~ctdcast.reports._vendored.page_model
 :class:`~ctdcast.reports._vendored.page_model.Panel` entries, resolved by
 :func:`~ctdcast.reports._vendored.page_model.resolve` into a numbered, rendered report.  The
 model is package-neutral; each page's concrete registry lives in its own generator
-module.  ``_anchors`` maps the old hand-authored ``#s-*`` anchors onto the new
-section ids for one release.
+module.
 
 .. automodule:: ctdcast.reports._vendored.page_model
-   :members:
-   :undoc-members:
-
-.. automodule:: ctdcast.reports._anchors
    :members:
    :undoc-members:
 

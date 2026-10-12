@@ -549,7 +549,7 @@ def build_profiles(
     # CTD casts whose per-cast file carries no SENSOR_* catalog (predate the catalog).
     catalog_less: list[str] = []
 
-    # Per-cast global attrs, for lifting cruise identity strictly (§4d).
+    # Per-cast global attrs, for lifting cruise identity strictly.
     per_cast_attrs: list[dict[str, str]] = []
 
     # Pass 2: split and bin each cast

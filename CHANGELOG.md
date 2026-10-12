@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-12
+
 ### Added
 
 - **Shared report layer vendored under `reports/_vendored/`** — the design tokens, matplotlib style, figure encoder, CSS generator, page model and nav template, kept byte-identical across ctdcast, oceanarray and glidertest; `scripts/check_vendored.py` walks the directory and gates drift against `scripts/VENDORED.txt`.
