@@ -436,6 +436,9 @@ def _make_ladcp_section_b64(
                 fig.tight_layout()
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_section_b64", fig)
+                # Drawn inline in this adapter, not by a draw_* function — so the honest
+                # source is the maker itself (self-updates when R6 moves it to plotters/).
+                record_source(_panel_b64, source_for(_make_ladcp_section_b64))
                 panels.append(
                     RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
                 )
@@ -610,6 +613,9 @@ def _make_ladcp_overview_b64(
                 fig.tight_layout()
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_overview_b64", fig)
+                # Drawn inline in this adapter, not by a draw_* function — so the honest
+                # source is the maker itself (self-updates when R6 moves it to plotters/).
+                record_source(_panel_b64, source_for(_make_ladcp_overview_b64))
                 panels.append(
                     RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
                 )

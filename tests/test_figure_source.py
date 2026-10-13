@@ -85,3 +85,28 @@ def test_vendored_off_ctdcast_on():
 
     assert design_tokens.SHOW_FIGURE_SOURCE is False
     assert design.FIGURE_SOURCE is True
+
+
+def test_caption_gated_by_show_source():
+    """The ``.fig-source`` element appears only when ``show_source`` is on.
+
+    The off contract: the stylesheet carries an unused ``.fig-source`` rule, but no
+    page emits an element for it — the panel macro gates emission on ``show_source``.
+    """
+    import types
+
+    from ctdcast.reports import _env as env_mod
+
+    figure_png.clear_sources()
+    b64 = figure_png.render_b64(_draw_demo)
+    panel = types.SimpleNamespace(
+        is_stub=False, kind="figure", slot="half", payload=b64, caption=None, id="demo"
+    )
+    # `with context` so the macro reads show_source from the render call, not the env
+    # global (imported macros bind globals at import time, which the report sets once).
+    tmpl = env_mod._env.from_string(
+        "{% import '_macros.html' as m with context %}{{ m.panel(p) }}"
+    )
+
+    assert 'class="fig-source"' not in tmpl.render(p=panel, show_source=False)
+    assert 'class="fig-source"' in tmpl.render(p=panel, show_source=True)

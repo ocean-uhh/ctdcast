@@ -119,6 +119,7 @@ tbody tr:hover td { background: var(--seafoam); }
   <figure class="slot-full">
     <img src="data:image/png;base64,{{ clock.figure_b64 }}" alt="Clock offset (NMEA − System) per cast">
     {{- m.dbg(clock.figure_b64, "slot-full") }}
+    {%- if show_source %}{% set _src = source_of(clock.figure_b64) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
   </figure>
 </div>
 {% endif %}

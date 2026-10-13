@@ -9,12 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Per-figure `source:` caption** — each report figure can carry a line naming the draw function that produced it (`<module>.py:<function>`), for provenance. The mechanism is vendored (`reports/_vendored/figure_png.source_for`/`source_of`, gated by a default-off `SHOW_FIGURE_SOURCE` flag); ctdcast turns it on in its owned `reports/design.py` (`FIGURE_SOURCE = True`), the same override pattern as the colormaps. With the flag off the output is byte-identical to before.
+- **Per-figure `source:` caption** — each report figure can carry a line naming the draw function that produced it (`<module>.py:<function>`), for provenance. The mechanism is vendored (`reports/_vendored/figure_png.source_for`/`source_of`, gated by a default-off `SHOW_FIGURE_SOURCE` flag); ctdcast turns it on in its owned `reports/design.py` (`FIGURE_SOURCE = True`), the same override pattern as the colormaps. With the flag off a page is visually identical to before; the stylesheet gains one unused `.fig-source` rule (no element matches it).
 
 ### Changed
 
 - The vendored report layer is now self-contained: the hash manifest and the drift-check gate moved into `reports/_vendored/` as `MANIFEST.txt` and `check.py` (were `scripts/VENDORED.txt` and `scripts/check_vendored.py`), so a consumer vendors the directory and nothing else. Manifest paths are now directory-relative, and `check.py` locates its own directory, so both files are byte-identical across ctdcast, oceanarray and glidertest. Run the gate with `python -m ctdcast.reports._vendored.check`.
 - The bundled Leaflet assets (`leaflet.min.js`, `leaflet.min.css`) and their `LICENSE` moved into `reports/_vendored/leaflet/`, shared byte-identical across the sibling packages, so the ~160 KB library is bundled once; the cruise map reads them there. No change to generated output.
+- The cruise map no longer falls back to a CDN: a missing bundled Leaflet asset now raises rather than fetching from jsdelivr/cdnjs or emitting an empty map, so the offline-at-sea guarantee holds at build time instead of failing silently at view time.
 
 ## [0.3.0] — 2026-10-12
 
