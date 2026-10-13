@@ -1,9 +1,10 @@
 """Shared report layer, vendored byte-identical across sibling packages.
 
 The modules in this directory (``design_tokens``, ``figure_png``, ``css``,
-``page_model``) and the shared ``templates`` are the report presentation layer
-used by ctdcast, oceanarray and glidertest, kept byte-identical across the three
-repositories. (The Leaflet map assets join this directory in a later sync.)
+``page_model``, ``leaflet``) and the shared ``templates`` are the report
+presentation layer used by ctdcast, oceanarray and glidertest, kept
+byte-identical across the three repositories. The bundled Leaflet library
+(``leaflet/``) ships here too, so the interactive map works offline.
 
 ctdcast ``main`` is the source of truth. An edit is made here in ctdcast and
 re-vendored out to the siblings (see ``README.md`` for the recipe); it is never

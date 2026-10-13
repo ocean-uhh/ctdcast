@@ -1,8 +1,8 @@
 """Tier-2: self-contained interactive cruise map using Leaflet.js.
 
-Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/leaflet/`` as package
-data so the generated ``leaflet.html`` requires no internet access at either
-generation or view time.
+Leaflet JS/CSS (~160 KB) is bundled in ``ctdcast/reports/_vendored/leaflet/`` as
+package data (shared byte-identical across the sibling packages) so the generated
+``leaflet.html`` requires no internet access at either generation or view time.
 
 If a GEBCO path is configured, GEBCO bathymetry for the cruise
 region is rendered as an embedded PNG image layer using discrete depth bands
@@ -22,7 +22,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -36,22 +35,10 @@ from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+from ctdcast.reports._vendored.leaflet import load_leaflet, safe_json
 from ctdcast.reports.design import SHARED_CSS
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
-_LEAFLET_VERSION = "1.9.4"
-_LEAFLET_JS_URLS = [
-    f"https://cdn.jsdelivr.net/npm/leaflet@{_LEAFLET_VERSION}/dist/leaflet.min.js",
-    f"https://cdnjs.cloudflare.com/ajax/libs/leaflet/{_LEAFLET_VERSION}/leaflet.min.js",
-]
-_LEAFLET_CSS_URLS = [
-    f"https://cdn.jsdelivr.net/npm/leaflet@{_LEAFLET_VERSION}/dist/leaflet.min.css",
-    f"https://cdnjs.cloudflare.com/ajax/libs/leaflet/{_LEAFLET_VERSION}/leaflet.min.css",
-]
-_LEAFLET_JS_URL = _LEAFLET_JS_URLS[0]
-_LEAFLET_CSS_URL = _LEAFLET_CSS_URLS[0]
-
-_LEAFLET_DIR = Path(__file__).parent / "leaflet"
 _GEBCO_PAD = 2.0  # degrees of context beyond data extent
 
 # Discrete depth levels (metres, positive down).  Bin i spans [levels[i], levels[i+1]).
@@ -192,35 +179,6 @@ def _depth_legend_html() -> str:
         "Land</div>"
     )
     return "".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Leaflet bundled asset loader
-# ---------------------------------------------------------------------------
-
-
-def _load_leaflet() -> tuple[str, str]:
-    """Return (js_text, css_text) from bundled package files.
-
-    Falls back to CDN fetch if bundled files are absent (requires internet at
-    generation time).  Returns empty strings only if all sources fail.
-    """
-    js_path = _LEAFLET_DIR / "leaflet.min.js"
-    css_path = _LEAFLET_DIR / "leaflet.min.css"
-
-    if js_path.exists() and css_path.exists():
-        return js_path.read_text(encoding="utf-8"), css_path.read_text(encoding="utf-8")
-
-    for url_js, url_css in zip(_LEAFLET_JS_URLS, _LEAFLET_CSS_URLS, strict=True):
-        try:
-            with urllib.request.urlopen(url_js, timeout=10) as r:
-                js = r.read().decode("utf-8")
-            with urllib.request.urlopen(url_css, timeout=10) as r:
-                css = r.read().decode("utf-8")
-            return js, css
-        except Exception:  # noqa: BLE001
-            continue
-    return "", ""
 
 
 # ---------------------------------------------------------------------------
@@ -398,16 +356,6 @@ def _make_gebco_layers(
 
 
 # ---------------------------------------------------------------------------
-# JSON helper
-# ---------------------------------------------------------------------------
-
-
-def _safe_json(obj: Any) -> str:  # noqa: ANN401  # arbitrary JSON-serialisable payload (dict/list/str/...)
-    """JSON-encode obj, escaping ``</`` for safe embedding inside a <script> block."""
-    return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
-
-
-# ---------------------------------------------------------------------------
 # HTML template
 # ---------------------------------------------------------------------------
 
@@ -559,12 +507,7 @@ def generate_leaflet_map(
 
     depth_legend: str = _depth_legend_html() if gebco_b64 else ""
 
-    leaflet_js, leaflet_css = _load_leaflet()
-    if not leaflet_js:
-        print(
-            "  leaflet: WARNING — Leaflet JS/CSS not found; "
-            "CDN links used (requires internet at view time)"
-        )
+    leaflet_js, leaflet_css = load_leaflet()
 
     html = get_template("leaflet.html").render(
         css=SHARED_CSS,
@@ -572,19 +515,16 @@ def generate_leaflet_map(
         nav_prefix="",
         masthead_bg=ROLE_ACCENT.get("map", ""),
         cruise=cruise,
-        leaflet_inline=bool(leaflet_js),
         leaflet_js=leaflet_js,
         leaflet_css=leaflet_css,
-        leaflet_js_url=_LEAFLET_JS_URL,
-        leaflet_css_url=_LEAFLET_CSS_URL,
-        casts_json=_safe_json(casts_data),
-        sections_json=_safe_json(sections_data),
-        gebco_b64_json=_safe_json(gebco_b64),
-        gebco_bounds_json=_safe_json(gebco_bounds),
+        casts_json=safe_json(casts_data),
+        sections_json=safe_json(sections_data),
+        gebco_b64_json=safe_json(gebco_b64),
+        gebco_bounds_json=safe_json(gebco_bounds),
         contours_json=contour_geojson.replace("</", "<\\/")
         if contour_geojson
         else "null",
-        ship_track_json=_safe_json(ship_track or []),
+        ship_track_json=safe_json(ship_track or []),
         depth_legend_html=depth_legend,
         lat_min=lat_min,
         lat_max=lat_max,

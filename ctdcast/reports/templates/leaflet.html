@@ -5,7 +5,7 @@
 {% block masthead_type %}interactive map{% endblock %}
 
 {% block head_extra %}
-{% if leaflet_inline %}<style>{{ leaflet_css | safe }}</style>{% else %}<link rel="stylesheet" href="{{ leaflet_css_url }}">{% endif %}
+<style>{{ leaflet_css | safe }}</style>
 <style>
   /* The map is a content element in the standard page column; its overlay
      panels anchor to the map (not the viewport) via the relative wrapper. */
@@ -47,7 +47,7 @@
   {% if depth_legend_html %}<div id="depth-legend">{{ depth_legend_html | safe }}</div>{% endif %}
 </div>
 
-{% if leaflet_inline %}<script>{{ leaflet_js | safe }}</script>{% else %}<script src="{{ leaflet_js_url }}"></script>{% endif %}
+<script>{{ leaflet_js | safe }}</script>
 <script>
 var CASTS    = {{ casts_json | safe }};
 var SECTIONS = {{ sections_json | safe }};

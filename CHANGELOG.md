@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - The vendored report layer is now self-contained: the hash manifest and the drift-check gate moved into `reports/_vendored/` as `MANIFEST.txt` and `check.py` (were `scripts/VENDORED.txt` and `scripts/check_vendored.py`), so a consumer vendors the directory and nothing else. Manifest paths are now directory-relative, and `check.py` locates its own directory, so both files are byte-identical across ctdcast, oceanarray and glidertest. Run the gate with `python -m ctdcast.reports._vendored.check`.
+- The bundled Leaflet assets (`leaflet.min.js`, `leaflet.min.css`) and their `LICENSE` moved into `reports/_vendored/leaflet/`, shared byte-identical across the sibling packages, so the ~160 KB library is bundled once; the cruise map reads them there. No change to generated output.
 
 ## [0.3.0] — 2026-10-12
 
