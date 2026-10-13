@@ -55,6 +55,29 @@ def test_source_of_is_none_for_unknown():
     assert figure_png.source_of("not-a-recorded-b64") is None
 
 
+def test_custom_wrapper_map_registers_its_source():
+    """The sections map (custom encode wrapper, not render_b64) still records a source."""
+    from ctdcast.reports._plots import _make_all_sections_map_b64
+
+    sections_data = [
+        {
+            "name": "A",
+            "color": "#1f77b4",
+            "lats": [60.0, 60.1, 60.2],
+            "lons": [-5.0, -5.1, -5.2],
+        }
+    ]
+    figure_png.clear_sources()
+    b64 = _make_all_sections_map_b64(
+        sections_data, [60.0, 60.1, 60.2], [-5.0, -5.1, -5.2]
+    )
+    assert b64
+    assert (
+        figure_png.source_of(b64)
+        == "ctdcast/plotters/plots.py:draw_all_sections_map_fig"
+    )
+
+
 def test_vendored_off_ctdcast_on():
     """The shared default is off; ctdcast's owned design flips it on."""
     from ctdcast.reports import design
