@@ -35,6 +35,12 @@ MPLSTYLE_PATH: Path = Path(__file__).with_name("report.mplstyle")
 # plotters and the encoder so a single flag governs both.
 RAISE_ON_PLOT_ERROR: bool = False
 
+#: Vendored default for the per-figure ``source:`` caption (which draw function
+#: produced each panel).  OFF here — a package turns it on in its owned design
+#: module (ctdcast: ``reports/design.py`` ``FIGURE_SOURCE``), never in the shared
+#: table.  Read into the report env as the ``show_source`` template global.
+SHOW_FIGURE_SOURCE: bool = False
+
 # ---------------------------------------------------------------------------
 # Geometry
 # ---------------------------------------------------------------------------

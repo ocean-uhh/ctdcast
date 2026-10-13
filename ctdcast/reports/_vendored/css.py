@@ -218,6 +218,13 @@ figure img {{
   display: block; width: 100%; height: auto;
 }}
 figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }}
+/* Optional provenance line under a figure: which draw function produced it.
+   Off by default (vendored SHOW_FIGURE_SOURCE); a package turns it on in its
+   owned design module. */
+.fig-source {{
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs); color: var(--muted); margin-top: 0.15rem;
+}}
 /* A stub panel's warning fills the figure slot it stands in for, rather than the
    78ch prose reading measure it would otherwise inherit as a paragraph. */
 figure .warn {{ max-width: none; }}

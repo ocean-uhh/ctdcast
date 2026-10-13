@@ -80,12 +80,45 @@ def _fig_to_base64(fig: Any, *, bbox_inches: str | None = None) -> str:
     return base64.b64encode(out.getvalue()).decode("ascii")
 
 
+#: Base64 PNG -> source caption (``"<module-path>.py:<name>"`` of the draw function).
+#: Populated by :func:`render_b64`, read by a report template via :func:`source_of`.
+_SOURCE: dict[str, str] = {}
+
+
+def source_for(draw: Callable[..., Any]) -> str:
+    """Return ``"<module-path>.py:<name>"`` for a draw callable, closures collapsed.
+
+    ``__module__`` becomes a slash path (``pkg.plotters.plots`` ->
+    ``pkg/plotters/plots.py``); the name is ``__qualname__`` with any ``.<locals>.``
+    closure prefix dropped, so an inner wrapper reports its enclosing
+    ``_make_*`` / ``draw_*`` name rather than the closure's.
+    """
+    module = getattr(draw, "__module__", "") or ""
+    name = getattr(draw, "__qualname__", None) or getattr(draw, "__name__", "draw")
+    if ".<locals>." in name:
+        name = name.split(".<locals>.")[0]
+    name = name.rsplit(".", 1)[-1]
+    path = f"{module.replace('.', '/')}.py" if module else "?"
+    return f"{path}:{name}"
+
+
+def source_of(b64: str | None) -> str | None:
+    """Return the recorded source caption for a rendered PNG, or ``None``."""
+    return _SOURCE.get(b64) if b64 else None
+
+
+def clear_sources() -> None:
+    """Reset the base64 -> source registry — call at the start of each report build."""
+    _SOURCE.clear()
+
+
 def render_b64(
     draw: Callable[..., Any],
     /,
     *args: Any,
     optional: bool = False,
     on_error: Callable[[BaseException], None] | None = None,
+    source: str | None = None,
     **kwargs: Any,
 ) -> str | None:
     """Run *draw* under the report mplstyle and return a base64 PNG, or None.
@@ -128,7 +161,9 @@ def render_b64(
                 return None
             if not _manages_own_layout(fig):
                 fig.tight_layout()
-            return _fig_to_base64(fig)
+            b64 = _fig_to_base64(fig)
+            _SOURCE[b64] = source if source is not None else source_for(draw)
+            return b64
     except Exception as exc:  # noqa: BLE001
         if _dt.RAISE_ON_PLOT_ERROR:
             raise

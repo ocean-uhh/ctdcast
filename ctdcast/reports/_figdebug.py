@@ -58,19 +58,17 @@ def clear() -> None:
     a stale entry for a byte-identical PNG produced by a later run.
     """
     _COLLECTED.clear()
+    _encode.clear_sources()
 
 
 def _draw_name(draw: Callable[..., object]) -> str:
-    """Return a readable name for *draw*, collapsing closures to their enclosing scope.
+    """Return a readable name for *draw* — the name half of the vendored source string.
 
-    Uses ``__qualname__`` and, if it contains ``.<locals>.`` (a closure such as the
-    encoder wrapper), keeps the part before it — so a figure drawn by an inner ``_wrapped``
-    reports its enclosing ``_make_*`` / ``draw_*_fig`` name instead of the closure's.
+    Reuses :func:`ctdcast.reports._vendored.figure_png.source_for` (which collapses a
+    ``.<locals>.`` closure to its enclosing ``_make_*`` / ``draw_*`` scope) and keeps
+    the part after the ``:`` — so the debug overlay and the ``source:`` caption agree.
     """
-    name = getattr(draw, "__qualname__", None) or getattr(draw, "__name__", "draw")
-    if ".<locals>." in name:
-        name = name.split(".<locals>.")[0]
-    return name.rsplit(".", 1)[-1]
+    return _encode.source_for(draw).rsplit(":", 1)[-1]
 
 
 def record(b64: str | None, func: str, fig: Figure | None) -> None:
@@ -139,7 +137,12 @@ def render_b64(
         return fig
 
     b64 = _encode.render_b64(
-        _wrapped, *args, optional=optional, on_error=on_error, **kwargs
+        _wrapped,
+        *args,
+        optional=optional,
+        on_error=on_error,
+        source=_encode.source_for(draw),
+        **kwargs,
     )
     record(b64, _draw_name(draw), captured.get("fig"))
     return b64

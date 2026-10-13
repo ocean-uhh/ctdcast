@@ -26,6 +26,8 @@ from jinja2 import ChoiceLoader, Environment, FileSystemLoader, Template
 
 from ctdcast.reports import _figdebug
 from ctdcast.reports._anchors import legacy_anchor_spans
+from ctdcast.reports._vendored.figure_png import source_of
+from ctdcast.reports.design import FIGURE_SOURCE
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _VENDORED_TEMPLATES_DIR = Path(__file__).parent / "_vendored" / "templates"
@@ -48,6 +50,11 @@ _env.globals["figdbg"] = _figdebug.figdbg
 # Legacy anchor shim: emit empty <span id="s-old"> aliases for a rendered section's
 # retired anchors so committed deep-links keep resolving.  Returns markup, used with |safe.
 _env.globals["legacy_anchor_spans"] = legacy_anchor_spans
+# Per-figure source caption: source_of() is a pure b64 -> "module.py:func" lookup;
+# show_source gates emission.  ctdcast turns it on in reports/design.py (FIGURE_SOURCE);
+# the vendored default (design_tokens.SHOW_FIGURE_SOURCE) is off.
+_env.globals["source_of"] = source_of
+_env.globals["show_source"] = FIGURE_SOURCE
 
 _env_raw: Environment = Environment(
     loader=_loader,

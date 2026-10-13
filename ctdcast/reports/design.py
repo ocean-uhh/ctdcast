@@ -27,6 +27,12 @@ PACKAGE_ACCENT: str = "var(--ocean)"
 #: The generated stylesheet, ready to concatenate into a page ``<style>`` block.
 SHARED_CSS: str = emit_css(PACKAGE_ACCENT)
 
+#: ctdcast turns the per-figure ``source:`` caption ON; the vendored default
+#: (``design_tokens.SHOW_FIGURE_SOURCE``) is OFF.  This is the package override —
+#: the same pattern as :data:`CMAP_OVERRIDES`: ctdcast's choice lives here, not in
+#: the shared table.  The report env reads it as the ``show_source`` template global.
+FIGURE_SOURCE: bool = True
+
 #: ctdcast's per-quantity colormap overrides on the vendored family defaults — its
 #: current science choices.  Empty: ctdcast takes the vendored family defaults for
 #: every quantity.  Add a ``quantity -> colormap`` entry here to override one for
@@ -104,6 +110,7 @@ VAR_CMAPS: dict[str, str] = {
 __all__ = [
     "CMAPS",
     "CMAP_OVERRIDES",
+    "FIGURE_SOURCE",
     "PACKAGE_ACCENT",
     "SHARED_CSS",
     "VAR_CMAPS",

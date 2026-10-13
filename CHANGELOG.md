@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Per-figure `source:` caption** — each report figure can carry a line naming the draw function that produced it (`<module>.py:<function>`), for provenance. The mechanism is vendored (`reports/_vendored/figure_png.source_for`/`source_of`, gated by a default-off `SHOW_FIGURE_SOURCE` flag); ctdcast turns it on in its owned `reports/design.py` (`FIGURE_SOURCE = True`), the same override pattern as the colormaps. With the flag off the output is byte-identical to before.
+
 ### Changed
 
 - The vendored report layer is now self-contained: the hash manifest and the drift-check gate moved into `reports/_vendored/` as `MANIFEST.txt` and `check.py` (were `scripts/VENDORED.txt` and `scripts/check_vendored.py`), so a consumer vendors the directory and nothing else. Manifest paths are now directory-relative, and `check.py` locates its own directory, so both files are byte-identical across ctdcast, oceanarray and glidertest. Run the gate with `python -m ctdcast.reports._vendored.check`.
