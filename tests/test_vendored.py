@@ -14,9 +14,11 @@ from ctdcast.reports._vendored import check
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_vendored_copy_matches_its_manifest():
-    """Every vendored file matches MANIFEST.txt, and the recorded set is exact."""
-    assert check.main([]) == 0
+def test_vendored_copy_matches_its_manifest(capsys):
+    """Every vendored file matches MANIFEST.txt; names the drifted file on failure."""
+    rc = check.main([])
+    out = capsys.readouterr().out
+    assert rc == 0, f"vendored files drift from MANIFEST.txt:\n{out}"
 
 
 def test_no_owned_template_shadows_a_vendored_one():

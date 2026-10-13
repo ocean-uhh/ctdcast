@@ -4,7 +4,7 @@
 # Regenerate after an intentional edit: python -m <pkg>.reports._vendored.check --update
 6dafc303c0bebb72bd3b07f034f44dde32d766115635d3a291d8bbcda297aa96  README.md
 ffbe84d9cccab752f3993666209bbb48fc619a9a63d1891b7f6d4173c4e4bab9  __init__.py
-564b91d815862fb598dff299e2dbcef4e12043c34884cc53afeef776e2d1c60c  check.py
+ff6d65d65b58455a14022c930f290c755e7fbc383b8868c95c1df549759e218d  check.py
 6c9fcd09602ed033cdb4dc2a89fa5274ca41ec4182696384e21a2a1012b1d8bb  css.py
 ed8c97d11a663f1e92def7b5a3a4854f1488e5ac0d3eaea6db7a91bd818f06d9  design_tokens.py
 f22a09c2f530e14a0d9acc1fbe3dfc08a1ead61d1a23ec5f234d71b9b49914c3  figure_png.py

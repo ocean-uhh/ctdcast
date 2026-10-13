@@ -6,35 +6,28 @@ manifest and the gate travel with the files. ctdcast ``main`` is the source of
 truth; siblings re-vendor from it and never edit their copies in place.
 
 The vendored set is the *contents of this directory*: every file here except
-``MANIFEST.txt`` (which records the others' hashes) and ``__pycache__``. So
-``check.py`` and ``README.md`` guard themselves too, and the whole directory is
-byte-identical across the three repositories.
+``MANIFEST.txt`` (which records the others' hashes) and machine cruft
+(``.DS_Store``, AppleDouble ``._*``, ``__pycache__``, ``*.pyc``). So ``check.py``
+and ``README.md`` guard themselves too, and the whole directory is byte-identical
+across the three repositories.
 
 Paths in the manifest are relative to this directory, so the manifest is itself
 identical across packages (no ``ctdcast/`` vs ``oceanarray/`` prefix).
 
 Usage
 -----
-Verify the local copies match the recorded hashes (what the test does)::
-
-    python -m <pkg>.reports._vendored.check
-
-Compare the local copies against one or more sibling checkouts::
-
+    python -m <pkg>.reports._vendored.check            # verify local copies
+    python -m <pkg>.reports._vendored.check --update   # regenerate MANIFEST.txt
     python -m <pkg>.reports._vendored.check ../oceanarray ../glidertest
 
-Regenerate ``MANIFEST.txt`` after an intentional edit to a vendored file::
-
-    python -m <pkg>.reports._vendored.check --update
-
-Exit code is 1 if any file drifts (local hash mismatch, a recorded file missing
-on disk, or a sibling file that is absent or differs), 0 otherwise. A sibling
-*repository* that is absent is reported and skipped; a sibling *file* that is
-missing counts as drift.
+Exit code is 1 on any drift (local hash mismatch, a recorded file missing, a
+sibling file absent or differing, a sibling path that does not exist, or a
+sibling with no vendored copy); 0 otherwise.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import sys
 from pathlib import Path
@@ -42,23 +35,52 @@ from pathlib import Path
 #: The directory this file lives in — the vendored set is exactly its contents.
 VENDORED_ROOT = Path(__file__).resolve().parent
 
-#: Hash manifest, beside the files it records.  Excluded from the hashed set
-#: (a file cannot record its own hash), so every *other* file is guarded.
+#: Hash manifest, beside the files it records.  Excluded from the *local* hashed
+#: set (a file cannot record its own hash); the cross-repo compare does check it,
+#: because it too is byte-identical across packages.
 MANIFEST = VENDORED_ROOT / "MANIFEST.txt"
 
-#: How to invoke this module, resolved per repo at runtime (the source stays
-#: byte-identical; only the printed string differs).
-_INVOKE = (
-    f"python -m {__package__}.check"
-    if __package__
-    else ("python -m <pkg>.reports._vendored.check")
+#: Neutral invocation string — recorded in the manifest header and used as the
+#: fallback hint.  Identical across packages, so the manifest stays byte-identical.
+_NEUTRAL_INVOKE = "python -m <pkg>.reports._vendored.check"
+
+#: Live invocation hint for printed messages: the running package resolves
+#: ``__package__`` (the source text is identical across repos).
+_INVOKE = f"python -m {__package__}.check" if __package__ else _NEUTRAL_INVOKE
+
+#: Suffixes (and the bare name ``LICENSE``) whose content is text: hashed after
+#: normalizing CRLF to LF so the hash is platform-independent.  Anything else —
+#: a binary asset such as a Leaflet marker image — is hashed raw, byte-for-byte;
+#: normalizing a binary would corrupt its hash.
+_TEXT_SUFFIXES = frozenset({".py", ".md", ".txt", ".mplstyle", ".html", ".css", ".js"})
+_TEXT_NAMES = frozenset({"LICENSE"})
+
+#: Directories that never hold a vendored copy — skipped when locating a sibling's
+#: ``check.py`` so an installed, built, or cached copy is not mistaken for it.
+_SKIP_DIRS = frozenset(
+    {".git", ".venv", "venv", "build", "dist", "site-packages", "node_modules", "__pycache__"}
 )
+
+
+def _is_cruft(rel: Path) -> bool:
+    """Return True for machine cruft that is never part of the vendored set.
+
+    Exactly ``.DS_Store``, AppleDouble ``._*``, ``__pycache__`` and ``*.pyc`` — a
+    deliberately short list, so any *other* unexpected file (including a stray
+    dotfile) is surfaced as ``NOT RECORDED`` rather than silently skipped.
+    """
+    return any(
+        part in (".DS_Store", "__pycache__")
+        or part.startswith("._")
+        or part.endswith(".pyc")
+        for part in rel.parts
+    )
 
 
 def vendored_files() -> list[str]:
     """Return every vendored file's path relative to this directory, sorted.
 
-    Skips ``MANIFEST.txt`` and ``__pycache__`` / compiled files; the result is
+    Skips ``MANIFEST.txt`` and machine cruft (:func:`_is_cruft`); the result is
     exactly what must be byte-identical across packages.
     """
     out: list[str] = []
@@ -66,26 +88,24 @@ def vendored_files() -> list[str]:
         if p.is_dir() or p == MANIFEST:
             continue
         rel = p.relative_to(VENDORED_ROOT)
-        # Skip compiled files and any dot-prefixed component (e.g. a macOS
-        # ``.DS_Store``, ``__pycache__``) — else the set differs per machine and
-        # the test fails locally while CI stays green.
-        if p.suffix == ".pyc" or any(
-            part == "__pycache__" or part.startswith(".") for part in rel.parts
-        ):
+        if _is_cruft(rel):
             continue
         out.append(rel.as_posix())
     return out
 
 
 def sha256(path: Path) -> str:
-    """Return the hex sha256 of a file's *content*, normalized to LF line endings.
+    """Return the hex sha256 of a file's content.
 
-    "Byte-identical across packages" means identical text, not identical line
-    endings: CRLF (a Windows checkout, or a sibling with a different
-    ``core.autocrlf``) is normalized to LF before hashing, so the hash matches on
-    every platform instead of failing on Windows for every file.
+    Text files (by suffix, plus a bare ``LICENSE``) are normalized CRLF→LF before
+    hashing, so "byte-identical across packages" means identical *text* regardless
+    of a Windows checkout or a sibling's ``core.autocrlf``.  Any other file — a
+    binary asset — is hashed raw, because normalizing a binary would corrupt it.
     """
-    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    data = path.read_bytes()
+    if path.suffix in _TEXT_SUFFIXES or path.name in _TEXT_NAMES:
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def load_expected() -> dict[str, str]:
@@ -117,13 +137,24 @@ def load_expected() -> dict[str, str]:
 def sibling_vendored(repo: Path) -> Path | None:
     """Return *repo*'s copy of this directory, or ``None`` if it has none.
 
-    Located by the sibling's own ``check.py`` (``<repo>/*/*/_vendored/check.py``),
-    so neither the package name — which need not equal the distribution name
-    (``AMOCatlas`` installs as ``amocatlas``) — nor the ``reports`` vs ``report``
-    spelling of the layer's parent directory is assumed.
+    Located by the sibling's own ``check.py`` at any depth
+    (``rglob("_vendored/check.py")``, skipping build/venv/site-packages so an
+    installed copy is not matched), so neither the import-package name — which
+    need not equal the distribution name (``AMOCatlas`` installs as ``amocatlas``)
+    — nor the ``reports`` vs ``report`` spelling is assumed.  More than one match
+    is an error, not a silent pick.
     """
-    matches = sorted(repo.glob("*/*/_vendored/check.py"))
-    return matches[0].parent if matches else None
+    matches = [
+        p.parent
+        for p in repo.rglob("_vendored/check.py")
+        if not _SKIP_DIRS & set(p.parts)
+    ]
+    if len(matches) > 1:
+        raise SystemExit(
+            f"{repo}: multiple _vendored/check.py found: "
+            f"{sorted(str(m) for m in matches)}"
+        )
+    return matches[0] if matches else None
 
 
 def write_manifest() -> None:
@@ -132,8 +163,7 @@ def write_manifest() -> None:
         "# sha256 of the report-design files vendored byte-identical across",
         "# ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.",
         "# The set is the contents of this directory, minus this file.",
-        "# Regenerate after an intentional edit: "
-        "python -m <pkg>.reports._vendored.check --update",
+        f"# Regenerate after an intentional edit: {_NEUTRAL_INVOKE} --update",
     ]
     lines += [f"{sha256(VENDORED_ROOT / rel)}  {rel}" for rel in vendored_files()]
     MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -168,19 +198,22 @@ def verify_local() -> int:
 def compare_sibling(repo: Path) -> int:
     """Byte-compare every vendored file against *repo*'s copy.  Return a mismatch count.
 
-    A vendored file missing in the sibling counts as drift; an absent sibling
-    *repository* is reported and skipped.
+    ``MANIFEST.txt`` is compared too — it is byte-identical across packages, so a
+    sibling with a stale manifest is caught.  A sibling file that is absent or
+    differs counts as drift; a path that does not exist, or a repo with no
+    ``_vendored`` copy, is an error (not silently skipped — else a typo'd path
+    would read as "in sync").
     """
     print(f"\n== {repo} ==")
     if not repo.exists():
-        print("  absent — skipped")
-        return 0
+        print("  ERROR path not found — not compared")
+        return 1
     there_root = sibling_vendored(repo)
     if there_root is None:
         print("  no _vendored/ copy found — not synced")
         return 1
     mismatches = 0
-    for rel in vendored_files():
+    for rel in [*vendored_files(), MANIFEST.name]:
         there = there_root / rel
         if not there.exists():
             print(f"  MISSING   {there}")
@@ -194,16 +227,38 @@ def compare_sibling(repo: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
-    """Run the check; see the module docstring for the argument forms."""
-    if "--update" in argv:
+    """Run the check: verify locally, regenerate the manifest, or compare siblings.
+
+    Three mutually exclusive modes — no arguments verifies the local copy against
+    ``MANIFEST.txt``; ``--update`` regenerates it; one or more repo paths compares
+    this copy against each sibling.  Returns the failure/mismatch count (0 = ok).
+    """
+    parser = argparse.ArgumentParser(
+        prog=_INVOKE,
+        description="Check the vendored report layer is byte-identical across packages.",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="regenerate MANIFEST.txt from the current files",
+    )
+    parser.add_argument(
+        "siblings",
+        nargs="*",
+        metavar="REPO",
+        help="sibling repo checkout(s) to compare this copy against",
+    )
+    args = parser.parse_args(argv)
+    if args.update and args.siblings:
+        parser.error("--update cannot be combined with sibling paths")
+    if args.update:
         write_manifest()
         print(f"wrote {MANIFEST.name} ({len(vendored_files())} files)")
         return 0
-    siblings = [a for a in argv if not a.startswith("-")]
-    if not siblings:
+    if not args.siblings:
         return 1 if verify_local() else 0
-    total = sum(compare_sibling(Path(s)) for s in siblings)
-    print(f"\n{total} mismatch(es) across {len(siblings)} sibling(s)")
+    total = sum(compare_sibling(Path(s)) for s in args.siblings)
+    print(f"\n{total} mismatch(es) across {len(args.siblings)} sibling(s)")
     return 1 if total else 0
 
 
