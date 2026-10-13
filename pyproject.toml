@@ -129,7 +129,7 @@ include = ["ctdcast*"]
 
 [tool.setuptools.package-data]
 "ctdcast.reports" = ["leaflet/*", "templates/*"]
-"ctdcast.reports._vendored" = ["*.mplstyle", "templates/*"]
+"ctdcast.reports._vendored" = ["*.mplstyle", "*.md", "*.txt", "templates/*"]
 
 # Per-module coverage floors, checked by scripts/coverage_floors.py after the
 # suite.  coverage.py only offers a GLOBAL fail_under, which a new module can

@@ -7,8 +7,9 @@ repositories. (The Leaflet map assets join this directory in a later sync.)
 
 ctdcast ``main`` is the source of truth. An edit is made here in ctdcast and
 re-vendored out to the siblings (see ``README.md`` for the recipe); it is never
-edited in a consumer repository. ``scripts/check_vendored.py`` is the gate that
-hashes this directory against ``VENDORED.txt`` and the siblings.
+edited in a consumer repository. ``check.py`` is the gate that hashes this
+directory against ``MANIFEST.txt`` and the siblings; both live here, so the
+directory describes and checks itself.
 
 This package re-exports nothing: a consumer imports the specific module it
 needs (``from ...reports._vendored import design_tokens``), so each dependency

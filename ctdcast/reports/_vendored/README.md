@@ -9,19 +9,24 @@ ctdcast `main` is the source of truth. Make an edit here in ctdcast, then
 re-vendor it out to the siblings. Never edit a sibling's copy in place — the
 gate below will flag it as drift.
 
+The directory describes and checks itself: `MANIFEST.txt` records the sha256 of
+every file here, and `check.py` is the gate. A consumer copies the whole
+directory and takes nothing else — no manifest or script outside it.
+
 ## Re-vendor into a sibling
 
 From the sibling repo, copy ctdcast's directory over its own and refresh the
 hash manifest:
 
     rsync -a --delete ../ctdcast/ctdcast/reports/_vendored/ <pkg>/reports/_vendored/
-    python scripts/check_vendored.py --update
+    python -m <pkg>.reports._vendored.check --update
 
-then commit. `python scripts/check_vendored.py ../ctdcast` confirms every file
-matches.
+then commit. `python -m <pkg>.reports._vendored.check ../ctdcast` confirms every
+file matches.
 
 ## The gate
 
-`scripts/check_vendored.py` hashes this directory against `scripts/VENDORED.txt`
-and fails if a file drifts; a test runs it in CI, so an edit here that skips the
-re-vendor is caught before merge.
+`check.py` hashes this directory against `MANIFEST.txt` and fails if a file
+drifts; a three-line test runs it in CI, so an edit here that skips the
+re-vendor is caught before merge. `check.py` and `MANIFEST.txt` live in the set
+too, so the gate guards itself.
