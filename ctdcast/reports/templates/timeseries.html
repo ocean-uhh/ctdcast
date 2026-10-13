@@ -50,6 +50,7 @@
   <figure class="slot-half">
     <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
     {{- m.dbg(timeseries_map_b64, "slot-half") }}
+    {%- if show_source %}{% set _src = source_of(timeseries_map_b64) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
   </figure>
 </div>
 {% endif %}

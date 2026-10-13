@@ -107,6 +107,17 @@ def source_of(b64: str | None) -> str | None:
     return _SOURCE.get(b64) if b64 else None
 
 
+def record_source(b64: str | None, source: str) -> None:
+    """Record *source* as the caption for a PNG built outside :func:`render_b64`.
+
+    For a maker with a custom encode path (one that calls the figure-to-base64
+    step itself, bypassing :func:`render_b64`) so its figure still carries a
+    ``source:`` line.  Derive *source* with :func:`source_for`.
+    """
+    if b64:
+        _SOURCE[b64] = source
+
+
 def clear_sources() -> None:
     """Reset the base64 -> source registry — call at the start of each report build."""
     _SOURCE.clear()
