@@ -58,7 +58,16 @@ _TEXT_NAMES = frozenset({"LICENSE"})
 #: Directories that never hold a vendored copy — skipped when locating a sibling's
 #: ``check.py`` so an installed, built, or cached copy is not mistaken for it.
 _SKIP_DIRS = frozenset(
-    {".git", ".venv", "venv", "build", "dist", "site-packages", "node_modules", "__pycache__"}
+    {
+        ".git",
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+        "site-packages",
+        "node_modules",
+        "__pycache__",
+    }
 )
 
 

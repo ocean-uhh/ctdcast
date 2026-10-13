@@ -58,8 +58,9 @@ ctdcast run config_demo.yaml      # writes demo_report/index.html
 ```python
 import ctdcast
 
-ctdcast.report("ctd_nc", "report", profiles_path="profiles.nc",
-               groupings_yaml="ctd_groupings.yaml")
+ctdcast.report(
+    "ctd_nc", "report", profiles_path="profiles.nc", groupings_yaml="ctd_groupings.yaml"
+)
 ```
 
 See the [API reference](https://ocean-uhh.github.io/ctdcast/api.html) for `process`,
