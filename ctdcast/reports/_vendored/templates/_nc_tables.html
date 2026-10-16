@@ -47,11 +47,11 @@
 {%- if dtype == "float64" %}<strong><code>{{ dtype }}</code></strong>{% else %}<code>{{ dtype }}</code>{% endif %}
 {%- endmacro %}
 
-{# standard_name (bold mono) over long_name (muted); either may be absent. #}
+{# standard_name (bold mono) over long_name (regular); either may be absent. #}
 {% macro _names(row) %}
 {%- if row.standard_name %}<strong><code>{{ row.standard_name }}</code></strong>{% endif %}
 {%- if row.standard_name and row.long_name %}<br>{% endif %}
-{%- if row.long_name %}<span class="muted">{{ row.long_name }}</span>{% endif %}
+{%- if row.long_name %}{{ row.long_name }}{% endif %}
 {%- if not row.standard_name and not row.long_name %}—{% endif %}
 {%- endmacro %}
 
@@ -110,22 +110,25 @@
 {%- else %}{{ _empty("no scalar variables") }}{% endif %}
 {%- endmacro %}
 
-{# Global attributes by group. When `computed` maps an attribute name to a computed value,
-   the "Spatiotemporal coverage" group renders File value | Computed | Diff so the file's
-   stated bounds can be checked against the data. #}
-{% macro globals_tables(groups, computed=None, widths=None, source=None) %}
+{# Global attributes by group. Each row is an (attribute, type, value) triple. The
+   attribute name is a plain monospace cell (not a <th>, so it takes no header fill).
+   When `computed` maps an attribute name to a computed value, the "Spatiotemporal
+   coverage" group renders File value | Computed | Diff so the file's stated bounds can be
+   checked against the data (the Type column is dropped there — every value is numeric). #}
+{% macro globals_tables(groups, computed=None, widths=None, source=None, coverage_note=None) %}
 {%- if groups %}
 {%- for title, rows in groups %}
 <h3>{{ title }}</h3>
 {%- set show_computed = computed and title == "Spatiotemporal coverage" %}
+{%- if show_computed and coverage_note %}<p class="caption">{{ coverage_note }}</p>{% endif %}
 <table class="sortable">
-{{ thead(["Attribute", "File value", "Computed", "Diff"] if show_computed else ["Attribute", "Value"]) }}
+{{ thead(["Attribute", "File value", "Computed", "Diff"] if show_computed else ["Attribute", "Type", "Value"]) }}
 <tbody>
-{%- for k, val in rows %}
-<tr><th>{{ k }}</th>
-{%- if show_computed %}<td>{{ val }}</td><td>{{ computed.get(k, {}).get("value", "") }}</td>
-<td{% if computed.get(k, {}).get("over") %} class="cell-bad"{% endif %}>{{ computed.get(k, {}).get("diff", "") }}</td>
-{%- else %}<td>{{ val }}</td>{% endif %}</tr>
+{%- for row in rows %}
+<tr><td class="mono">{{ row[0] }}</td>
+{%- if show_computed %}<td>{{ row[2] }}</td><td>{{ computed.get(row[0], {}).get("value", "") }}</td>
+<td{% if computed.get(row[0], {}).get("over") %} class="cell-bad"{% endif %}>{{ computed.get(row[0], {}).get("diff", "") }}</td>
+{%- else %}<td>{{ row[1] }}</td><td>{{ row[2] }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>
 {%- endfor %}{{ _source(source) }}

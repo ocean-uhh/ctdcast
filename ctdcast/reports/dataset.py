@@ -201,6 +201,21 @@ def _parse_iso_second(text: str) -> np.datetime64 | None:
         return None
 
 
+def _coverage_note() -> str:
+    """Return the caption stating the amber-flag tolerances for the coverage table."""
+    tol = design.COVERAGE_TOLERANCE
+    latlon = (
+        f"latitude/longitude {tol['lat']:g}°"
+        if tol["lat"] == tol["lon"]
+        else f"latitude {tol['lat']:g}°, longitude {tol['lon']:g}°"
+    )
+    return (
+        "Computed values are recomputed from the data in this file; Diff is "
+        "File − Computed, shown amber when it exceeds the tolerance "
+        f"({latlon}, depth {tol['vertical']:g} dbar, time {tol['time']:g} s)."
+    )
+
+
 def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
     """Return the coverage check: ``{attr: {"value", "diff", "over"}}``.
 
@@ -349,6 +364,7 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "sensor_channel": channel,
             "globals": {"groups": global_groups, "source": global_src},
             "coverage": _coverage_computed(ds),
+            "coverage_note": _coverage_note(),
             "qc_exclusion": _qc_exclusion_rows(ds),
             "rename_map": rename_map,
         }

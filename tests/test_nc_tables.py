@@ -146,7 +146,8 @@ def test_globals_extras_merge_into_a_title():
         ds, extras={"Identity & discovery": ("my_custom_attr",)}
     )
     by = dict(groups)
-    assert ("my_custom_attr", "x") in by["Identity & discovery"]
+    # rows are (attribute, type, value) triples; the type is read off the stored value
+    assert ("my_custom_attr", "str", "x") in by["Identity & discovery"]
     assert nt.OTHER_GROUP not in by
 
 

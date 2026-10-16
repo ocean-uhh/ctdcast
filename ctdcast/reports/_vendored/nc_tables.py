@@ -149,6 +149,19 @@ def _fmt_minmax(v: float) -> str:
     return f"{v:.4g}"
 
 
+def _attr_type_name(value: Any) -> str:  # noqa: ANN401  # any global-attribute value
+    """Return a readable type name for a global-attribute value.
+
+    Read straight off the stored value, never guessed — so a numeric-looking attribute
+    stored as text reads ``str``, the signal a reviewer uses to catch a position written
+    ``"65 43.913"`` where a decimal degree was meant, or a count stored as a string.
+    """
+    if isinstance(value, np.ndarray):
+        return f"{_readable_dtype(value.dtype)}[{value.size}]"
+    name = type(value).__name__
+    return "str" if name in ("str_", "bytes_") else name
+
+
 def _fmt_scalar(x: Any) -> str:  # noqa: ANN401  # any 0-d value the caller decided to show
     """Format a scalar value for the Value column, truncating long strings."""
     if isinstance(x, (float, np.floating)):
@@ -434,18 +447,19 @@ def globals_rows(
 
     Returns
     -------
-    grouped : list of (str, list of (str, str))
-        ``(group_title, rows)`` with each row an ``(attribute, value)`` pair.
+    grouped : list of (str, list of (str, str, str))
+        ``(group_title, rows)`` with each row an ``(attribute, type, value)`` triple; the
+        *type* is the stored value's type name (:func:`_attr_type_name`).
     source : str
         The caption string for this builder.
     """
     merged = _merge_groups(groups, extras)
     group_of = {name: title for title, names in merged for name in names}
-    buckets: dict[str, list[tuple[str, str]]] = {title: [] for title, _ in merged}
+    buckets: dict[str, list[tuple[str, str, str]]] = {title: [] for title, _ in merged}
     buckets[OTHER_GROUP] = []
     for key, value in ds.attrs.items():
         buckets.setdefault(group_of.get(str(key), OTHER_GROUP), []).append(
-            (str(key), str(value))
+            (str(key), _attr_type_name(value), str(value))
         )
     titles = [title for title, _ in merged] + [OTHER_GROUP]
     return [(t, buckets[t]) for t in titles if buckets[t]], source_for(globals_rows)

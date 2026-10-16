@@ -150,6 +150,9 @@ def test_generated_page_has_family_layout(tmp_path):
     assert 'class="sortable' in html  # the click-to-sort tables
     # ctdcast turns the source caption on, so builder provenance shows under a table
     assert "source:" in html
+    # the coverage table states the amber-flag tolerances
+    assert "exceeds the tolerance" in html
+    assert "depth 1 dbar" in html
     # the old flat layout is gone
     assert 'class="dims-line"' not in html
 
