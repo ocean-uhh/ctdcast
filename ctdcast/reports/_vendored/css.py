@@ -257,11 +257,12 @@ tr.units th {{
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
-/* Click-to-sort affordance on every table carrying class="sortable" (see
-   _JS_SORT_TABLES): the heading is a pointer, the active one shows the direction. */
-table.sortable th[tabindex] {{ cursor: pointer; user-select: none; }}
-table.sortable th.sorted-asc::after {{ content: " \\25B2"; font-size: 0.8em; }}
-table.sortable th.sorted-desc::after {{ content: " \\25BC"; font-size: 0.8em; }}
+/* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
+   keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
+   gets none).  The heading is a pointer; the active one shows the direction. */
+th[tabindex] {{ cursor: pointer; user-select: none; }}
+th.sorted-asc::after {{ content: " \\25B2"; font-size: 0.8em; }}
+th.sorted-desc::after {{ content: " \\25BC"; font-size: 0.8em; }}
 {slots}
 .masthead-header {{
   display: flex; justify-content: space-between; align-items: flex-start;
@@ -366,17 +367,18 @@ document.querySelectorAll('h2').forEach(h => {
 </script>
 """
 
-#: Click-to-sort for every ``<table class="sortable">`` on a page.  Vanilla, dependency-free
-#: and inline, so it works offline — the family offline-at-view-time rule.  A ``<th>`` with
-#: ``data-nosort`` (the Attributes column) and a ``<table data-nosort>`` (the attribute
-#: disclosure sub-tables) are left alone.  A column sorts numerically when every non-empty
+#: Click-to-sort for every ``<table>`` on a page — every table sorts unless it opts out.
+#: Vanilla, dependency-free and inline, so it works offline — the family offline-at-view-time
+#: rule.  A ``<th>`` with ``data-nosort`` (the Attributes column), a ``<table data-nosort>``
+#: (the attribute disclosure sub-tables), and a table with no header row (a key/value list)
+#: are left alone.  A column sorts numerically when every non-empty
 #: cell parses as a number or carries ``data-sort`` (which also lets ``1,234`` and ``a / b``
 #: cells sort on a raw value); otherwise it sorts case-insensitively by visible text.  First
 #: click ascending, second reverses; the active heading shows ▲/▼ via ``.sorted-asc`` /
 #: ``.sorted-desc``.  Headings are keyboard-operable (Enter / Space).
 _JS_SORT_TABLES: str = """\
 <script>
-document.querySelectorAll('table.sortable').forEach(function (table) {
+document.querySelectorAll('table').forEach(function (table) {
   if (table.hasAttribute('data-nosort')) { return; }
   var head = table.tHead && table.tHead.rows[0];
   var body = table.tBodies[0];

@@ -27,11 +27,15 @@
 {# "Not applicable" placeholder for an empty table, in the shared caption style. #}
 {% macro _empty(what) %}<p class="caption">Not applicable to this file: {{ what }}.</p>{% endmacro %}
 
-{% macro summary_line(counts) %}
+{# excluded_label, when set with a non-zero counts.excluded, names a package's own variables
+   that are shown in their own tables rather than the main variable count (ctdcast: the
+   per-profile sensor linkage/channel). #}
+{% macro summary_line(counts, excluded_label=None) %}
 <p class="caption">{{ "{:,}".format(counts.data_variables) }} data variables ·
 {{ "{:,}".format(counts.sensors) }} sensors ·
 {{ "{:,}".format(counts.qc_companions) }} QC companions ·
-{{ "{:,}".format(counts.coordinates) }} coordinates</p>
+{{ "{:,}".format(counts.coordinates) }} coordinates
+{%- if excluded_label and counts.excluded %} · {{ "{:,}".format(counts.excluded) }} {{ excluded_label }}{% endif %}</p>
 {%- endmacro %}
 
 {# A variable's attributes, revealed on demand; the sub-table opts out of sorting. #}
@@ -47,8 +51,9 @@
 {%- if dtype == "float64" %}<strong><code>{{ dtype }}</code></strong>{% else %}<code>{{ dtype }}</code>{% endif %}
 {%- endmacro %}
 
-{# standard_name (bold mono) over long_name (regular); either may be absent. #}
-{% macro _names(row) %}
+{# standard_name (bold mono) over long_name (regular); either may be absent. Public so an
+   owned domain table can compose this cell rather than hand-write the markup. #}
+{% macro names_cell(row) %}
 {%- if row.standard_name %}<strong><code>{{ row.standard_name }}</code></strong>{% endif %}
 {%- if row.standard_name and row.long_name %}<br>{% endif %}
 {%- if row.long_name %}{{ row.long_name }}{% endif %}
@@ -56,10 +61,18 @@
 {%- endmacro %}
 
 {# Min / Max in one cell; data-sort carries the raw min so thousands separators and the
-   "a / b" form still sort as numbers. #}
-{% macro _minmax(row) %}
+   "a / b" form still sort as numbers. Public so an owned domain table can compose it. #}
+{% macro minmax_cell(row) %}
 <td{% if row.v_min_raw is not none %} data-sort="{{ row.v_min_raw }}"{% endif %}>
 {%- if row.v_min != "—" %}{{ row.v_min }} / {{ row.v_max }}{% else %}—{% endif %}</td>
+{%- endmacro %}
+
+{# Valid-count cell: "390" when every value is valid, else "370 / 390" with the shortfall
+   flagged. data-sort carries the raw valid count. Public so an owned domain table carries
+   the same valid logic the vendored variable tables do, rather than re-deriving it. #}
+{% macro valid_cell(n_valid, n) %}
+<td data-sort="{{ n_valid }}"{% if n_valid < n %} class="cell-bad"{% endif %}>
+{%- if n_valid < n %}{{ "{:,}".format(n_valid) }} / {{ "{:,}".format(n) }}{% else %}{{ "{:,}".format(n_valid) }}{% endif %}</td>
 {%- endmacro %}
 
 {% macro coords_table(rows, widths=None, source=None) %}
@@ -70,7 +83,7 @@
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
-<td>{{ r.units }}</td><td>{{ _names(r) }}</td>{{ _minmax(r) }}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+<td>{{ r.units }}</td><td>{{ names_cell(r) }}</td>{{ minmax_cell(r) }}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no coordinates") }}{% endif %}
@@ -86,7 +99,7 @@
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
-<td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td><td>{{ _names(r) }}</td>{{ _minmax(r) }}
+<td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td><td>{{ names_cell(r) }}</td>{{ minmax_cell(r) }}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
 <td data-sort="{{ r.valid_pct }}"{% if r.valid_pct < 100 %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
 <td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
@@ -104,7 +117,7 @@
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td>
-<td>{{ _names(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+<td>{{ names_cell(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no scalar variables") }}{% endif %}
@@ -128,7 +141,7 @@
 <tr><td class="mono">{{ row[0] }}</td>
 {%- if show_computed %}<td>{{ row[2] }}</td><td>{{ computed.get(row[0], {}).get("value", "") }}</td>
 <td{% if computed.get(row[0], {}).get("over") %} class="cell-bad"{% endif %}>{{ computed.get(row[0], {}).get("diff", "") }}</td>
-{%- else %}<td>{{ row[1] }}</td><td>{{ row[2] }}</td>{% endif %}</tr>
+{%- else %}<td>{{ dtype_cell(row[1]) }}</td><td>{{ row[2] }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>
 {%- endfor %}{{ _source(source) }}
@@ -145,7 +158,7 @@
 <tr><td>{{ r.name }}</td>
 <td>{% if r.model %}{{ r.model }}{% if r.model_assumed %} <em>(assumed)</em>{% endif %}{% else %}—{% endif %}</td>
 <td>{{ r.serial or "—" }}</td><td>{{ r.calibration or "—" }}</td>
-<td>{{ _names(r) }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+<td>{{ names_cell(r) }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>
 {%- if rows|selectattr("model_assumed")|list %}<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>{% endif %}

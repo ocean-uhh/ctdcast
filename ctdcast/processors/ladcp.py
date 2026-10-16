@@ -258,7 +258,9 @@ def build_ladcp_profiles(
             vertical_min=float(np.nanmin(_depth)) if _depth_ok else None,
             vertical_max=float(np.nanmax(_depth)) if _depth_ok else None,
             vertical_units=_depth_units,
-            times=ds_out["time"].values if "time" in ds_out else None,
+            # One time per LADCP profile: it is both the start and the end bound.
+            time_starts=ds_out["time"].values if "time" in ds_out else None,
+            time_ends=ds_out["time"].values if "time" in ds_out else None,
             source="ladcp",
         )
     )

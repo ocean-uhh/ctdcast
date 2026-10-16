@@ -66,7 +66,7 @@ def test_vertical_bounds_carry_positive_down():
 
 def test_time_coverage_and_iso_duration():
     times = np.array(["2026-07-09T10:00", "2026-07-31T18:00"], dtype="datetime64[ns]")
-    a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
+    a = coverage_attrs(lats=[1.0], lons=[2.0], time_starts=times, time_ends=times)
     assert a["time_coverage_start"].endswith("Z")
     # 22 days 8 hours — the partial day is kept, not truncated to P22D.
     assert a["time_coverage_duration"] == "P22DT8H"
@@ -75,13 +75,13 @@ def test_time_coverage_and_iso_duration():
 def test_sub_day_span_is_not_p0d():
     """A six-hour survey must not report a zero-length ISO duration."""
     times = np.array(["2026-07-09T10:00", "2026-07-09T16:00"], dtype="datetime64[ns]")
-    a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
+    a = coverage_attrs(lats=[1.0], lons=[2.0], time_starts=times, time_ends=times)
     assert a["time_coverage_duration"] == "PT6H"
 
 
 def test_whole_day_span_has_no_time_part():
     times = np.array(["2026-07-09T00:00", "2026-07-12T00:00"], dtype="datetime64[ns]")
-    a = coverage_attrs(lats=[1.0], lons=[2.0], times=times)
+    a = coverage_attrs(lats=[1.0], lons=[2.0], time_starts=times, time_ends=times)
     assert a["time_coverage_duration"] == "P3D"
 
 
@@ -96,7 +96,8 @@ def test_all_nan_vertical_bounds_are_omitted():
 
 def test_non_datetime_times_are_skipped_not_misencoded():
     """A numeric epoch array is not a wall-clock time; skip rather than mislabel."""
-    a = coverage_attrs(lats=[1.0], lons=[2.0], times=np.array([1_000_000, 2_000_000]))
+    epochs = np.array([1_000_000, 2_000_000])
+    a = coverage_attrs(lats=[1.0], lons=[2.0], time_starts=epochs, time_ends=epochs)
     assert "time_coverage_start" not in a
 
 

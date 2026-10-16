@@ -249,7 +249,8 @@ def coverage_attrs(
     vertical_min: float | None = None,
     vertical_max: float | None = None,
     vertical_units: str = "dbar",
-    times: npt.ArrayLike | None = None,
+    time_starts: npt.ArrayLike | None = None,
+    time_ends: npt.ArrayLike | None = None,
 ) -> dict[str, str]:
     """Return the derived ACDD coverage attributes.
 
@@ -266,8 +267,12 @@ def coverage_attrs(
     vertical_units : str
         Units of the vertical bounds.  ``"dbar"`` for a pressure grid (the honest
         label — the profiles are gridded on pressure, not converted to metres).
-    times : array-like of datetime64, optional
-        Per-profile times; drives ``time_coverage_start/end/duration``.
+    time_starts, time_ends : array-like of datetime64, optional
+        Per-profile start and end times.  ``time_coverage_start`` is the earliest
+        start and ``time_coverage_end`` the latest *end* — the two are taken from
+        separate arrays so the end bound is a real end, never the start of the last
+        profile.  Both must be given for any time coverage to be written; a source
+        with a single time per profile passes that one array as both.
 
     Returns
     -------
@@ -302,16 +307,18 @@ def coverage_attrs(
         # height; the profiles increase downward.
         attrs["geospatial_vertical_positive"] = "down"
 
-    if times is not None:
-        t = np.asarray(times).ravel()
+    if time_starts is not None and time_ends is not None:
+        starts = np.asarray(time_starts).ravel()
+        ends = np.asarray(time_ends).ravel()
         # Only a datetime64 array can carry NaT and be turned into a timestamp;
         # anything else (numeric epochs, object dtype) is not a wall-clock time we
         # can label safely, so it is skipped rather than mis-encoded.
-        if t.dtype.kind == "M":
-            t = t[~np.isnat(t)]
-            if t.size:
-                t0 = np.datetime64(t.min(), "s")
-                t1 = np.datetime64(t.max(), "s")
+        if starts.dtype.kind == "M" and ends.dtype.kind == "M":
+            starts = starts[~np.isnat(starts)]
+            ends = ends[~np.isnat(ends)]
+            if starts.size and ends.size:
+                t0 = np.datetime64(starts.min(), "s")
+                t1 = np.datetime64(ends.max(), "s")
                 attrs["time_coverage_start"] = str(t0) + "Z"
                 attrs["time_coverage_end"] = str(t1) + "Z"
                 attrs["time_coverage_duration"] = _iso_duration(t1 - t0)
@@ -679,7 +686,8 @@ def cruise_global_attrs(
     vertical_min: float | None = None,
     vertical_max: float | None = None,
     vertical_units: str = "dbar",
-    times: npt.ArrayLike | None = None,
+    time_starts: npt.ArrayLike | None = None,
+    time_ends: npt.ArrayLike | None = None,
     source: str | None = None,
     config: dict[str, Any] | None = None,
     now: _dt.datetime | None = None,
@@ -697,7 +705,7 @@ def cruise_global_attrs(
     cruise_info : dict or None
         The ``cruise_info:`` mapping.  None or empty yields only derived +
         provenance attributes.
-    lats, lons, vertical_min, vertical_max, vertical_units, times
+    lats, lons, vertical_min, vertical_max, vertical_units, time_starts, time_ends
         Passed to :func:`coverage_attrs`.
     source : str, optional
         Product key (``"ctd"``, ``"ladcp"``).  Passed to
@@ -740,7 +748,8 @@ def cruise_global_attrs(
             vertical_min=vertical_min,
             vertical_max=vertical_max,
             vertical_units=vertical_units,
-            times=times,
+            time_starts=time_starts,
+            time_ends=time_ends,
         )
     )
     attrs.update(provenance_attrs(now))

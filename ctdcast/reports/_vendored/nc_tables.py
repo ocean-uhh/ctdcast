@@ -152,14 +152,15 @@ def _fmt_minmax(v: float) -> str:
 def _attr_type_name(value: Any) -> str:  # noqa: ANN401  # any global-attribute value
     """Return a readable type name for a global-attribute value.
 
-    Read straight off the stored value, never guessed — so a numeric-looking attribute
-    stored as text reads ``str``, the signal a reviewer uses to catch a position written
+    Read straight off the stored value's dtype through :func:`_readable_dtype`, the one
+    type vocabulary shared with the variable tables — so text reads ``string`` (never
+    ``str`` or a raw numpy dtype), the signal a reviewer uses to catch a position written
     ``"65 43.913"`` where a decimal degree was meant, or a count stored as a string.
     """
-    if isinstance(value, np.ndarray):
-        return f"{_readable_dtype(value.dtype)}[{value.size}]"
-    name = type(value).__name__
-    return "str" if name in ("str_", "bytes_") else name
+    arr = np.asarray(value)
+    if arr.ndim:
+        return f"{_readable_dtype(arr.dtype)}[{arr.size}]"
+    return _readable_dtype(arr.dtype)
 
 
 def _fmt_scalar(x: Any) -> str:  # noqa: ANN401  # any 0-d value the caller decided to show
@@ -470,6 +471,7 @@ def summary_counts(
     *,
     is_qc: Callable[[str, xr.Dataset], bool],
     is_sensor: Callable[[str], bool] | None = None,
+    exclude: Callable[[str], bool] | None = None,
 ) -> dict[str, int]:
     """Return the one-line inventory summary counts.
 
@@ -480,22 +482,31 @@ def summary_counts(
     is_qc : callable
         ``is_qc(name, ds) -> bool``.
     is_sensor : callable, optional
-        ``is_sensor(name) -> bool``.
+        ``is_sensor(name) -> bool`` — the sensor-catalog predicate, counted as ``sensors``.
+    exclude : callable, optional
+        ``exclude(name) -> bool`` — a package's data variables shown in their own tables, not
+        in the main variable table (e.g. ctdcast's per-profile linkage/channel).  Counted as
+        ``excluded`` and removed from ``data_variables`` so that count stays honest.
 
     Returns
     -------
     dict
-        ``{"data_variables", "sensors", "qc_companions", "coordinates"}``.
+        ``{"data_variables", "sensors", "qc_companions", "coordinates", "excluded"}``.
     """
     sensor = is_sensor or (lambda _n: False)
+    excl = exclude or (lambda _n: False)
     sensors = [n for n in ds.data_vars if sensor(n)]
     qc = [n for n in ds.data_vars if is_qc(n, ds)]
-    data = [n for n in ds.data_vars if n not in set(sensors) | set(qc)]
+    accounted = set(sensors) | set(qc)
+    # Excluded: named by the package's own predicate but not already a sensor or QC companion.
+    excluded = [n for n in ds.data_vars if excl(n) and n not in accounted]
+    data = [n for n in ds.data_vars if n not in accounted | set(excluded)]
     return {
         "data_variables": len(data),
         "sensors": len(sensors),
         "qc_companions": len(qc),
         "coordinates": len(ds.coords),
+        "excluded": len(excluded),
     }
 
 

@@ -20,6 +20,7 @@ coverage check that recomputes ``geospatial_*`` / ``time_coverage_*`` from the d
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -53,9 +54,9 @@ def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided
 def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
     """Return a flat data-ranges row for one variable or coordinate.
 
-    Used by the cast page's data-ranges appendix (via :func:`data_range_rows`) and
-    the owned sensor linkage/channel tables — both want the ``label_units`` and
-    ``processing_level`` columns, which the vendored inventory builders do not carry.
+    Used by the cast page's data-ranges appendix (via :func:`data_range_rows`), which
+    wants the ``label_units`` and ``processing_level`` columns the vendored inventory
+    builders do not carry.
     """
     # Attributes already shown as their own table columns are omitted from the
     # expandable set (units, standard_name, long_name); label_units and everything
@@ -162,28 +163,36 @@ def _finite_min_max(ds: xr.Dataset, name: str) -> tuple[float | None, float | No
     return float(vals.min()), float(vals.max())
 
 
+def _datetime_extreme(
+    ds: xr.Dataset, name: str, reduce: Callable[[np.ndarray], np.datetime64]
+) -> np.datetime64 | None:
+    """Return ``reduce`` of a datetime variable to the second, or ``None`` when absent/empty."""
+    if name not in ds.variables:
+        return None
+    vals = np.asarray(ds[name].values).ravel()
+    if vals.dtype.kind != "M":
+        return None
+    vals = vals[~np.isnat(vals)]
+    if not vals.size:
+        return None
+    return np.datetime64(reduce(vals), "s")
+
+
 def _time_bounds(ds: xr.Dataset) -> tuple[np.datetime64 | None, np.datetime64 | None]:
     """Return the data's ``(start, end)`` to the second, or ``(None, None)``.
 
-    The check compares like with like: a compiled file's ``time_coverage_*`` is
-    written from the per-profile **start** times (``build_profiles`` passes
-    ``times=time_starts``), so the bounds are recomputed from the same basis —
-    ``time_start`` when present, else a single ``time`` coordinate — not from
-    ``time_end``.  Recomputing the end from ``time_end`` would instead flag every
-    correctly-written file, since each cast ends after its start.  (Whether the
-    file's end bound *ought* to come from ``time_end`` is a writer question, not an
-    inventory-page one.)  NaT is dropped.
+    The start is the earliest ``time_start`` and the end the latest ``time_end`` —
+    the two extremes the writer states, each from its own variable, so a correct
+    file shows ``diff = 0`` and an amber flag means the metadata genuinely disagrees
+    with the data.  A file with only a single ``time`` coordinate uses it for both.
+    NaT is dropped.
     """
-    time_var = "time_start" if "time_start" in ds.variables else "time"
-    if time_var not in ds.variables:
-        return None, None
-    times = np.asarray(ds[time_var].values).ravel()
-    if times.dtype.kind != "M":
-        return None, None
-    times = times[~np.isnat(times)]
-    if not times.size:
-        return None, None
-    return np.datetime64(times.min(), "s"), np.datetime64(times.max(), "s")
+    start_var = "time_start" if "time_start" in ds.variables else "time"
+    end_var = "time_end" if "time_end" in ds.variables else "time"
+    return (
+        _datetime_extreme(ds, start_var, np.min),
+        _datetime_extreme(ds, end_var, np.max),
+    )
 
 
 def _fmt_diff(diff: float) -> str:
@@ -313,8 +322,9 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
 
     Returns a dict with ``filename``, ``filesize``, ``dims``, ``summary`` (the headline
     counts), ``coords`` / ``variables`` / ``scalars`` / ``sensor_catalog`` / ``globals``
-    (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel`` (owned
-    :func:`_var_meta` rows), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``
+    (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel``
+    (``{"groups", "source"}`` from :func:`~ctdcast.reports._vendored.nc_tables.variables_rows`
+    with an including predicate), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``
     and ``rename_map``.  On any read error returns ``{"filename", "error"}`` so the page
     can report it rather than failing to generate.
 
@@ -343,10 +353,19 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             ds, extras=design.ATTR_GROUP_EXTRAS
         )
         summary = nc_tables.summary_counts(
-            ds, is_qc=design.is_qc, is_sensor=design.is_sensor
+            ds, is_qc=design.is_qc, is_sensor=design.is_sensor, exclude=_is_sensor_var
         )
-        linkage = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars) if _is_linkage(n)]
-        channel = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars) if _is_channel(n)]
+        # Linkage and channel are per-profile sensor variables, kept out of the science
+        # tables (decision) but shown in their own sections. Build them through the same
+        # vendored variables_rows builder with an *including* predicate, so they render
+        # through nc.variables_tables with the Length/Valid/Valid %/type columns the
+        # science table has — owned code chooses the rows, the vendored macro owns the cells.
+        linkage_groups, linkage_src = nc_tables.variables_rows(
+            ds, is_qc=design.is_qc, is_sensor=lambda n: not _is_linkage(n)
+        )
+        channel_groups, channel_src = nc_tables.variables_rows(
+            ds, is_qc=design.is_qc, is_sensor=lambda n: not _is_channel(n)
+        )
         # Source → canonical rename table, reconstructed from each variable's recorded
         # source name; sorted by canonical name.  source_to_canonical already drops
         # identity entries (source == canonical).
@@ -360,8 +379,8 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "variables": {"groups": var_groups, "source": var_src},
             "scalars": {"rows": scalar_rows, "source": scalar_src},
             "sensor_catalog": {"rows": catalog_rows, "source": catalog_src},
-            "sensor_linkage": linkage,
-            "sensor_channel": channel,
+            "sensor_linkage": {"groups": linkage_groups, "source": linkage_src},
+            "sensor_channel": {"groups": channel_groups, "source": channel_src},
             "globals": {"groups": global_groups, "source": global_src},
             "coverage": _coverage_computed(ds),
             "coverage_note": _coverage_note(),
@@ -428,7 +447,6 @@ def generate_dataset_page(
         cruise=cruise,
         css=design.SHARED_CSS,
         js_top_links=design._JS_TOP_LINKS,
-        js_sort_tables=design._JS_SORT_TABLES,
         nav_prefix=nav_prefix,
         nav=nav,
         masthead_bg=ROLE_ACCENT.get("component", ""),

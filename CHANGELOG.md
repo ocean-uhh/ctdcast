@@ -17,6 +17,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The bundled Leaflet assets (`leaflet.min.js`, `leaflet.min.css`) and their `LICENSE` moved into `reports/_vendored/leaflet/`, shared byte-identical across the sibling packages, so the ~160 KB library is bundled once; the cruise map reads them there. No change to generated output.
 - The cruise map no longer falls back to a CDN: a missing bundled Leaflet asset now raises rather than fetching from jsdelivr/cdnjs or emitting an empty map, so the offline-at-sea guarantee holds at build time instead of failing silently at view time.
 
+### Fixed
+
+- `time_coverage_end` was written from the per-profile **start** times, so a compiled file's stated end was the start of the last profile, not the last data timestamp (on the demo cruise, ~19 minutes short). `coverage_attrs`/`cruise_global_attrs` now take start and end times separately: `time_coverage_start` is the earliest start and `time_coverage_end` the latest end, each from its own variable (`time_start`/`time_end`); the LADCP product, with one time per profile, uses it for both. The value of `time_coverage_end` in every regenerated stage file changes accordingly.
+
 ## [0.3.0] — 2026-10-12
 
 ### Added

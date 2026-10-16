@@ -1,5 +1,6 @@
 """Tests for ctdcast.cruise.profiles — build_profiles refactored from converters."""
 
+import numpy as np
 import xarray as xr
 from conftest import FIXTURES_NC
 
@@ -56,6 +57,22 @@ class TestBuildProfilesCruise:
         ds = xr.open_dataset(out, engine="netcdf4")
         directions = set(ds["cast_direction"].values.astype(str))
         assert directions <= {"down", "up"}, f"Unexpected directions: {directions}"
+        ds.close()
+
+    def test_time_coverage_end_is_the_last_end_not_the_last_start(self, tmp_path):
+        """time_coverage_end is max(time_end), not the start of the last profile."""
+        from ctdcast.processors.profiles import build_profiles
+
+        out = tmp_path / "profiles.nc"
+        build_profiles(FIXTURES_NC, out, force=True)
+        ds = xr.open_dataset(out, engine="netcdf4")
+        ends = ds["time_end"].values
+        ends = ends[~np.isnat(ends)]
+        expected_end = np.datetime64(ends.max(), "s")
+        stated_end = np.datetime64(str(ds.attrs["time_coverage_end"]).rstrip("Z"), "s")
+        # The former bug wrote max(time_start) here; with distinct start/end arrays
+        # the end bound must be the latest end.
+        assert stated_end == expected_end
         ds.close()
 
     def test_n_prof_is_integer_index(self, tmp_path):

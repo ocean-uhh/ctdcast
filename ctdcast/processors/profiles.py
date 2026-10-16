@@ -954,7 +954,8 @@ def build_profiles(
             vertical_min=_v_min,
             vertical_max=_v_max,
             vertical_units=VARIABLES["pressure"]["units"],
-            times=time_starts,
+            time_starts=time_starts,
+            time_ends=time_ends,
             source="ctd",
             # The identifier's grid token must reflect the ACTUAL bin spacing used
             # here (build_profiles' own `dbar`), not the config default — otherwise

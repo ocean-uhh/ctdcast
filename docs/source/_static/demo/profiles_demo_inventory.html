@@ -173,6 +173,13 @@ figure img {
   display: block; width: 100%; height: auto;
 }
 figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }
+/* Optional provenance line under a figure: which draw function produced it.
+   Off by default (vendored SHOW_FIGURE_SOURCE); a package turns it on in its
+   owned design module. */
+.fig-source {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs); color: var(--muted); margin-top: 0.15rem;
+}
 /* A stub panel's warning fills the figure slot it stands in for, rather than the
    78ch prose reading measure it would otherwise inherit as a paragraph. */
 figure .warn { max-width: none; }
@@ -192,6 +199,25 @@ td {
 tr:nth-child(even) td { background: var(--bg-sunken); }
 td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
 td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+/* netCDF inventory tables (vendored nc_tables): variable / coord / scalar / sensor /
+   global tables.  Package-neutral — the markup is emitted by templates/_nc_tables.html. */
+.var-table code { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.muted { color: var(--muted); }
+.var-qc { color: var(--muted); font-size: var(--fs-xs); }
+.cell-bad { color: var(--warn); font-variant-numeric: tabular-nums; }
+tr.units th {
+  background: transparent; color: var(--muted); font-weight: 400;
+  font-size: var(--fs-xs); padding-top: 0;
+}
+.attr-disclosure summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.attr-disclosure table { margin: 0.3rem 0; width: auto; }
+.attr-disclosure th { background: transparent; color: var(--text); font-weight: 600; }
+/* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
+   keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
+   gets none).  The heading is a pointer; the active one shows the direction. */
+th[tabindex] { cursor: pointer; user-select: none; }
+th.sorted-asc::after { content: " \25B2"; font-size: 0.8em; }
+th.sorted-desc::after { content: " \25BC"; font-size: 0.8em; }
 .slot-full         { width: 100%; }
 .slot-twothirds     { width: calc(66.67% - 0.33rem); }
 .slot-three-fifths  { width: calc(60% - 0.40rem); }
@@ -281,15 +307,7 @@ footer a { color: var(--muted); }
 </style>
 
 <style>
-/* Dataset inventory page */
-.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
-.dims-line code { color: var(--text); }
-table.nc td, table.nc th { font-size: var(--fs-nav); }
-details.attrs > summary {
-  cursor: pointer; color: var(--ocean); font-size: var(--fs-xs); user-select: none;
-}
-details.attrs table { margin: 0.3rem 0 0.2rem; }
-details.attrs td { font-size: var(--fs-xs); }
+/* Dataset inventory page — the tables themselves are styled by the vendored CSS. */
 .rename { color: var(--muted); }
 .rename .arrow { color: var(--ocean); }
 </style>
@@ -305,7 +323,7 @@ details.attrs td { font-size: var(--fs-xs); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-11 19:21 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-16 19:42 UTC</p>
   
   
 
@@ -331,8 +349,6 @@ details.attrs td { font-size: var(--fs-xs); }
     <div><dt>File</dt><dd>profiles_demo.nc</dd></div>
     <div><dt>Size</dt><dd>342.6 KB</dd></div>
     <div><dt>Dimensions</dt><dd>N_PROF=8, pressure=718</dd></div>
-    <div><dt>Coordinates</dt><dd>4</dd></div>
-    <div><dt>Data variables</dt><dd>27</dd></div>
   </dl>
 
   <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
@@ -341,6 +357,11 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 
+
+<p class="caption">27 data variables ·
+11 sensors ·
+0 QC companions ·
+4 coordinates · 24 sensor linkage/channel</p>
 
 
 
@@ -356,9 +377,9 @@ details.attrs td { font-size: var(--fs-xs); }
 
 
 <div class="jump-nav">
-  <a href="#s-qc-drop">(1) QC exclusions</a>
-  <a href="#s-coords">(2) Coordinates</a>
-  <a href="#s-vars">(3) Data variables</a>
+  <a href="#s-coords">(1) Coordinates</a>
+  <a href="#s-vars">(2) Data variables</a>
+  <a href="#s-qc-drop">(3) QC exclusions</a>
   <a href="#s-sensor-catalog">(4) Sensor catalog</a>
   <a href="#s-sensor-linkage">(5) Sensor linkage</a>
   <a href="#s-sensor-channel">(6) Sensor channels</a>
@@ -366,1592 +387,777 @@ details.attrs td { font-size: var(--fs-xs); }
   
 </div>
 
+<h2 id="s-coords">(1) Coordinates</h2>
 
-<h2 id="s-qc-drop">(1) QC exclusions</h2>
-<p class="dims-line">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
-<p class="dims-line">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
-<table class="nc">
-  <thead><tr><th>Variable</th><th class="num">Excluded</th><th class="num">Input samples</th><th class="num">% excluded</th></tr></thead>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Length</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>N_PROF</td><td><code>int32</code></td><td data-sort="8">8</td>
+<td></td><td>Profile index (0-based sequential)</td>
+<td data-sort="0.0">0 / 7</td><td data-nosort>—</td></tr>
+<tr><td>latitude</td><td><strong><code>float64</code></strong></td><td data-sort="8">8</td>
+<td>degrees_north</td><td><strong><code>latitude</code></strong><br>Latitude</td>
+<td data-sort="65.58246">65.58 / 65.86</td><td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>median of the position fixes over the cast direction</td></tr><tr><th>label_units</th><td>°N</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>longitude</td><td><strong><code>float64</code></strong></td><td data-sort="8">8</td>
+<td>degrees_east</td><td><strong><code>longitude</code></strong><br>Longitude</td>
+<td data-sort="-29.58836">-29.59 / -29.43</td><td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>median of the position fixes over the cast direction</td></tr><tr><th>label_units</th><td>°E</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>pressure</td><td><code>float32</code></td><td data-sort="718">718</td>
+<td>dbar</td><td><strong><code>sea_water_pressure</code></strong><br>Sea water pressure</td>
+<td data-sort="1.0">1 / 718</td><td data-nosort><details class="attr-disclosure"><summary>3 attrs</summary>
+<table data-nosort><tbody><tr><th>positive</th><td>down</td></tr><tr><th>axis</th><td>Z</td></tr><tr><th>label_units</th><td>dbar</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:coords_rows</div>
+
+<h2 id="s-vars">(2) Data variables</h2>
+<p class="caption">Grouped by dimension; the per-group sample count is in each heading. Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
+
+<h3>Variables on N_PROF (8 samples)</h3>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>cast_direction</td>
+<td><code>string</code></td><td></td><td>Profile direction</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>flag_values</th><td>down up</td></tr><tr><th>comment</th><td>replaces the N_PROF = cast + 0.5 float encoding</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>cast_id</td>
+<td><code>string</code></td><td></td><td>Cast identifier</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>Zero-padded cast number with optional letter suffix, e.g. &#39;004&#39; or &#39;004b&#39;.</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>cast_number</td>
+<td><code>int32</code></td><td></td><td>original cast number from filename</td>
+<td data-sort="11.0">11 / 129</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort>—</td></tr>
+<tr><td>cast_suffix</td>
+<td><code>string</code></td><td></td><td>cast letter suffix from filename</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>empty for a plain cast; a letter (e.g. &#39;b&#39;) marks a distinct sibling event at the same station number</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>cast_type</td>
+<td><code>string</code></td><td></td><td>downcast or upcast (deprecated alias for cast_direction)</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>flag_values</th><td>down up</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>gebco_depth_m</td>
+<td><code>float32</code></td><td>m</td><td>GEBCO bathymetry depth at max-pressure position</td>
+<td>—</td>
+<td data-sort="0">0</td>
+<td data-sort="0.0" class="cell-bad">0.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>positive</th><td>down</td></tr><tr><th>comment</th><td>Bilinearly interpolated from GEBCO_2025 at the lat/lon of maximum pressure. NaN when GEBCO file is unavailable.</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>max_pressure_dbar</td>
+<td><code>float32</code></td><td>dbar</td><td>Maximum pressure recorded during full cast</td>
+<td data-sort="307.0">307 / 718</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>Same value for downcast and upcast profiles of the same cast.</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>preferred_pair</td>
+<td><code>string</code></td><td></td><td>preferred-sensor choice (preferred_pair) per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>one of &#34;primary&#34; / &#34;secondary&#34;; empty where the cast was undeclared</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>source_data_mode</td>
+<td><code>string</code></td><td></td><td>OceanSITES data mode of the source cast for this profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>The source cast&#39;s own data_mode (P provisional, D delayed-mode) — a per-profile fact about the source file, beside sourc</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>source_file</td>
+<td><code>string</code></td><td></td><td>source per-cast filename this profile was compiled from</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>Filename only (see the global &#39;source&#39; attribute for the naming convention); the absolute root is deliberately not recor</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>source_stage</td>
+<td><code>int8</code></td><td></td><td>processing stage of the source file for this profile</td>
+<td data-sort="3.0">3 / 3</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>3 attrs</summary>
+<table data-nosort><tbody><tr><th>flag_values</th><td>[0 1 2 3]</td></tr><tr><th>flag_meanings</th><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><th>comment</th><td>Best-available stage for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 </td></tr>
+</tbody></table></details></td></tr>
+<tr><td>source_tracking_id</td>
+<td><code>string</code></td><td></td><td>tracking_id of the per-cast file this profile was compiled from</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>The compiled file has its own tracking_id (global attr); this names the specific instance of each source cast file, so t</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>time_end</td>
+<td><code>datetime</code></td><td></td><td>end time of cast direction</td>
+<td>2026-07-12 02:49:22 / 2026-07-22 10:01:51</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort>—</td></tr>
+<tr><td>time_start</td>
+<td><code>datetime</code></td><td></td><td>start time of cast direction</td>
+<td>2026-07-12 02:40:06 / 2026-07-22 09:43:02</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort>—</td></tr>
+</tbody></table>
+<h3>Variables on N_PROF × pressure (8 × 718 = 5,744 samples)</h3>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>conductivity</td>
+<td><code>float32</code></td><td>mS cm-1</td><td><strong><code>sea_water_electrical_conductivity</code></strong><br>Conductivity (preferred pair)</td>
+<td data-sort="27.892269134521484">27.89 / 36.75</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>mS/cm</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>conductivity_1</td>
+<td><code>float32</code></td><td>mS cm-1</td><td><strong><code>sea_water_electrical_conductivity</code></strong><br>Conductivity (primary)</td>
+<td data-sort="27.892269134521484">27.89 / 36.76</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>mS/cm</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>conductivity_2</td>
+<td><code>float32</code></td><td>mS cm-1</td><td><strong><code>sea_water_electrical_conductivity</code></strong><br>Conductivity (secondary)</td>
+<td data-sort="27.88973045349121">27.89 / 36.75</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>mS/cm</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_altimeter</td>
+<td><code>float32</code></td><td>m</td><td><strong><code>altitude_of_sea_floor</code></strong><br>Altimeter distance to seafloor</td>
+<td data-sort="-9.990000242327645e-29">-9.99e-29 / 102.5</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>m</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_fluor</td>
+<td><code>float32</code></td><td>mg m-3</td><td><strong><code>mass_concentration_of_chlorophyll_in_sea_water</code></strong><br>Chlorophyll fluorescence</td>
+<td data-sort="2.8975000381469727">2.898 / 3.366</td>
+<td data-sort="3983">3,983</td>
+<td data-sort="69.3" class="cell-bad">69.3</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>35</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>mg/m³</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_oxygen</td>
+<td><code>float32</code></td><td>umol kg-1</td><td><strong><code>moles_of_oxygen_per_unit_mass_in_sea_water</code></strong><br>Dissolved oxygen (preferred)</td>
+<td data-sort="236.9340057373047">236.9 / 344.7</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>µmol/kg</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_salinity</td>
+<td><code>float32</code></td><td>1</td><td><strong><code>sea_water_practical_salinity</code></strong><br>Practical salinity (preferred pair)</td>
+<td data-sort="31.921600341796875">31.92 / 35.19</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>PSU</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_salinity_1</td>
+<td><code>float32</code></td><td>1</td><td><strong><code>sea_water_practical_salinity</code></strong><br>Practical salinity (primary)</td>
+<td data-sort="31.921600341796875">31.92 / 35.19</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>PSU</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_salinity_2</td>
+<td><code>float32</code></td><td>1</td><td><strong><code>sea_water_practical_salinity</code></strong><br>Practical salinity (secondary)</td>
+<td data-sort="31.920400619506836">31.92 / 35.19</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>PSU</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_temperature</td>
+<td><code>float32</code></td><td>degree_Celsius</td><td><strong><code>sea_water_temperature</code></strong><br>In-situ temperature (preferred pair)</td>
+<td data-sort="0.16609999537467957">0.1661 / 8.493</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>°C</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_temperature_1</td>
+<td><code>float32</code></td><td>degree_Celsius</td><td><strong><code>sea_water_temperature</code></strong><br>In-situ temperature (primary)</td>
+<td data-sort="0.16609999537467957">0.1661 / 8.499</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>°C</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_temperature_2</td>
+<td><code>float32</code></td><td>degree_Celsius</td><td><strong><code>sea_water_temperature</code></strong><br>In-situ temperature (secondary)</td>
+<td data-sort="0.16820000112056732">0.1682 / 8.493</td>
+<td data-sort="3998">3,998</td>
+<td data-sort="69.6" class="cell-bad">69.6</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>20</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>°C</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>ctd_turbidity</td>
+<td><code>float32</code></td><td>1</td><td><strong><code>sea_water_turbidity</code></strong><br>Turbidity</td>
+<td data-sort="0.007199999876320362">0.0072 / 0.6267</td>
+<td data-sort="3956">3,956</td>
+<td data-sort="68.9" class="cell-bad">68.9</td>
+<td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>qc_input_samples</th><td>4022</td></tr><tr><th>qc_excluded_samples</th><td>62</td></tr><tr><th>processing_level</th><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><th>label_units</th><td>NTU</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
+
+
+
+
+<h2 id="s-qc-drop">(3) QC exclusions</h2>
+<p class="caption">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
+<p class="caption">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
+<table class="sortable">
+  <thead><tr><th tabindex="0">Variable</th><th tabindex="0">Excluded</th><th tabindex="0">Input samples</th><th tabindex="0">% excluded</th></tr></thead>
   <tbody>
     
     <tr>
-      <td class="mono">conductivity</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>conductivity</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">conductivity_1</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>conductivity_1</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">conductivity_2</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>conductivity_2</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_altimeter</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_altimeter</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_fluor</td>
-      <td class="num" style="color:var(--warn);font-weight:600">35</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.87%</td>
+      <td>ctd_fluor</td>
+      <td data-sort="35" class="cell-bad">35</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.870213823968175" class="cell-bad">0.87%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_oxygen</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_oxygen</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_salinity</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_salinity</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_salinity_1</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_salinity_1</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_salinity_2</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_salinity_2</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_temperature</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_temperature</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_temperature_1</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_temperature_1</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_temperature_2</td>
-      <td class="num" style="color:var(--warn);font-weight:600">20</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0.50%</td>
+      <td>ctd_temperature_2</td>
+      <td data-sort="20" class="cell-bad">20</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="0.4972650422675286" class="cell-bad">0.50%</td>
     </tr>
     
     <tr>
-      <td class="mono">ctd_turbidity</td>
-      <td class="num" style="color:var(--warn);font-weight:600">62</td>
-      <td class="num">4022</td>
-      <td class="num" style="color:var(--warn);font-weight:600">1.54%</td>
+      <td>ctd_turbidity</td>
+      <td data-sort="62" class="cell-bad">62</td>
+      <td data-sort="4022">4,022</td>
+      <td data-sort="1.5415216310293387" class="cell-bad">1.54%</td>
     </tr>
     
   </tbody>
 </table>
 
 
-
-
-<h2 id="s-coords">(2) Coordinates</h2>
-
-<table class="nc">
-  <thead>
-    <tr>
-      <th>Variable</th><th>Dimensions</th><th class="num">Length</th><th>Type</th><th>Units</th><th>Standard / long name</th>
-      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
-    </tr>
-  </thead>
-  <tbody>
-    
-    <tr>
-      <td class="mono">N_PROF</td>
-      <td class="mono">N_PROF</td>
-      <td class="num">8</td>
-      <td class="mono">int32</td>
-      <td></td>
-      <td>Profile index (0-based sequential)</td>
-      <td class="num">0</td><td class="num">7</td>
-      <td class="num" >8</td>
-      <td>
-        —
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">latitude</td>
-      <td class="mono">N_PROF</td>
-      <td class="num">8</td>
-      <td class="mono">float64</td>
-      <td>degrees_north</td>
-      <td><strong>latitude</strong>: Latitude</td>
-      <td class="num">65.58</td><td class="num">65.86</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>2 attrs</summary>
-          <table><tr><td class="mono">comment</td><td>median of the position fixes over the cast direction</td></tr><tr><td class="mono">label_units</td><td>°N</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">longitude</td>
-      <td class="mono">N_PROF</td>
-      <td class="num">8</td>
-      <td class="mono">float64</td>
-      <td>degrees_east</td>
-      <td><strong>longitude</strong>: Longitude</td>
-      <td class="num">-29.59</td><td class="num">-29.43</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>2 attrs</summary>
-          <table><tr><td class="mono">comment</td><td>median of the position fixes over the cast direction</td></tr><tr><td class="mono">label_units</td><td>°E</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">pressure</td>
-      <td class="mono">pressure</td>
-      <td class="num">718</td>
-      <td class="mono">float32</td>
-      <td>dbar</td>
-      <td><strong>sea_water_pressure</strong>: Sea water pressure</td>
-      <td class="num">1</td><td class="num">718</td>
-      <td class="num" >718</td>
-      <td>
-        
-        <details class="attrs"><summary>3 attrs</summary>
-          <table><tr><td class="mono">positive</td><td>down</td></tr><tr><td class="mono">axis</td><td>Z</td></tr><tr><td class="mono">label_units</td><td>dbar</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-  </tbody>
-</table>
-
-
-<h2 id="s-vars">(3) Data variables</h2>
-<p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
-
-<table class="nc">
-  <thead>
-    <tr>
-      <th>Variable</th><th>Dimensions</th><th>Type</th><th>Units</th><th>Standard / long name</th>
-      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
-    </tr>
-  </thead>
-  <tbody>
-    
-    <tr>
-      <td class="mono">cast_direction</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U4</td>
-      <td></td>
-      <td>Profile direction</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>2 attrs</summary>
-          <table><tr><td class="mono">flag_values</td><td>down up</td></tr><tr><td class="mono">comment</td><td>replaces the N_PROF = cast + 0.5 float encoding</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">cast_id</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U3</td>
-      <td></td>
-      <td>Cast identifier</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>Zero-padded cast number with optional letter suffix, e.g. &#39;004&#39; or &#39;004b&#39;.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">cast_number</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">int32</td>
-      <td></td>
-      <td>original cast number from filename</td>
-      <td class="num">11</td><td class="num">129</td>
-      <td class="num" >8</td>
-      <td>
-        —
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">cast_suffix</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U1</td>
-      <td></td>
-      <td>cast letter suffix from filename</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>empty for a plain cast; a letter (e.g. &#39;b&#39;) marks a distinct sibling event at the same station number</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">cast_type</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U4</td>
-      <td></td>
-      <td>downcast or upcast (deprecated alias for cast_direction)</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">flag_values</td><td>down up</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">conductivity</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>mS cm-1</td>
-      <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (preferred pair)</td>
-      <td class="num">27.89</td><td class="num">36.75</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">conductivity_1</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>mS cm-1</td>
-      <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (primary)</td>
-      <td class="num">27.89</td><td class="num">36.76</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">conductivity_2</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>mS cm-1</td>
-      <td><strong>sea_water_electrical_conductivity</strong>: Conductivity (secondary)</td>
-      <td class="num">27.89</td><td class="num">36.75</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>mS/cm</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_altimeter</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>m</td>
-      <td><strong>altitude_of_sea_floor</strong>: Altimeter distance to seafloor</td>
-      <td class="num">-9.99e-29</td><td class="num">102.5</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>m</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_fluor</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>mg m-3</td>
-      <td><strong>mass_concentration_of_chlorophyll_in_sea_water</strong>: Chlorophyll fluorescence</td>
-      <td class="num">2.898</td><td class="num">3.366</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3983 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>35</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>mg/m³</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_oxygen</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>umol kg-1</td>
-      <td><strong>moles_of_oxygen_per_unit_mass_in_sea_water</strong>: Dissolved oxygen (preferred)</td>
-      <td class="num">236.9</td><td class="num">344.7</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>µmol/kg</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_salinity</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>1</td>
-      <td><strong>sea_water_practical_salinity</strong>: Practical salinity (preferred pair)</td>
-      <td class="num">31.92</td><td class="num">35.19</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_salinity_1</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>1</td>
-      <td><strong>sea_water_practical_salinity</strong>: Practical salinity (primary)</td>
-      <td class="num">31.92</td><td class="num">35.19</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_salinity_2</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>1</td>
-      <td><strong>sea_water_practical_salinity</strong>: Practical salinity (secondary)</td>
-      <td class="num">31.92</td><td class="num">35.19</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>PSU</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_temperature</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>degree_Celsius</td>
-      <td><strong>sea_water_temperature</strong>: In-situ temperature (preferred pair)</td>
-      <td class="num">0.1661</td><td class="num">8.493</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>°C</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_temperature_1</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>degree_Celsius</td>
-      <td><strong>sea_water_temperature</strong>: In-situ temperature (primary)</td>
-      <td class="num">0.1661</td><td class="num">8.499</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>°C</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_temperature_2</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>degree_Celsius</td>
-      <td><strong>sea_water_temperature</strong>: In-situ temperature (secondary)</td>
-      <td class="num">0.1682</td><td class="num">8.493</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3998 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>20</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>°C</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">ctd_turbidity</td>
-      <td class="mono">N_PROF, pressure</td>
-      
-      <td class="mono">float32</td>
-      <td>1</td>
-      <td><strong>sea_water_turbidity</strong>: Turbidity</td>
-      <td class="num">0.0072</td><td class="num">0.6267</td>
-      <td class="num" style="color:var(--warn);font-weight:600">3956 / 5744</td>
-      <td>
-        
-        <details class="attrs"><summary>4 attrs</summary>
-          <table><tr><td class="mono">qc_input_samples</td><td>4022</td></tr><tr><td class="mono">qc_excluded_samples</td><td>62</td></tr><tr><td class="mono">processing_level</td><td>Instrument data that has been converted to geophysical values; Ranges applied, bad data flagged</td></tr><tr><td class="mono">label_units</td><td>NTU</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">gebco_depth_m</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">float32</td>
-      <td>m</td>
-      <td>GEBCO bathymetry depth at max-pressure position</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" style="color:var(--warn);font-weight:600">0 / 8</td>
-      <td>
-        
-        <details class="attrs"><summary>2 attrs</summary>
-          <table><tr><td class="mono">positive</td><td>down</td></tr><tr><td class="mono">comment</td><td>Bilinearly interpolated from GEBCO_2025 at the lat/lon of maximum pressure. NaN when GEBCO file is unavailable.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">max_pressure_dbar</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">float32</td>
-      <td>dbar</td>
-      <td>Maximum pressure recorded during full cast</td>
-      <td class="num">307</td><td class="num">718</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>Same value for downcast and upcast profiles of the same cast.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">preferred_pair</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U9</td>
-      <td></td>
-      <td>preferred-sensor choice (preferred_pair) per profile</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>one of &#34;primary&#34; / &#34;secondary&#34;; empty where the cast was undeclared</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">source_data_mode</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U1</td>
-      <td></td>
-      <td>OceanSITES data mode of the source cast for this profile</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>The source cast&#39;s own data_mode (P provisional, D delayed-mode) — a per-profile fact about the source file, beside source_stage and source_tracking_id, not this compiled file&#39;s own mode. When the global data_mode is &#39;M&#39; the casts genuinely differ, and this variable resolves which data is in which mode (the OceanSITES &lt;PARAM&gt;_DM obligation).</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">source_file</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U21</td>
-      <td></td>
-      <td>source per-cast filename this profile was compiled from</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>Filename only (see the global &#39;source&#39; attribute for the naming convention); the absolute root is deliberately not recorded, as it is a local, perishable path. Distinguishes casts that share a number — e.g. a plain cast and its lettered sibling.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">source_stage</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">int8</td>
-      <td></td>
-      <td>processing stage of the source file for this profile</td>
-      <td class="num">3</td><td class="num">3</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>3 attrs</summary>
-          <table><tr><td class="mono">flag_values</td><td>[0 1 2 3]</td></tr><tr><td class="mono">flag_meanings</td><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><td class="mono">comment</td><td>Best-available stage for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 = unknown: an unsuffixed flat file assumed to be stage 1 by the compatibility shim, which does not state its own stage. Casts can be at mixed stages early in a cruise.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">source_tracking_id</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U36</td>
-      <td></td>
-      <td>tracking_id of the per-cast file this profile was compiled from</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>The compiled file has its own tracking_id (global attr); this names the specific instance of each source cast file, so the lineage back to the CNV is readable per profile. Empty for a source file that predates the tracking_id.</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">time_end</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">datetime64[ns]</td>
-      <td></td>
-      <td>end time of cast direction</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        —
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">time_start</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">datetime64[ns]</td>
-      <td></td>
-      <td>start time of cast direction</td>
-      <td class="num">—</td><td class="num">—</td>
-      <td class="num" >8</td>
-      <td>
-        —
-      </td>
-    </tr>
-    
-  </tbody>
-</table>
 
 
 
 <h2 id="s-sensor-catalog">(4) Sensor catalog</h2>
-<p class="dims-line">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no type, units, or value range.</p>
+<p class="caption">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no value range.</p>
 
-<table class="nc">
-  <thead>
-    <tr>
-      <th>Variable</th><th>Dimensions</th><th>Standard / long name</th>
-      <th>Attributes</th>
-    </tr>
-  </thead>
-  <tbody>
-    
-    <tr>
-      <td class="mono">SENSOR_CONDUCTIVITY_3120</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 4C conductivity sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>14 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3120</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-May-23</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>0.99993682</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.00000</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;5&#34; &gt;
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Sensor</th><th tabindex="0">Model</th><th tabindex="0">Serial</th><th tabindex="0">Calibration</th><th tabindex="0">Standard / long name</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>SENSOR_CONDUCTIVITY_3120</td>
+<td>SBE 4C <em>(assumed)</em></td>
+<td>3120</td><td>2023-May-23</td>
+<td>Sea-Bird SBE 4C conductivity sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>salinity sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>3</td></tr><tr><th>sbe_sensor_element</th><td>ConductivitySensor</td></tr><tr><th>sensor_calibration_slope</th><td>0.99993682</td></tr><tr><th>sensor_calibration_offset</th><td>0.00000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;5&#34; &gt;
     &lt;!-- Frequency 4, Conductivity, 2 --&gt;
     &lt;ConductivitySensor SensorID=&#34;3&#34; &gt;
-      &lt;SerialNumber&gt;3120&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;23-May-23&lt;/CalibrationDate&gt;
-      &lt;UseG_J&gt;1&lt;/UseG_J&gt;
-      &lt;!-- Cell const and series R are applicable only for wide range sensors. --&gt;
-      &lt;SeriesR&gt;0.0000&lt;/SeriesR&gt;
-      &lt;CellConst&gt;2000.0000&lt;/CellConst&gt;
-      &lt;ConductivityType&gt;0&lt;/ConductivityType&gt;
-      &lt;Coefficients equation=&#34;0&#34; &gt;
-        &lt;A&gt;0.00000000e+000&lt;/A&gt;
-        &lt;B&gt;0.00000000e+000&lt;/B&gt;
-        &lt;C&gt;0.00000000e+000&lt;/C&gt;
-        &lt;D&gt;0.00000000e+000&lt;/D&gt;
-        &lt;M&gt;0.0&lt;/M&gt;
-        &lt;CPcor&gt;-9.57000000e-008&lt;/CPcor&gt;
-      &lt;/Coefficients&gt;
-      &lt;Coefficients equation=&#34;1&#34; &gt;
-        &lt;G&gt;-1.02398285e+001&lt;/G&gt;
-        &lt;H&gt;1.47626934e+000&lt;/H&gt;
-        &lt;I&gt;2.76982492e-004&lt;/I&gt;
-        &lt;J&gt;7.04238330e-005&lt;/J&gt;
-        &lt;CPcor&gt;-9.57000000e-008&lt;/CPcor&gt;
-        &lt;CTcor&gt;3.2500e-006&lt;/CTcor&gt;
-        &lt;!-- WBOTC not applicable unless ConductivityType = 1. --&gt;
-        &lt;WBOTC&gt;0.00000000e+000&lt;/WBOTC&gt;
-      &lt;/Coefficients&gt;
-      &lt;Slope&gt;0.99993682&lt;/Slope&gt;
-      &lt;Offset&gt;0.00000&lt;/Offset&gt;
-    &lt;/ConductivitySensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_CONDUCTIVITY_4922</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 4C conductivity sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>14 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>salinity sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 4C</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>4922</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>3</td></tr><tr><td class="mono">sbe_sensor_element</td><td>ConductivitySensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000452</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.00000</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;2&#34; &gt;
+      &lt;SerialNumb</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_CONDUCTIVITY_4922</td>
+<td>SBE 4C <em>(assumed)</em></td>
+<td>4922</td><td>2026-Feb-17</td>
+<td>Sea-Bird SBE 4C conductivity sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>salinity sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>3</td></tr><tr><th>sbe_sensor_element</th><td>ConductivitySensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000452</td></tr><tr><th>sensor_calibration_offset</th><td>0.00000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;2&#34; &gt;
     &lt;!-- Frequency 1, Conductivity --&gt;
     &lt;ConductivitySensor SensorID=&#34;3&#34; &gt;
-      &lt;SerialNumber&gt;4922&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;17-Feb-26&lt;/CalibrationDate&gt;
-      &lt;UseG_J&gt;1&lt;/UseG_J&gt;
-      &lt;!-- Cell const and series R are applicable only for wide range sensors. --&gt;
-      &lt;SeriesR&gt;0.0000&lt;/SeriesR&gt;
-      &lt;CellConst&gt;2000.0000&lt;/CellConst&gt;
-      &lt;ConductivityType&gt;0&lt;/ConductivityType&gt;
-      &lt;Coefficients equation=&#34;0&#34; &gt;
-        &lt;A&gt;0.00000000e+000&lt;/A&gt;
-        &lt;B&gt;0.00000000e+000&lt;/B&gt;
-        &lt;C&gt;0.00000000e+000&lt;/C&gt;
-        &lt;D&gt;0.00000000e+000&lt;/D&gt;
-        &lt;M&gt;0.0&lt;/M&gt;
-        &lt;CPcor&gt;-9.57000000e-008&lt;/CPcor&gt;
-      &lt;/Coefficients&gt;
-      &lt;Coefficients equation=&#34;1&#34; &gt;
-        &lt;G&gt;-9.98136337e+000&lt;/G&gt;
-        &lt;H&gt;1.34113520e+000&lt;/H&gt;
-        &lt;I&gt;-3.63657307e-004&lt;/I&gt;
-        &lt;J&gt;1.03465095e-004&lt;/J&gt;
-        &lt;CPcor&gt;-9.57000000e-008&lt;/CPcor&gt;
-        &lt;CTcor&gt;3.2500e-006&lt;/CTcor&gt;
-        &lt;!-- WBOTC not applicable unless ConductivityType = 1. --&gt;
-        &lt;WBOTC&gt;0.00000000e+000&lt;/WBOTC&gt;
-      &lt;/Coefficients&gt;
-      &lt;Slope&gt;1.00000452&lt;/Slope&gt;
-      &lt;Offset&gt;0.00000&lt;/Offset&gt;
-    &lt;/ConductivitySensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_FLUOROMETER_FLNTURTD_3508</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>WET Labs ECO FL fluorometer</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>12 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>fluorometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/113/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO FL</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0172/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>FLNTURTD-3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016-Apr-12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>20</td></tr><tr><td class="mono">sbe_sensor_element</td><td>FluoroWetlabECO_AFL_FL_Sensor</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;13&#34; &gt;
+      &lt;SerialNumber&gt;</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_FLUOROMETER_FLNTURTD_3508</td>
+<td>WET Labs ECO FL <em>(assumed)</em></td>
+<td>FLNTURTD-3508</td><td>2016-Apr-12</td>
+<td>WET Labs ECO FL fluorometer</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>fluorometers</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/113/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0172/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>20</td></tr><tr><th>sbe_sensor_element</th><td>FluoroWetlabECO_AFL_FL_Sensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;13&#34; &gt;
     &lt;!-- A/D voltage 7, Fluorometer, WET Labs ECO-AFL/FL --&gt;
-    &lt;FluoroWetlabECO_AFL_FL_Sensor SensorID=&#34;20&#34; &gt;
-      &lt;SerialNumber&gt;FLNTURTD-3508&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;12-Apr-16&lt;/CalibrationDate&gt;
-      &lt;ScaleFactor&gt;6.00000000e+000&lt;/ScaleFactor&gt;
-      &lt;!-- Dark output --&gt;
-      &lt;Vblank&gt;0.0610&lt;/Vblank&gt;
-    &lt;/FluoroWetlabECO_AFL_FL_Sensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_OXYGEN_0707</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 43 dissolved oxygen sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>12 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>dissolved gas sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/351/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 43</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0036/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>header</td></tr><tr><td class="mono">sensor_serial_number</td><td>0707</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2025-Dec-10</td></tr><tr><td class="mono">sbe_sensor_id</td><td>38</td></tr><tr><td class="mono">sbe_sensor_element</td><td>OxygenSensor</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;8&#34; &gt;
+    &lt;FluoroWetlabECO_AFL_FL_Sensor S</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_OXYGEN_0707</td>
+<td>SBE 43</td>
+<td>0707</td><td>2025-Dec-10</td>
+<td>Sea-Bird SBE 43 dissolved oxygen sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>dissolved gas sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/351/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0036/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>38</td></tr><tr><th>sbe_sensor_element</th><td>OxygenSensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;8&#34; &gt;
     &lt;!-- A/D voltage 2, Oxygen, SBE 43 --&gt;
     &lt;OxygenSensor SensorID=&#34;38&#34; &gt;
-      &lt;SerialNumber&gt;0707&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;10-Dec-25&lt;/CalibrationDate&gt;
-      &lt;Use2007Equation&gt;1&lt;/Use2007Equation&gt;
-      &lt;CalibrationCoefficients equation=&#34;0&#34; &gt;
-        &lt;!-- Coefficients for Owens-Millard equation. --&gt;
-        &lt;Boc&gt;0.0000&lt;/Boc&gt;
-        &lt;Soc&gt;0.0000e+000&lt;/Soc&gt;
-        &lt;offset&gt;0.0000&lt;/offset&gt;
-        &lt;Pcor&gt;0.00e+000&lt;/Pcor&gt;
-        &lt;Tcor&gt;0.0000&lt;/Tcor&gt;
-        &lt;Tau&gt;0.0&lt;/Tau&gt;
-      &lt;/CalibrationCoefficients&gt;
-      &lt;CalibrationCoefficients equation=&#34;1&#34; &gt;
-        &lt;!-- Coefficients for Sea-Bird equation - SBE calibration in 2007 and later. --&gt;
-        &lt;Soc&gt;5.5776e-001&lt;/Soc&gt;
-        &lt;offset&gt;-0.4837&lt;/offset&gt;
-        &lt;A&gt;-3.2503e-003&lt;/A&gt;
-        &lt;B&gt; 1.2197e-004&lt;/B&gt;
-        &lt;C&gt;-1.8426e-006&lt;/C&gt;
-        &lt;D0&gt; 2.5826e+000&lt;/D0&gt;
-        &lt;D1&gt; 1.92634e-004&lt;/D1&gt;
-        &lt;D2&gt;-4.64803e-002&lt;/D2&gt;
-        &lt;E&gt; 3.6000e-002&lt;/E&gt;
-        &lt;Tau20&gt; 1.2900&lt;/Tau20&gt;
-        &lt;H1&gt;-3.3000e-002&lt;/H1&gt;
-        &lt;H2&gt; 5.0000e+003&lt;/H2&gt;
-        &lt;H3&gt; 1.4500e+003&lt;/H3&gt;
-      &lt;/CalibrationCoefficients&gt;
-    &lt;/OxygenSensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_PH_339</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 18 pH sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>12 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>pH sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 18</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>339</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2024-Feb-13</td></tr><tr><td class="mono">sbe_sensor_id</td><td>43</td></tr><tr><td class="mono">sbe_sensor_element</td><td>pH_Sensor</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;9&#34; &gt;
+      &lt;SerialNumber&gt;0</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_PH_339</td>
+<td>SBE 18 <em>(assumed)</em></td>
+<td>339</td><td>2024-Feb-13</td>
+<td>Sea-Bird SBE 18 pH sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>pH sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>43</td></tr><tr><th>sbe_sensor_element</th><td>pH_Sensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;9&#34; &gt;
     &lt;!-- A/D voltage 3, pH --&gt;
     &lt;pH_Sensor SensorID=&#34;43&#34; &gt;
-      &lt;SerialNumber&gt;339&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;13/02/24&lt;/CalibrationDate&gt;
-      &lt;Slope&gt;0.3368&lt;/Slope&gt;
-      &lt;Offset&gt;2.3638&lt;/Offset&gt;
-    &lt;/pH_Sensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_PRESSURE_0814</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Paroscientific Digiquartz pressure sensor (SBE 9plus)</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>14 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water pressure sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><td class="mono">sensor_model</td><td>Digiquartz</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><td class="mono">sensor_maker</td><td>Paroscientific, Inc.</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>0814</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>45</td></tr><tr><td class="mono">sbe_sensor_element</td><td>PressureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00004096</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.27440</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;3&#34; &gt;
+      &lt;SerialNumber&gt;339&lt;/SerialNumbe</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_PRESSURE_0814</td>
+<td>Digiquartz <em>(assumed)</em></td>
+<td>0814</td><td>2023-Feb-17</td>
+<td>Paroscientific Digiquartz pressure sensor (SBE 9plus)</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water pressure sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><th>sensor_maker</th><td>Paroscientific, Inc.</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><th>sbe_sensor_id</th><td>45</td></tr><tr><th>sbe_sensor_element</th><td>PressureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00004096</td></tr><tr><th>sensor_calibration_offset</th><td>0.27440</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;3&#34; &gt;
     &lt;!-- Frequency 2, Pressure, Digiquartz with TC --&gt;
     &lt;PressureSensor SensorID=&#34;45&#34; &gt;
-      &lt;SerialNumber&gt;0814&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;17-Feb-23&lt;/CalibrationDate&gt;
-      &lt;C1&gt;-4.534216e+004&lt;/C1&gt;
-      &lt;C2&gt;7.025490e-001&lt;/C2&gt;
-      &lt;C3&gt;1.441800e-002&lt;/C3&gt;
-      &lt;D1&gt;3.916100e-002&lt;/D1&gt;
-      &lt;D2&gt;0.000000e+000&lt;/D2&gt;
-      &lt;T1&gt;3.039632e+001&lt;/T1&gt;
-      &lt;T2&gt;-7.467699e-005&lt;/T2&gt;
-      &lt;T3&gt;3.876050e-006&lt;/T3&gt;
-      &lt;T4&gt;4.809280e-009&lt;/T4&gt;
-      &lt;Slope&gt;1.00004096&lt;/Slope&gt;
-      &lt;Offset&gt;0.27440&lt;/Offset&gt;
-      &lt;T5&gt;0.000000e+000&lt;/T5&gt;
-      &lt;AD590M&gt;1.288700e-002&lt;/AD590M&gt;
-      &lt;AD590B&gt;-8.362590e+000&lt;/AD590B&gt;
-    &lt;/PressureSensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_TEMPERATURE_6000</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 3plus temperature sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>14 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6000</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2023-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000000</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.0000</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;4&#34; &gt;
+      &lt;</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TEMPERATURE_6000</td>
+<td>SBE 3plus <em>(assumed)</em></td>
+<td>6000</td><td>2023-Apr-14</td>
+<td>Sea-Bird SBE 3plus temperature sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water temperature sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>55</td></tr><tr><th>sbe_sensor_element</th><td>TemperatureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000000</td></tr><tr><th>sensor_calibration_offset</th><td>0.0000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;4&#34; &gt;
     &lt;!-- Frequency 3, Temperature, 2 --&gt;
     &lt;TemperatureSensor SensorID=&#34;55&#34; &gt;
-      &lt;SerialNumber&gt;6000&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;14-Apr-23&lt;/CalibrationDate&gt;
-      &lt;UseG_J&gt;1&lt;/UseG_J&gt;
-      &lt;A&gt;0.00000000e+000&lt;/A&gt;
-      &lt;B&gt;0.00000000e+000&lt;/B&gt;
-      &lt;C&gt;0.00000000e+000&lt;/C&gt;
-      &lt;D&gt;0.00000000e+000&lt;/D&gt;
-      &lt;F0_Old&gt;0.000&lt;/F0_Old&gt;
-      &lt;G&gt;4.38231873e-003&lt;/G&gt;
-      &lt;H&gt;6.72275679e-004&lt;/H&gt;
-      &lt;I&gt;2.74821499e-005&lt;/I&gt;
-      &lt;J&gt;2.19831492e-006&lt;/J&gt;
-      &lt;F0&gt;1000.000&lt;/F0&gt;
-      &lt;Slope&gt;1.00000000&lt;/Slope&gt;
-      &lt;Offset&gt;0.0000&lt;/Offset&gt;
-    &lt;/TemperatureSensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_TEMPERATURE_6435</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>Sea-Bird SBE 3plus temperature sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>14 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>water temperature sensor</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><td class="mono">sensor_model</td><td>SBE 3plus</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><td class="mono">sensor_maker</td><td>Sea-Bird Scientific</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>6435</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2026-Feb-17</td></tr><tr><td class="mono">sbe_sensor_id</td><td>55</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TemperatureSensor</td></tr><tr><td class="mono">sensor_calibration_slope</td><td>1.00000000</td></tr><tr><td class="mono">sensor_calibration_offset</td><td>0.0000</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;1&#34; &gt;
+      &lt;SerialNumbe</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TEMPERATURE_6435</td>
+<td>SBE 3plus <em>(assumed)</em></td>
+<td>6435</td><td>2026-Feb-17</td>
+<td>Sea-Bird SBE 3plus temperature sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water temperature sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>55</td></tr><tr><th>sbe_sensor_element</th><td>TemperatureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000000</td></tr><tr><th>sensor_calibration_offset</th><td>0.0000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;1&#34; &gt;
     &lt;!-- Frequency 0, Temperature --&gt;
     &lt;TemperatureSensor SensorID=&#34;55&#34; &gt;
-      &lt;SerialNumber&gt;6435&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;17-Feb-26&lt;/CalibrationDate&gt;
-      &lt;UseG_J&gt;1&lt;/UseG_J&gt;
-      &lt;A&gt;0.00000000e+000&lt;/A&gt;
-      &lt;B&gt;0.00000000e+000&lt;/B&gt;
-      &lt;C&gt;0.00000000e+000&lt;/C&gt;
-      &lt;D&gt;0.00000000e+000&lt;/D&gt;
-      &lt;F0_Old&gt;0.000&lt;/F0_Old&gt;
-      &lt;G&gt;4.39097475e-003&lt;/G&gt;
-      &lt;H&gt;6.42983968e-004&lt;/H&gt;
-      &lt;I&gt;2.32873175e-005&lt;/I&gt;
-      &lt;J&gt;2.20468757e-006&lt;/J&gt;
-      &lt;F0&gt;1000.000&lt;/F0&gt;
-      &lt;Slope&gt;1.00000000&lt;/Slope&gt;
-      &lt;Offset&gt;0.0000&lt;/Offset&gt;
-    &lt;/TemperatureSensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_TRANSMISSOMETER_2033</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>WET Labs C-Star transmissometer</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>12 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>transmissometers</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs C-Star</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>2033</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2020-Apr-14</td></tr><tr><td class="mono">sbe_sensor_id</td><td>71</td></tr><tr><td class="mono">sbe_sensor_element</td><td>WET_LabsCStar</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;10&#34; &gt;
+      &lt;SerialNumber&gt;6</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TRANSMISSOMETER_2033</td>
+<td>WET Labs C-Star <em>(assumed)</em></td>
+<td>2033</td><td>2020-Apr-14</td>
+<td>WET Labs C-Star transmissometer</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>transmissometers</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>71</td></tr><tr><th>sbe_sensor_element</th><td>WET_LabsCStar</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;10&#34; &gt;
     &lt;!-- A/D voltage 4, Transmissometer, WET Labs C-Star --&gt;
     &lt;WET_LabsCStar SensorID=&#34;71&#34; &gt;
-      &lt;SerialNumber&gt;2033&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;14/04/2020&lt;/CalibrationDate&gt;
-      &lt;M&gt;20.0000&lt;/M&gt;
-      &lt;B&gt;-0.1021&lt;/B&gt;
-      &lt;PathLength&gt;0.250&lt;/PathLength&gt;
-    &lt;/WET_LabsCStar&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_TURBIDITY_3508</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>WET Labs ECO NTU turbidity sensor</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>12 attrs</summary>
-          <table><tr><td class="mono">sensor_type</td><td>optical backscatter sensors</td></tr><tr><td class="mono">sensor_type_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><td class="mono">sensor_model</td><td>WET Labs ECO NTU</td></tr><tr><td class="mono">sensor_model_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><td class="mono">sensor_maker</td><td>WET Labs</td></tr><tr><td class="mono">sensor_maker_vocabulary</td><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><td class="mono">model_source</td><td>assumed</td></tr><tr><td class="mono">sensor_serial_number</td><td>3508</td></tr><tr><td class="mono">sensor_calibration_date</td><td>2016-Apr-12</td></tr><tr><td class="mono">sbe_sensor_id</td><td>67</td></tr><tr><td class="mono">sbe_sensor_element</td><td>TurbidityMeter</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;12&#34; &gt;
+ </td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TURBIDITY_3508</td>
+<td>WET Labs ECO NTU <em>(assumed)</em></td>
+<td>3508</td><td>2016-Apr-12</td>
+<td>WET Labs ECO NTU turbidity sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>optical backscatter sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>67</td></tr><tr><th>sbe_sensor_element</th><td>TurbidityMeter</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;12&#34; &gt;
     &lt;!-- A/D voltage 6, Turbidity Meter, WET Labs, ECO-NTU --&gt;
-    &lt;TurbidityMeter SensorID=&#34;67&#34; &gt;
-      &lt;SerialNumber&gt;3508&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;2016/04/12&lt;/CalibrationDate&gt;
-      &lt;ScaleFactor&gt;2.000000&lt;/ScaleFactor&gt;
-      &lt;!-- Dark output --&gt;
-      &lt;DarkVoltage&gt;0.055000&lt;/DarkVoltage&gt;
-    &lt;/TurbidityMeter&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">SENSOR_USER_POLYNOMIAL_UVP6</td>
-      <td class="mono">()</td>
-      
-      
-      
-      <td>user polynomial (derived voltage channel)</td>
-      
-      
-      <td>
-        
-        <details class="attrs"><summary>8 attrs</summary>
-          <table><tr><td class="mono">sensor_model</td><td>UNK</td></tr><tr><td class="mono">sensor_maker</td><td>UNK</td></tr><tr><td class="mono">model_source</td><td>UNK</td></tr><tr><td class="mono">sensor_serial_number</td><td>UVP6</td></tr><tr><td class="mono">sensor_calibration_date</td><td>090726</td></tr><tr><td class="mono">sbe_sensor_id</td><td>61</td></tr><tr><td class="mono">sbe_sensor_element</td><td>UserPolynomialSensor</td></tr><tr><td class="mono">sensor_config_xml</td><td>&lt;sensor Channel=&#34;6&#34; &gt;
+    &lt;TurbidityMeter SensorID=&#34;67&#34; </td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_USER_POLYNOMIAL_UVP6</td>
+<td>UNK</td>
+<td>UVP6</td><td>090726</td>
+<td>user polynomial (derived voltage channel)</td><td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_maker</th><td>UNK</td></tr><tr><th>sbe_sensor_id</th><td>61</td></tr><tr><th>sbe_sensor_element</th><td>UserPolynomialSensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;6&#34; &gt;
     &lt;!-- A/D voltage 0, User Polynomial --&gt;
     &lt;UserPolynomialSensor SensorID=&#34;61&#34; &gt;
-      &lt;SerialNumber&gt;UVP6&lt;/SerialNumber&gt;
-      &lt;CalibrationDate&gt;090726&lt;/CalibrationDate&gt;
-      &lt;SensorName&gt;UVP6&lt;/SensorName&gt;
-      &lt;A0&gt;0.00000000&lt;/A0&gt;
-      &lt;A1&gt;200.00000000&lt;/A1&gt;
-      &lt;A2&gt;0.00000000&lt;/A2&gt;
-      &lt;A3&gt;0.00000000&lt;/A3&gt;
-    &lt;/UserPolynomialSensor&gt;
-  &lt;/sensor&gt;</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-  </tbody>
-</table>
-
+      &lt;Seria</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>
+<div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:sensor_rows</div>
 
 
 
 <h2 id="s-sensor-linkage">(5) Sensor linkage</h2>
-<p class="dims-line">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
+<p class="caption">Per profile, the catalog variable naming the sensor in each role. String-valued, so no numeric range.</p>
 
-<table class="nc">
-  <thead>
-    <tr>
-      <th>Variable</th><th>Dimensions</th><th>Type</th><th>Standard / long name</th>
-      <th class="num">Valid</th><th>Attributes</th>
-    </tr>
-  </thead>
-  <tbody>
-    
-    <tr>
-      <td class="mono">sensor_conductivity_1</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U24</td>
-      
-      <td>catalog variable naming the conductivity_1 sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_conductivity_2</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U24</td>
-      
-      <td>catalog variable naming the conductivity_2 sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_conductivity_preferred</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U24</td>
-      
-      <td>catalog variable naming the preferred conductivity sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_fluorometer</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U32</td>
-      
-      <td>catalog variable naming the fluorometer sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_oxygen_1</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U18</td>
-      
-      <td>catalog variable naming the oxygen_1 sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_ph</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U13</td>
-      
-      <td>catalog variable naming the ph sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_pressure</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U20</td>
-      
-      <td>catalog variable naming the pressure sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_temperature_1</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U23</td>
-      
-      <td>catalog variable naming the temperature_1 sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_temperature_2</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U23</td>
-      
-      <td>catalog variable naming the temperature_2 sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_temperature_preferred</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U23</td>
-      
-      <td>catalog variable naming the preferred temperature sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_transmissometer</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U27</td>
-      
-      <td>catalog variable naming the transmissometer sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_turbidity</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U21</td>
-      
-      <td>catalog variable naming the turbidity sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_user_polynomial</td>
-      <td class="mono">N_PROF</td>
-      
-      <td class="mono">&lt;U27</td>
-      
-      <td>catalog variable naming the user_polynomial sensor per profile</td>
-      
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-  </tbody>
-</table>
+<h3>Variables on N_PROF (8 samples)</h3>
+<table class="sortable var-table">
 
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>sensor_conductivity_1</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the conductivity_1 sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_conductivity_2</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the conductivity_2 sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_conductivity_preferred</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the preferred conductivity sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_fluorometer</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the fluorometer sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_oxygen_1</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the oxygen_1 sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_ph</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the ph sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_pressure</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the pressure sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_temperature_1</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the temperature_1 sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_temperature_2</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the temperature_2 sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_temperature_preferred</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the preferred temperature sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_transmissometer</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the transmissometer sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_turbidity</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the turbidity sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_user_polynomial</td>
+<td><code>string</code></td><td></td><td>catalog variable naming the user_polynomial sensor per profile</td>
+<td>—</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
 
 
 
 <h2 id="s-sensor-channel">(6) Sensor channels</h2>
-<p class="dims-line">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
+<p class="caption">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
 
-<table class="nc">
-  <thead>
-    <tr>
-      <th>Variable</th><th>Dimensions</th><th>Standard / long name</th>
-      <th class="num">Min</th><th class="num">Max</th><th class="num">Valid</th><th>Attributes</th>
-    </tr>
-  </thead>
-  <tbody>
-    
-    <tr>
-      <td class="mono">sensor_channel_conductivity_1</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the conductivity_1 sensor</td>
-      <td class="num">2</td><td class="num">2</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_conductivity_2</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the conductivity_2 sensor</td>
-      <td class="num">5</td><td class="num">5</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_fluorometer</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the fluorometer sensor</td>
-      <td class="num">13</td><td class="num">13</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_oxygen_1</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the oxygen_1 sensor</td>
-      <td class="num">8</td><td class="num">8</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_ph</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the ph sensor</td>
-      <td class="num">9</td><td class="num">9</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_pressure</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the pressure sensor</td>
-      <td class="num">3</td><td class="num">3</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_temperature_1</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the temperature_1 sensor</td>
-      <td class="num">1</td><td class="num">1</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_temperature_2</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the temperature_2 sensor</td>
-      <td class="num">4</td><td class="num">4</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_transmissometer</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the transmissometer sensor</td>
-      <td class="num">10</td><td class="num">10</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_turbidity</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the turbidity sensor</td>
-      <td class="num">12</td><td class="num">12</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="mono">sensor_channel_user_polynomial</td>
-      <td class="mono">N_PROF</td>
-      
-      
-      
-      <td>raw CNV acquisition channel of the user_polynomial sensor</td>
-      <td class="num">6</td><td class="num">6</td>
-      <td class="num" >8</td>
-      <td>
-        
-        <details class="attrs"><summary>1 attr</summary>
-          <table><tr><td class="mono">comment</td><td>-1 where no sensor filled this role</td></tr></table>
-        </details>
-        
-      </td>
-    </tr>
-    
-  </tbody>
-</table>
+<h3>Variables on N_PROF (8 samples)</h3>
+<table class="sortable var-table">
 
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>sensor_channel_conductivity_1</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the conductivity_1 sensor</td>
+<td data-sort="2.0">2 / 2</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_conductivity_2</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the conductivity_2 sensor</td>
+<td data-sort="5.0">5 / 5</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_fluorometer</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the fluorometer sensor</td>
+<td data-sort="13.0">13 / 13</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_oxygen_1</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the oxygen_1 sensor</td>
+<td data-sort="8.0">8 / 8</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_ph</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the ph sensor</td>
+<td data-sort="9.0">9 / 9</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_pressure</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the pressure sensor</td>
+<td data-sort="3.0">3 / 3</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_temperature_1</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the temperature_1 sensor</td>
+<td data-sort="1.0">1 / 1</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_temperature_2</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the temperature_2 sensor</td>
+<td data-sort="4.0">4 / 4</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_transmissometer</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the transmissometer sensor</td>
+<td data-sort="10.0">10 / 10</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_turbidity</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the turbidity sensor</td>
+<td data-sort="12.0">12 / 12</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>sensor_channel_user_polynomial</td>
+<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the user_polynomial sensor</td>
+<td data-sort="6.0">6 / 6</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td>
+<td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
 
 
 
 <h2 id="s-global">(7) Global attributes</h2>
-<p class="dims-line">Shown in the file's own write order, split into the canonical groups.</p>
+<p class="caption">Shown in the file's own write order, split into the canonical groups.</p>
 
-<h3>(7.1) Identity &amp; discovery</h3>
-<table class="nc">
-  <tbody>
-    <tr><td class="mono">title</td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr><tr><td class="mono">cruise</td><td>UNK</td></tr>
-  </tbody>
-</table>
+<h3>Identity &amp; discovery</h3>
+<table class="sortable">
 
-<h3>(7.2) Spatiotemporal coverage</h3>
-<table class="nc">
-  <tbody>
-    <tr><td class="mono">geospatial_lat_min</td><td>65.58246</td></tr><tr><td class="mono">geospatial_lat_max</td><td>65.86038</td></tr><tr><td class="mono">geospatial_lat_units</td><td>degrees_north</td></tr><tr><td class="mono">geospatial_lon_min</td><td>-29.58836</td></tr><tr><td class="mono">geospatial_lon_max</td><td>-29.43282</td></tr><tr><td class="mono">geospatial_lon_units</td><td>degrees_east</td></tr><tr><td class="mono">geospatial_vertical_min</td><td>1.0</td></tr><tr><td class="mono">geospatial_vertical_max</td><td>718.0</td></tr><tr><td class="mono">geospatial_vertical_units</td><td>dbar</td></tr><tr><td class="mono">geospatial_vertical_positive</td><td>down</td></tr><tr><td class="mono">time_coverage_start</td><td>2026-07-12T02:40:06Z</td></tr><tr><td class="mono">time_coverage_end</td><td>2026-07-22T09:43:02Z</td></tr><tr><td class="mono">time_coverage_duration</td><td>P10DT7H2M56S</td></tr>
-  </tbody>
-</table>
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">title</td><td><code>string</code></td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr>
+<tr><td class="mono">cruise</td><td><code>string</code></td><td>UNK</td></tr>
+</tbody></table>
+<h3>Spatiotemporal coverage</h3><p class="caption">Computed values are recomputed from the data in this file; Diff is File − Computed, shown amber when it exceeds the tolerance (latitude/longitude 0.001°, depth 1 dbar, time 1 s).</p>
+<table class="sortable">
 
-<h3>(7.3) Provenance &amp; processing</h3>
-<table class="nc">
-  <tbody>
-    <tr><td class="mono">date_created</td><td>2026-10-11T19:20:53Z</td></tr><tr><td class="mono">date_modified</td><td>2026-10-11T19:20:53Z</td></tr><tr><td class="mono">tracking_id</td><td>525dbeae-f45e-4912-a9b2-422ec3bde02f</td></tr><tr><td class="mono">history</td><td>2026-10-11T19:20:53Z ctdcast 0.2.1 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
-2026-10-11T19:20:53Z ctdcast 0.2.1 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr><tr><td class="mono">source</td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr><tr><td class="mono">data_mode</td><td>P</td></tr><tr><td class="mono">data_mode_meaning</td><td>provisional</td></tr><tr><td class="mono">Conventions</td><td>CF-1.13, ACDD-1.3</td></tr><tr><td class="mono">featureType</td><td>profile</td></tr><tr><td class="mono">cdm_data_type</td><td>Profile</td></tr><tr><td class="mono">pressure_units</td><td>dbar</td></tr><tr><td class="mono">pressure_spacing_dbar</td><td>1</td></tr>
-  </tbody>
-</table>
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">File value</th><th tabindex="0">Computed</th><th tabindex="0">Diff</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">geospatial_lat_min</td><td>65.58246</td><td>65.58</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lat_max</td><td>65.86038</td><td>65.86</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lat_units</td><td>degrees_north</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_lon_min</td><td>-29.58836</td><td>-29.59</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lon_max</td><td>-29.43282</td><td>-29.43</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lon_units</td><td>degrees_east</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_vertical_min</td><td>1.0</td><td>1</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_vertical_max</td><td>718.0</td><td>718</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_vertical_units</td><td>dbar</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_vertical_positive</td><td>down</td><td></td>
+<td></td></tr>
+<tr><td class="mono">time_coverage_start</td><td>2026-07-12T02:40:06Z</td><td>2026-07-12 02:40:06</td>
+<td>0 s</td></tr>
+<tr><td class="mono">time_coverage_end</td><td>2026-07-22T10:01:51Z</td><td>2026-07-22 10:01:51</td>
+<td>0 s</td></tr>
+<tr><td class="mono">time_coverage_duration</td><td>P10DT7H21M45S</td><td></td>
+<td></td></tr>
+</tbody></table>
+<h3>Provenance &amp; processing</h3>
+<table class="sortable">
 
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-10-16T19:41:56Z</td></tr>
+<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-10-16T19:41:56Z</td></tr>
+<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>aff16cd4-ac0b-4321-a1f2-9a8a41124f4a</td></tr>
+<tr><td class="mono">history</td><td><code>string</code></td><td>2026-10-16T19:41:56Z ctdcast 0.3.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-10-16T19:41:56Z ctdcast 0.3.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr>
+<tr><td class="mono">source</td><td><code>string</code></td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr>
+<tr><td class="mono">data_mode</td><td><code>string</code></td><td>P</td></tr>
+<tr><td class="mono">data_mode_meaning</td><td><code>string</code></td><td>provisional</td></tr>
+<tr><td class="mono">Conventions</td><td><code>string</code></td><td>CF-1.13, ACDD-1.3</td></tr>
+<tr><td class="mono">featureType</td><td><code>string</code></td><td>profile</td></tr>
+<tr><td class="mono">cdm_data_type</td><td><code>string</code></td><td>Profile</td></tr>
+<tr><td class="mono">pressure_units</td><td><code>string</code></td><td>dbar</td></tr>
+<tr><td class="mono">pressure_spacing_dbar</td><td><code>int64</code></td><td>1</td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:globals_rows</div>
 
 
 
@@ -1965,6 +1171,57 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.2.1 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-11 19:21 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.3.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-16 19:42 UTC</footer>
+<script>
+document.querySelectorAll('table').forEach(function (table) {
+  if (table.hasAttribute('data-nosort')) { return; }
+  var head = table.tHead && table.tHead.rows[0];
+  var body = table.tBodies[0];
+  if (!head || !body) { return; }
+  function cellKey(row, idx) {
+    var cell = row.cells[idx];
+    if (!cell) { return ''; }
+    var ds = cell.getAttribute('data-sort');
+    return ds !== null ? ds : cell.textContent.trim();
+  }
+  function numeric(idx) {
+    var rows = body.rows, seen = false;
+    for (var i = 0; i < rows.length; i++) {
+      var k = cellKey(rows[i], idx);
+      if (k === '') { continue; }
+      if (!/^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/.test(k)) { return false; }
+      seen = true;
+    }
+    return seen;
+  }
+  Array.prototype.forEach.call(head.cells, function (th, idx) {
+    if (th.hasAttribute('data-nosort')) { return; }
+    th.tabIndex = 0;
+    function sort() {
+      var asc = !(th.classList.contains('sorted-asc'));
+      var isNum = numeric(idx);
+      var rows = Array.prototype.slice.call(body.rows);
+      rows.sort(function (a, b) {
+        var ka = cellKey(a, idx), kb = cellKey(b, idx);
+        if (isNum) { ka = parseFloat(ka) || 0; kb = parseFloat(kb) || 0; }
+        else { ka = ka.toLowerCase(); kb = kb.toLowerCase(); }
+        if (ka < kb) { return asc ? -1 : 1; }
+        if (ka > kb) { return asc ? 1 : -1; }
+        return 0;
+      });
+      rows.forEach(function (r) { body.appendChild(r); });
+      Array.prototype.forEach.call(head.cells, function (o) {
+        o.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+    }
+    th.addEventListener('click', sort);
+    th.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
+    });
+  });
+});
+</script>
+
 </body>
 </html>

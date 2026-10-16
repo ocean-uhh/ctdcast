@@ -821,10 +821,13 @@ def _corrections_rows_with_ticks(
     for tick in ticks:
         by_key.setdefault(tick.key, []).append(tick)
     rows: list[str] = []
+    n = 0  # a 1-based step number, so the processing order stays readable (the table is
+    # data-nosort, but the number makes the sequence explicit and recoverable regardless).
     for r in records:
         rec_ticks = by_key.get(r.key) or [None]
         split = len(rec_ticks) > 1  # a per-channel/per-cell/per-group expansion
         for tick in rec_ticks:
+            n += 1
             step = escape(tick.label) if tick else escape(r.label)
             differ = tick is not None and tick.state == CONFORMANCE_DIFFER
             bg = " style='background:var(--warn-bg)'" if differ else ""
@@ -834,7 +837,7 @@ def _corrections_rows_with_ticks(
             params = tick.detail if (split and tick and tick.detail) else r.parameters
             var_cell = _variables_cell(tick.variables if tick else "", bg)
             rows.append(
-                f"<tr><td class='mono'{bg}>{step}</td>"
+                f"<tr><td class='num'{bg}>{n}</td><td class='mono'{bg}>{step}</td>"
                 f"<td{bg}>{escape(r.producer)}</td>"
                 f"<td class='mono'{bg}>{escape(r.version)}</td>"
                 f"<td{bg}>{escape(params)}</td>"
@@ -852,21 +855,23 @@ def _corrections_table_html(
     if ticks:
         body = _corrections_rows_with_ticks(records, ticks)
         head = (
-            "<th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+            "<th>#</th><th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
             "<th>Variables</th><th>Matches reference</th>"
         )
     else:
         body = "".join(
-            f"<tr><td class='mono'>{escape(r.label)}</td>"
+            f"<tr><td class='num'>{i}</td><td class='mono'>{escape(r.label)}</td>"
             f"<td>{escape(r.producer)}</td>"
             f"<td class='mono'>{escape(r.version)}</td>"
             f"<td>{escape(r.parameters)}</td></tr>"
-            for r in records
+            for i, r in enumerate(records, 1)
         )
-        head = "<th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+        head = "<th>#</th><th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+    # data-nosort: the row order is the processing sequence, so this table never re-sorts
+    # (every other table opts in to sorting by default).
     return (
         f"<h3{tight}>Corrections applied before ctdcast</h3>"
-        f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
+        f"<table class='nc' data-nosort style='margin-top:0'><thead><tr>{head}</tr></thead>"
         f"<tbody>{body}</tbody></table>"
     )
 

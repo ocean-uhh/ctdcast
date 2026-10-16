@@ -27,7 +27,7 @@ from jinja2 import ChoiceLoader, Environment, FileSystemLoader, Template
 from ctdcast.reports import _figdebug
 from ctdcast.reports._anchors import legacy_anchor_spans
 from ctdcast.reports._vendored.figure_png import source_of
-from ctdcast.reports.design import FIGURE_SOURCE
+from ctdcast.reports.design import _JS_SORT_TABLES, FIGURE_SOURCE
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _VENDORED_TEMPLATES_DIR = Path(__file__).parent / "_vendored" / "templates"
@@ -55,11 +55,17 @@ _env.globals["legacy_anchor_spans"] = legacy_anchor_spans
 # the vendored default (design_tokens.SHOW_FIGURE_SOURCE) is off.
 _env.globals["source_of"] = source_of
 _env.globals["show_source"] = FIGURE_SOURCE
+# Click-to-sort script, emitted once by base.html so every page's tables sort (each opts out
+# with data-nosort).  A global, not per-page context, so no page builder has to pass it.
+_env.globals["js_sort_tables"] = _JS_SORT_TABLES
 
 _env_raw: Environment = Environment(
     loader=_loader,
     autoescape=False,
 )
+# base.html references js_sort_tables; leaflet.html renders through this env, so it needs the
+# global too (its page has no data tables, but the base template is shared).
+_env_raw.globals["js_sort_tables"] = _JS_SORT_TABLES
 
 
 def get_template(name: str) -> Template:

@@ -146,8 +146,9 @@ def test_globals_extras_merge_into_a_title():
         ds, extras={"Identity & discovery": ("my_custom_attr",)}
     )
     by = dict(groups)
-    # rows are (attribute, type, value) triples; the type is read off the stored value
-    assert ("my_custom_attr", "str", "x") in by["Identity & discovery"]
+    # rows are (attribute, type, value) triples; the type is the one shared vocabulary
+    # (_readable_dtype), so text reads "string", never "str"
+    assert ("my_custom_attr", "string", "x") in by["Identity & discovery"]
     assert nt.OTHER_GROUP not in by
 
 
@@ -176,6 +177,44 @@ def test_template_renders_sortable_tables_with_source():
         coords=coords, groups=groups, csrc=csrc, vsrc=vsrc, show_source=False
     )
     assert "source:" not in off
+
+
+def test_summary_counts_exclude_keeps_data_count_honest():
+    """exclude() names leave data_variables for their own 'excluded' count, no double-count."""
+    ds = xr.Dataset(
+        {
+            "ctd_temperature": ("time", np.array([1.0, 2.0])),
+            "sensor_temperature_1": ("time", np.array(["s", "s"])),  # linkage
+            "SENSOR_t": ((), np.int64(0)),  # catalog, already a sensor
+        },
+        coords={"time": np.array([0, 1])},
+    )
+    counts = nt.summary_counts(
+        ds,
+        is_qc=_is_qc,
+        is_sensor=_is_sensor,
+        exclude=lambda n: n.startswith(("sensor_", "SENSOR_")),
+    )
+    assert counts["data_variables"] == 1  # only ctd_temperature
+    assert counts["sensors"] == 1  # SENSOR_t
+    assert counts["excluded"] == 1  # sensor_temperature_1, not double-counted with sensors
+
+
+def test_valid_cell_macro():
+    """valid_cell shows a bare count when all valid, else 'n / total' flagged cell-bad."""
+    from ctdcast.reports._env import _env
+
+    tmpl = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "<table><tbody><tr>{{ nc.valid_cell(n_valid, n) }}</tr></tbody></table>"
+    )
+    full = tmpl.render(n_valid=390, n=390)
+    assert ">390<" in full
+    assert "cell-bad" not in full
+    assert 'data-sort="390"' in full
+    short = tmpl.render(n_valid=370, n=390)
+    assert "370 / 390" in short
+    assert "cell-bad" in short
 
 
 def test_import_purity_package_neutral():
