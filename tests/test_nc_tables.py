@@ -217,6 +217,66 @@ def test_valid_cell_macro():
     assert "cell-bad" in short
 
 
+def test_units_cell_flags_float_missing_units():
+    """units_cell: float w/o units is amber, string w/o units is plain, present units shows."""
+    from ctdcast.reports._env import _env
+
+    tmpl = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.units_cell(fl) }}|{{ nc.units_cell(st) }}|{{ nc.units_cell(ok) }}"
+    )
+    html = tmpl.render(
+        fl={"units": "", "dtype": "float64"},
+        st={"units": "", "dtype": "string"},
+        ok={"units": "degree_Celsius", "dtype": "float64"},
+    )
+    assert 'class="cell-bad">—' in html  # float, no units -> file defect
+    assert html.count("cell-bad") == 1  # the string's missing unit is not a defect
+    assert "degree_Celsius" in html
+
+
+def test_variables_tables_optional_drops_all_empty_columns():
+    """A declared-optional column vanishes when no row in the group carries a value."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset({"sensor_x": ("N_PROF", np.array(["a", "b"]))})  # string, no units/range
+    groups, src = nt.variables_rows(ds, is_qc=_is_qc)
+    nc = (
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, optional=('units', 'minmax'), source=src) }}"
+    )
+    dropped = _env.from_string(nc).render(groups=groups, src=src, show_source=False)
+    assert "Units</th>" not in dropped
+    assert "Min / Max</th>" not in dropped
+    # without the opt-out the same group keeps the columns
+    kept = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, source=src) }}"
+    ).render(groups=groups, src=src, show_source=False)
+    assert "Units</th>" in kept and "Min / Max</th>" in kept
+
+
+def test_coords_and_scalars_tables_take_optional():
+    """coords_table and scalars_table honour the same optional column-drop (symmetry)."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset(
+        {"flag": ((), np.int8(1))},  # a scalar with no units
+        coords={"label": ("label", np.array(["a", "b"]))},  # string coord, no units/range
+    )
+    coord_rows, csrc = nt.coords_rows(ds)
+    scalar_rows, ssrc = nt.scalars_rows(ds)
+    html = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.coords_table(coords, optional=('units', 'minmax'), source=csrc) }}"
+        "{{ nc.scalars_table(scalars, optional=('units',), source=ssrc) }}"
+    ).render(
+        coords=coord_rows, scalars=scalar_rows, csrc=csrc, ssrc=ssrc, show_source=False
+    )
+    assert "Units</th>" not in html
+    assert "Min / Max</th>" not in html
+
+
 def test_import_purity_package_neutral():
     """nc_tables imports only stdlib, numpy, xarray and vendored siblings (relative)."""
     src = Path(nt.__file__).read_text(encoding="utf-8")

@@ -323,7 +323,7 @@ footer a { color: var(--muted); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-16 19:42 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-16 19:53 UTC</p>
   
   
 
@@ -397,7 +397,7 @@ footer a { color: var(--muted); }
 </thead>
 <tbody>
 <tr><td>N_PROF</td><td><code>int32</code></td><td data-sort="8">8</td>
-<td></td><td>Profile index (0-based sequential)</td>
+<td>—</td><td>Profile index (0-based sequential)</td>
 <td data-sort="0.0">0 / 7</td><td data-nosort>—</td></tr>
 <tr><td>latitude</td><td><strong><code>float64</code></strong></td><td data-sort="8">8</td>
 <td>degrees_north</td><td><strong><code>latitude</code></strong><br>Latitude</td>
@@ -428,7 +428,7 @@ footer a { color: var(--muted); }
 </thead>
 <tbody>
 <tr><td>cast_direction</td>
-<td><code>string</code></td><td></td><td>Profile direction</td>
+<td><code>string</code></td><td>—</td><td>Profile direction</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -436,7 +436,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>flag_values</th><td>down up</td></tr><tr><th>comment</th><td>replaces the N_PROF = cast + 0.5 float encoding</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>cast_id</td>
-<td><code>string</code></td><td></td><td>Cast identifier</td>
+<td><code>string</code></td><td>—</td><td>Cast identifier</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -444,13 +444,13 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>Zero-padded cast number with optional letter suffix, e.g. &#39;004&#39; or &#39;004b&#39;.</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>cast_number</td>
-<td><code>int32</code></td><td></td><td>original cast number from filename</td>
+<td><code>int32</code></td><td>—</td><td>original cast number from filename</td>
 <td data-sort="11.0">11 / 129</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort>—</td></tr>
 <tr><td>cast_suffix</td>
-<td><code>string</code></td><td></td><td>cast letter suffix from filename</td>
+<td><code>string</code></td><td>—</td><td>cast letter suffix from filename</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -458,7 +458,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>empty for a plain cast; a letter (e.g. &#39;b&#39;) marks a distinct sibling event at the same station number</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>cast_type</td>
-<td><code>string</code></td><td></td><td>downcast or upcast (deprecated alias for cast_direction)</td>
+<td><code>string</code></td><td>—</td><td>downcast or upcast (deprecated alias for cast_direction)</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -482,7 +482,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>Same value for downcast and upcast profiles of the same cast.</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>preferred_pair</td>
-<td><code>string</code></td><td></td><td>preferred-sensor choice (preferred_pair) per profile</td>
+<td><code>string</code></td><td>—</td><td>preferred-sensor choice (preferred_pair) per profile</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -490,7 +490,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>one of &#34;primary&#34; / &#34;secondary&#34;; empty where the cast was undeclared</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>source_data_mode</td>
-<td><code>string</code></td><td></td><td>OceanSITES data mode of the source cast for this profile</td>
+<td><code>string</code></td><td>—</td><td>OceanSITES data mode of the source cast for this profile</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -498,7 +498,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>The source cast&#39;s own data_mode (P provisional, D delayed-mode) — a per-profile fact about the source file, beside sourc</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>source_file</td>
-<td><code>string</code></td><td></td><td>source per-cast filename this profile was compiled from</td>
+<td><code>string</code></td><td>—</td><td>source per-cast filename this profile was compiled from</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -506,7 +506,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>Filename only (see the global &#39;source&#39; attribute for the naming convention); the absolute root is deliberately not recor</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>source_stage</td>
-<td><code>int8</code></td><td></td><td>processing stage of the source file for this profile</td>
+<td><code>int8</code></td><td>—</td><td>processing stage of the source file for this profile</td>
 <td data-sort="3.0">3 / 3</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -514,7 +514,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>flag_values</th><td>[0 1 2 3]</td></tr><tr><th>flag_meanings</th><td>unknown converted soak_flagged qc_calibrated</td></tr><tr><th>comment</th><td>Best-available stage for this cast at compile time: 1 = raw converted, 2 = soak/deck flagged, 3 = QC and calibration. 0 </td></tr>
 </tbody></table></details></td></tr>
 <tr><td>source_tracking_id</td>
-<td><code>string</code></td><td></td><td>tracking_id of the per-cast file this profile was compiled from</td>
+<td><code>string</code></td><td>—</td><td>tracking_id of the per-cast file this profile was compiled from</td>
 <td>—</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -522,13 +522,13 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>The compiled file has its own tracking_id (global attr); this names the specific instance of each source cast file, so t</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>time_end</td>
-<td><code>datetime</code></td><td></td><td>end time of cast direction</td>
+<td><code>datetime</code></td><td>—</td><td>end time of cast direction</td>
 <td>2026-07-12 02:49:22 / 2026-07-22 10:01:51</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort>—</td></tr>
 <tr><td>time_start</td>
-<td><code>datetime</code></td><td></td><td>start time of cast direction</td>
+<td><code>datetime</code></td><td>—</td><td>start time of cast direction</td>
 <td>2026-07-12 02:40:06 / 2026-07-22 09:43:02</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -876,108 +876,95 @@ footer a { color: var(--muted); }
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>sensor_conductivity_1</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the conductivity_1 sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the conductivity_1 sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_conductivity_2</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the conductivity_2 sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the conductivity_2 sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_conductivity_preferred</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the preferred conductivity sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the preferred conductivity sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_fluorometer</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the fluorometer sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the fluorometer sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_oxygen_1</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the oxygen_1 sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the oxygen_1 sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_ph</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the ph sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the ph sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_pressure</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the pressure sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the pressure sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_temperature_1</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the temperature_1 sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the temperature_1 sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_temperature_2</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the temperature_2 sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the temperature_2 sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_temperature_preferred</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the preferred temperature sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the preferred temperature sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_transmissometer</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the transmissometer sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the transmissometer sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_turbidity</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the turbidity sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the turbidity sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
 <table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_user_polynomial</td>
-<td><code>string</code></td><td></td><td>catalog variable naming the user_polynomial sensor per profile</td>
-<td>—</td>
+<td><code>string</code></td><td>catalog variable naming the user_polynomial sensor per profile</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
 <td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
@@ -995,11 +982,11 @@ footer a { color: var(--muted); }
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>sensor_channel_conductivity_1</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the conductivity_1 sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the conductivity_1 sensor</td>
 <td data-sort="2.0">2 / 2</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1007,7 +994,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_conductivity_2</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the conductivity_2 sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the conductivity_2 sensor</td>
 <td data-sort="5.0">5 / 5</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1015,7 +1002,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_fluorometer</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the fluorometer sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the fluorometer sensor</td>
 <td data-sort="13.0">13 / 13</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1023,7 +1010,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_oxygen_1</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the oxygen_1 sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the oxygen_1 sensor</td>
 <td data-sort="8.0">8 / 8</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1031,7 +1018,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_ph</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the ph sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the ph sensor</td>
 <td data-sort="9.0">9 / 9</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1039,7 +1026,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_pressure</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the pressure sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the pressure sensor</td>
 <td data-sort="3.0">3 / 3</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1047,7 +1034,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_temperature_1</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the temperature_1 sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the temperature_1 sensor</td>
 <td data-sort="1.0">1 / 1</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1055,7 +1042,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_temperature_2</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the temperature_2 sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the temperature_2 sensor</td>
 <td data-sort="4.0">4 / 4</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1063,7 +1050,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_transmissometer</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the transmissometer sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the transmissometer sensor</td>
 <td data-sort="10.0">10 / 10</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1071,7 +1058,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_turbidity</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the turbidity sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the turbidity sensor</td>
 <td data-sort="12.0">12 / 12</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1079,7 +1066,7 @@ footer a { color: var(--muted); }
 <table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
 </tbody></table></details></td></tr>
 <tr><td>sensor_channel_user_polynomial</td>
-<td><code>int32</code></td><td></td><td>raw CNV acquisition channel of the user_polynomial sensor</td>
+<td><code>int32</code></td><td>raw CNV acquisition channel of the user_polynomial sensor</td>
 <td data-sort="6.0">6 / 6</td>
 <td data-sort="8">8</td>
 <td data-sort="100.0">100.0</td>
@@ -1144,11 +1131,11 @@ footer a { color: var(--muted); }
   <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
 </thead>
 <tbody>
-<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-10-16T19:41:56Z</td></tr>
-<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-10-16T19:41:56Z</td></tr>
-<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>aff16cd4-ac0b-4321-a1f2-9a8a41124f4a</td></tr>
-<tr><td class="mono">history</td><td><code>string</code></td><td>2026-10-16T19:41:56Z ctdcast 0.3.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
-2026-10-16T19:41:56Z ctdcast 0.3.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr>
+<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-10-16T19:52:56Z</td></tr>
+<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-10-16T19:52:56Z</td></tr>
+<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>2c7ac7b1-84e6-4185-817f-a7cc90d31c71</td></tr>
+<tr><td class="mono">history</td><td><code>string</code></td><td>2026-10-16T19:52:56Z ctdcast 0.3.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-10-16T19:52:56Z ctdcast 0.3.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr>
 <tr><td class="mono">source</td><td><code>string</code></td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr>
 <tr><td class="mono">data_mode</td><td><code>string</code></td><td>P</td></tr>
 <tr><td class="mono">data_mode_meaning</td><td><code>string</code></td><td>provisional</td></tr>
@@ -1171,7 +1158,7 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.3.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-16 19:42 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.3.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-16 19:53 UTC</footer>
 <script>
 document.querySelectorAll('table').forEach(function (table) {
   if (table.hasAttribute('data-nosort')) { return; }

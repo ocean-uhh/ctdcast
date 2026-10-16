@@ -75,31 +75,59 @@
 {%- if n_valid < n %}{{ "{:,}".format(n_valid) }} / {{ "{:,}".format(n) }}{% else %}{{ "{:,}".format(n_valid) }}{% endif %}</td>
 {%- endmacro %}
 
-{% macro coords_table(rows, widths=None, source=None) %}
+{# Units cell. A present unit shows plainly. A missing unit is "—" flagged .cell-bad on a
+   floating-point variable, where CF expects a unit and a missing one is a file defect; it is
+   plain "—" on a string or integer (flag/index/channel) variable, where a unit does not
+   apply. Public so an owned domain table flags the same defect the vendored tables do. #}
+{% macro units_cell(row) %}
+{%- if row.units %}<td>{{ row.units }}</td>
+{%- elif row.dtype.startswith("float") %}<td class="cell-bad">—</td>
+{%- else %}<td>—</td>{% endif %}
+{%- endmacro %}
+
+{% macro coords_table(rows, optional=(), widths=None, source=None) %}
 {%- if rows %}
+{%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
+{%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set cols = ["Variable", "Type", "Length"] %}
+{%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
+{%- set _ = cols.append("Standard / long name") %}
+{%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
+{%- set _ = cols.append("Attributes") %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(["Variable", "Type", "Length", "Units", "Standard / long name", "Min / Max", "Attributes"]) }}
+{{ thead(cols) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
-<td>{{ r.units }}</td><td>{{ names_cell(r) }}</td>{{ minmax_cell(r) }}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no coordinates") }}{% endif %}
 {%- endmacro %}
 
-{% macro variables_tables(groups, widths=None, source=None) %}
+{# `optional` names columns the caller allows to vanish ("units", "minmax"); a named column is
+   dropped from the heading and every row only when no row in the group carries a value, so a
+   string-only group (sensor linkage) loses its always-blank Units and Min / Max while a
+   numeric group keeps them. A column not named in `optional` is always shown. #}
+{% macro variables_tables(groups, optional=(), widths=None, source=None) %}
 {%- if groups %}
 {%- for title, rows in groups %}
+{%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
+{%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set cols = ["Variable", "Type"] %}
+{%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
+{%- set _ = cols.append("Standard / long name") %}
+{%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
+{%- set _ = cols.extend(["Valid", "Valid %", "Attributes"]) %}
 <h3>Variables on {{ title }}</h3>
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(["Variable", "Type", "Units", "Standard / long name", "Min / Max", "Valid", "Valid %", "Attributes"]) }}
+{{ thead(cols) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
-<td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td><td>{{ names_cell(r) }}</td>{{ minmax_cell(r) }}
+<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
 <td data-sort="{{ r.valid_pct }}"{% if r.valid_pct < 100 %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
 <td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
@@ -109,14 +137,18 @@
 {%- else %}{{ _empty("no dimensioned data variables") }}{% endif %}
 {%- endmacro %}
 
-{% macro scalars_table(rows, widths=None, source=None) %}
+{% macro scalars_table(rows, optional=(), widths=None, source=None) %}
 {%- if rows %}
+{%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
+{%- set cols = ["Variable", "Type"] %}
+{%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
+{%- set _ = cols.extend(["Standard / long name", "Value", "Attributes"]) %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(["Variable", "Type", "Units", "Standard / long name", "Value", "Attributes"]) }}
+{{ thead(cols) }}
 <tbody>
 {%- for r in rows %}
-<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td>
+<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
 <td>{{ names_cell(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
