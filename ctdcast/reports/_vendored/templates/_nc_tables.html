@@ -1,0 +1,151 @@
+{# Vendored netCDF inventory table macros. Package-neutral: they render the (rows, source)
+   output of reports/_vendored/nc_tables.py and know nothing about casts, dives or moorings.
+   Vendored byte-identical across the family (ctdcast main the source of truth; see
+   MANIFEST.txt). Every table carries class="sortable" so the vendored _JS_SORT_TABLES
+   snippet makes its headings click-to-sort; attribute sub-tables carry data-nosort.
+   Each macro emits the builder's `source:` line when the `show_source` toggle is on. #}
+
+{# One <thead>: a heading row and, when `units` is given, a second row of units under it
+   (the family "numbers alone in the cell, unit written once" convention). #}
+{% macro thead(cols, units=None) %}
+<thead>
+  <tr>{% for c in cols %}<th tabindex="0">{{ c }}</th>{% endfor %}</tr>
+  {%- if units %}<tr class="units">{% for u in units %}<th>{{ u }}</th>{% endfor %}</tr>{% endif %}
+</thead>
+{%- endmacro %}
+
+{# <colgroup> + fixed layout when explicit widths are passed, else browser layout. #}
+{% macro _colgroup(widths) %}
+{%- if widths %}<colgroup>{% for w in widths %}<col style="width: {{ w }}">{% endfor %}</colgroup>{% endif %}
+{%- endmacro %}
+
+{# The provenance line naming the builder; shown only when the package toggles it on. #}
+{% macro _source(source) %}
+{%- if show_source and source %}<div class="fig-source">source: {{ source }}</div>{% endif %}
+{%- endmacro %}
+
+{# "Not applicable" placeholder for an empty table, in the shared caption style. #}
+{% macro _empty(what) %}<p class="caption">Not applicable to this file: {{ what }}.</p>{% endmacro %}
+
+{% macro summary_line(counts) %}
+<p class="caption">{{ "{:,}".format(counts.data_variables) }} data variables ·
+{{ "{:,}".format(counts.sensors) }} sensors ·
+{{ "{:,}".format(counts.qc_companions) }} QC companions ·
+{{ "{:,}".format(counts.coordinates) }} coordinates</p>
+{%- endmacro %}
+
+{# A variable's attributes, revealed on demand; the sub-table opts out of sorting. #}
+{% macro attr_disclosure(attrs) %}
+{%- if attrs %}<details class="attr-disclosure"><summary>{{ attrs|length }} attr{{ "s" if attrs|length != 1 else "" }}</summary>
+<table data-nosort><tbody>
+{%- for k, val in attrs.items() %}<tr><th>{{ k }}</th><td>{{ val }}</td></tr>{% endfor %}
+</tbody></table></details>{% else %}—{% endif %}
+{%- endmacro %}
+
+{# dtype cell: float64 bold (a flag to reconsider the precision); the rest plain mono. #}
+{% macro dtype_cell(dtype) %}
+{%- if dtype == "float64" %}<strong><code>{{ dtype }}</code></strong>{% else %}<code>{{ dtype }}</code>{% endif %}
+{%- endmacro %}
+
+{# standard_name (bold mono) over long_name (muted); either may be absent. #}
+{% macro _names(row) %}
+{%- if row.standard_name %}<strong><code>{{ row.standard_name }}</code></strong>{% endif %}
+{%- if row.standard_name and row.long_name %}<br>{% endif %}
+{%- if row.long_name %}<span class="muted">{{ row.long_name }}</span>{% endif %}
+{%- if not row.standard_name and not row.long_name %}—{% endif %}
+{%- endmacro %}
+
+{# Min / Max in one cell; data-sort carries the raw min so thousands separators and the
+   "a / b" form still sort as numbers. #}
+{% macro _minmax(row) %}
+<td{% if row.v_min_raw is not none %} data-sort="{{ row.v_min_raw }}"{% endif %}>
+{%- if row.v_min != "—" %}{{ row.v_min }} / {{ row.v_max }}{% else %}—{% endif %}</td>
+{%- endmacro %}
+
+{% macro coords_table(rows, widths=None, source=None) %}
+{%- if rows %}
+<table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{{ thead(["Variable", "Type", "Length", "Units", "Standard / long name", "Min / Max", "Attributes"]) }}
+<tbody>
+{%- for r in rows %}
+<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
+<td>{{ r.units }}</td><td>{{ _names(r) }}</td>{{ _minmax(r) }}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{%- endfor %}
+</tbody></table>{{ _source(source) }}
+{%- else %}{{ _empty("no coordinates") }}{% endif %}
+{%- endmacro %}
+
+{% macro variables_tables(groups, widths=None, source=None) %}
+{%- if groups %}
+{%- for title, rows in groups %}
+<h3>Variables on {{ title }}</h3>
+<table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{{ thead(["Variable", "Type", "Units", "Standard / long name", "Min / Max", "Valid", "Valid %", "Attributes"]) }}
+<tbody>
+{%- for r in rows %}
+<tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
+<td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td><td>{{ _names(r) }}</td>{{ _minmax(r) }}
+<td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
+<td data-sort="{{ r.valid_pct }}"{% if r.valid_pct < 100 %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
+<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{%- endfor %}
+</tbody></table>
+{%- endfor %}{{ _source(source) }}
+{%- else %}{{ _empty("no dimensioned data variables") }}{% endif %}
+{%- endmacro %}
+
+{% macro scalars_table(rows, widths=None, source=None) %}
+{%- if rows %}
+<table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{{ thead(["Variable", "Type", "Units", "Standard / long name", "Value", "Attributes"]) }}
+<tbody>
+{%- for r in rows %}
+<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td>{{ r.units }}</td>
+<td>{{ _names(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{%- endfor %}
+</tbody></table>{{ _source(source) }}
+{%- else %}{{ _empty("no scalar variables") }}{% endif %}
+{%- endmacro %}
+
+{# Global attributes by group. When `computed` maps an attribute name to a computed value,
+   the "Spatiotemporal coverage" group renders File value | Computed | Diff so the file's
+   stated bounds can be checked against the data. #}
+{% macro globals_tables(groups, computed=None, widths=None, source=None) %}
+{%- if groups %}
+{%- for title, rows in groups %}
+<h3>{{ title }}</h3>
+{%- set show_computed = computed and title == "Spatiotemporal coverage" %}
+<table class="sortable">
+{{ thead(["Attribute", "File value", "Computed", "Diff"] if show_computed else ["Attribute", "Value"]) }}
+<tbody>
+{%- for k, val in rows %}
+<tr><th>{{ k }}</th>
+{%- if show_computed %}<td>{{ val }}</td><td>{{ computed.get(k, {}).get("value", "") }}</td>
+<td{% if computed.get(k, {}).get("over") %} class="cell-bad"{% endif %}>{{ computed.get(k, {}).get("diff", "") }}</td>
+{%- else %}<td>{{ val }}</td>{% endif %}</tr>
+{%- endfor %}
+</tbody></table>
+{%- endfor %}{{ _source(source) }}
+{%- else %}{{ _empty("no global attributes") }}{% endif %}
+{%- endmacro %}
+
+{% macro sensor_table(rows, widths=None, source=None) %}
+{%- if rows %}
+<table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{{ thead(["Sensor", "Model", "Serial", "Calibration", "Standard / long name", "Attributes"]) }}
+<tbody>
+{%- for r in rows %}
+<tr><td>{{ r.name }}</td>
+<td>{% if r.model %}{{ r.model }}{% if r.model_assumed %} <em>(assumed)</em>{% endif %}{% else %}—{% endif %}</td>
+<td>{{ r.serial or "—" }}</td><td>{{ r.calibration or "—" }}</td>
+<td>{{ _names(r) }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{%- endfor %}
+</tbody></table>
+{%- if rows|selectattr("model_assumed")|list %}<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>{% endif %}
+{{ _source(source) }}
+{%- else %}{{ _empty("no sensor catalog") }}{% endif %}
+{%- endmacro %}

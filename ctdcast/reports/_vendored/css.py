@@ -244,6 +244,24 @@ td {{
 tr:nth-child(even) td {{ background: var(--bg-sunken); }}
 td.num, .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
+/* netCDF inventory tables (vendored nc_tables): variable / coord / scalar / sensor /
+   global tables.  Package-neutral — the markup is emitted by templates/_nc_tables.html. */
+.var-table code {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
+.muted {{ color: var(--muted); }}
+.var-qc {{ color: var(--muted); font-size: var(--fs-xs); }}
+.cell-bad {{ color: var(--warn); font-variant-numeric: tabular-nums; }}
+tr.units th {{
+  background: transparent; color: var(--muted); font-weight: 400;
+  font-size: var(--fs-xs); padding-top: 0;
+}}
+.attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
+.attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
+.attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
+/* Click-to-sort affordance on every table carrying class="sortable" (see
+   _JS_SORT_TABLES): the heading is a pointer, the active one shows the direction. */
+table.sortable th[tabindex] {{ cursor: pointer; user-select: none; }}
+table.sortable th.sorted-asc::after {{ content: " \\25B2"; font-size: 0.8em; }}
+table.sortable th.sorted-desc::after {{ content: " \\25BC"; font-size: 0.8em; }}
 {slots}
 .masthead-header {{
   display: flex; justify-content: space-between; align-items: flex-start;
@@ -344,6 +362,67 @@ document.querySelectorAll('h2').forEach(h => {
   const a = document.createElement('a');
   a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
   h.appendChild(a);
+});
+</script>
+"""
+
+#: Click-to-sort for every ``<table class="sortable">`` on a page.  Vanilla, dependency-free
+#: and inline, so it works offline — the family offline-at-view-time rule.  A ``<th>`` with
+#: ``data-nosort`` (the Attributes column) and a ``<table data-nosort>`` (the attribute
+#: disclosure sub-tables) are left alone.  A column sorts numerically when every non-empty
+#: cell parses as a number or carries ``data-sort`` (which also lets ``1,234`` and ``a / b``
+#: cells sort on a raw value); otherwise it sorts case-insensitively by visible text.  First
+#: click ascending, second reverses; the active heading shows ▲/▼ via ``.sorted-asc`` /
+#: ``.sorted-desc``.  Headings are keyboard-operable (Enter / Space).
+_JS_SORT_TABLES: str = """\
+<script>
+document.querySelectorAll('table.sortable').forEach(function (table) {
+  if (table.hasAttribute('data-nosort')) { return; }
+  var head = table.tHead && table.tHead.rows[0];
+  var body = table.tBodies[0];
+  if (!head || !body) { return; }
+  function cellKey(row, idx) {
+    var cell = row.cells[idx];
+    if (!cell) { return ''; }
+    var ds = cell.getAttribute('data-sort');
+    return ds !== null ? ds : cell.textContent.trim();
+  }
+  function numeric(idx) {
+    var rows = body.rows, seen = false;
+    for (var i = 0; i < rows.length; i++) {
+      var k = cellKey(rows[i], idx);
+      if (k === '') { continue; }
+      if (!/^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?$/.test(k)) { return false; }
+      seen = true;
+    }
+    return seen;
+  }
+  Array.prototype.forEach.call(head.cells, function (th, idx) {
+    if (th.hasAttribute('data-nosort')) { return; }
+    th.tabIndex = 0;
+    function sort() {
+      var asc = !(th.classList.contains('sorted-asc'));
+      var isNum = numeric(idx);
+      var rows = Array.prototype.slice.call(body.rows);
+      rows.sort(function (a, b) {
+        var ka = cellKey(a, idx), kb = cellKey(b, idx);
+        if (isNum) { ka = parseFloat(ka) || 0; kb = parseFloat(kb) || 0; }
+        else { ka = ka.toLowerCase(); kb = kb.toLowerCase(); }
+        if (ka < kb) { return asc ? -1 : 1; }
+        if (ka > kb) { return asc ? 1 : -1; }
+        return 0;
+      });
+      rows.forEach(function (r) { body.appendChild(r); });
+      Array.prototype.forEach.call(head.cells, function (o) {
+        o.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+    }
+    th.addEventListener('click', sort);
+    th.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
+    });
+  });
 });
 </script>
 """

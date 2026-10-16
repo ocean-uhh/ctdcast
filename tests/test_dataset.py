@@ -7,6 +7,7 @@ from conftest import CAST_011, FIXTURES_NC
 
 from ctdcast.readers.metadata import _SOURCE_NAME_ATTRS
 from ctdcast.reports.dataset import (
+    data_range_rows,
     generate_dataset_page,
     read_dataset_meta,
 )
@@ -14,21 +15,30 @@ from ctdcast.reports.dataset import (
 PROFILES_DEMO = Path(__file__).parent / "fixtures" / "profiles_demo.nc"
 
 
+def _all_var_rows(meta):
+    """Flatten the grouped data-variable rows of an inventory into one list."""
+    return [row for _title, group in meta["variables"]["groups"] for row in group]
+
+
 # --- read_dataset_meta -------------------------------------------------------
 
 
 def test_read_meta_structure():
-    """Inventory carries dims, coords, data_vars, rename_map, and global_attrs."""
+    """Inventory carries dims, summary, the five builder blocks, rename_map, coverage."""
     meta = read_dataset_meta(CAST_011)
     assert "error" not in meta
     assert meta["filename"] == "mixsed2_011.nc"
     assert meta["filesize"] > 0
     assert meta["dims"]  # non-empty dimension map
-    assert meta["coords"] and meta["data_vars"]
-    # every row has the inventory fields
-    row = meta["data_vars"][0]
-    for key in ("name", "dims", "dtype", "units", "standard_name", "n", "n_valid"):
-        assert key in row
+    assert meta["summary"]["coordinates"] >= 1
+    assert meta["coords"]["rows"] and meta["variables"]["groups"]
+    # each builder reports the caption string naming the function that built it
+    assert meta["coords"]["source"] and meta["variables"]["source"]
+    # every variable row has the inventory fields the vendored builder produces
+    rows = _all_var_rows(meta)
+    assert rows
+    for key in ("name", "dtype", "units", "standard_name", "n", "n_valid", "valid_pct"):
+        assert key in rows[0]
 
 
 def test_rename_map_from_cnv_original_name():
@@ -45,7 +55,7 @@ def test_rename_map_from_cnv_original_name():
 def test_columned_attrs_excluded_from_expandable():
     """units/standard_name/long_name are columns, so they leave the attrs set."""
     meta = read_dataset_meta(CAST_011)
-    for row in meta["coords"] + meta["data_vars"]:
+    for row in meta["coords"]["rows"] + _all_var_rows(meta):
         assert "units" not in row["attrs"]
         assert "standard_name" not in row["attrs"]
         assert "long_name" not in row["attrs"]
@@ -55,7 +65,9 @@ def test_source_name_kept_in_expandable_attrs():
     """cnv_original_name stays in the expandable attrs (not a dedicated column)."""
     meta = read_dataset_meta(CAST_011)
     named = [
-        r for r in meta["data_vars"] if any(a in r["attrs"] for a in _SOURCE_NAME_ATTRS)
+        r
+        for r in _all_var_rows(meta)
+        if any(a in r["attrs"] for a in _SOURCE_NAME_ATTRS)
     ]
     assert named, "expected at least one variable carrying cnv_original_name"
 
@@ -63,8 +75,27 @@ def test_source_name_kept_in_expandable_attrs():
 def test_valid_count_matches_length_when_no_missing():
     """n_valid never exceeds n; a fully-finite variable has n_valid == n."""
     meta = read_dataset_meta(CAST_011)
-    for row in meta["data_vars"]:
+    for row in _all_var_rows(meta):
         assert row["n_valid"] <= row["n"]
+
+
+def test_coverage_check_matches_written_bounds():
+    """The coverage recompute agrees with a correctly-written file (no cell flagged)."""
+    meta = read_dataset_meta(PROFILES_DEMO)
+    cov = meta["coverage"]
+    # the demo file states bounds computed from its own data, so nothing is over tolerance
+    assert cov, "expected coverage attributes to be checked"
+    assert all(not entry["over"] for entry in cov.values())
+    # both the lat extent and the time extent were recomputed and compared
+    assert "geospatial_lat_min" in cov
+    assert "time_coverage_start" in cov
+
+
+def test_qc_companions_not_listed_as_variables():
+    """A ``_qc`` companion folds into its parent's row, never appears as its own row."""
+    meta = read_dataset_meta(PROFILES_DEMO)
+    names = {r["name"] for r in _all_var_rows(meta)}
+    assert not any(n.endswith("_qc") for n in names)
 
 
 def test_read_meta_missing_file_returns_error():
@@ -108,6 +139,19 @@ def test_generated_page_is_self_contained(tmp_path):
     html = out.read_text(encoding="utf-8")
     assert 'src="https://' not in html
     assert 'href="https://' not in html or 'stylesheet" href="https://' not in html
+
+
+def test_generated_page_has_family_layout(tmp_path):
+    """The inventory page renders the vendored family layout and sortable tables."""
+    out = generate_dataset_page(PROFILES_DEMO, tmp_path / "inv.html")
+    html = out.read_text(encoding="utf-8")
+    assert "Variables on N_PROF" in html  # variables grouped by dimension
+    assert "Sensor catalog" in html
+    assert 'class="sortable' in html  # the click-to-sort tables
+    # ctdcast turns the source caption on, so builder provenance shows under a table
+    assert "source:" in html
+    # the old flat layout is gone
+    assert 'class="dims-line"' not in html
 
 
 # --- inspect CLI -------------------------------------------------------------
@@ -218,12 +262,16 @@ def test_cast_page_shows_source_provenance(tmp_path):
     assert "<dt>Processed</dt>" in html  # separate date field, not crammed in Source
 
 
-def test_var_meta_label_units_from_registry():
-    """label_units falls back to the VARIABLES registry by canonical name."""
-    meta = read_dataset_meta(CAST_011)
-    by_name = {r["name"]: r for r in meta["data_vars"]}
+def test_data_range_rows_label_units_from_registry():
+    """The cast-page data-ranges rows carry label_units from the VARIABLES registry."""
+    by_name = {r["name"]: r for r in data_range_rows(CAST_011)}
     assert by_name["ctd_temperature_1"]["label_units"] == "°C"
     assert by_name["ctd_salinity_1"]["label_units"] == "PSU"
+
+
+def test_data_range_rows_missing_file_is_empty():
+    """An unreadable file yields no rows (the cast appendix is skipped), not an exception."""
+    assert data_range_rows(Path("/nonexistent/file.nc")) == []
 
 
 def test_report_generates_inventory_pill_and_page(tmp_path):

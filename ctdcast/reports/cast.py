@@ -67,7 +67,7 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
-from ctdcast.reports.dataset import read_dataset_meta
+from ctdcast.reports.dataset import data_range_rows
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
 
@@ -417,8 +417,7 @@ def _render_data_ranges_table(nc_path: Path) -> str | None:
     can see how a figure's axis label was derived.  Values are escaped here
     because the manifest table macro emits this payload with ``|safe``.
     """
-    meta = read_dataset_meta(nc_path)
-    rows_data = meta.get("coords", []) + meta.get("data_vars", [])
+    rows_data = data_range_rows(nc_path)
     if not rows_data:
         return None
     rows = "".join(

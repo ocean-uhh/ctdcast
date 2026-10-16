@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
+{% import "_nc_tables.html" as nc %}
 
 {% block title %}{{ page_title }} — netCDF inventory{% endblock %}
 {% block masthead_title %}{{ meta.filename }}{% endblock %}
@@ -7,15 +8,7 @@
 
 {% block head_extra %}
 <style>
-/* Dataset inventory page */
-.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
-.dims-line code { color: var(--text); }
-table.nc td, table.nc th { font-size: var(--fs-nav); }
-details.attrs > summary {
-  cursor: pointer; color: var(--ocean); font-size: var(--fs-xs); user-select: none;
-}
-details.attrs table { margin: 0.3rem 0 0.2rem; }
-details.attrs td { font-size: var(--fs-xs); }
+/* Dataset inventory page — the tables themselves are styled by the vendored CSS. */
 .rename { color: var(--muted); }
 .rename .arrow { color: var(--ocean); }
 </style>
@@ -26,8 +19,6 @@ details.attrs td { font-size: var(--fs-xs); }
     <div><dt>File</dt><dd>{{ meta.filename }}</dd></div>
     {% if meta.filesize %}<div><dt>Size</dt><dd>{{ "%.1f"|format(meta.filesize / 1024) }} KB</dd></div>{% endif %}
     {% if meta.dims %}<div><dt>Dimensions</dt><dd>{% for d, n in meta.dims.items() %}{{ d }}={{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
-    {% if meta.coords %}<div><dt>Coordinates</dt><dd>{{ meta.coords|length }}</dd></div>{% endif %}
-    {% if meta.data_vars %}<div><dt>Data variables</dt><dd>{{ meta.data_vars|length }}</dd></div>{% endif %}
   </dl>
 {% endblock %}
 
@@ -36,49 +27,45 @@ details.attrs td { font-size: var(--fs-xs); }
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}
 
-{% macro var_table(rows, with_length=false, show_type=true, show_units=true, show_minmax=true, show_valid=true) %}
-<table class="nc">
+{# Owned table for the per-profile sensor linkage/channel variables (CTD-specific; the
+   vendored builders deliberately do not cover them). String-valued linkage omits Min/Max. #}
+{% macro prov_table(rows, show_minmax=false) %}
+<table class="sortable var-table">
   <thead>
     <tr>
-      <th>Variable</th><th>Dimensions</th>{% if with_length %}<th class="num">Length</th>{% endif %}{% if show_type %}<th>Type</th>{% endif %}{% if show_units %}<th>Units</th>{% endif %}<th>Standard / long name</th>
-      {% if show_minmax %}<th class="num">Min</th><th class="num">Max</th>{% endif %}{% if show_valid %}<th class="num">Valid</th>{% endif %}<th>Attributes</th>
+      <th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th>
+      {% if show_minmax %}<th tabindex="0">Min / Max</th>{% endif %}<th tabindex="0">Valid</th><th data-nosort>Attributes</th>
     </tr>
   </thead>
   <tbody>
     {% for v in rows %}
     <tr>
-      <td class="mono">{{ v.name }}</td>
-      <td class="mono">{{ v.dims }}</td>
-      {% if with_length %}<td class="num">{{ v.n }}</td>{% endif %}
-      {% if show_type %}<td class="mono">{{ v.dtype }}</td>{% endif %}
-      {% if show_units %}<td>{{ v.units }}</td>{% endif %}
-      <td>{% if v.standard_name %}<strong>{{ v.standard_name }}</strong>{% endif %}{% if v.standard_name and v.long_name %}: {% endif %}{% if v.long_name %}{{ v.long_name }}{% endif %}</td>
-      {% if show_minmax %}<td class="num">{{ v.v_min }}</td><td class="num">{{ v.v_max }}</td>{% endif %}
-      {% if show_valid %}<td class="num" {% if v.n_valid < v.n %}style="color:var(--warn);font-weight:600"{% endif %}>{{ v.n_valid }}{% if v.n_valid < v.n %} / {{ v.n }}{% endif %}</td>{% endif %}
-      <td>
-        {% if v.attrs %}
-        <details class="attrs"><summary>{{ v.attrs|length }} attr{{ "s" if v.attrs|length != 1 }}</summary>
-          <table>{% for k, val in v.attrs.items() %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}</table>
-        </details>
-        {% else %}—{% endif %}
-      </td>
+      <td>{{ v.name }}</td>
+      <td>{{ nc.dtype_cell(v.dtype) }}</td>
+      <td>{% if v.standard_name %}<strong><code>{{ v.standard_name }}</code></strong>{% endif %}{% if v.standard_name and v.long_name %}<br>{% endif %}{% if v.long_name %}<span class="muted">{{ v.long_name }}</span>{% endif %}{% if not v.standard_name and not v.long_name %}—{% endif %}</td>
+      {% if show_minmax %}<td data-sort="{{ v.v_min }}">{% if v.v_min != "—" %}{{ v.v_min }} / {{ v.v_max }}{% else %}—{% endif %}</td>{% endif %}
+      <td data-sort="{{ v.n_valid }}"{% if v.n_valid < v.n %} class="cell-bad"{% endif %}>{{ "{:,}".format(v.n_valid) }}{% if v.n_valid < v.n %} / {{ "{:,}".format(v.n) }}{% endif %}</td>
+      <td data-nosort>{{ nc.attr_disclosure(v.attrs) }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 {% endmacro %}
 
-{# Build the numbered section list once, so the jump-nav and each heading share
-   one "(N) Title" numbering (present sections only). #}
+{{ nc.summary_line(meta.summary) }}
+
+{# Numbered section list, built once so the jump-nav and each heading share one
+   "(N) Title" numbering (present sections only). #}
 {% set secs = [] %}
-{% if meta.qc_exclusion %}{% set _ = secs.append(("s-qc-drop", "QC exclusions")) %}{% endif %}
-{% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
 {% set _ = secs.append(("s-coords", "Coordinates")) %}
 {% set _ = secs.append(("s-vars", "Data variables")) %}
-{% if meta.sensor_catalog %}{% set _ = secs.append(("s-sensor-catalog", "Sensor catalog")) %}{% endif %}
+{% if meta.scalars.rows %}{% set _ = secs.append(("s-scalars", "Scalars")) %}{% endif %}
+{% if meta.qc_exclusion %}{% set _ = secs.append(("s-qc-drop", "QC exclusions")) %}{% endif %}
+{% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
+{% if meta.sensor_catalog.rows %}{% set _ = secs.append(("s-sensor-catalog", "Sensor catalog")) %}{% endif %}
 {% if meta.sensor_linkage %}{% set _ = secs.append(("s-sensor-linkage", "Sensor linkage")) %}{% endif %}
 {% if meta.sensor_channel %}{% set _ = secs.append(("s-sensor-channel", "Sensor channels")) %}{% endif %}
-{% if meta.global_attrs %}{% set _ = secs.append(("s-global", "Global attributes")) %}{% endif %}
+{% if meta.globals.groups %}{% set _ = secs.append(("s-global", "Global attributes")) %}{% endif %}
 {% set nums = {} %}
 {% for sid, title in secs %}{% set _ = nums.update({sid: loop.index}) %}{% endfor %}
 <div class="jump-nav">
@@ -86,19 +73,32 @@ details.attrs td { font-size: var(--fs-xs); }
   {% endfor %}
 </div>
 
+<h2 id="s-coords">{{ m.heading_text(nums["s-coords"], "Coordinates") }}</h2>
+{{ nc.coords_table(meta.coords.rows, source=meta.coords.source) }}
+
+<h2 id="s-vars">{{ m.heading_text(nums["s-vars"], "Data variables") }}</h2>
+<p class="caption">Grouped by dimension; the per-group sample count is in each heading. Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
+{{ nc.variables_tables(meta.variables.groups, source=meta.variables.source) }}
+
+{% if meta.scalars.rows %}
+<h2 id="s-scalars">{{ m.heading_text(nums["s-scalars"], "Scalars") }}</h2>
+<p class="caption">Dimensionless (0-d) variables; an encoded time is decoded to a date.</p>
+{{ nc.scalars_table(meta.scalars.rows, source=meta.scalars.source) }}
+{% endif %}
+
 {% if meta.qc_exclusion %}
 <h2 id="s-qc-drop">{{ m.heading_text(nums["s-qc-drop"], "QC exclusions") }}</h2>
-<p class="dims-line">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
-<p class="dims-line">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
-<table class="nc">
-  <thead><tr><th>Variable</th><th class="num">Excluded</th><th class="num">Input samples</th><th class="num">% excluded</th></tr></thead>
+<p class="caption">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
+<p class="caption">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
+<table class="sortable">
+  <thead><tr><th tabindex="0">Variable</th><th tabindex="0">Excluded</th><th tabindex="0">Input samples</th><th tabindex="0">% excluded</th></tr></thead>
   <tbody>
     {% for r in meta.qc_exclusion %}
     <tr>
-      <td class="mono">{{ r.name }}</td>
-      <td class="num" {% if r.n_excluded %}style="color:var(--warn);font-weight:600"{% endif %}>{{ r.n_excluded }}</td>
-      <td class="num">{{ r.n_input }}</td>
-      <td class="num" {% if r.n_excluded %}style="color:var(--warn);font-weight:600"{% endif %}>{{ "%.2f"|format(r.pct) }}%</td>
+      <td>{{ r.name }}</td>
+      <td data-sort="{{ r.n_excluded }}"{% if r.n_excluded %} class="cell-bad"{% endif %}>{{ "{:,}".format(r.n_excluded) }}</td>
+      <td data-sort="{{ r.n_input }}">{{ "{:,}".format(r.n_input) }}</td>
+      <td data-sort="{{ r.pct }}"{% if r.n_excluded %} class="cell-bad"{% endif %}>{{ "%.2f"|format(r.pct) }}%</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -107,55 +107,42 @@ details.attrs td { font-size: var(--fs-xs); }
 
 {% if meta.rename_map %}
 <h2 id="s-rename">{{ m.heading_text(nums["s-rename"], "Variable renaming") }}</h2>
-<p class="dims-line">Source → canonical name, from each variable's <code>cnv_original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone.</p>
-<table class="nc">
-  <thead><tr><th>Source name</th><th></th><th>Canonical name</th></tr></thead>
+<p class="caption">Source → canonical name, from each variable's <code>cnv_original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone.</p>
+<table class="sortable">
+  <thead><tr><th tabindex="0">Source name</th><th data-nosort></th><th tabindex="0">Canonical name</th></tr></thead>
   <tbody>
     {% for src, canon in meta.rename_map.items() %}
-    <tr><td class="mono rename">{{ src }}</td><td class="rename arrow">→</td><td class="mono">{{ canon }}</td></tr>
+    <tr><td class="rename">{{ src }}</td><td class="rename arrow">→</td><td>{{ canon }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
 {% endif %}
 
-<h2 id="s-coords">{{ m.heading_text(nums["s-coords"], "Coordinates") }}</h2>
-{{ var_table(meta.coords, with_length=true) }}
-
-<h2 id="s-vars">{{ m.heading_text(nums["s-vars"], "Data variables") }}</h2>
-<p class="dims-line">Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
-{{ var_table(meta.data_vars) }}
-
-{% if meta.sensor_catalog %}
+{% if meta.sensor_catalog.rows %}
 <h2 id="s-sensor-catalog">{{ m.heading_text(nums["s-sensor-catalog"], "Sensor catalog") }}</h2>
-<p class="dims-line">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no type, units, or value range.</p>
-{{ var_table(meta.sensor_catalog, show_type=false, show_units=false, show_minmax=false, show_valid=false) }}
+<p class="caption">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no value range.</p>
+{{ nc.sensor_table(meta.sensor_catalog.rows, source=meta.sensor_catalog.source) }}
 {% endif %}
 
 {% if meta.sensor_linkage %}
 <h2 id="s-sensor-linkage">{{ m.heading_text(nums["s-sensor-linkage"], "Sensor linkage") }}</h2>
-<p class="dims-line">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
-{{ var_table(meta.sensor_linkage, show_units=false, show_minmax=false) }}
+<p class="caption">Per profile, the catalog variable naming the sensor in each role. String-valued, so no units or numeric range.</p>
+{{ prov_table(meta.sensor_linkage) }}
 {% endif %}
 
 {% if meta.sensor_channel %}
 <h2 id="s-sensor-channel">{{ m.heading_text(nums["s-sensor-channel"], "Sensor channels") }}</h2>
-<p class="dims-line">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
-{{ var_table(meta.sensor_channel, show_type=false, show_units=false) }}
+<p class="caption">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
+{{ prov_table(meta.sensor_channel, show_minmax=true) }}
 {% endif %}
 
-{% if meta.global_attr_groups %}
+{% if meta.globals.groups %}
 <h2 id="s-global">{{ m.heading_text(nums["s-global"], "Global attributes") }}</h2>
-<p class="dims-line">Shown in the file's own write order, split into the canonical groups.</p>
-{% for grp in meta.global_attr_groups %}
-<h3>{{ m.heading_text(nums["s-global"] ~ "." ~ loop.index, grp.title) }}</h3>
-<table class="nc">
-  <tbody>
-    {% for k, val in grp.rows %}<tr><td class="mono">{{ k }}</td><td>{{ val }}</td></tr>{% endfor %}
-  </tbody>
-</table>
-{% endfor %}
+<p class="caption">Shown in the file's own write order, split into the canonical groups. The coverage group's <strong>Computed</strong> column recomputes each bound from the data; an amber <strong>Diff</strong> flags a disagreement past the per-axis tolerance.</p>
+{{ nc.globals_tables(meta.globals.groups, computed=meta.coverage, source=meta.globals.source) }}
 {% endif %}
 
 {% endif %}
 {{ js_top_links | safe }}
+{{ js_sort_tables | safe }}
 {% endblock %}

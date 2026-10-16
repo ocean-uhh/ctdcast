@@ -1,13 +1,21 @@
 """Tier-2: a per-file netCDF *data inventory* page.
 
 Unlike the figure report pages, this one answers "what is actually in this file?"
-for a developer or data reviewer: every dimension, coordinate, and variable with
-its dtype, units, CF names, value range and validity, plus the full per-variable
-attribute set (revealed on demand) and the global attributes.  One page per file,
-generated for ``profiles.nc``, a per-cast cast NC, or any other ctdcast product.
+for a developer or data reviewer: every coordinate and variable with its dtype,
+units, CF names, value range and validity, the sensor catalog, and the global
+attributes grouped into their canonical sections.  One page per file, generated
+for ``profiles.nc``, a per-cast cast NC, or any other ctdcast product.
+
+The tables themselves are built by the package-neutral
+:mod:`ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped
+by dimension, scalars, the sensor catalog, grouped globals) and rendered by the
+vendored ``_nc_tables.html`` macros.  What stays owned here is ctdcast-specific: the
+QC-exclusion and variable-renaming tables, the sensor linkage/channel tables, and the
+coverage check that recomputes ``geospatial_*`` / ``time_coverage_*`` from the data.
 
 :func:`read_dataset_meta` extracts the inventory as plain data;
 :func:`generate_dataset_page` renders it to a self-contained HTML file.
+:func:`data_range_rows` serves the cast page's own data-ranges appendix.
 """
 
 from __future__ import annotations
@@ -20,13 +28,15 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.config.global_attrs import group_attrs
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.readers.metadata import source_to_canonical
+from ctdcast.reports import design
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
+from ctdcast.reports._vendored import nc_tables
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
-from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
+
+__all__ = ["data_range_rows", "generate_dataset_page", "read_dataset_meta"]
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)
@@ -41,7 +51,12 @@ def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided
 
 
 def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
-    """Return the inventory row for one variable or coordinate."""
+    """Return a flat data-ranges row for one variable or coordinate.
+
+    Used by the cast page's data-ranges appendix (via :func:`data_range_rows`) and
+    the owned sensor linkage/channel tables — both want the ``label_units`` and
+    ``processing_level`` columns, which the vendored inventory builders do not carry.
+    """
     # Attributes already shown as their own table columns are omitted from the
     # expandable set (units, standard_name, long_name); label_units and everything
     # else remain.
@@ -84,97 +99,258 @@ def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
     }
 
 
-__all__ = ["generate_dataset_page", "read_dataset_meta"]
+# The sensor-provenance variables are split out of the science-variable inventory.
+# ``SENSOR_*`` is the catalog (its own table); the lowercase ``sensor_*`` family is the
+# per-profile linkage (which catalog variable fills each role) and the ``sensor_channel_*``
+# raw acquisition channels — both owned CTD-specific tables.  ``_is_sensor_var`` is the
+# broad predicate (decision: exclude every ``SENSOR_*`` / ``sensor_*`` name) used to keep
+# all of them out of the science-variable and scalar tables; ``design.is_sensor`` stays
+# narrow (``SENSOR_*``) for the catalog itself.  A future lowercase ``sensor_``-named
+# *science* variable would be excluded here — rename it or widen this rule when that happens.
+def _is_channel(name: str) -> bool:
+    """Return whether *name* is a per-profile raw-channel variable."""
+    return name.startswith("sensor_channel_")
+
+
+def _is_linkage(name: str) -> bool:
+    """Return whether *name* is a per-profile sensor-linkage variable."""
+    return name.startswith("sensor_") and not _is_channel(name)
+
+
+def _is_sensor_var(name: str) -> bool:
+    """Return whether *name* is any sensor-provenance variable (catalog, linkage, channel)."""
+    return name.startswith(("SENSOR_", "sensor_"))
+
+
+def _qc_exclusion_rows(ds: xr.Dataset) -> list[dict[str, Any]]:
+    """Return the per-variable QC-exclusion summary rows.
+
+    How many finite input samples each science variable carried and how many were
+    dropped (QARTOD suspect/fail) before binning.  The denominator is pre-binning
+    samples, so the fraction is not confounded by binning's own reduction in point
+    count.  Only variables that recorded the counts (a compiled profiles file)
+    contribute a row.
+    """
+    rows: list[dict[str, Any]] = []
+    for name in sorted(ds.data_vars):
+        if _is_sensor_var(name):
+            continue
+        attrs = ds[name].attrs
+        if "qc_input_samples" not in attrs or "qc_excluded_samples" not in attrs:
+            continue
+        n_in = int(attrs["qc_input_samples"])
+        n_drop = int(attrs["qc_excluded_samples"])
+        rows.append(
+            {
+                "name": name,
+                "n_input": n_in,
+                "n_excluded": n_drop,
+                "pct": (100.0 * n_drop / n_in) if n_in else 0.0,
+            }
+        )
+    return rows
+
+
+def _finite_min_max(ds: xr.Dataset, name: str) -> tuple[float | None, float | None]:
+    """Return the finite ``(min, max)`` of a variable, or ``(None, None)`` when absent/empty."""
+    if name not in ds.variables:
+        return None, None
+    vals = np.asarray(ds[name].values, dtype="float64").ravel()
+    vals = vals[np.isfinite(vals)]
+    if not vals.size:
+        return None, None
+    return float(vals.min()), float(vals.max())
+
+
+def _time_bounds(ds: xr.Dataset) -> tuple[np.datetime64 | None, np.datetime64 | None]:
+    """Return the data's ``(start, end)`` to the second, or ``(None, None)``.
+
+    The check compares like with like: a compiled file's ``time_coverage_*`` is
+    written from the per-profile **start** times (``build_profiles`` passes
+    ``times=time_starts``), so the bounds are recomputed from the same basis —
+    ``time_start`` when present, else a single ``time`` coordinate — not from
+    ``time_end``.  Recomputing the end from ``time_end`` would instead flag every
+    correctly-written file, since each cast ends after its start.  (Whether the
+    file's end bound *ought* to come from ``time_end`` is a writer question, not an
+    inventory-page one.)  NaT is dropped.
+    """
+    time_var = "time_start" if "time_start" in ds.variables else "time"
+    if time_var not in ds.variables:
+        return None, None
+    times = np.asarray(ds[time_var].values).ravel()
+    if times.dtype.kind != "M":
+        return None, None
+    times = times[~np.isnat(times)]
+    if not times.size:
+        return None, None
+    return np.datetime64(times.min(), "s"), np.datetime64(times.max(), "s")
+
+
+def _fmt_diff(diff: float) -> str:
+    """Format a coverage difference, collapsing a negligible value to a bare ``0``."""
+    if abs(diff) < 5e-5:
+        return "0"
+    return f"{diff:+.3g}"
+
+
+def _parse_iso_second(text: str) -> np.datetime64 | None:
+    """Parse a written ISO timestamp (trailing ``Z`` allowed) to second precision."""
+    try:
+        return np.datetime64(text.rstrip("Z"), "s")
+    except (ValueError, TypeError):
+        return None
+
+
+def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
+    """Return the coverage check: ``{attr: {"value", "diff", "over"}}``.
+
+    Recomputes the ``geospatial_*`` and ``time_coverage_*`` bounds from the data and
+    compares each against the file's stated value.  ``over`` marks a disagreement
+    larger than the per-axis tolerance in :data:`ctdcast.reports.design.COVERAGE_TOLERANCE`.
+    An attribute the file does not state, or a value that cannot be recomputed, is
+    omitted rather than guessed.
+    """
+    attrs = ds.attrs
+    tol = design.COVERAGE_TOLERANCE
+    out: dict[str, dict[str, Any]] = {}
+
+    lat_lo, lat_hi = _finite_min_max(ds, "latitude")
+    lon_lo, lon_hi = _finite_min_max(ds, "longitude")
+    ver_lo, ver_hi = _finite_min_max(ds, "pressure")
+    numeric: tuple[tuple[str, float | None, float], ...] = (
+        ("geospatial_lat_min", lat_lo, tol["lat"]),
+        ("geospatial_lat_max", lat_hi, tol["lat"]),
+        ("geospatial_lon_min", lon_lo, tol["lon"]),
+        ("geospatial_lon_max", lon_hi, tol["lon"]),
+        ("geospatial_vertical_min", ver_lo, tol["vertical"]),
+        ("geospatial_vertical_max", ver_hi, tol["vertical"]),
+    )
+    for key, computed, axis_tol in numeric:
+        if key not in attrs or computed is None:
+            continue
+        try:
+            stated = float(attrs[key])
+        except (TypeError, ValueError):
+            continue
+        diff = computed - stated
+        out[key] = {
+            "value": _fmt_val(computed),
+            "diff": _fmt_diff(diff),
+            "over": abs(diff) > axis_tol,
+        }
+
+    t_start, t_end = _time_bounds(ds)
+    for key, computed_t in (
+        ("time_coverage_start", t_start),
+        ("time_coverage_end", t_end),
+    ):
+        if key not in attrs or computed_t is None:
+            continue
+        stated_t = _parse_iso_second(str(attrs[key]))
+        if stated_t is None:
+            continue
+        delta_s = int((computed_t - stated_t) / np.timedelta64(1, "s"))
+        out[key] = {
+            "value": str(computed_t).replace("T", " "),
+            "diff": "0 s" if delta_s == 0 else f"{delta_s:+d} s",
+            "over": abs(delta_s) > tol["time"],
+        }
+    return out
+
+
+def data_range_rows(nc_path: Path) -> list[dict[str, Any]]:
+    """Return flat coordinate + science-variable rows for the cast-page data-ranges table.
+
+    One :func:`_var_meta` row per coordinate and per non-sensor data variable, in the
+    order the cast page lists them (coordinates first).  Sensor-provenance variables
+    are excluded — they have their own catalog on the inventory page.
+
+    Parameters
+    ----------
+    nc_path : pathlib.Path
+        The netCDF file to read.
+
+    Returns
+    -------
+    list of dict
+        The rows, or an empty list if the file cannot be read.
+    """
+    try:
+        ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
+    except Exception:  # noqa: BLE001 — a bad file yields no appendix, never a crash
+        return []
+    with ds:
+        rows = [_var_meta(n, ds[n]) for n in sorted(ds.coords)]
+        rows += [
+            _var_meta(n, ds[n]) for n in sorted(ds.data_vars) if not _is_sensor_var(n)
+        ]
+        return rows
 
 
 def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
-    """Read *nc_path* into a plain-data inventory (dims, coords, vars, attrs).
+    """Read *nc_path* into a plain-data inventory for the netCDF inventory page.
 
-    Returns a dict with ``filename``, ``filesize``, ``dims``, ``coords``,
-    ``data_vars`` (each a :func:`_var_meta` row), ``qc_exclusion`` (per-variable
-    QC drop counts, from the ``qc_input_samples``/``qc_excluded_samples`` attrs a
-    compiled profiles file carries), and ``global_attrs``.  On any read error
-    returns ``{"error": <message>, ...}`` so the page can report it rather than
-    failing to generate.
+    Opens the file once and runs the vendored
+    :mod:`~ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped
+    by dimension, scalars, the sensor catalog, grouped globals), keeping the owned
+    ctdcast tables (QC exclusions, variable renaming, sensor linkage/channel) and the
+    coverage check alongside them.
+
+    Returns a dict with ``filename``, ``filesize``, ``dims``, ``summary`` (the headline
+    counts), ``coords`` / ``variables`` / ``scalars`` / ``sensor_catalog`` / ``globals``
+    (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel`` (owned
+    :func:`_var_meta` rows), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``
+    and ``rename_map``.  On any read error returns ``{"filename", "error"}`` so the page
+    can report it rather than failing to generate.
+
+    Parameters
+    ----------
+    nc_path : pathlib.Path
+        The netCDF file to inventory.
+
+    Returns
+    -------
+    dict
+        The inventory, or an error dict on a read failure.
     """
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
     except Exception as exc:  # noqa: BLE001 — surface any backend error on the page
         return {"filename": nc_path.name, "error": str(exc)}
     with ds:
-        coords = [_var_meta(n, ds[n]) for n in sorted(ds.coords)]
-        all_vars = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars)]
-
-        # Split the sensor-provenance variables into their own inventory tables:
-        # the catalog carries no numeric data (attributes only), the linkage is a
-        # string per profile, and the channel is an integer per profile — each
-        # wants a different column set from the science variables.
-        def _is_catalog(n: str) -> bool:
-            return n.startswith("SENSOR_")
-
-        def _is_channel(n: str) -> bool:
-            return n.startswith("sensor_channel_")
-
-        def _is_linkage(n: str) -> bool:
-            return n.startswith("sensor_") and not _is_channel(n)
-
-        sensor_catalog = [v for v in all_vars if _is_catalog(v["name"])]
-        sensor_channel = [v for v in all_vars if _is_channel(v["name"])]
-        sensor_linkage = [v for v in all_vars if _is_linkage(v["name"])]
-        data_vars = [
-            v
-            for v in all_vars
-            if not (
-                _is_catalog(v["name"])
-                or _is_channel(v["name"])
-                or _is_linkage(v["name"])
-            )
-        ]
-        # QC-exclusion summary: how many finite input samples each science
-        # variable carried and how many were dropped (QARTOD suspect/fail) before
-        # binning.  The denominator is pre-binning samples, so the fraction is not
-        # confounded by binning's own reduction in point count.  Only variables
-        # that recorded the counts (a compiled profiles file) contribute a row.
-        qc_exclusion = []
-        for v in data_vars:
-            name = v["name"]
-            attrs = ds[name].attrs
-            if "qc_input_samples" not in attrs or "qc_excluded_samples" not in attrs:
-                continue
-            n_in = int(attrs["qc_input_samples"])
-            n_drop = int(attrs["qc_excluded_samples"])
-            qc_exclusion.append(
-                {
-                    "name": name,
-                    "n_input": n_in,
-                    "n_excluded": n_drop,
-                    "pct": (100.0 * n_drop / n_in) if n_in else 0.0,
-                }
-            )
-
-        # The source→canonical rename table the reader applied, reconstructed from each
-        # variable's recorded source name.
-        rename_map = source_to_canonical(ds)
-        # Show global attributes in full: this page exists to display the file's
-        # provenance, and people/licence/institution strings routinely exceed a
-        # couple hundred characters — truncating them hides the very metadata the
-        # inventory is meant to surface.  The HTML wraps long values.  Values are
-        # shown in the file's own order, split into the canonical groups so the
-        # page can be checked against the specification.
-        global_attrs = {str(k): str(v) for k, v in ds.attrs.items()}
+        coord_rows, coord_src = nc_tables.coords_rows(ds)
+        var_groups, var_src = nc_tables.variables_rows(
+            ds, is_qc=design.is_qc, is_sensor=_is_sensor_var
+        )
+        scalar_rows, scalar_src = nc_tables.scalars_rows(ds, exclude=_is_sensor_var)
+        catalog_rows, catalog_src = nc_tables.sensor_rows(ds)
+        global_groups, global_src = nc_tables.globals_rows(
+            ds, extras=design.ATTR_GROUP_EXTRAS
+        )
+        summary = nc_tables.summary_counts(
+            ds, is_qc=design.is_qc, is_sensor=design.is_sensor
+        )
+        linkage = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars) if _is_linkage(n)]
+        channel = [_var_meta(n, ds[n]) for n in sorted(ds.data_vars) if _is_channel(n)]
+        # Source → canonical rename table, reconstructed from each variable's recorded
+        # source name; sorted by canonical name.  source_to_canonical already drops
+        # identity entries (source == canonical).
+        rename_map = dict(sorted(source_to_canonical(ds).items(), key=lambda kv: kv[1]))
         return {
             "filename": nc_path.name,
             "filesize": nc_path.stat().st_size if nc_path.exists() else 0,
             "dims": dict(ds.sizes),
-            "coords": coords,
-            "data_vars": data_vars,
-            "qc_exclusion": qc_exclusion,
-            "sensor_catalog": sensor_catalog,
-            "sensor_linkage": sensor_linkage,
-            "sensor_channel": sensor_channel,
-            "rename_map": dict(sorted(rename_map.items(), key=lambda kv: kv[1])),
-            "global_attrs": global_attrs,
-            "global_attr_groups": group_attrs(global_attrs),
+            "summary": summary,
+            "coords": {"rows": coord_rows, "source": coord_src},
+            "variables": {"groups": var_groups, "source": var_src},
+            "scalars": {"rows": scalar_rows, "source": scalar_src},
+            "sensor_catalog": {"rows": catalog_rows, "source": catalog_src},
+            "sensor_linkage": linkage,
+            "sensor_channel": channel,
+            "globals": {"groups": global_groups, "source": global_src},
+            "coverage": _coverage_computed(ds),
+            "qc_exclusion": _qc_exclusion_rows(ds),
+            "rename_map": rename_map,
         }
 
 
@@ -234,8 +410,9 @@ def generate_dataset_page(
         meta=meta,
         page_title=title or nc_path.name,
         cruise=cruise,
-        css=SHARED_CSS,
-        js_top_links=_JS_TOP_LINKS,
+        css=design.SHARED_CSS,
+        js_top_links=design._JS_TOP_LINKS,
+        js_sort_tables=design._JS_SORT_TABLES,
         nav_prefix=nav_prefix,
         nav=nav,
         masthead_bg=ROLE_ACCENT.get("component", ""),

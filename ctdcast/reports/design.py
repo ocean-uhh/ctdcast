@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import warnings
 
+from ctdcast.config import global_attrs as _global_attrs
 from ctdcast.config.parameters import VARIABLES
-from ctdcast.reports._vendored.css import _JS_TOP_LINKS, emit_css
+from ctdcast.reports._vendored.css import _JS_SORT_TABLES, _JS_TOP_LINKS, emit_css
 from ctdcast.reports._vendored.design_tokens import CMAPS as _FAMILY_CMAPS
 from ctdcast.reports._vendored.design_tokens import (
     QUANTITY_BY_STANDARD_NAME,
     register_cmocean,
 )
+from ctdcast.reports._vendored.nc_tables import ATTR_GROUPS as _VENDORED_ATTR_GROUPS
 
 #: ctdcast's package accent — chosen here, not in the vendored tokens.  Points at
 #: ``--ocean`` so the accent (wordmark, table header, footer rule) is ocean navy;
@@ -32,6 +34,82 @@ SHARED_CSS: str = emit_css(PACKAGE_ACCENT)
 #: the same pattern as :data:`CMAP_OVERRIDES`: ctdcast's choice lives here, not in
 #: the shared table.  The report env reads it as the ``show_source`` template global.
 FIGURE_SOURCE: bool = True
+
+#: ctdcast's own global-attribute names, added to the vendored canonical
+#: :data:`~ctdcast.reports._vendored.nc_tables.ATTR_GROUPS` for the inventory page's
+#: grouped-globals table.  Derived from the on-disk grouping in
+#: :data:`ctdcast.config.global_attrs.ATTR_GROUPS` (the single source of truth for
+#: ctdcast's own globals and their order) minus every name a named convention already
+#: defines in the vendored groups — so the two cannot drift: adding a ctdcast global to
+#: ``config.global_attrs`` makes it appear here, under the same group title, with no edit.
+_VENDORED_ATTR_NAMES: frozenset[str] = frozenset(
+    name for _title, names in _VENDORED_ATTR_GROUPS for name in names
+)
+ATTR_GROUP_EXTRAS: dict[str, tuple[str, ...]] = {
+    title: tuple(n for n in names if n not in _VENDORED_ATTR_NAMES)
+    for title, names in _global_attrs.ATTR_GROUPS
+}
+
+#: Tolerances for the inventory page's coverage check (file-stated ``geospatial_*`` /
+#: ``time_coverage_*`` versus the values recomputed from the data): a |diff| above the
+#: axis tolerance is flagged.  Owned here, not vendored — the vertical axis is dbar in
+#: ctdcast and metres elsewhere, so the numbers are a per-package judgement.  Degrees for
+#: lat/lon, dbar for vertical, seconds for time (second-truncated written stamps versus
+#: sub-second data times would otherwise flag every cast).
+COVERAGE_TOLERANCE: dict[str, float] = {
+    "lat": 1e-3,
+    "lon": 1e-3,
+    "vertical": 1.0,
+    "time": 1.0,
+}
+
+#: Per-table-kind column widths for the inventory page (``{"variables": [...], ...}``);
+#: empty means the browser lays every table out.  Deferred until a column misbehaves.
+TABLE_WIDTHS: dict[str, list[str]] = {}
+
+
+def is_qc(name: str, _ds: object = None) -> bool:
+    """Return whether *name* is a QC-companion variable (ctdcast's ``_qc`` suffix).
+
+    The signature takes an optional dataset to match the vendored
+    ``is_qc(name, ds)`` callable contract (some conventions need the dataset to
+    decide); ctdcast's rule is purely the name suffix, so the dataset is unused.
+
+    Parameters
+    ----------
+    name : str
+        The variable name.
+    _ds : object, optional
+        The dataset, accepted for signature compatibility and unused.
+
+    Returns
+    -------
+    bool
+        ``True`` when *name* ends with ``_qc``.
+    """
+    return str(name).endswith("_qc")
+
+
+def is_sensor(name: str) -> bool:
+    """Return whether *name* is a sensor-catalog variable (``SENSOR_*``).
+
+    The narrow catalog predicate: the uppercase ``SENSOR_*`` variables that carry a
+    physical sensor's provenance.  The lowercase ``sensor_*`` linkage and channel
+    variables are *not* catalog entries and are excluded from the science-variable
+    table by a broader rule in :mod:`ctdcast.reports.dataset`.
+
+    Parameters
+    ----------
+    name : str
+        The variable name.
+
+    Returns
+    -------
+    bool
+        ``True`` when *name* starts with ``SENSOR_``.
+    """
+    return str(name).startswith("SENSOR_")
+
 
 #: ctdcast's per-quantity colormap overrides on the vendored family defaults — its
 #: current science choices.  Empty: ctdcast takes the vendored family defaults for
@@ -108,12 +186,18 @@ VAR_CMAPS: dict[str, str] = {
 }
 
 __all__ = [
+    "ATTR_GROUP_EXTRAS",
     "CMAPS",
     "CMAP_OVERRIDES",
+    "COVERAGE_TOLERANCE",
     "FIGURE_SOURCE",
     "PACKAGE_ACCENT",
     "SHARED_CSS",
+    "TABLE_WIDTHS",
     "VAR_CMAPS",
+    "_JS_SORT_TABLES",
     "_JS_TOP_LINKS",
     "cmap_for",
+    "is_qc",
+    "is_sensor",
 ]
