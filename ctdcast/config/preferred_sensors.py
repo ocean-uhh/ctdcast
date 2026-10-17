@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from ctdcast.identity import expand_cast_numbers
 
 #: The closed set of declaration values; the 0/1 CNV-vs-ctdcast ambiguity is why a digit
-#: is refused rather than mapped (see the plan's "words, not numbers").
+#: is refused rather than mapped — the declaration is words ("primary"/"secondary"), not numbers.
 USE_VALUES: frozenset[str] = frozenset({"primary", "secondary"})
 
 #: ``primary`` / ``secondary`` map to the role (and variable) index suffix.

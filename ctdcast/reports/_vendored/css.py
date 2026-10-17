@@ -217,7 +217,7 @@ figure img {{
   border: 1px solid var(--rule); border-radius: var(--radius-btn);
   display: block; width: 100%; height: auto;
 }}
-figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-top: 0.25rem; }}
+figcaption {{ font-size: var(--fs-cap); color: var(--gray-5); margin-bottom: 0.25rem; }}
 /* Optional provenance line under a figure: which draw function produced it.
    Off by default (vendored SHOW_FIGURE_SOURCE); a package turns it on in its
    owned design module. */

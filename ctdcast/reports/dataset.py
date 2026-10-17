@@ -260,10 +260,12 @@ def data_ranges_markup(nc_path: Path) -> str | None:
     """Return the cast page's netCDF data-ranges table as markup, or None when empty.
 
     Built from the same vendored ``variables_rows`` builder and ``variables_tables`` macro as
-    the inventory page's "Data variables" section, so the per-cast appendix reads identically:
-    variables grouped by dimension, ``_qc`` companions folded into their parent, and the full
-    attribute set (including ``processing_level``) behind each row's disclosure.  Rendered to
-    markup here because the cast template embeds it with ``|safe``.
+    the inventory page's "Data variables" section, so the per-cast appendix renders in the same
+    form: variables grouped by dimension, ``_qc`` companions folded into their parent, and the
+    full attribute set (including ``processing_level``) behind each row's disclosure.  Every
+    ``SENSOR_*``/``sensor_*`` variable is excluded (``_is_sensor_var``) — a per-cast file carries
+    the sensor catalog, not the per-profile linkage/channel the inventory page tables separately.
+    Rendered to markup here because the cast template embeds it with ``|safe``.
 
     Parameters
     ----------

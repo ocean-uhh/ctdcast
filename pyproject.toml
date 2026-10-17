@@ -81,7 +81,7 @@ select = [
 # are grafted by hand instead (e.g. max(0, x), min(seq), dict.values()).
 ignore = [
     "E501",   # line too long — formatter handles this
-    "C901",   # complexity — ignored per CLAUDE.md
+    "C901",   # complexity — not enforced in this codebase
 ]
 # D417 (undocumented-param) is switched off by the numpy convention below; it is the
 # only check that enforces the "numpy sections with full type information" half of the

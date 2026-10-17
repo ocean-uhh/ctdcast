@@ -34,6 +34,14 @@
 {%- if caption %}<p class="caption">{{ caption }}</p>{% endif %}
 {%- endmacro %}
 
+{# Whether any row would render an amber cell — a floating-point variable missing its units
+   (only when the Units column is shown), or, when check_valid, fewer valid values than samples.
+   Returns a non-empty string when so, "" otherwise; callers test it with `| trim`. One place so
+   the three value tables share the highlight criterion instead of each re-deriving it. #}
+{% macro _rows_amber(rows, show_units, check_valid=false) %}
+{%- for r in rows %}{% if (check_valid and r.n_valid < r.n) or (show_units and r.is_numeric and not r.units) %}1{% endif %}{% endfor %}
+{%- endmacro %}
+
 {# "Not applicable" placeholder for an empty table, in the shared caption style. #}
 {% macro _empty(what) %}<p class="caption">Not applicable to this file: {{ what }}.</p>{% endmacro %}
 
@@ -103,14 +111,13 @@
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
-{%- set ns = namespace(amber=false) %}
-{%- if show_units %}{% for r in rows %}{% if r.is_numeric and not r.units %}{% set ns.amber = true %}{% endif %}{% endfor %}{% endif %}
+{%- set amber = _rows_amber(rows, show_units) | trim %}
 {%- set cols = ["Variable", "Type", "Length"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- set _ = cols.append("Attributes") %}
-{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
+{%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
 {{ thead(cols, nosort=("Attributes",)) }}
@@ -132,15 +139,14 @@
 {%- for title, rows in groups %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
-{%- set ns = namespace(amber=false) %}
-{%- for r in rows %}{% if r.n_valid < r.n or (show_units and r.is_numeric and not r.units) %}{% set ns.amber = true %}{% endif %}{% endfor %}
+{%- set amber = _rows_amber(rows, show_units, check_valid=true) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- set _ = cols.extend(["Valid", "Valid %", "Attributes"]) %}
 <h3>Variables on {{ title }}</h3>
-{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
+{%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
 {{ thead(cols, nosort=("Attributes",)) }}
@@ -160,12 +166,11 @@
 {% macro scalars_table(rows, optional=(), widths=None, source=None, caption=None) %}
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
-{%- set ns = namespace(amber=false) %}
-{%- if show_units %}{% for r in rows %}{% if r.is_numeric and not r.units %}{% set ns.amber = true %}{% endif %}{% endfor %}{% endif %}
+{%- set amber = _rows_amber(rows, show_units) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.extend(["Standard / long name", "Value", "Attributes"]) %}
-{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
+{%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
 {{ thead(cols, nosort=("Attributes",)) }}

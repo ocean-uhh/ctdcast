@@ -409,18 +409,6 @@ def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
     )
 
 
-def _render_data_ranges_table(nc_path: Path) -> str | None:
-    """Return the per-cast netCDF data-ranges table markup, or None when empty.
-
-    Lists min/max/valid for every variable in the file on disk (not the trimmed or derived
-    data plotted above).  Delegates to :func:`~ctdcast.reports.dataset.data_ranges_markup`,
-    which renders the vendored ``variables_tables`` macro, so this appendix reads identically
-    to the inventory page's "Data variables" section instead of being a second hand-rolled
-    inventory table.
-    """
-    return data_ranges_markup(nc_path)
-
-
 #: Global attributes shown in the file-provenance table, in order, with their row labels.
 #: Only those present on the file are shown, so a legacy file skips the ones it lacks.
 _FILE_PROVENANCE_FIELDS: tuple[tuple[str, str], ...] = (
@@ -1162,7 +1150,7 @@ CAST_PANELS: dict[str, Panel] = {
     "data_ranges": Panel(
         id="data_ranges",
         kind="table",
-        render=lambda c: _render_data_ranges_table(c.nc_path),
+        render=lambda c: data_ranges_markup(c.nc_path),
     ),
     "qc_histogram": Panel(
         id="qc_histogram",
