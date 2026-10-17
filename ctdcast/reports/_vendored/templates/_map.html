@@ -28,6 +28,13 @@
   #track-info a { display: block; margin-top: 0.3rem; color: var(--ocean); font-weight: 600; text-decoration: none; }
   #track-info a:hover { text-decoration: underline; }
   .leaflet-container { font: inherit; }
+  /* Graticule edge labels: a bare degree string, not a Leaflet tooltip bubble — strip the
+     background, border, arrow and shadow so only the text shows against the map. */
+  .leaflet-tooltip.grat-label {
+    background: transparent; border: none; box-shadow: none; padding: 0;
+    color: #6b7680; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
+  }
+  .leaflet-tooltip.grat-label::before { display: none; }
   /* Print / no-JavaScript: show the static PNG, hide the live map and its floating info panel (a
      sibling of the map, so it is not hidden with the map). The map script unhides the live map and
      hides the <img> once Leaflet starts, so on screen (with JS) only the live map shows. */
@@ -114,6 +121,52 @@
       style: { color: '#9aa6ad', weight: 0.6, fillColor: '#eceadf', fillOpacity: 1 }
     }).addTo(map);
   }
+
+  // lat/lon graticule + scale bar: the only spatial reference when no coastline is near (an
+  // open-ocean track).  Lines and edge labels are recomputed from the visible span on each
+  // zoom/pan; the step is the first that yields 3–8 lines, so the grid stays legible at any zoom.
+  L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+  // Coarse → fine. Must span wide-ocean extents too: a basin-scale track opens at tens of degrees,
+  // so without the coarse steps every entry would overflow the 3–8 window and the grid would fall
+  // to the finest step, drawing thousands of lines and freezing the tab.
+  var GRID_STEPS = [30, 20, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05, 0.02, 0.01];
+  var graticule = L.layerGroup().addTo(map);
+  function gridStep(span) {
+    var s = Math.abs(span);  // getBounds can give west > east across the antimeridian
+    for (var i = 0; i < GRID_STEPS.length; i++) {
+      var n = Math.floor(s / GRID_STEPS[i]);
+      if (n >= 3 && n <= 8) { return GRID_STEPS[i]; }
+    }
+    // Nothing lands in 3–8: a span wider than the coarsest 8-line grid takes the coarsest step
+    // (line count stays bounded, never thousands); a narrower one takes the finest.
+    return s > GRID_STEPS[0] * 8 ? GRID_STEPS[0] : GRID_STEPS[GRID_STEPS.length - 1];
+  }
+  function fmtDeg(v, axis) {
+    var hemi = (axis === 'lat') ? (v >= 0 ? 'N' : 'S') : (v >= 0 ? 'E' : 'W');
+    return Math.abs(v).toFixed(2) + '°' + hemi;
+  }
+  function gridLabel(latlng, text) {
+    graticule.addLayer(
+      L.tooltip({ permanent: true, direction: 'center', className: 'grat-label', opacity: 1 })
+        .setLatLng(latlng).setContent(text)
+    );
+  }
+  function drawGraticule() {
+    graticule.clearLayers();
+    var b = map.getBounds(), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+    var dLat = gridStep(n - s), dLon = gridStep(e - w);
+    var lineStyle = { interactive: false, color: '#9aa6ad', weight: 0.6, dashArray: '3,4' };
+    for (var lat = Math.ceil(s / dLat) * dLat; lat <= n; lat += dLat) {
+      L.polyline([[lat, w], [lat, e]], lineStyle).addTo(graticule);
+      gridLabel([lat, w], fmtDeg(lat, 'lat'));  // at the west edge
+    }
+    for (var lon = Math.ceil(w / dLon) * dLon; lon <= e; lon += dLon) {
+      L.polyline([[s, lon], [n, lon]], lineStyle).addTo(graticule);
+      gridLabel([s, lon], fmtDeg(lon, 'lon'));  // at the south edge
+    }
+  }
+  drawGraticule();
+  map.on('zoomend moveend', drawGraticule);
 
   var info = document.getElementById('track-info');
   function show(html) { info.className = ''; info.innerHTML = html; }
