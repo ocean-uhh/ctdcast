@@ -123,10 +123,11 @@
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
 {%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
+{%- set show_stdname = ("stdname" not in optional) or (rows|selectattr("standard_name")|list|length > 0) or (rows|selectattr("long_name")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units) | trim %}
 {%- set cols = ["Variable", "Dims", "Type", "Length"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
-{%- set _ = cols.append("Standard / long name") %}
+{%- if show_stdname %}{% set _ = cols.append("Standard / long name") %}{% endif %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
 {%- if title %}<h3>{{ title }}</h3>{% endif %}
@@ -137,26 +138,27 @@
 <tbody>
 {%- for r in rows %}
 <tr>{{ name_cell(r) }}<td>{{ r.dims }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
-{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
+{% if show_units %}{{ units_cell(r) }}{% endif %}{% if show_stdname %}<td>{{ names_cell(r) }}</td>{% endif %}{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no coordinates") }}{% endif %}
 {%- endmacro %}
 
-{# `optional` names columns the caller allows to vanish ("units", "minmax"); a named column is
-   dropped from the heading and every row only when no row in the group carries a value, so a
-   string-only group (sensor linkage) loses its always-blank Units and Min / Max while a
-   numeric group keeps them. A column not named in `optional` is always shown. #}
+{# `optional` names columns the caller allows to vanish ("units", "minmax", "stdname", "attrs");
+   a named column is dropped from the heading and every row only when no row in the group carries
+   a value, so a string-only group (sensor linkage) loses its always-blank Units and Min / Max
+   while a numeric group keeps them. A column not named in `optional` is always shown. #}
 {% macro variables_tables(groups, optional=(), widths=None, source=None, caption=None) %}
 {%- if groups %}
 {%- for title, rows in groups %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
 {%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
+{%- set show_stdname = ("stdname" not in optional) or (rows|selectattr("standard_name")|list|length > 0) or (rows|selectattr("long_name")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units, check_valid=true) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
-{%- set _ = cols.append("Standard / long name") %}
+{%- if show_stdname %}{% set _ = cols.append("Standard / long name") %}{% endif %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- set _ = cols.extend(["Valid", "Valid %"]) %}
 {%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
@@ -168,7 +170,7 @@
 <tbody>
 {%- for r in rows %}
 <tr>{{ name_cell(r) }}
-<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
+<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}{% if show_stdname %}<td>{{ names_cell(r) }}</td>{% endif %}{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
 <td data-sort="{{ r.valid_pct }}"{% if r.n_valid < r.n %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
 {%- if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
@@ -182,10 +184,12 @@
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
+{%- set show_stdname = ("stdname" not in optional) or (rows|selectattr("standard_name")|list|length > 0) or (rows|selectattr("long_name")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
-{%- set _ = cols.extend(["Standard / long name", "Value"]) %}
+{%- if show_stdname %}{% set _ = cols.append("Standard / long name") %}{% endif %}
+{%- set _ = cols.append("Value") %}
 {%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
 {%- if title %}<h3>{{ title }}</h3>{% endif %}
 {%- if caption and amber %}{{ _caption(caption) }}{% endif %}
@@ -195,7 +199,7 @@
 <tbody>
 {%- for r in rows %}
 <tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
-<td>{{ names_cell(r) }}</td><td>{{ r.value }}</td>{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
+{% if show_stdname %}<td>{{ names_cell(r) }}</td>{% endif %}<td class="scalar-value">{{ r.value }}</td>{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no scalar variables") }}{% endif %}

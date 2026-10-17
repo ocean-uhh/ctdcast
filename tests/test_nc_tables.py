@@ -307,6 +307,42 @@ def test_coords_and_scalars_tables_take_optional():
     assert "Min / Max</th>" not in html
 
 
+def test_optional_stdname_drops_empty_standard_long_name_column():
+    """The Standard / long name column drops when `stdname` is optional and all rows lack it."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset({"sensor_x": ("N_PROF", np.array(["a", "b"]))})  # no std/long name
+    groups, src = nt.variables_rows(ds, is_qc=_is_qc)
+    dropped = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, optional=('stdname',), source=src) }}"
+    ).render(groups=groups, src=src, show_source=False)
+    assert "Standard / long name</th>" not in dropped
+
+    # a populated long_name keeps the column even when stdname is opted-in
+    ds2 = xr.Dataset({"temp": ("N_PROF", np.array([1.0, 2.0]))})
+    ds2["temp"].attrs["long_name"] = "temperature"
+    groups2, src2 = nt.variables_rows(ds2, is_qc=_is_qc)
+    kept = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, optional=('stdname',), source=src) }}"
+    ).render(groups=groups2, src=src2, show_source=False)
+    assert "Standard / long name</th>" in kept
+
+
+def test_scalars_value_cell_is_wrappable():
+    """The scalar Value cell carries the wrap class so a long token cannot widen the table."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset({"tracking_id": ((), "x" * 60)})  # a long unbroken scalar value
+    rows, src = nt.scalars_rows(ds)
+    html = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.scalars_table(rows, source=src) }}"
+    ).render(rows=rows, src=src, show_source=False)
+    assert 'class="scalar-value"' in html
+
+
 def test_coverage_caption_only_when_a_cell_ambers():
     """globals_tables shows the coverage criterion caption only when a coverage cell is over."""
     from ctdcast.reports._env import _env
