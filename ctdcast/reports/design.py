@@ -27,14 +27,14 @@ from ctdcast.reports._vendored.units_display import format_units
 #: change this one line to rebrand.  Any CSS colour value works.
 PACKAGE_ACCENT: str = "var(--ocean)"
 
-#: ctdcast's per-role colour overrides on the vendored :data:`ROLE_ACCENT` defaults — recolours a
-#: page role (its nav pill and masthead together).  Empty: ctdcast keeps the family role colours.
-#: Each key must be a ``ROLE_ACCENT`` role (an unknown key raises in ``emit_css``); data palettes
-#: (QC colours, track colours, colormaps) are not overridable here.
-ROLE_ACCENT_OVERRIDES: dict[str, str] = {}
+#: ctdcast's overrides on the vendored UI-token defaults — recolours a page role (nav pill +
+#: masthead together, ``role-<key>``), the ``(_QC)`` marker (``qc-mark``), or ``package-accent``.
+#: Empty: ctdcast keeps the family colours.  Each key must be an overridable token (an unknown key
+#: raises in ``emit_css``); data palettes (QC flag colours, track colours, colormaps) are not here.
+CSS_OVERRIDES: dict[str, str] = {}
 
 #: The generated stylesheet, ready to concatenate into a page ``<style>`` block.
-SHARED_CSS: str = emit_css(PACKAGE_ACCENT, role_overrides=ROLE_ACCENT_OVERRIDES)
+SHARED_CSS: str = emit_css(PACKAGE_ACCENT, overrides=CSS_OVERRIDES)
 
 #: ctdcast turns the per-figure ``source:`` caption ON; the vendored default
 #: (``design_tokens.SHOW_FIGURE_SOURCE``) is OFF.  This is the package override —
@@ -78,7 +78,11 @@ TABLE_WIDTHS: dict[str, list[str]] = {}
 #: ``original → name`` cell in the inventory tables.  ``cnv_original_name`` is written by the
 #: CNV reader and ``source_variable`` by the LADCP reader; ``original_name`` is the family-shared
 #: spelling the siblings write.  The first present and non-empty wins.
-ORIGINAL_NAME_ATTRS: tuple[str, ...] = ("original_name", "cnv_original_name", "source_variable")
+ORIGINAL_NAME_ATTRS: tuple[str, ...] = (
+    "original_name",
+    "cnv_original_name",
+    "source_variable",
+)
 
 #: ctdcast's exact-units-string → label overrides on the vendored family defaults.
 #: Empty: ctdcast takes the vendored display form for every unit (the registry's
@@ -236,8 +240,8 @@ __all__ = [
     "FIGURE_SOURCE",
     "PACKAGE_ACCENT",
     "SHARED_CSS",
+    "CSS_OVERRIDES",
     "ORIGINAL_NAME_ATTRS",
-    "ROLE_ACCENT_OVERRIDES",
     "TABLE_WIDTHS",
     "UNIT_LABEL_OVERRIDES",
     "VAR_CMAPS",

@@ -197,7 +197,9 @@ def test_summary_counts_exclude_keeps_data_count_honest():
     )
     assert counts["data_variables"] == 1  # only ctd_temperature
     assert counts["sensors"] == 1  # SENSOR_t
-    assert counts["excluded"] == 1  # sensor_temperature_1, not double-counted with sensors
+    assert (
+        counts["excluded"] == 1
+    )  # sensor_temperature_1, not double-counted with sensors
 
 
 def test_valid_cell_macro():
@@ -227,7 +229,11 @@ def test_minmax_cell_sort_keys():
     )
     html = tmpl.render(
         num={"v_min_raw": 5.0, "v_min": "5", "v_max": "10"},
-        dt={"v_min_raw": None, "v_min": "2026-07-09 10:00", "v_max": "2026-07-09 18:00"},
+        dt={
+            "v_min_raw": None,
+            "v_min": "2026-07-09 10:00",
+            "v_max": "2026-07-09 18:00",
+        },
         miss={"v_min_raw": None, "v_min": "—", "v_max": "—"},
     )
     assert 'data-sort="5.0"' in html  # numeric sorts on the raw min
@@ -259,7 +265,9 @@ def test_variables_tables_optional_drops_all_empty_columns():
     """A declared-optional column vanishes when no row in the group carries a value."""
     from ctdcast.reports._env import _env
 
-    ds = xr.Dataset({"sensor_x": ("N_PROF", np.array(["a", "b"]))})  # string, no units/range
+    ds = xr.Dataset(
+        {"sensor_x": ("N_PROF", np.array(["a", "b"]))}
+    )  # string, no units/range
     groups, src = nt.variables_rows(ds, is_qc=_is_qc)
     nc = (
         "{% import '_nc_tables.html' as nc with context %}"
@@ -282,7 +290,9 @@ def test_coords_and_scalars_tables_take_optional():
 
     ds = xr.Dataset(
         {"flag": ((), np.int8(1))},  # a scalar with no units
-        coords={"label": ("label", np.array(["a", "b"]))},  # string coord, no units/range
+        coords={
+            "label": ("label", np.array(["a", "b"]))
+        },  # string coord, no units/range
     )
     coord_rows, csrc = nt.coords_rows(ds)
     scalar_rows, ssrc = nt.scalars_rows(ds)
@@ -376,9 +386,60 @@ def test_variables_rows_include_and_original_name():
 
 def test_fmt_datetime_whole_ms_and_nat():
     """fmt_datetime renders whole seconds, keeps ms when non-zero, and NaT → em-dash."""
-    assert nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00")) == "2020-01-19 20:30:00"
-    assert nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00.123")) == "2020-01-19 20:30:00.123"
+    assert (
+        nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00")) == "2020-01-19 20:30:00"
+    )
+    assert (
+        nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00.123"))
+        == "2020-01-19 20:30:00.123"
+    )
     assert nt.fmt_datetime(np.datetime64("NaT")) == "—"
+
+
+def test_sensor_rows_reads_og1_serial_with_legacy_fallback():
+    """sensor_rows reads the OG1 ``sensor_serial_number``, falling back to legacy ``serial_number``."""
+    og1 = xr.Dataset(
+        {
+            "SENSOR_ctd_temperature": (
+                (),
+                np.int8(0),
+                {"sensor_model": "SBE3", "sensor_serial_number": "SN-OG1"},
+            )
+        }
+    )
+    rows, _ = nt.sensor_rows(og1)
+    assert rows[0]["serial"] == "SN-OG1"
+    legacy = xr.Dataset(
+        {
+            "SENSOR_ctd_temperature": (
+                (),
+                np.int8(0),
+                {"sensor_model": "SBE3", "serial_number": "SN-LEGACY"},
+            )
+        }
+    )
+    rows2, _ = nt.sensor_rows(legacy)
+    assert rows2[0]["serial"] == "SN-LEGACY"
+
+
+def test_qc_marker_shows_the_files_own_suffix():
+    """The (_QC) marker carries the companion's actual name, so its suffix matches the file.
+
+    ctdcast writes ``{var}_qc`` (lowercase); an OG1 file writes ``{var}_QC``. The row carries
+    ``qc_name`` and the template renders the suffix verbatim, never a hard-coded spelling.
+    """
+    ds = xr.Dataset(
+        {
+            "temp": ("x", np.arange(3.0)),
+            "temp_qc": ("x", np.array([1, 1, 3], np.int8)),  # ctdcast lowercase
+            "sal": ("x", np.arange(3.0)),
+            "sal_QC": ("x", np.array([1, 1, 1], np.int8)),  # OG1 uppercase
+        }
+    )
+    groups, _ = nt.variables_rows(ds, is_qc=lambda n, _d: n.lower().endswith("_qc"))
+    by = {r["name"]: r for _t, g in groups for r in g}
+    assert by["temp"]["qc_name"] == "temp_qc"
+    assert by["sal"]["qc_name"] == "sal_QC"
 
 
 def test_qc_flag_label_and_value_token_sets_match():

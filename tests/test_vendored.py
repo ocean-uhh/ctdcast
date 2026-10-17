@@ -30,7 +30,15 @@ def test_vendored_python_is_ruff_format_stable():
     A consumer that runs a whole-repo ``ruff format`` must not rewrite a byte-identical copy
     (which would then fail its own ``check.py``); so the source-of-truth files are kept already
     formatted here.  Guards the family's re-vendor contract.
+
+    Skipped when ruff is not importable (the CI lint job enforces this, so the test job need not
+    carry the lint tooling as a dependency).
     """
+    import pytest
+
+    pytest.importorskip(
+        "ruff", reason="ruff not installed; the lint job enforces format stability"
+    )
     result = subprocess.run(
         [sys.executable, "-m", "ruff", "format", "--check", str(_VENDORED)],
         capture_output=True,

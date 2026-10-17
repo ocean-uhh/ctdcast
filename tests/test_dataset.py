@@ -288,7 +288,9 @@ def test_cast_page_shows_file_provenance_and_processing_level(tmp_path):
     assert "provisional" in html  # data_mode meaning surfaced
     # processing_level now lives in the variable's attribute disclosure, not its own column
     assert "processing_level" in html
-    assert "converted to geophysical values" in html  # the value, in the attrs disclosure
+    assert (
+        "converted to geophysical values" in html
+    )  # the value, in the attrs disclosure
 
 
 def test_cast_page_shows_source_provenance(tmp_path):

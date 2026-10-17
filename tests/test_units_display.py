@@ -85,7 +85,9 @@ def test_import_purity_package_neutral():
     offenders = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            offenders += [a.name for a in node.names if a.name.split(".")[0] not in allowed_top]
+            offenders += [
+                a.name for a in node.names if a.name.split(".")[0] not in allowed_top
+            ]
         elif isinstance(node, ast.ImportFrom) and node.level == 0:
             top = (node.module or "").split(".")[0]
             if top not in allowed_top:

@@ -65,6 +65,7 @@ jobs:
         run: |
           python -m pip install ruff
           ruff check .
+          ruff format --check .
 
       - name: Test with pytest
         # --no-cov: the matrix cells check platform/version behaviour, not coverage.

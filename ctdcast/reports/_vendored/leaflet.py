@@ -14,10 +14,14 @@ loader from ctdcast ``reports/_leaflet.py``.
 
 from __future__ import annotations
 
+import functools
 import json
+import logging
 import math
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -31,7 +35,11 @@ LEAFLET_VERSION: str = "1.9.4"
 
 
 def safe_json(obj: object) -> str:
-    """Return ``obj`` as JSON with the ``</`` sequence escaped for embedding in a ``<script>`` block.
+    """Return ``obj`` as JSON safe to embed in a ``<script>`` block.
+
+    Escapes every ``<``, ``>`` and ``&`` as its ``\\uXXXX`` form, so no string value can close
+    the block early (``</script>`` in any case, ``</SCRIPT>``) or open a comment / CDATA
+    (``<!--``).  A JSON parser decodes the escapes back, so the data is unchanged.
 
     Parameters
     ----------
@@ -41,15 +49,21 @@ def safe_json(obj: object) -> str:
     Returns
     -------
     str
-        A JSON string safe to drop between ``<script>`` tags: a ``</script>`` in a string value is
-        escaped so it cannot close the block early.
+        A JSON string safe to drop between ``<script>`` tags.
     """
-    return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
+    return (
+        json.dumps(obj, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
 
 
+@functools.cache
 def load_leaflet() -> tuple[str, str]:
     """Return ``(js_text, css_text)`` for the bundled Leaflet assets.
 
+    Cached: the ~150 KB of JS/CSS is read once per process, not re-read for every page in a build.
     Unlike ctdcast's loader there is **no CDN fallback**: a missing asset is a packaging bug, not a
     reason to need the internet at build time, so it raises rather than silently fetching.
 
@@ -216,5 +230,12 @@ def coastline_geojson(
         if not features:
             return "null"
         return safe_json({"type": "FeatureCollection", "features": features})
-    except Exception:  # noqa: BLE001  # I/O boundary: shapefile may be absent, offline, or unreadable → plain background
+    except ImportError:
+        return (
+            "null"  # cartopy / shapely not installed — plain background, as documented
+        )
+    except OSError:
+        return "null"  # the Natural Earth shapefile is absent or unreadable offline
+    except Exception as exc:  # noqa: BLE001  # a geometry error must not blank the map, but do not swallow it silently
+        logger.debug("coastline geometry failed, using plain background: %s", exc)
         return "null"

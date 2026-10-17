@@ -35,6 +35,12 @@
     color: #6b7680; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
   }
   .leaflet-tooltip.grat-label::before { display: none; }
+  /* One-point marker id label (F8b): bare text in the marker's colour (set inline), no bubble. */
+  .leaflet-tooltip.track-id-label {
+    background: transparent; border: none; box-shadow: none; padding: 0;
+    font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
+  }
+  .leaflet-tooltip.track-id-label::before { display: none; }
   /* Print / no-JavaScript: show the static PNG, hide the live map and its floating info panel (a
      sibling of the map, so it is not hidden with the map). The map script unhides the live map and
      hides the <img> once Leaflet starts, so on screen (with JS) only the live map shows. */
@@ -186,6 +192,14 @@
     line.on('mouseout', function () { highlight(t.id, false); });
     line.on('click', function () { window.location.href = t.href; });
     line.addTo(map);
+    if (t.track.length === 1) {
+      // A one-point marker has no line to read; label it with its id (the station / mooring name),
+      // upper-right, non-interactive, in the marker's colour. Polylines stay unlabelled (one id, and
+      // their hover info is enough).
+      line.bindTooltip(t.id, { permanent: true, direction: 'right', offset: [8, -8], className: 'track-id-label', interactive: false });
+      var ttEl = line.getTooltip() && line.getTooltip().getElement();
+      if (ttEl) { ttEl.style.color = t.color; }
+    }
     lineById[t.id] = line;
   });
 

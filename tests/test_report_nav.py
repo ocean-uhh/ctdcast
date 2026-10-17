@@ -205,3 +205,24 @@ def test_css_qc_variables_mirror_the_qc_colour_dicts():
     }
     assert emitted == QC_COLORS
     assert emitted_text == QC_TEXT_COLORS
+
+
+def test_every_masthead_role_is_a_role_accent_key():
+    """Every page's ``masthead_role`` is a ``ROLE_ACCENT`` key.
+
+    ``base.html`` renders ``class="masthead role-{{ masthead_role }}"``; a page that passed an
+    unknown (or missing) role would render an unstyled masthead with no error. This pins every
+    builder's and index template's role to the generated ``.masthead.role-<key>`` rule set.
+    """
+    import re
+
+    from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
+
+    reports = Path(__file__).resolve().parent.parent / "ctdcast" / "reports"
+    sources = list(reports.glob("*.py")) + list((reports / "templates").glob("*.html"))
+    roles: set[str] = set()
+    for path in sources:
+        roles |= set(re.findall(r'masthead_role\s*=\s*"([^"]+)"', path.read_text()))
+    assert roles, "no masthead_role assignments found — did the attribute move?"
+    unknown = roles - set(ROLE_ACCENT)
+    assert not unknown, f"masthead_role values not in ROLE_ACCENT: {sorted(unknown)}"

@@ -408,7 +408,9 @@ def variables_rows(
     sensor = is_sensor or (lambda _n: False)
     keep = include or (lambda _n: True)
     qc_names = {n for n in ds.data_vars if is_qc(n, ds)}
-    parents_with_qc = {_qc_parent(n) for n in qc_names}
+    # Parent → its QC companion's *actual* name, so the marker shows the file's own suffix
+    # (ctdcast ``{var}_qc`` → ``(_qc)``; OG1 ``{var}_QC`` → ``(_QC)``), never a hard-coded spelling.
+    qc_by_parent = {_qc_parent(n): n for n in qc_names}
 
     candidates = [
         n
@@ -424,7 +426,8 @@ def variables_rows(
             groups[dims] = []
             order.append(dims)
         row = _value_row(ds, name, original_name_attrs)
-        row["has_qc"] = name in parents_with_qc
+        row["has_qc"] = name in qc_by_parent
+        row["qc_name"] = qc_by_parent.get(name)
         groups[dims].append(row)
 
     out = [(_dims_heading(ds, dims), groups[dims]) for dims in order]
@@ -631,10 +634,15 @@ def qc_flag_rows(
         meanings = str(ds[name].attrs.get("flag_meanings", "")).split()
         value_list = np.asarray(values).ravel().tolist() if values is not None else []
         # A well-formed declaration needs flag_values AND a flag_meanings token per value (CF
-        # pairs them positionally).  No flag_values, no flag_meanings, or a length mismatch is a
-        # malformed declaration: fall back to the observed integer codes and flag the row amber,
-        # rather than silently pairing some values with a raw-integer "label".
-        declared = bool(value_list) and len(meanings) == len(value_list)
+        # pairs them positionally), and the flag_values must be integer codes.  No flag_values, no
+        # flag_meanings, a length mismatch, or a non-integer flag value is a malformed declaration:
+        # fall back to the observed integer codes and flag the row amber, rather than silently
+        # truncating a float (int(1.5)=1) or pairing some values with a raw-integer "label".
+        declared = (
+            bool(value_list)
+            and len(meanings) == len(value_list)
+            and all(float(v).is_integer() for v in value_list)
+        )
         if declared:
             vals = [int(v) for v in value_list]
             tokens = list(meanings)

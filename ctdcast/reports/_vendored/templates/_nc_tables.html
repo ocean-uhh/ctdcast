@@ -77,7 +77,7 @@
 {% macro name_cell(row) %}
 <td data-sort="{{ row.name }}">
 {%- if row.original_name %}<code>{{ row.original_name }}</code> → {% endif %}
-{{- row.name }}{% if row.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
+{{- row.name }}{% if row.has_qc %} <span class="var-qc">({{ row.qc_name[row.name|length:] }})</span>{% endif %}</td>
 {%- endmacro %}
 
 {# standard_name (bold mono) over long_name (regular); either may be absent. Public so an

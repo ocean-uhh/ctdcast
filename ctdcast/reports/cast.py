@@ -504,10 +504,16 @@ def _render_time_coordinate(c: PageCtx) -> str | None:
     attrs = c.ds.attrs
     rows: list[tuple[str, str, str]] = []
     if attrs.get("time_coordinate_source"):
-        rows.append(("Time coordinate source", str(attrs["time_coordinate_source"]), "code"))
+        rows.append(
+            ("Time coordinate source", str(attrs["time_coordinate_source"]), "code")
+        )
     if attrs.get("time_clock_offset_seconds") is not None:
         rows.append(
-            ("Clock offset (NMEA − system)", f"{attrs['time_clock_offset_seconds']} s", "code")
+            (
+                "Clock offset (NMEA − system)",
+                f"{attrs['time_clock_offset_seconds']} s",
+                "code",
+            )
         )
     if not rows:
         return None
