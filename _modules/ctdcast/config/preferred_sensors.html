@@ -1,0 +1,589 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.preferred_sensors &mdash; ctdcast v0.3.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=19ed39ba"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.preferred_sensors</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.preferred_sensors</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Declare and resolve the preferred sensor per cast — one mechanism, two groups.</span>
+
+<span class="sd">A dual-sensor cast carries a primary and a secondary measurement for each role; which</span>
+<span class="sd">is *better* is a human judgement made on noise, not derivable from calibration.  The</span>
+<span class="sd">cruise config declares the choice as a cruise-wide ``default`` plus per-cast-range</span>
+<span class="sd">exceptions, in channel terms (``primary`` / ``secondary``); ctdcast resolves it per cast</span>
+<span class="sd">and (elsewhere) stamps it.</span>
+
+<span class="sd">The same resolve → derive-segments → validate logic serves two independent groups —</span>
+<span class="sd">the T/C pair (which governs temperature, salinity and conductivity together, because</span>
+<span class="sd">salinity needs a matched pair) and oxygen — so every function here takes a</span>
+<span class="sd">:class:`SensorGroup` descriptor and never branches on which group.  ``PREFERRED_PAIR``</span>
+<span class="sd">and ``PREFERRED_OXYGEN`` are the only group-specific data.</span>
+
+<span class="sd">Primary vs secondary is the sensor **role index** (``temperature_1`` / ``temperature_2``),</span>
+<span class="sd">which matches the variable suffix (``ctd_temperature_1`` / ``_2``) — *not* the</span>
+<span class="sd">``sensor_channel`` field, which is the CNV wiring position (primary conductivity sits on</span>
+<span class="sd">channel 2).  The declaration is by that index; the physical sensor is an independent,</span>
+<span class="sd">verification-only record stamped at write time (the catalog variable name per role), so a</span>
+<span class="sd">later mismatch is detectable.  Serials never enter the config a human types.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">expand_cast_numbers</span>
+
+<span class="c1">#: The closed set of declaration values; the 0/1 CNV-vs-ctdcast ambiguity is why a digit</span>
+<span class="c1">#: is refused rather than mapped — the declaration is words ("primary"/"secondary"), not numbers.</span>
+<span class="n">USE_VALUES</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"primary"</span><span class="p">,</span> <span class="s2">"secondary"</span><span class="p">})</span>
+
+<span class="c1">#: ``primary`` / ``secondary`` map to the role (and variable) index suffix.</span>
+<span class="n">_INDEX_OF_USE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"primary"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"secondary"</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="SensorGroup">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.SensorGroup">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SensorGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A set of channels governed by one preferred-choice declaration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config_key : str</span>
+<span class="sd">        The ``processing:`` sub-key carrying the declaration — ``"preferred_pair"`` or</span>
+<span class="sd">        ``"preferred_oxygen"``.  Also the attribute name stamped on the output.</span>
+<span class="sd">    members : tuple of str</span>
+<span class="sd">        The composite (plain, unsuffixed) variables this one choice governs, built from</span>
+<span class="sd">        the preferred channel per cast — e.g. ``("ctd_temperature", "ctd_salinity",</span>
+<span class="sd">        "conductivity")`` for the pair, ``("ctd_oxygen",)`` for oxygen.</span>
+<span class="sd">    preferred_roles : tuple of str</span>
+<span class="sd">        The **base** roles whose physical sensor the choice selects (for the</span>
+<span class="sd">        ``sensor_&lt;role&gt;_preferred`` stamp and the single-sensor presence test) —</span>
+<span class="sd">        ``("temperature", "conductivity")`` for the pair, ``("oxygen",)`` for oxygen.</span>
+<span class="sd">        The chosen indexed role is ``f"{base}_{index}"`` with ``index`` from the use word.</span>
+<span class="sd">    segment_roles : tuple of str</span>
+<span class="sd">        The **indexed** catalog roles whose serial defines a hardware segment; a change in</span>
+<span class="sd">        *any* of them starts a new segment.  The T/C pair uses all four</span>
+<span class="sd">        (``temperature_1/2``, ``conductivity_1/2``); oxygen adds its line's T/C, because the</span>
+<span class="sd">        O₂ saturation/AOU derivation uses that line's temperature and salinity.</span>
+<span class="sd">    """</span>
+
+    <span class="n">config_key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">members</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">preferred_roles</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">segment_roles</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span></div>
+
+
+
+<span class="c1">#: The T/C pair: one choice governs temperature, salinity and conductivity (matched for</span>
+<span class="c1">#: the salinity computation); segments break on any of the four T/C serials.</span>
+<span class="n">PREFERRED_PAIR</span> <span class="o">=</span> <span class="n">SensorGroup</span><span class="p">(</span>
+    <span class="n">config_key</span><span class="o">=</span><span class="s2">"preferred_pair"</span><span class="p">,</span>
+    <span class="n">members</span><span class="o">=</span><span class="p">(</span><span class="s2">"ctd_temperature"</span><span class="p">,</span> <span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">),</span>
+    <span class="n">preferred_roles</span><span class="o">=</span><span class="p">(</span><span class="s2">"temperature"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">),</span>
+    <span class="n">segment_roles</span><span class="o">=</span><span class="p">(</span>
+        <span class="s2">"temperature_1"</span><span class="p">,</span>
+        <span class="s2">"conductivity_1"</span><span class="p">,</span>
+        <span class="s2">"temperature_2"</span><span class="p">,</span>
+        <span class="s2">"conductivity_2"</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1">#: Oxygen: independent hardware, its own choice.  Its derivation uses its line's T/S, so</span>
+<span class="c1">#: a T/C swap on that line is a segment boundary for oxygen too.</span>
+<span class="n">PREFERRED_OXYGEN</span> <span class="o">=</span> <span class="n">SensorGroup</span><span class="p">(</span>
+    <span class="n">config_key</span><span class="o">=</span><span class="s2">"preferred_oxygen"</span><span class="p">,</span>
+    <span class="n">members</span><span class="o">=</span><span class="p">(</span><span class="s2">"ctd_oxygen"</span><span class="p">,),</span>
+    <span class="n">preferred_roles</span><span class="o">=</span><span class="p">(</span><span class="s2">"oxygen"</span><span class="p">,),</span>
+    <span class="n">segment_roles</span><span class="o">=</span><span class="p">(</span>
+        <span class="s2">"oxygen_1"</span><span class="p">,</span>
+        <span class="s2">"oxygen_2"</span><span class="p">,</span>
+        <span class="s2">"temperature_1"</span><span class="p">,</span>
+        <span class="s2">"conductivity_1"</span><span class="p">,</span>
+        <span class="s2">"temperature_2"</span><span class="p">,</span>
+        <span class="s2">"conductivity_2"</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1">#: Every group ctdcast resolves.</span>
+<span class="n">GROUPS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">SensorGroup</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">PREFERRED_PAIR</span><span class="p">,</span> <span class="n">PREFERRED_OXYGEN</span><span class="p">)</span>
+
+<span class="c1"># The per-profile stamp names variables `sensor_&lt;role&gt;_preferred`, so two groups sharing a</span>
+<span class="c1"># preferred role would collide on one variable (the later group silently overwriting the</span>
+<span class="c1"># earlier). Enforce disjoint preferred roles here, so adding a colliding group fails loudly</span>
+<span class="c1"># at import rather than dropping a sensor record from profiles.nc.</span>
+<span class="n">_all_preferred_roles</span> <span class="o">=</span> <span class="p">[</span><span class="n">role</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">GROUPS</span> <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">preferred_roles</span><span class="p">]</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_all_preferred_roles</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">_all_preferred_roles</span><span class="p">)):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"GROUPS share a preferred role, which would collide on sensor_&lt;role&gt;_preferred: "</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_all_preferred_roles</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="index_of">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.index_of">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">index_of</span><span class="p">(</span><span class="n">use</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the role/variable index suffix for a use word.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    use : str</span>
+<span class="sd">        ``"primary"`` or ``"secondary"``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        ``1`` for ``"primary"``, ``2`` for ``"secondary"`` — the suffix on the indexed role</span>
+<span class="sd">        (``temperature_1``) and variable (``ctd_temperature_1``).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_INDEX_OF_USE</span><span class="p">[</span><span class="n">use</span><span class="p">]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_use</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *value* if it is a valid use word, else raise ValueError naming *where*."""</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">USE_VALUES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: preferred-sensor value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> is not one of "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">USE_VALUES</span><span class="p">)</span><span class="si">}</span><span class="s2"> (a digit is refused — the 0/1 CNV-vs-ctdcast ambiguity)"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_as_declaration</span><span class="p">(</span><span class="n">decl</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">config_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *decl* as a mapping, raising a clear ValueError if it is not one.</span>
+
+<span class="sd">    Guards the shorthand mistake ``preferred_pair: primary`` (a bare scalar) in place of</span>
+<span class="sd">    the nested ``preferred_pair: {default: primary}``; without this the scalar would reach</span>
+<span class="sd">    ``.get(...)`` and raise an opaque ``AttributeError`` mid-run.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: declaration must be a mapping with 'default' and/or 'ranges' "</span>
+            <span class="sa">f</span><span class="s2">"(got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">decl</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">decl</span><span class="si">!r}</span><span class="s2">); write "</span>
+            <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: </span><span class="se">{{</span><span class="s2">default: </span><span class="si">{</span><span class="n">decl</span><span class="si">!r}</span><span class="se">}}</span><span class="s2">', not '</span><span class="si">{</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">decl</span><span class="si">!r}</span><span class="s2">'."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">decl</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_range_casts</span><span class="p">(</span><span class="n">rng</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">config_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a range entry's ``casts`` spec, raising a clear ValueError if absent."""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"casts"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rng</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">config_key</span><span class="si">}</span><span class="s2"> range </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: each range needs a 'casts' key "</span>
+            <span class="sa">f</span><span class="s2">"(e.g. casts: [[31, 60]]); got </span><span class="si">{</span><span class="n">rng</span><span class="si">!r}</span><span class="s2">."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rng</span><span class="p">[</span><span class="s2">"casts"</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_casts</span><span class="p">(</span><span class="n">rng</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True if *rng* is a mapping carrying a non-empty ``casts`` spec."""</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"casts"</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="resolve_preferred">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.resolve_preferred">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_preferred</span><span class="p">(</span>
+    <span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Resolve the declared choice for one cast, from config alone.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group whose declaration to read (``group.config_key`` in *cruise_cfg*).</span>
+<span class="sd">    cruise_cfg : dict</span>
+<span class="sd">        The ``processing:`` config block (``cruise_cfg[group.config_key]`` is the nested</span>
+<span class="sd">        ``{default, ranges}`` declaration, or absent).</span>
+<span class="sd">    cast_number : int</span>
+<span class="sd">        The cast's integer number (a lettered cast resolves by its number).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (str or None, str or None)</span>
+<span class="sd">        ``(use, source)`` where *use* is ``"primary"`` / ``"secondary"`` / ``None``</span>
+<span class="sd">        (undeclared for this cast) and *source* is ``"range"`` / ``"default"`` / ``None``.</span>
+<span class="sd">        The caller (the stamp step) needs *source* to tell an explicit declaration</span>
+<span class="sd">        (refuse when impossible) from a cruise-wide default (skip silently).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On a declaration that is not a mapping, a range missing its ``casts`` key, a value</span>
+<span class="sd">        outside :data:`USE_VALUES`, or two ranges covering this cast with different ``use``</span>
+<span class="sd">        (a conflicting overlap).</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">cruise_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">cruise_cfg</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="c1"># Distinguish an ABSENT declaration (key missing → None) from a present-but-falsey one</span>
+    <span class="c1"># (``preferred_pair: 0`` / ``false``): the latter is malformed and must be refused by</span>
+    <span class="c1"># _as_declaration, not silently treated as undeclared. An empty mapping ``{}`` is a</span>
+    <span class="c1"># dict, passes _as_declaration, and resolves to undeclared below.</span>
+    <span class="k">if</span> <span class="n">raw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="n">decl</span> <span class="o">=</span> <span class="n">_as_declaration</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="p">)</span>
+
+    <span class="n">matches</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rng</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ranges"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]):</span>
+        <span class="n">casts</span> <span class="o">=</span> <span class="n">_range_casts</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cast_number</span> <span class="ow">in</span> <span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">casts</span><span class="p">):</span>
+            <span class="n">matches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">_validate_use</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"use"</span><span class="p">),</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2"> range </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">matches</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: cast </span><span class="si">{</span><span class="n">cast_number</span><span class="si">}</span><span class="s2"> is covered by ranges declaring "</span>
+                <span class="sa">f</span><span class="s2">"different pairs </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">matches</span><span class="p">))</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"range"</span>
+
+    <span class="n">default</span> <span class="o">=</span> <span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"default"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_validate_use</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2"> default"</span><span class="p">),</span> <span class="s2">"default"</span>
+    <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_names_by_role</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``{indexed role: catalog variable name}`` for a cast's catalog records."""</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">rec</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]:</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)}</span>
+
+
+<div class="viewcode-block" id="preferred_sensor_names">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.preferred_sensor_names">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">preferred_sensor_names</span><span class="p">(</span>
+    <span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">use</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``{base role: catalog variable name}`` for the chosen sensors on this cast.</span>
+
+<span class="sd">    For each of ``group.preferred_roles``, resolves the indexed role ``f"{role}_{index}"``</span>
+<span class="sd">    (index from *use*) to its ``SENSOR_*`` catalog name.  A role with no such entry is</span>
+<span class="sd">    omitted — the caller decides whether that absence is a refusal (explicit choice) or a</span>
+<span class="sd">    silent skip (cruise-wide default).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group whose ``preferred_roles`` to resolve.</span>
+<span class="sd">    records : list of dict</span>
+<span class="sd">        The cast's ``SENSOR_*`` catalog records (``name`` / ``role`` / ``channel`` / ``attrs``).</span>
+<span class="sd">    use : str</span>
+<span class="sd">        ``"primary"`` or ``"secondary"`` — which indexed sensor to select.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of {str: str}</span>
+<span class="sd">        ``{base role: catalog variable name}`` for the roles present on this cast; roles the</span>
+<span class="sd">        cast lacks are omitted.</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">_names_by_role</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">index_of</span><span class="p">(</span><span class="n">use</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">preferred_roles</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">role</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="has_use">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.has_use">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_use</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">use</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True if every preferred role of *group* has a sensor for *use* on this cast.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group whose ``preferred_roles`` must all be present.</span>
+<span class="sd">    records : list of dict</span>
+<span class="sd">        The cast's ``SENSOR_*`` catalog records.</span>
+<span class="sd">    use : str</span>
+<span class="sd">        ``"primary"`` or ``"secondary"``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        False on a single-sensor cast asked for its missing channel (e.g. ``secondary``</span>
+<span class="sd">        where only ``temperature_1`` / ``conductivity_1`` exist).</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">_names_by_role</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">index_of</span><span class="p">(</span><span class="n">use</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">preferred_roles</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="has_choice">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.has_choice">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_choice</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True if this cast has a genuine primary-vs-secondary choice for *group*.</span>
+
+<span class="sd">    A choice exists only when **both** channels are present (e.g. ``oxygen_1`` *and*</span>
+<span class="sd">    ``oxygen_2``).  A single-sensor cast has no choice: its one sensor is already the plain</span>
+<span class="sd">    composite (stage-1 promotes a lone sensor to the unsuffixed name), so no preferred</span>
+<span class="sd">    declaration applies and nothing is stamped.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group to test.</span>
+<span class="sd">    records : list of dict</span>
+<span class="sd">        The cast's ``SENSOR_*`` catalog records.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True only when both ``primary`` and ``secondary`` sensors are present for every</span>
+<span class="sd">        preferred role of *group*.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">has_use</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="s2">"primary"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">has_use</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="s2">"secondary"</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_segment_key</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the catalog-name tuple identifying a cast's hardware for *group*.</span>
+
+<span class="sd">    One entry per ``group.segment_roles`` member, in order: the ``SENSOR_*`` catalog</span>
+<span class="sd">    variable name for that indexed role, or ``None`` when the cast has no such sensor.</span>
+<span class="sd">    Two casts with equal keys share a hardware configuration.</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">_names_by_role</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">role</span><span class="p">)</span> <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">segment_roles</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="derive_segments">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.derive_segments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_segments</span><span class="p">(</span>
+    <span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">catalog_by_cast</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">"""Derive runs of consecutive casts sharing one hardware configuration.</span>
+
+<span class="sd">    A boundary is any cast where the :func:`_segment_key` (the catalog names of the</span>
+<span class="sd">    group's :attr:`~SensorGroup.segment_roles`) changes — never a hardcoded cast count.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group whose serials define the segments.</span>
+<span class="sd">    catalog_by_cast : dict of {int: list of dict}</span>
+<span class="sd">        Per-cast ``SENSOR_*`` catalog records (from</span>
+<span class="sd">        ``processors.sensor_catalog.read_cast_sensor_catalog``), keyed by cast number.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of tuple(int, int, tuple, frozenset of int)</span>
+<span class="sd">        ``(first_cast, last_cast, segment_key, casts)`` for each run, in cast order.</span>
+<span class="sd">        ``casts`` is the set of cast numbers actually in the run — not every integer in</span>
+<span class="sd">        ``[first, last]``, so reconciliation stays correct when cast numbering has gaps.</span>
+<span class="sd">    """</span>
+    <span class="n">runs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cast</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">catalog_by_cast</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">_segment_key</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">catalog_by_cast</span><span class="p">[</span><span class="n">cast</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">runs</span> <span class="ow">and</span> <span class="n">runs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">key</span><span class="p">:</span>
+            <span class="n">runs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cast</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">runs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="p">[</span><span class="n">cast</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="n">casts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">casts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">key</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">casts</span><span class="p">))</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">casts</span> <span class="ow">in</span> <span class="n">runs</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="validate_preferred">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.preferred_sensors.validate_preferred">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_preferred</span><span class="p">(</span>
+    <span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">catalog_by_cast</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return advisory warnings reconciling the declaration against derived segments.</span>
+
+<span class="sd">    Warnings only, and **never raises** — a partially declared cruise is a normal</span>
+<span class="sd">    mid-processing state, and reconciliation runs at compile time where it must not block.</span>
+<span class="sd">    A group with **no** declaration at all is silent (declaring one group, both, or neither</span>
+<span class="sd">    is valid).  A malformed declaration (a scalar shorthand, a range missing ``casts``),</span>
+<span class="sd">    out-of-set values, and conflicting overlaps are all :func:`resolve_preferred`'s job to</span>
+<span class="sd">    refuse loudly at stamp time — here they are skipped, not re-raised.  For a well-formed</span>
+<span class="sd">    declared group, two conditions warn: a declared range that **crosses** a hardware</span>
+<span class="sd">    segment boundary (the human's cast range does not match where sensors actually</span>
+<span class="sd">    changed), and a derived segment the declaration does not cover at all.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    group : SensorGroup</span>
+<span class="sd">        The group to check.</span>
+<span class="sd">    cruise_cfg : dict</span>
+<span class="sd">        The ``processing:`` config block.</span>
+<span class="sd">    catalog_by_cast : dict of {int: list of dict}</span>
+<span class="sd">        Per-cast catalog records, keyed by cast number.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of str</span>
+<span class="sd">        Human-readable warning strings naming the casts; empty when coherent.</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="n">cruise_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">cruise_cfg</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+        <span class="c1"># An entirely undeclared group is a valid, silent state; a malformed declaration</span>
+        <span class="c1"># (a scalar shorthand) is the stamp's job to refuse loudly (resolve_preferred raises)</span>
+        <span class="c1"># — reconciliation stays advisory and never raises, so it cannot block a compile.</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">decl</span> <span class="o">=</span> <span class="n">raw</span>
+    <span class="n">segments</span> <span class="o">=</span> <span class="n">derive_segments</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">catalog_by_cast</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Each range's actual covered cast numbers, expanded once and reused by both checks.</span>
+    <span class="c1"># A range whose `casts` is missing OR malformed is skipped (the empty set matches no</span>
+    <span class="c1"># segment) — reconciliation is advisory and must never raise; the stamp</span>
+    <span class="c1"># (resolve_preferred) is what refuses a malformed spec loudly.</span>
+    <span class="n">range_casts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">rng</span> <span class="ow">in</span> <span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ranges"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">covered</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">rng</span><span class="p">[</span><span class="s2">"casts"</span><span class="p">]))</span> <span class="k">if</span> <span class="n">_has_casts</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+            <span class="n">covered</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">range_casts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">covered</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rng</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ranges"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]):</span>
+        <span class="n">covered</span> <span class="o">=</span> <span class="n">range_casts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="c1"># A range that touches more than one hardware segment crosses a swap boundary —</span>
+        <span class="c1"># whether it straddles the boundary partially or encloses several segments whole.</span>
+        <span class="c1"># Intersect with each segment's *actual* casts so a numbering gap cannot make a</span>
+        <span class="c1"># range appear to reach a segment it has no casts in.</span>
+        <span class="n">spanned</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">)</span> <span class="k">for</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">_key</span><span class="p">,</span> <span class="n">casts</span> <span class="ow">in</span> <span class="n">segments</span> <span class="k">if</span> <span class="n">covered</span> <span class="o">&amp;</span> <span class="n">casts</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spanned</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">boundaries</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">last</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">last</span> <span class="ow">in</span> <span class="n">spanned</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2"> range </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">rng</span><span class="p">[</span><span class="s1">'casts'</span><span class="p">]</span><span class="si">}</span><span class="s2">) crosses the hardware "</span>
+                <span class="sa">f</span><span class="s2">"segment boundary — it spans segments </span><span class="si">{</span><span class="n">boundaries</span><span class="si">}</span><span class="s2">; the declared range does "</span>
+                <span class="sa">f</span><span class="s2">"not match where sensors changed"</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"default"</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">declared</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="o">*</span><span class="n">range_casts</span><span class="p">)</span> <span class="k">if</span> <span class="n">range_casts</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">_key</span><span class="p">,</span> <span class="n">casts</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">casts</span> <span class="o">&amp;</span> <span class="n">declared</span><span class="p">):</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: hardware segment casts </span><span class="si">{</span><span class="n">first</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">last</span><span class="si">}</span><span class="s2"> has no "</span>
+                    <span class="sa">f</span><span class="s2">"declaration (no default, no covering range)"</span>
+                <span class="p">)</span>
+    <span class="k">return</span> <span class="n">warnings</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

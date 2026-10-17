@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports.design &mdash; ctdcast v0.3.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=19ed39ba"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports.design</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports.design</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""ctdcast's owned report design: the package accent and the effective colormaps.</span>
+
+<span class="sd">This is the single owned file that configures the vendored report layer for</span>
+<span class="sd">ctdcast — the vendored modules under ``reports/_vendored/`` name no package.  The</span>
+<span class="sd">package accent is applied to the shared CSS generator here, and the family</span>
+<span class="sd">per-quantity colormap defaults are overridden with ctdcast's own science choices</span>
+<span class="sd">and resolved to a concrete colormap name per variable.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">global_attrs</span> <span class="k">as</span> <span class="n">_global_attrs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.css</span><span class="w"> </span><span class="kn">import</span> <span class="n">_JS_SORT_TABLES</span><span class="p">,</span> <span class="n">_JS_TOP_LINKS</span><span class="p">,</span> <span class="n">emit_css</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">CMAPS</span> <span class="k">as</span> <span class="n">_FAMILY_CMAPS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QUANTITY_BY_STANDARD_NAME</span><span class="p">,</span>
+    <span class="n">register_cmocean</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.nc_tables</span><span class="w"> </span><span class="kn">import</span> <span class="n">ATTR_GROUPS</span> <span class="k">as</span> <span class="n">_VENDORED_ATTR_GROUPS</span>
+
+<span class="c1">#: ctdcast's package accent — chosen here, not in the vendored tokens.  Points at</span>
+<span class="c1">#: ``--ocean`` so the accent (wordmark, table header, footer rule) is ocean navy;</span>
+<span class="c1">#: change this one line to rebrand.  Any CSS colour value works.</span>
+<span class="n">PACKAGE_ACCENT</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"var(--ocean)"</span>
+
+<span class="c1">#: The generated stylesheet, ready to concatenate into a page ``&lt;style&gt;`` block.</span>
+<span class="n">SHARED_CSS</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">emit_css</span><span class="p">(</span><span class="n">PACKAGE_ACCENT</span><span class="p">)</span>
+
+<span class="c1">#: ctdcast turns the per-figure ``source:`` caption ON; the vendored default</span>
+<span class="c1">#: (``design_tokens.SHOW_FIGURE_SOURCE``) is OFF.  This is the package override —</span>
+<span class="c1">#: the same pattern as :data:`CMAP_OVERRIDES`: ctdcast's choice lives here, not in</span>
+<span class="c1">#: the shared table.  The report env reads it as the ``show_source`` template global.</span>
+<span class="n">FIGURE_SOURCE</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1">#: ctdcast's own global-attribute names, added to the vendored canonical</span>
+<span class="c1">#: :data:`~ctdcast.reports._vendored.nc_tables.ATTR_GROUPS` for the inventory page's</span>
+<span class="c1">#: grouped-globals table.  Derived from the on-disk grouping in</span>
+<span class="c1">#: :data:`ctdcast.config.global_attrs.ATTR_GROUPS` (the single source of truth for</span>
+<span class="c1">#: ctdcast's own globals and their order) minus every name a named convention already</span>
+<span class="c1">#: defines in the vendored groups — so the two cannot drift: adding a ctdcast global to</span>
+<span class="c1">#: ``config.global_attrs`` makes it appear here, under the same group title, with no edit.</span>
+<span class="n">_VENDORED_ATTR_NAMES</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="n">name</span> <span class="k">for</span> <span class="n">_title</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">_VENDORED_ATTR_GROUPS</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span>
+<span class="p">)</span>
+<span class="n">ATTR_GROUP_EXTRAS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VENDORED_ATTR_NAMES</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">title</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">_global_attrs</span><span class="o">.</span><span class="n">ATTR_GROUPS</span>
+<span class="p">}</span>
+
+<span class="c1">#: Tolerances for the inventory page's coverage check (file-stated ``geospatial_*`` /</span>
+<span class="c1">#: ``time_coverage_*`` versus the values recomputed from the data): a |diff| above the</span>
+<span class="c1">#: axis tolerance is flagged.  Owned here, not vendored — the vertical axis is dbar in</span>
+<span class="c1">#: ctdcast and metres elsewhere, so the numbers are a per-package judgement.  Degrees for</span>
+<span class="c1">#: lat/lon, dbar for vertical, seconds for time (second-truncated written stamps versus</span>
+<span class="c1">#: sub-second data times would otherwise flag every cast).</span>
+<span class="n">COVERAGE_TOLERANCE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"lat"</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="s2">"lon"</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="s2">"vertical"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="s2">"time"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Per-table-kind column widths for the inventory page (``{"variables": [...], ...}``);</span>
+<span class="c1">#: empty means the browser lays every table out.  Deferred until a column misbehaves.</span>
+<span class="n">TABLE_WIDTHS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="is_qc">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.design.is_qc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_qc</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">_ds</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a QC-companion variable (ctdcast's ``_qc`` suffix).</span>
+
+<span class="sd">    The signature takes an optional dataset to match the vendored</span>
+<span class="sd">    ``is_qc(name, ds)`` callable contract (some conventions need the dataset to</span>
+<span class="sd">    decide); ctdcast's rule is purely the name suffix, so the dataset is unused.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        The variable name.</span>
+<span class="sd">    _ds : object, optional</span>
+<span class="sd">        The dataset, accepted for signature compatibility and unused.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        ``True`` when *name* ends with ``_qc``.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_sensor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.design.is_sensor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_sensor</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a sensor-catalog variable (``SENSOR_*``).</span>
+
+<span class="sd">    The narrow catalog predicate: the uppercase ``SENSOR_*`` variables that carry a</span>
+<span class="sd">    physical sensor's provenance.  The lowercase ``sensor_*`` linkage and channel</span>
+<span class="sd">    variables are *not* catalog entries and are excluded from the science-variable</span>
+<span class="sd">    table by a broader rule in :mod:`ctdcast.reports.dataset`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        The variable name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        ``True`` when *name* starts with ``SENSOR_``.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"SENSOR_"</span><span class="p">)</span></div>
+
+
+
+<span class="c1">#: ctdcast's per-quantity colormap overrides on the vendored family defaults — its</span>
+<span class="c1">#: current science choices.  Empty: ctdcast takes the vendored family defaults for</span>
+<span class="c1">#: every quantity.  Add a ``quantity -&gt; colormap`` entry here to override one for</span>
+<span class="c1">#: ctdcast's science (e.g. a different density map for casts) without touching the</span>
+<span class="c1">#: shared table; the key must be a quantity in the vendored CMAPS.</span>
+<span class="n">CMAP_OVERRIDES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1">#: Effective per-quantity table: vendored family defaults, then ctdcast's overrides.</span>
+<span class="n">CMAPS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">_FAMILY_CMAPS</span><span class="p">,</span> <span class="o">**</span><span class="n">CMAP_OVERRIDES</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="cmap_for">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.design.cmap_for">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cmap_for</span><span class="p">(</span><span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the colormap name for a variable, resolved through the design layers.</span>
+
+<span class="sd">    The registry's ``"cmap"`` is used directly when it is a literal colormap and</span>
+<span class="sd">    resolved through :data:`CMAPS` when it names a quantity — ``CMAPS.get(spec,</span>
+<span class="sd">    spec)`` does both.  A variable with no explicit ``"cmap"`` is bridged by its CF</span>
+<span class="sd">    ``standard_name`` through</span>
+<span class="sd">    :data:`~ctdcast.reports._vendored.design_tokens.QUANTITY_BY_STANDARD_NAME`.  A</span>
+<span class="sd">    ``cmo.*`` result triggers :func:`~ctdcast.reports._vendored.design_tokens.register_cmocean`</span>
+<span class="sd">    so the name resolves in matplotlib.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    var : str</span>
+<span class="sd">        A variable name in :data:`~ctdcast.config.parameters.VARIABLES`.</span>
+<span class="sd">    default : str or None, optional</span>
+<span class="sd">        Colormap to fall back to when *var* resolves to no colormap.  When given</span>
+<span class="sd">        (the report path, e.g. ``"viridis"``), the fallback is returned with a</span>
+<span class="sd">        warning naming the variable — a registry gap should not stop a report.</span>
+<span class="sd">        When ``None`` (the default), an unresolvable variable raises instead —</span>
+<span class="sd">        the strict path a config-file validator uses to reject a bad name at load.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The resolved colormap name, or *default* for an unresolvable variable.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If *var* resolves to no colormap and *default* is ``None``.</span>
+<span class="sd">    """</span>
+    <span class="n">entry</span> <span class="o">=</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cmap"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">CMAPS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">quantity</span> <span class="o">=</span> <span class="n">QUANTITY_BY_STANDARD_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">quantity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">CMAPS</span><span class="p">[</span><span class="n">quantity</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"no colormap for variable </span><span class="si">{</span><span class="n">var</span><span class="si">!r}</span><span class="s2">; using </span><span class="si">{</span><span class="n">default</span><span class="si">!r}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"no colormap for variable </span><span class="si">{</span><span class="n">var</span><span class="si">!r}</span><span class="s2">: no 'cmap' and no mapped standard_name"</span>
+            <span class="p">)</span>
+    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"cmo."</span><span class="p">):</span>
+        <span class="n">register_cmocean</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">name</span></div>
+
+
+
+<span class="c1">#: Resolved ``variable -&gt; colormap name`` table, the default for</span>
+<span class="c1">#: :attr:`ctdcast.config.report_config.ReportConfig.var_cmaps`.  Built over the</span>
+<span class="c1">#: variables that carry a ``"cmap"`` today, so it has the same keys as before this</span>
+<span class="c1">#: change; its values are the vendored family defaults (ctdcast overrides none).</span>
+<span class="n">VAR_CMAPS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">var</span><span class="p">:</span> <span class="n">cmap_for</span><span class="p">(</span><span class="n">var</span><span class="p">)</span> <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cmap"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="p">}</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"ATTR_GROUP_EXTRAS"</span><span class="p">,</span>
+    <span class="s2">"CMAPS"</span><span class="p">,</span>
+    <span class="s2">"CMAP_OVERRIDES"</span><span class="p">,</span>
+    <span class="s2">"COVERAGE_TOLERANCE"</span><span class="p">,</span>
+    <span class="s2">"FIGURE_SOURCE"</span><span class="p">,</span>
+    <span class="s2">"PACKAGE_ACCENT"</span><span class="p">,</span>
+    <span class="s2">"SHARED_CSS"</span><span class="p">,</span>
+    <span class="s2">"TABLE_WIDTHS"</span><span class="p">,</span>
+    <span class="s2">"VAR_CMAPS"</span><span class="p">,</span>
+    <span class="s2">"_JS_SORT_TABLES"</span><span class="p">,</span>
+    <span class="s2">"_JS_TOP_LINKS"</span><span class="p">,</span>
+    <span class="s2">"cmap_for"</span><span class="p">,</span>
+    <span class="s2">"is_qc"</span><span class="p">,</span>
+    <span class="s2">"is_sensor"</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

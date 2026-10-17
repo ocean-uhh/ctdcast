@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.sensor_catalog &mdash; ctdcast v0.3.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=19ed39ba"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.sensor_catalog</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.sensor_catalog</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Read the ``SENSOR_*`` catalog stage 1 built, from any per-cast stage file.</span>
+
+<span class="sd">Stage 1 writes a dimensionless ``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;`` variable per physical sensor,</span>
+<span class="sd">carrying its ``sensor_role`` and ``sensor_channel``.  This module reads that catalog back —</span>
+<span class="sd">the inverse of the stage-1 builder — so every later step (the stage-3 preferred-sensor</span>
+<span class="sd">stamp, the ``profiles.nc`` compile, and ``ctdcast validate``) shares one reader and no stage</span>
+<span class="sd">imports a later stage.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+
+
+<div class="viewcode-block" id="read_cast_sensor_catalog">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.sensor_catalog.read_cast_sensor_catalog">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return one record per ``SENSOR_*`` catalog entry in a per-cast dataset.</span>
+
+<span class="sd">    Reads the catalog stage 1 built: each dimensionless ``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;``</span>
+<span class="sd">    variable, taking its ``sensor_role`` and ``sensor_channel`` off the entry itself</span>
+<span class="sd">    (not off the data variables). A sensor with no stored variable — pH, a</span>
+<span class="sd">    transmissometer — is therefore read exactly like one that has a variable, which</span>
+<span class="sd">    is what lets the compile aggregate without re-parsing the CNV header.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A per-cast dataset carrying the stage-1 ``SENSOR_*`` catalog variables.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of dict</span>
+<span class="sd">        One record per catalog entry, each with ``name`` (the catalog variable name,</span>
+<span class="sd">        already resolved at stage 1), ``role``, ``channel`` (int, or ``-1`` if unstated)</span>
+<span class="sd">        and ``attrs`` (the full entry attributes, verbatim). ``[]`` when the cast carries</span>
+<span class="sd">        no catalog.</span>
+<span class="sd">    """</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"SENSOR_"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensor_role"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="s2">"channel"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="nb">int</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"sensor_channel"</span><span class="p">])</span> <span class="k">if</span> <span class="s2">"sensor_channel"</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="p">),</span>
+                <span class="s2">"attrs"</span><span class="p">:</span> <span class="n">attrs</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">records</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_role_signature</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``{role: catalog variable name}`` — a cast's sensor configuration fingerprint."""</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">rec</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]:</span> <span class="n">rec</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)}</span>
+
+
+<div class="viewcode-block" id="catalog_by_cast_number">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.sensor_catalog.catalog_by_cast_number">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">catalog_by_cast_number</span><span class="p">(</span>
+    <span class="n">per_identity</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Collapse per-identity catalogs to one per cast number, flagging sibling mismatches.</span>
+
+<span class="sd">    The preferred-sensor declaration is per cast *number*, so a plain cast and its lettered</span>
+<span class="sd">    sibling (``010`` / ``010b``) share one declaration and collapse to one entry here.  When</span>
+<span class="sd">    two siblings sharing a number carry **different** sensor serials, the per-number</span>
+<span class="sd">    declaration cannot distinguish them — a warning naming both casts is returned so the</span>
+<span class="sd">    operator knows the reconciliation treats them as one.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    per_identity : iterable of ((int, str), list of dict)</span>
+<span class="sd">        ``((cast_number, cast_suffix), records)`` pairs — one per cast identity, records as</span>
+<span class="sd">        returned by :func:`read_cast_sensor_catalog`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (dict of {int: list of dict}, list of str)</span>
+<span class="sd">        The catalog keyed by cast number (a later sibling overwrites an earlier one), and the</span>
+<span class="sd">        sibling-mismatch warning strings (empty when no number has differing siblings).</span>
+<span class="sd">    """</span>
+    <span class="n">by_number</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">first_seen</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">warnings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">),</span> <span class="n">records</span> <span class="ow">in</span> <span class="n">per_identity</span><span class="p">:</span>
+        <span class="c1"># Keep a catalogued sibling over a catalog-less one for the same number (a</span>
+        <span class="c1"># catalog-less sibling must not clobber real records).</span>
+        <span class="k">if</span> <span class="n">records</span> <span class="ow">or</span> <span class="n">num</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">by_number</span><span class="p">:</span>
+            <span class="n">by_number</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="n">records</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="n">_role_signature</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+        <span class="c1"># A catalog-less cast (no SENSOR_* records) has an empty signature; comparing it</span>
+        <span class="c1"># against a sibling's would raise a spurious "different serials" warning. Only</span>
+        <span class="c1"># catalogued casts carry a sibling signature to compare.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">signature</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">first_seen</span><span class="p">:</span>
+            <span class="n">prev_suffix</span><span class="p">,</span> <span class="n">prev_signature</span> <span class="o">=</span> <span class="n">first_seen</span><span class="p">[</span><span class="n">num</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">signature</span> <span class="o">!=</span> <span class="n">prev_signature</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"casts </span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">prev_suffix</span><span class="p">)</span><span class="si">}</span><span class="s2"> and "</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">suffix</span><span class="p">)</span><span class="si">}</span><span class="s2"> have different sensor serials; the "</span>
+                    <span class="sa">f</span><span class="s2">"preferred-sensor declaration is per cast number and cannot distinguish "</span>
+                    <span class="sa">f</span><span class="s2">"them"</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">first_seen</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">suffix</span><span class="p">,</span> <span class="n">signature</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">by_number</span><span class="p">,</span> <span class="n">warnings</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
