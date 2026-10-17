@@ -638,11 +638,15 @@ def qc_flag_rows(
         # flag_meanings, a length mismatch, or a non-integer flag value is a malformed declaration:
         # fall back to the observed integer codes and flag the row amber, rather than silently
         # truncating a float (int(1.5)=1) or pairing some values with a raw-integer "label".
-        declared = (
-            bool(value_list)
-            and len(meanings) == len(value_list)
-            and all(float(v).is_integer() for v in value_list)
-        )
+        try:
+            declared = (
+                bool(value_list)
+                and len(meanings) == len(value_list)
+                and all(float(v).is_integer() for v in value_list)
+            )
+        except (TypeError, ValueError, OverflowError):
+            # A non-numeric flag_values entry is malformed too — fall back, do not crash.
+            declared = False
         if declared:
             vals = [int(v) for v in value_list]
             tokens = list(meanings)

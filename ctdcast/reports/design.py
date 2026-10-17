@@ -94,11 +94,15 @@ UNIT_LABEL_OVERRIDES: dict[str, str] = {}
 
 
 def unit_label(units: str, standard_name: str | None = None) -> str:
-    """Return the display label for a units string, through ctdcast's overrides.
+    """Return the display label for a units string, with ctdcast's overrides applied.
 
-    The one function the plotters and the inventory tables call for a display
-    unit: the vendored :func:`~ctdcast.reports._vendored.units_display.format_units`
-    with ctdcast's :data:`UNIT_LABEL_OVERRIDES` layered on top.
+    Wraps the vendored :func:`~ctdcast.reports._vendored.units_display.format_units` with
+    ctdcast's :data:`UNIT_LABEL_OVERRIDES`.  Intended as the single override-aware display-unit
+    entry point, but the plot path (``vlabel``/``vunit`` in :mod:`ctdcast.config.parameters`)
+    calls ``format_units`` directly, so an override added here does not yet reach a figure —
+    converging the two on a single override-aware call is deferred to the units-canonicalisation
+    work.  The overrides are empty today, so the two agree; a pin test holds the registry's
+    ``label_units`` to this.
 
     Parameters
     ----------

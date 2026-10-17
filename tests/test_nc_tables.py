@@ -584,6 +584,23 @@ def test_qc_flag_rows_malformed_declaration_is_undeclared():
     assert [f["flag"] for f in rows2[0]["flags"]] == [1, 3, 4]
 
 
+def test_qc_flag_rows_non_numeric_flag_values_is_undeclared():
+    """A non-numeric flag_values entry is malformed — undeclared, not a crash."""
+    ds = xr.Dataset(
+        {
+            "temp": ("t", np.arange(4.0)),
+            "temp_qc": (
+                "t",
+                np.array([1, 1, 3, 4], dtype=np.int8),
+                {"flag_values": np.array(["x", "y"]), "flag_meanings": "pass fail"},
+            ),
+        }
+    )
+    rows, _ = nt.qc_flag_rows(ds, is_qc=lambda n, _d: n.endswith("_qc"))
+    assert rows[0]["undeclared"] is True
+    assert [f["flag"] for f in rows[0]["flags"]] == [1, 3, 4]
+
+
 def test_original_name_identity_is_none():
     """A source name equal to the current name shows no arrow (original_name is None)."""
     ds = xr.Dataset({"v": ("x", np.arange(2.0), {"cnv_original_name": "v"})})

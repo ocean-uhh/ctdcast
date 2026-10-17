@@ -52,6 +52,17 @@ def test_exponent_rule():
     assert ud.format_units("") == ""
 
 
+def test_multi_denominator_superscripts_each_term():
+    """A unit with two or more denominator terms has no X/Y form — superscript in place.
+
+    ``umol m-2 s-1`` (the PAR/SPAR units) used to half-convert to ``µmol m-2/s``; it must
+    now render every term's exponent, and a ``since`` time encoding is left untouched.
+    """
+    assert ud.format_units("umol m-2 s-1") == "µmol m⁻² s⁻¹"
+    assert ud.format_units("W m-2 s-1") == "W m⁻² s⁻¹"
+    assert ud.format_units("days since 1970-01-01") == "days since 1970-01-01"
+
+
 def test_numerator_power_superscripted():
     """A power written concatenated on a letter numerator token is superscripted.
 

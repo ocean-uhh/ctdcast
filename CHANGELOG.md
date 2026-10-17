@@ -26,6 +26,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `time_coverage_end` was written from the per-profile **start** times, so a compiled file's stated end was the start of the last profile, not the last data timestamp (on the demo cruise, ~19 minutes short). `coverage_attrs`/`cruise_global_attrs` now take start and end times separately: `time_coverage_start` is the earliest start and `time_coverage_end` the latest end, each from its own variable (`time_start`/`time_end`); the LADCP product, with one time per profile, uses it for both. The value of `time_coverage_end` in every regenerated stage file changes accordingly.
 
+### Removed
+
+- Public `reports.qc_summary` and `reports.qc_thresholds` — the cast-page QC flag-count and thresholds tables are now built by the vendored `reports/_vendored/nc_tables.qc_flag_rows` / `qc_threshold_rows` and rendered by the `qc_counts_table` / `qc_thresholds_table` macros. A caller importing `from ctdcast.reports import qc_summary` / `qc_thresholds` (both public in 0.3.0) must switch to the vendored builders.
+
 ## [0.3.0] — 2026-10-12
 
 ### Added

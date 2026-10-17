@@ -222,7 +222,12 @@ def test_every_masthead_role_is_a_role_accent_key():
     sources = list(reports.glob("*.py")) + list((reports / "templates").glob("*.html"))
     roles: set[str] = set()
     for path in sources:
-        roles |= set(re.findall(r'masthead_role\s*=\s*"([^"]+)"', path.read_text()))
+        roles |= set(
+            re.findall(
+                r'masthead_role\s*=\s*"([^"]+)"',
+                path.read_text(encoding="utf-8"),
+            )
+        )
     assert roles, "no masthead_role assignments found — did the attribute move?"
     unknown = roles - set(ROLE_ACCENT)
     assert not unknown, f"masthead_role values not in ROLE_ACCENT: {sorted(unknown)}"

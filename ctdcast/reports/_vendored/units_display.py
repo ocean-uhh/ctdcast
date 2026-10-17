@@ -48,6 +48,21 @@ TOKENS: dict[str, str] = {
 }
 
 
+def _superscript_term(term: str) -> str:
+    """Superscript a single UDUNITS term's exponent in place.
+
+    ``m-2`` → ``m⁻²``, ``rad2`` → ``rad²``; a bare ``m`` or ``µmol`` is returned unchanged.
+    Used for a multi-denominator unit, where the single ``X/Y`` slash form does not apply.
+    """
+    neg = re.fullmatch(r"([A-Za-z]+)-(\d+)", term)
+    if neg:
+        return neg.group(1) + "⁻" + neg.group(2).translate(_SUPERSCRIPT_DIGITS)
+    pos = re.fullmatch(r"([A-Za-z]+)([2-9])", term)
+    if pos:
+        return pos.group(1) + pos.group(2).translate(_SUPERSCRIPT_DIGITS)
+    return term
+
+
 def format_units(
     units: str,
     standard_name: str | None = None,
@@ -61,9 +76,11 @@ def format_units(
     the token substitutions and the exponent rule.  The exponent rule converts a
     single-denominator UDUNITS term — ``X Y-1`` → ``X/Y``, ``X Y-n`` → ``X/Yⁿ``,
     a bare ``Y-n`` → ``Y⁻ⁿ`` — and superscripts a trailing power written
-    concatenated on a letter numerator token (``rad2 s-2`` → ``rad²/s²``); this
-    covers every unit the family writes, and a string the rule does not match is
-    returned unchanged.
+    concatenated on a letter numerator token (``rad2 s-2`` → ``rad²/s²``).  A unit with
+    two or more denominator terms (``umol m-2 s-1``) has no single ``X/Y`` form, so each
+    term is superscripted in place (``µmol m⁻² s⁻¹``); a time-coordinate encoding
+    (``days since 1970-01-01``) is not a plottable unit and is returned unchanged.  Any
+    string the rule does not match is returned unchanged.
 
     Parameters
     ----------
@@ -95,6 +112,15 @@ def format_units(
     s = units
     for token, display in TOKENS.items():
         s = s.replace(token, display)
+    # A time-coordinate encoding ("<unit> since <epoch>") is not a scale unit; the exponent
+    # rule would mangle the date, so leave it untouched.
+    if " since " in s:
+        return s
+    # Two or more denominator terms (e.g. `umol m-2 s-1`) cannot be written as a single
+    # `X/Y`; the single-denominator regex below would match greedily and half-convert it, so
+    # superscript every term in place instead (`µmol m⁻² s⁻¹`).
+    if len([t for t in s.split() if re.fullmatch(r"\S+?-\d+", t)]) >= 2:
+        return " ".join(_superscript_term(t) for t in s.split())
     m = re.match(r"^(?:(.+?)\s+)?(\S+?)-(\d+)$", s)
     if not m:
         return s

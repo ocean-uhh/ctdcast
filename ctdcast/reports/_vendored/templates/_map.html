@@ -195,8 +195,12 @@
     if (t.track.length === 1) {
       // A one-point marker has no line to read; label it with its id (the station / mooring name),
       // upper-right, non-interactive, in the marker's colour. Polylines stay unlabelled (one id, and
-      // their hover info is enough).
-      line.bindTooltip(t.id, { permanent: true, direction: 'right', offset: [8, -8], className: 'track-id-label', interactive: false });
+      // their hover info is enough). The id goes in as a text node, never a string — a string would
+      // be set through Leaflet's innerHTML, so an id carrying markup could inject (ctdcast ids are
+      // cast numbers, but a sibling's id may come from a filename or file metadata).
+      var ttSpan = document.createElement('span');
+      ttSpan.textContent = t.id;
+      line.bindTooltip(ttSpan, { permanent: true, direction: 'right', offset: [8, -8], className: 'track-id-label', interactive: false });
       var ttEl = line.getTooltip() && line.getTooltip().getElement();
       if (ttEl) { ttEl.style.color = t.color; }
     }
