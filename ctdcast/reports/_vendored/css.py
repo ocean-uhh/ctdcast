@@ -291,9 +291,12 @@ td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
 .var-table code {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
 .muted {{ color: var(--muted); }}
 .var-qc {{ color: var(--qc-mark); font-size: var(--fs-xs); }}
-/* A scalar's value can be a long unbroken token (a tracking_id, a path); break it so a
-   single cell cannot widen the whole table. */
-.scalar-value {{ overflow-wrap: anywhere; max-width: 28rem; }}
+/* The original source name on its own muted line above the canonical name (name_cell), so the
+   Variable column does not widen to fit both on one line. */
+.var-orig {{ color: var(--muted); font-size: var(--fs-xs); }}
+/* A long unbroken token (a tracking_id, a path, a dotted standard_name) in a scalar value or a
+   standard/long-name cell would widen the whole table; cap the width and break inside the word. */
+.cell-wrap {{ overflow-wrap: anywhere; max-width: 28rem; }}
 .cell-bad {{ color: var(--warn); font-variant-numeric: tabular-nums; }}
 tr.units th {{
   background: transparent; color: var(--muted); font-weight: 400;

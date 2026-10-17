@@ -54,16 +54,16 @@
 </div>
 
 <h2 id="s-coords">{{ m.heading_text(nums["s-coords"], "Coordinates") }}</h2>
-{{ nc.coords_table(meta.coords.rows, source=meta.coords.source, caption=amber_units) }}
+{{ nc.coords_table(meta.coords.rows, source=meta.coords.source, caption=amber_units, numbered=True) }}
 
 <h2 id="s-vars">{{ m.heading_text(nums["s-vars"], "Data variables") }}</h2>
 <p class="caption">Grouped by dimension; the per-group sample count is in each heading. Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
-{{ nc.variables_tables(meta.variables.groups, source=meta.variables.source, caption="Amber Valid %: fewer valid values than samples. " ~ amber_units) }}
+{{ nc.variables_tables(meta.variables.groups, source=meta.variables.source, caption="Amber Valid %: fewer valid values than samples. " ~ amber_units, numbered=True) }}
 
 {% if meta.scalars.rows %}
 <h2 id="s-scalars">{{ m.heading_text(nums["s-scalars"], "Scalars") }}</h2>
 <p class="caption">Dimensionless (0-d) variables; an encoded time is decoded to a date.</p>
-{{ nc.scalars_table(meta.scalars.rows, source=meta.scalars.source, caption=amber_units) }}
+{{ nc.scalars_table(meta.scalars.rows, source=meta.scalars.source, caption=amber_units, numbered=True) }}
 {% endif %}
 
 {% if meta.qc_exclusion %}

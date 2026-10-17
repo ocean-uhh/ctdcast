@@ -330,8 +330,12 @@ def test_optional_stdname_drops_empty_standard_long_name_column():
     assert "Standard / long name</th>" in kept
 
 
-def test_scalars_value_cell_is_wrappable():
-    """The scalar Value cell carries the wrap class so a long token cannot widen the table."""
+def test_value_and_names_cells_are_wrappable():
+    """The scalar Value cell and the standard/long-name cell carry the wrap class.
+
+    A long unbroken token (a ``tracking_id``, a dotted ``standard_name``) must break inside
+    the cell instead of widening the whole table.
+    """
     from ctdcast.reports._env import _env
 
     ds = xr.Dataset({"tracking_id": ((), "x" * 60)})  # a long unbroken scalar value
@@ -340,7 +344,67 @@ def test_scalars_value_cell_is_wrappable():
         "{% import '_nc_tables.html' as nc with context %}"
         "{{ nc.scalars_table(rows, source=src) }}"
     ).render(rows=rows, src=src, show_source=False)
-    assert 'class="scalar-value"' in html
+    assert html.count('class="cell-wrap"') >= 1
+
+
+def test_numbered_adds_a_sortable_index_column():
+    """`numbered=True` prepends a `#` column; the default omits it."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset(
+        {"a": ("x", np.array([1.0, 2.0])), "b": ("x", np.array([3.0, 4.0]))}
+    )
+    groups, src = nt.variables_rows(ds, is_qc=_is_qc)
+    numbered = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, source=src, numbered=True) }}"
+    ).render(groups=groups, src=src, show_source=False)
+    assert ">#</th>" in numbered
+    plain = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, source=src) }}"
+    ).render(groups=groups, src=src, show_source=False)
+    assert ">#</th>" not in plain
+
+
+def test_globals_requirement_column_is_opt_in():
+    """globals_rows(requirement=...) emits 4-tuples and globals_tables adds a Requirement column."""
+    from ctdcast.reports._env import _env
+
+    ds = xr.Dataset(attrs={"title": "t", "Conventions": "CF-1.13"})
+    groups, _ = nt.globals_rows(ds, requirement={"title": "required"})
+    rows = [r for _title, grp in groups for r in grp]
+    title_row = next(r for r in rows if r[0] == "title")
+    assert title_row[3] == "required"  # mapped attr carries its label
+    conv_row = next(r for r in rows if r[0] == "Conventions")
+    assert conv_row[3] == ""  # unmapped attr gets an empty label, not dropped
+    html = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}{{ nc.globals_tables(groups) }}"
+    ).render(groups=groups, show_source=False)
+    assert ">Requirement</th>" in html and "required" in html
+
+    # default (no requirement) stays (attr, type, value) triples with no column
+    groups_plain, _ = nt.globals_rows(ds)
+    assert all(len(r) == 3 for _t, grp in groups_plain for r in grp)
+    plain = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}{{ nc.globals_tables(groups) }}"
+    ).render(groups=groups_plain, show_source=False)
+    assert ">Requirement</th>" not in plain
+
+
+def test_name_cell_puts_original_on_its_own_muted_line():
+    """A renamed variable shows `<orig> →` on its own `.var-orig` line above the canonical name."""
+    from ctdcast.reports._env import _env
+
+    html = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}{{ nc.name_cell(row) }}"
+    ).render(
+        row={"name": "ctd_temperature_1", "original_name": "t090C", "has_qc": False},
+        show_source=False,
+    )
+    assert 'class="var-orig"' in html
+    assert "t090C" in html and "ctd_temperature_1" in html
+    assert "<br>" in html  # original and canonical name are on separate lines
 
 
 def test_coverage_caption_only_when_a_cell_ambers():
