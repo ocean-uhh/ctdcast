@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from .design_tokens import QC_FLAG_COLORS, QC_FLAG_DEFAULT_COLOR, QC_FLAG_LABELS
 from .figure_png import source_for
 
 if TYPE_CHECKING:
@@ -165,11 +166,40 @@ def _attr_type_name(value: Any) -> str:  # noqa: ANN401  # any global-attribute 
 
 def _fmt_scalar(x: Any) -> str:  # noqa: ANN401  # any 0-d value the caller decided to show
     """Format a scalar value for the Value column, truncating long strings."""
+    if isinstance(x, bytes):
+        # netCDF char attributes come back as bytes; decode so the cell shows text, not b'…'.
+        return x.decode("utf-8", "replace").strip()[:120] or "—"
     if isinstance(x, (float, np.floating)):
         return "—" if not np.isfinite(x) else _fmt_minmax(float(x))
     if isinstance(x, (int, np.integer)):
         return str(int(x))
     return str(x)[:120]
+
+
+def fmt_datetime(value: Any) -> str:  # noqa: ANN401  # a datetime64 / ISO string / epoch value
+    """Return an ISO-8601 datetime string to the second, with milliseconds only when non-zero.
+
+    Replaces numpy's nanosecond ``repr`` (``2020-01-19T20:30:00.000000000``) and avoids silently
+    dropping a real sub-second part: a whole-second time renders ``2020-01-19 20:30:00``, a
+    fractional one keeps milliseconds.  ``T`` is shown as a space.
+
+    Parameters
+    ----------
+    value : numpy.datetime64 or str
+        A datetime value (or an ISO string numpy can parse).
+
+    Returns
+    -------
+    str
+        The formatted datetime.
+    """
+    dt = np.datetime64(value, "ns")
+    if np.isnat(dt):
+        return "—"
+    whole = dt.astype("datetime64[s]")
+    remainder = (dt - whole.astype("datetime64[ns]")) // np.timedelta64(1, "ns")
+    out = str(whole) if remainder == 0 else str(dt.astype("datetime64[ms]"))
+    return out.replace("T", " ")
 
 
 def _numeric_minmax(v: xr.DataArray) -> tuple[float | None, float | None, int]:
@@ -189,9 +219,7 @@ def _datetime_minmax(v: xr.DataArray) -> tuple[str | None, str | None, int]:
     good = vals[~np.isnat(vals)]
     if not good.size:
         return None, None, 0
-    lo = np.datetime64(good.min(), "s")
-    hi = np.datetime64(good.max(), "s")
-    return str(lo).replace("T", " "), str(hi).replace("T", " "), int(good.size)
+    return fmt_datetime(good.min()), fmt_datetime(good.max()), int(good.size)
 
 
 def _scalar_value(v: xr.DataArray) -> str:
@@ -219,7 +247,7 @@ def _scalar_value(v: xr.DataArray) -> str:
             decoded = _xtimes.decode_cf_datetime(
                 np.asarray(item), units, v.attrs.get("calendar", "standard")
             )
-            return str(np.datetime64(decoded.ravel()[0], "s")).replace("T", " ")
+            return fmt_datetime(decoded.ravel()[0])
         except Exception:  # noqa: BLE001  # undecodable → show the raw value, never crash
             pass
     return _fmt_scalar(item)
@@ -330,6 +358,7 @@ def coords_rows(
     for name in sorted(ds.coords):
         row = _value_row(ds, name, original_name_attrs)
         row["length"] = int(ds[name].size)
+        row["dims"] = " × ".join(str(d) for d in ds[name].dims)
         rows.append(row)
     return rows, source_for(coords_rows)
 
@@ -532,15 +561,96 @@ def qc_threshold_rows(
                 )
         for key in sorted(a):
             if key.startswith("qc_") and key not in consumed:
+                # Never dropped: an unrecognised qc_* attribute is shown under its raw name
+                # (not prettified — a reader greps the file for exactly this string).
                 rows.append(
                     {
                         "var": base,
-                        "test": key[3:].replace("_", " "),
+                        "test": key,
                         "suspect": str(a[key]),
                         "fail": "–",
+                        "kind": "other",
                     }
                 )
     return rows, source_for(qc_threshold_rows)
+
+
+def qc_flag_rows(
+    ds: xr.Dataset,
+    *,
+    is_qc: Callable[[str, xr.Dataset], bool],
+    labels: dict[str, str] | None = None,
+    colors: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], str]:
+    """Return ``(rows, source)`` for the per-variable QC flag-count breakdown.
+
+    One row per variable that has a QC companion, with one entry per flag the companion
+    *declares* (its ``flag_values`` / ``flag_meanings``, in declared order — a zero-count
+    declared flag still gets a column, so a clean cast reads as a fixed table).  A companion
+    that declares no ``flag_values`` falls back to the integers actually present and the row is
+    marked ``undeclared`` (the table flags it, since the labels are then just the raw codes).
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        An open dataset carrying the ``{var}_qc`` companions.
+    is_qc : callable
+        ``is_qc(name, ds) -> bool`` — the package's QC-companion rule.
+    labels : dict of str to str, optional
+        Meaning-token → short label; defaults to the vendored
+        :data:`QC_FLAG_LABELS`.  A package passes its
+        own wording to override.
+    colors : dict of str to str, optional
+        Meaning-token → colour; defaults to the vendored
+        :data:`QC_FLAG_COLORS`.
+
+    Returns
+    -------
+    rows : list of dict
+        ``{var, total, undeclared, flags: [{flag, token, label, color, n, pct}, …]}`` per
+        variable.
+    source : str
+        The caption string for this builder.
+    """
+    labels = labels if labels is not None else QC_FLAG_LABELS
+    colors = colors if colors is not None else QC_FLAG_COLORS
+    rows: list[dict[str, Any]] = []
+    for name in sorted(ds.data_vars):
+        if not is_qc(name, ds):
+            continue
+        base = _qc_parent(name)
+        if base not in ds.data_vars:
+            continue
+        flags = np.asarray(ds[name].values).astype(int).ravel()
+        total = int(flags.size)
+        if total == 0:
+            continue
+        values = ds[name].attrs.get("flag_values")
+        meanings = str(ds[name].attrs.get("flag_meanings", "")).split()
+        declared = values is not None and len(np.asarray(values).ravel()) > 0
+        if declared:
+            vals = [int(v) for v in np.asarray(values).ravel().tolist()]
+            tokens = [meanings[i] if i < len(meanings) else str(v) for i, v in enumerate(vals)]
+        else:
+            vals = sorted({int(v) for v in flags.tolist()})
+            tokens = [str(v) for v in vals]
+        flag_entries = []
+        for value, token in zip(vals, tokens, strict=True):
+            n = int(np.sum(flags == value))
+            flag_entries.append(
+                {
+                    "flag": value,
+                    "token": token,
+                    "label": labels.get(token, token.replace("_", " ")),
+                    "color": colors.get(token, QC_FLAG_DEFAULT_COLOR),
+                    "n": n,
+                    "pct": round(100.0 * n / total, 1),
+                }
+            )
+        rows.append(
+            {"var": base, "total": total, "undeclared": not declared, "flags": flag_entries}
+        )
+    return rows, source_for(qc_flag_rows)
 
 
 def _merge_groups(
@@ -556,11 +666,22 @@ def _merge_groups(
     return merged
 
 
+def _fmt_attr_value(value: Any) -> str:  # noqa: ANN401  # any global-attribute value
+    """Format a global-attribute value: a datetime through :func:`fmt_datetime`, bytes decoded as
+    UTF-8 (a netCDF char attribute, else a ``b'…'`` repr), else ``str``."""
+    if isinstance(value, np.datetime64):
+        return fmt_datetime(value)
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace").strip() or "—"
+    return str(value)
+
+
 def globals_rows(
     ds: xr.Dataset,
     *,
     groups: tuple[tuple[str, tuple[str, ...]], ...] = ATTR_GROUPS,
     extras: dict[str, Iterable[str]] | None = None,
+    exclude: Iterable[str] = (),
 ) -> tuple[list[tuple[str, list[tuple[str, str]]]], str]:
     """Return ``([(group_title, [(attr, value), ...])], source)`` for the global attributes.
 
@@ -578,22 +699,29 @@ def globals_rows(
     extras : dict, optional
         ``{group_title: (attr_name, ...)}`` — a package's own global-attribute names added
         to the canonical groups (from its owned ``reports/design.py``).
+    exclude : iterable of str, optional
+        Attribute names to omit from the table — for a consumer that renders one in its own
+        panel (e.g. ``history``) and would otherwise show it twice.
 
     Returns
     -------
     grouped : list of (str, list of (str, str, str))
         ``(group_title, rows)`` with each row an ``(attribute, type, value)`` triple; the
-        *type* is the stored value's type name (:func:`_attr_type_name`).
+        *type* is the stored value's type name (:func:`_attr_type_name`), the *value* a
+        datetime formatted through :func:`fmt_datetime`.
     source : str
         The caption string for this builder.
     """
     merged = _merge_groups(groups, extras)
     group_of = {name: title for title, names in merged for name in names}
+    dropped = set(exclude)
     buckets: dict[str, list[tuple[str, str, str]]] = {title: [] for title, _ in merged}
     buckets[OTHER_GROUP] = []
     for key, value in ds.attrs.items():
+        if str(key) in dropped:
+            continue
         buckets.setdefault(group_of.get(str(key), OTHER_GROUP), []).append(
-            (str(key), _attr_type_name(value), str(value))
+            (str(key), _attr_type_name(value), _fmt_attr_value(value))
         )
     titles = [title for title, _ in merged] + [OTHER_GROUP]
     return [(t, buckets[t]) for t in titles if buckets[t]], source_for(globals_rows)

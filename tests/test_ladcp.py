@@ -55,6 +55,11 @@ def test_inventory_original_name_from_source_variable(tmp_path):
         warnings.simplefilter("ignore")
         convert_ladcp_cast(MAT_011, out, cast_num=11, force=True)
     meta = read_dataset_meta(out)
+    # The standalone renaming table (source → canonical).
+    rename_map = meta["rename_map"]
+    assert rename_map.get("dr.u") == "u"
+    assert rename_map.get("dr.lat") == "latitude"
+    # The same rename inline on each row as original_name (the Variable-cell arrow).
     rows = {r["name"]: r for r in meta["coords"]["rows"]}
     for _title, grp in meta["variables"]["groups"]:
         rows.update({r["name"]: r for r in grp})

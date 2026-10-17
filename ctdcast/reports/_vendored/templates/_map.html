@@ -118,7 +118,11 @@
   var lineById = {}, dataById = {};
   TRACKS.forEach(function (t) {
     dataById[t.id] = t;
-    var line = L.polyline(t.track, { color: t.color, weight: 3, opacity: 0.85 });
+    // A one-point track (a single station, or a mooring) has no polyline to draw, so it would be
+    // invisible; render it as a circle marker instead. highlight() keys on setRadius to tell them apart.
+    var line = (t.track.length === 1)
+      ? L.circleMarker(t.track[0], { radius: 6, color: t.color, fillColor: t.color, fillOpacity: 0.9 })
+      : L.polyline(t.track, { color: t.color, weight: 3, opacity: 0.85 });
     line.on('mouseover', function () { highlight(t.id, true); });
     line.on('mouseout', function () { highlight(t.id, false); });
     line.on('click', function () { window.location.href = t.href; });
@@ -128,7 +132,11 @@
 
   function highlight(id, on) {
     var line = lineById[id];
-    if (line) { line.setStyle({ weight: on ? 6 : 3 }); if (on) { line.bringToFront(); } }
+    if (line) {
+      if (line.setRadius) { line.setRadius(on ? 9 : 6); }  // circle marker (one-point track)
+      else { line.setStyle({ weight: on ? 6 : 3 }); }      // polyline
+      if (on) { line.bringToFront(); }
+    }
     var row = document.querySelector('tr[data-track-id="' + cssEscape(id) + '"]');
     if (row) { row.classList.toggle('track-hover', on); }
     var t = dataById[id];

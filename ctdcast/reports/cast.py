@@ -59,6 +59,7 @@ from ctdcast.reports._plots import (
     _make_ts_updown_b64,
     _make_updown_diff_b64,
 )
+from ctdcast.reports._vendored import nc_tables
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.page_model import (
     Panel,
@@ -68,8 +69,8 @@ from ctdcast.reports._vendored.page_model import (
     resolve,
 )
 from ctdcast.reports.dataset import data_ranges_markup
-from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS, is_qc
+from ctdcast.reports.qc_tables import QC_FLAG_NOTE, _collapse_siblings
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -436,7 +437,7 @@ _PROPERTIES_FRAGMENT = _env.from_string(
 def _properties_markup(
     rows: list[tuple[str, str, str]],
     *,
-    header: tuple[str, str] | None = None,
+    header: tuple[str, str] = ("Property", "Value"),
     source: str | None = None,
 ) -> str:
     """Render a key/value properties table through the vendored ``properties_table`` macro.
@@ -445,8 +446,8 @@ def _properties_markup(
     ----------
     rows : list of tuple of (str, str, str)
         ``(label, value, kind)`` triples; ``kind`` is ``"code"`` for a monospace value.
-    header : tuple of (str, str) or None, optional
-        The two column-header labels, or None for a bare label/value list.
+    header : tuple of (str, str), optional
+        The two column-header names rendered in the navy thead.
     source : str or None, optional
         The builder-source line, shown only when the package toggles it on.
 
@@ -494,119 +495,84 @@ def _has_file_provenance(c: PageCtx) -> bool:
     return any(c.ds.attrs.get(k) for k in _FILE_PROVENANCE_TRIGGERS)
 
 
+def _render_time_coordinate(c: PageCtx) -> str | None:
+    """Return the Time coordinate key/value table, or None when the cast records none.
+
+    The time coordinate's source and the applied clock offset, read from the cast file's
+    global attributes.  Shown above the data-ranges table (so it reads before the variables),
+    not in the Processing-provenance panel.
+    """
+    attrs = c.ds.attrs
+    rows: list[tuple[str, str, str]] = []
+    if attrs.get("time_coordinate_source"):
+        rows.append(("Time coordinate source", str(attrs["time_coordinate_source"]), "code"))
+    if attrs.get("time_clock_offset_seconds") is not None:
+        rows.append(
+            ("Clock offset (NMEA − system)", f"{attrs['time_clock_offset_seconds']} s", "code")
+        )
+    if not rows:
+        return None
+    return "<h3>Time coordinate</h3>" + _properties_markup(rows)
+
+
+def _render_data_ranges(c: PageCtx) -> str | None:
+    """Return the data-ranges appendix: the Time coordinate table (if any) then the ranges table.
+
+    The time coordinate reads before the variables, per the cast-page layout; the ranges table
+    is the substance, so when it is absent the time coordinate alone still renders.
+    """
+    time = _render_time_coordinate(c)
+    ranges = data_ranges_markup(c.nc_path)
+    if ranges is None:
+        return time
+    return (time or "") + ranges
+
+
+# The two QC tables (thresholds, flag counts) rendered through the vendored macros; built from
+# the vendored `qc_threshold_rows` / `qc_flag_rows`.  Thresholds first (what the pipeline was
+# told to do), then the counts (what that produced) — the cause→effect order.  The flag-4 note
+# sits above the counts table; the undeclared caption renders only when a row is amber.
+_QC_FRAGMENT = _env.from_string(
+    "{% import '_nc_tables.html' as nc with context %}"
+    "{% if thresholds %}<h3>Thresholds applied (as stored in stage 3 file)</h3>"
+    "{{ nc.qc_thresholds_table(thresholds) }}{% endif %}"
+    "<h3>Flag counts</h3>"
+    '<p class="caption">{{ note }}</p>'
+    "{{ nc.qc_counts_table(counts, caption=undeclared_caption) }}"
+)
+
+#: Shown only when a variable's QC companion declares no ``flag_values`` (the counts table then
+#: shows its raw integer codes as columns and flags the row amber — the criterion for the amber).
+_QC_UNDECLARED_CAPTION = (
+    "Amber variable: its QC companion declares no flag_values, so the columns are the raw "
+    "integer codes observed rather than named flags."
+)
+
+
 def _render_qc_table(nc_path: Path) -> str | None:
     """Return the per-cast QC panel markup, or None when the file has no flags.
 
-    Two tables in cause→effect order: the two-tier (suspect/fail) gross-range and
-    spike thresholds recorded on each ``{var}_qc`` companion, then per variable the
-    QARTOD flag-count breakdown with a coloured distribution bar.  Reads the file on
-    disk — the flags the pipeline recorded — not the trimmed, derived dataset
-    plotted above.  Count columns always show the core QARTOD flags (pass, suspect,
-    fail, missing) so a clean cast reads as a fixed table; any other declared flag
-    shows only when it occurs.  Labels come from each file's own
-    ``flag_values``/``flag_meanings``.  Values escaped here (emitted ``|safe``).
+    Two tables in cause→effect order, built from each ``{var}_qc`` companion on disk (the flags
+    the pipeline recorded, not the trimmed/derived dataset plotted above): the two-tier
+    (suspect/fail) gross-range and spike thresholds recorded per companion, dual-sensor rows with
+    identical bounds collapsed to a ``*`` family row; then the flag-count breakdown with one
+    column per flag the companion *declares* (declared order, zero-count columns kept) and a
+    coloured distribution bar.  Labels and colours follow each file's own
+    ``flag_values`` / ``flag_meanings`` through the vendored builders.
     """
-    summary = qc_summary(nc_path)
-    if not summary:
+    try:
+        with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:
+            thresholds, _ = nc_tables.qc_threshold_rows(ds, is_qc=is_qc)
+            counts, _ = nc_tables.qc_flag_rows(ds, is_qc=is_qc)
+    except (OSError, ValueError, KeyError):
         return None
-
-    # Columns: always show the core QARTOD flags — pass (1), suspect (3), fail (4),
-    # missing (9) — so a clean cast still reads as a fixed pass/suspect/fail/missing
-    # table (matching oceanarray) rather than collapsing to only the flags that
-    # happen to occur.  Any other declared flag (e.g. not_evaluated, 2) is shown only
-    # when it actually occurs, so a scheme value ctdcast never assigns adds no dead
-    # column.  Zero-count core flags render as "–".
-    _CORE_FLAGS = (1, 3, 4, 9)
-    present: dict[int, dict[str, Any]] = {}
-    for row in summary:
-        for f in row["flags"]:
-            if f["flag"] in _CORE_FLAGS or f["n"] > 0:
-                present.setdefault(f["flag"], f)
-    cols = [present[k] for k in sorted(present)]
-
-    legend = "".join(
-        f'<span style="background:{f["color"]}"></span>'
-        f"{escape(f['label'])}&nbsp;({f['flag']}) "
-        for f in cols
-    )
-    header = "".join(f"<th class='num'>{escape(f['label'])}&nbsp;%</th>" for f in cols)
-
-    body = []
-    for row in summary:
-        by_flag = {f["flag"]: f for f in row["flags"]}
-        cells = ""
-        for col in cols:
-            f = by_flag.get(col["flag"])
-            if f and f["n"] > 0:
-                txt = f"{f['pct']}" if f["pct"] > 0 else f"&lt;0.1&nbsp;({f['n']})"
-                cells += f"<td class='num'>{txt}</td>"
-            else:
-                cells += "<td class='num'>&ndash;</td>"
-        bar = "".join(
-            f'<div style="width:{f["pct"]}%;background:{f["color"]};" '
-            f'title="{escape(f["label"])}: {f["pct"]}%"></div>'
-            for f in row["flags"]
-            if f["pct"] > 0
-        )
-        body.append(
-            f"<tr><td class='mono'>{escape(row['var'])}</td>"
-            f"<td class='num'>{row['total']:,}</td>{cells}"
-            f"<td><div class='qc-bar'>{bar}</div></td></tr>"
-        )
-
-    thresholds = qc_thresholds(nc_path)
-    thr_html = ""
-    if thresholds:
-        trows = "".join(
-            f"<tr><td class='mono'>{escape(r['var'])}</td>"
-            f"<td>{escape(r['test'])}</td>"
-            f"<td class='num'>{escape(r['suspect'])}</td>"
-            f"<td class='num'>{escape(r['fail'])}</td></tr>"
-            for r in thresholds
-        )
-        thr_html = (
-            "<h3>Thresholds applied (as stored in stage 3 file)</h3>"
-            "<table class='nc qc-thresholds'><thead><tr><th>Variable</th>"
-            "<th>Test</th><th class='num'>Suspect range / threshold</th>"
-            "<th class='num'>Fail range / threshold</th></tr></thead>"
-            f"<tbody>{trows}</tbody></table>"
-        )
-
-    # Self-contained layout CSS for the distribution bar and legend; the flag
-    # colours are inline hex (from the vendored QC_COLORS), so this needs no CSS vars.
-    style = (
-        "<style>"
-        ".qc-bar{display:flex;width:200px;height:13px;border-radius:3px;"
-        "overflow:hidden;gap:1px;background:#ecf0f1}"
-        ".qc-bar div{height:100%}"
-        ".qc-legend{display:flex;flex-wrap:wrap;gap:0.3rem 0.9rem;"
-        "font-size:0.75rem;margin:0.2rem 0 0.6rem}"
-        ".qc-legend span{display:inline-block;width:10px;height:10px;"
-        "border-radius:2px;vertical-align:middle;margin-right:3px}"
-        "</style>"
-    )
-    # Provenance caveat: flag 4 (fail) is not solely this variable's own test.
-    # Stage 2 trims the pre-descent soak and post-recovery on-deck scans by setting
-    # flag 4 on EVERY variable at those same scans, so a variable can show flagged
-    # samples its own gross-range/spike thresholds never raised.  Say so, or the
-    # distribution reads as if the variable itself failed those values.
-    note = (
-        "<p class='caption'>Flag 4 (fail) combines two independent exclusions: this "
-        "variable&rsquo;s own gross-range and spike tests, and the whole-cast soak / "
-        "on-deck trim, which flags the same pre-descent and post-recovery scans on "
-        "every variable. A variable can therefore show flagged samples that its own "
-        "thresholds did not raise.</p>"
-    )
-    # Thresholds first (what the pipeline was told to do), then the flag counts
-    # (what that produced) — matching the cause→effect reading order.
-    return (
-        f"{style}{thr_html}"
-        "<h3>Flag counts</h3>"
-        f"<div class='qc-legend'>{legend}</div>"
-        "<table class='nc qc-counts'><thead><tr><th>Variable</th>"
-        f"<th class='num'>N</th>{header}<th>Distribution</th></tr></thead>"
-        f"<tbody>{''.join(body)}</tbody></table>"
-        f"{note}"
+    if not counts:
+        return None
+    return _QC_FRAGMENT.render(
+        thresholds=_collapse_siblings(thresholds),
+        counts=counts,
+        note=QC_FLAG_NOTE,
+        undeclared_caption=_QC_UNDECLARED_CAPTION,
     )
 
 
@@ -892,7 +858,6 @@ def _corrections_table_html(
 
 def _render_provenance_table(
     records: list[Correction],
-    attrs: dict[str, Any],
     advisories: list[str] | None = None,
     ticks: list[ConformanceTick] | None = None,
     conformance: list[str] | None = None,
@@ -903,8 +868,7 @@ def _render_provenance_table(
 
     Focused on *what was done* to the data before ctdcast: *records* are the structured
     corrections (deck-unit align first, then each Sea-Bird Data Processing module in file
-    order, a repeat suffixed); *attrs* supplies the time coordinate's source and offset;
-    *advisories* are the structural implications
+    order, a repeat suffixed); *advisories* are the structural implications
     (:func:`~ctdcast.config.cnv_header.provenance_advisories`) drawn as a note beneath the
     tables.  *ticks* are the conformance comparisons
     (:func:`~ctdcast.config.cnv_header.conformance_ticks`); when present they add a
@@ -919,9 +883,10 @@ def _render_provenance_table(
     """
     advisories = advisories or []
     conformance = conformance or []
-    src = attrs.get("time_coordinate_source")
-    off = attrs.get("time_clock_offset_seconds")
-    if not records and not src and off is None and not advisories and not conformance:
+    # The time coordinate moved to the (C) netCDF data ranges appendix (above the ranges table),
+    # so it reads before the variables; this panel keeps the correction / advisory / conformance
+    # parts.  See _render_time_coordinate.
+    if not records and not advisories and not conformance:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
@@ -931,17 +896,6 @@ def _render_provenance_table(
         corr_html += _references_caption(ticks)
     if corr_html and instrument_note:
         corr_html += f"<p class='caption'>{escape(instrument_note)}</p>"
-
-    time_rows: list[tuple[str, str, str]] = []
-    if src:
-        time_rows.append(("Time coordinate source", str(src), "code"))
-    if off is not None:
-        time_rows.append(("Clock offset (NMEA − system)", f"{off} s", "code"))
-    time_html = ""
-    if time_rows:
-        time_html = f"<h3{tight}>Time coordinate</h3>" + _properties_markup(
-            time_rows, header=("Property", "Value")
-        )
 
     advisory_html = ""
     if advisories:
@@ -970,7 +924,7 @@ def _render_provenance_table(
     # and tables stack instead of tiling across the section's `.fig-row`.
     return (
         "<div class='prov-panel'>"
-        f"{corr_html}{time_html}{advisory_html}{conformance_html}{xref_html}{note}"
+        f"{corr_html}{advisory_html}{conformance_html}{xref_html}{note}"
         "</div>"
     )
 
@@ -1001,7 +955,6 @@ def _render_provenance_panel(c: PageCtx) -> str | None:
     )
     table = _render_provenance_table(
         correction_records(header),
-        dict(c.ds.attrs),
         provenance_advisories(header),
         ticks=conformance_ticks(header, rename_map),
         conformance=conformance_advisories(header),
@@ -1177,7 +1130,7 @@ CAST_PANELS: dict[str, Panel] = {
     "data_ranges": Panel(
         id="data_ranges",
         kind="table",
-        render=lambda c: data_ranges_markup(c.nc_path),
+        render=_render_data_ranges,
     ),
     "qc_histogram": Panel(
         id="qc_histogram",

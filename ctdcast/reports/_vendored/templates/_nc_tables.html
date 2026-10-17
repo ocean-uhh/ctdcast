@@ -118,24 +118,26 @@
 {%- else %}<td>—</td>{% endif %}
 {%- endmacro %}
 
-{% macro coords_table(rows, optional=(), widths=None, source=None, caption=None) %}
+{% macro coords_table(rows, optional=(), widths=None, source=None, caption=None, title=None) %}
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units) | trim %}
-{%- set cols = ["Variable", "Type", "Length"] %}
+{%- set cols = ["Variable", "Type", "Length", "Dims"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
-{%- set _ = cols.append("Attributes") %}
+{%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
+{%- if title %}<h3>{{ title }}</h3>{% endif %}
 {%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
 {{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
-<tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
-{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+<tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td><td>{{ r.dims }}</td>
+{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no coordinates") }}{% endif %}
@@ -150,12 +152,14 @@
 {%- for title, rows in groups %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units, check_valid=true) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
-{%- set _ = cols.extend(["Valid", "Valid %", "Attributes"]) %}
+{%- set _ = cols.extend(["Valid", "Valid %"]) %}
+{%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
 <h3>Variables on {{ title }}</h3>
 {%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
@@ -167,20 +171,23 @@
 <td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
 <td data-sort="{{ r.valid_pct }}"{% if r.n_valid < r.n %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
-<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+{%- if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>
 {%- endfor %}{{ _source(source) }}
 {%- else %}{{ _empty("no dimensioned data variables") }}{% endif %}
 {%- endmacro %}
 
-{% macro scalars_table(rows, optional=(), widths=None, source=None, caption=None) %}
+{% macro scalars_table(rows, optional=(), widths=None, source=None, caption=None, title=None) %}
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
+{%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units) | trim %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
-{%- set _ = cols.extend(["Standard / long name", "Value", "Attributes"]) %}
+{%- set _ = cols.extend(["Standard / long name", "Value"]) %}
+{%- if show_attrs %}{% set _ = cols.append("Attributes") %}{% endif %}
+{%- if title %}<h3>{{ title }}</h3>{% endif %}
 {%- if caption and amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
@@ -188,7 +195,7 @@
 <tbody>
 {%- for r in rows %}
 <tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
-<td>{{ names_cell(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
+<td>{{ names_cell(r) }}</td><td>{{ r.value }}</td>{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no scalar variables") }}{% endif %}
@@ -220,22 +227,67 @@
 {%- else %}{{ _empty("no global attributes") }}{% endif %}
 {%- endmacro %}
 
-{# A key/value properties table — two columns, label then value. Order is editorial, so the
-   whole table opts out of click-to-sort (data-nosort). Each row is a (label, value, kind)
-   triple; `kind` picks the value cell: "code" renders monospace (identifiers, short stamps),
-   anything else plain. `header`, when given, is the (left, right) column-header pair rendered as
-   a thead; omit it for a bare label/value list (e.g. file provenance under its own heading). The
-   row-header label column is not accent-filled (see `.properties tbody th` in css). Vendored so
-   the family's provenance / timing / metadata tables share one shape. #}
-{% macro properties_table(rows, header=None, widths=None, source=None, caption=None) %}
+{# A key/value properties table — an ordinary family table: navy thead naming the two columns
+   (Property / Value by default; `header=` renames them), zebra body rows, label cell a plain
+   <td>. Each row is a (label, value, kind) triple; `kind="code"` renders the value monospace.
+   The whole table opts out of click-to-sort (data-nosort) because the row order carries meaning.
+   Vendored so the family's provenance / timing / metadata tables share one shape. #}
+{% macro properties_table(rows, header=("Property", "Value"), widths=None, source=None, caption=None) %}
 {%- if rows %}
 {{ _caption(caption) }}
 <table class="nc properties" data-nosort{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{%- if header %}<thead><tr><th>{{ header[0] }}</th><th>{{ header[1] }}</th></tr></thead>{% endif %}
+<thead><tr><th>{{ header[0] }}</th><th>{{ header[1] }}</th></tr></thead>
 <tbody>
 {%- for label, value, kind in rows %}
-<tr><th scope="row">{{ label }}</th>{% if kind == "code" %}<td class="mono">{{ value }}</td>{% else %}<td>{{ value }}</td>{% endif %}</tr>
+<tr><td>{{ label }}</td>{% if kind == "code" %}<td class="mono">{{ value }}</td>{% else %}<td>{{ value }}</td>{% endif %}</tr>
+{%- endfor %}
+</tbody></table>{{ _source(source) }}
+{%- endif %}
+{%- endmacro %}
+
+{# QC thresholds table: one row per (variable, test) from `qc_threshold_rows`. Sortable.
+   `show_source` adds a Source column (a package whose rows carry a `source` field — e.g. the
+   test's config origin). #}
+{% macro qc_thresholds_table(rows, show_source=False, widths=None, source=None, caption=None) %}
+{%- if rows %}
+{{ _caption(caption) }}
+{%- set cols = ["Variable", "Test", "Suspect range / threshold", "Fail range / threshold"] %}
+{%- if show_source %}{% set _ = cols.append("Source") %}{% endif %}
+<table class="sortable nc qc-thresholds"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{{ thead(cols) }}
+<tbody>
+{%- for r in rows %}
+<tr><td class="mono">{{ r.var }}</td><td>{{ r.test }}</td><td>{{ r.suspect }}</td><td>{{ r.fail }}</td>
+{%- if show_source %}<td>{{ r.source }}</td>{% endif %}</tr>
+{%- endfor %}
+</tbody></table>{{ _source(source) }}
+{%- endif %}
+{%- endmacro %}
+
+{# QC flag-count table from `qc_flag_rows`: a legend, then one row per variable — N, a % column
+   per declared flag (columns are the union across rows, in first-seen declared order), and a
+   coloured distribution bar. A variable whose companion declares no flag_values is `undeclared`
+   and its name cell is flagged amber (the columns are then raw integer codes); the caller's
+   caption states that criterion. The bar cell opts out of sorting. #}
+{% macro qc_counts_table(rows, widths=None, source=None, caption=None) %}
+{%- if rows %}
+{%- set cols = [] %}{% set seen = [] %}
+{%- for r in rows %}{% for f in r.flags %}{% if f.flag not in seen %}{% set _ = seen.append(f.flag) %}{% set _ = cols.append(f) %}{% endif %}{% endfor %}{% endfor %}
+{%- set has_amber = rows|selectattr("undeclared")|list|length > 0 %}
+{%- if caption and has_amber %}{{ _caption(caption) }}{% endif %}
+<div class="qc-legend">{% for f in cols %}<span style="background:{{ f.color }}"></span>{{ f.label }}&nbsp;({{ f.flag }}) {% endfor %}</div>
+<table class="sortable nc qc-counts"{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+<thead><tr><th tabindex="0">Variable</th><th tabindex="0" class="num">N</th>
+{%- for f in cols %}<th tabindex="0" class="num">{{ f.label }}&nbsp;%</th>{% endfor %}<th data-nosort>Distribution</th></tr></thead>
+<tbody>
+{%- for r in rows %}
+{%- set by_flag = {} %}{% for f in r.flags %}{% set _ = by_flag.update({f.flag: f}) %}{% endfor %}
+<tr><td class="mono{% if r.undeclared %} cell-bad{% endif %}">{{ r.var }}</td><td class="num">{{ "{:,}".format(r.total) }}</td>
+{%- for c in cols %}{% set f = by_flag.get(c.flag) %}{% if f and f.n > 0 %}<td class="num">{% if f.pct > 0 %}{{ f.pct }}{% else %}&lt;0.1&nbsp;({{ f.n }}){% endif %}</td>{% else %}<td class="num">&ndash;</td>{% endif %}{% endfor %}
+<td data-nosort><div class="qc-bar">{% for f in r.flags %}{% if f.pct > 0 %}<div style="width:{{ f.pct }}%;background:{{ f.color }};" title="{{ f.label }}: {{ f.pct }}%"></div>{% endif %}{% endfor %}</div></td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
 {%- endif %}

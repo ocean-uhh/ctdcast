@@ -22,6 +22,7 @@ from ctdcast.reports.cast import (
     _render_sensor_catalog_table,
     _render_sensor_table,
     _render_sensors_section,
+    _render_time_coordinate,
 )
 
 
@@ -128,7 +129,6 @@ class TestRenderSensorCatalogTable:
                     "datcnv", "datcnv", "SBE Data Processing", "7.26", "skipover=0"
                 )
             ],
-            {},
             sensor_xref="calibration state is in the Sensors appendix",
         )
         assert html is not None
@@ -259,11 +259,11 @@ class TestRenderProvenanceTable:
 
     def test_none_without_ledger(self):
         """No records and no time attributes yields no table."""
-        assert _render_provenance_table([], {"cruise": "MSM142"}) is None
+        assert _render_provenance_table([]) is None
 
     def test_columns_and_order(self):
         """Producer and version are their own columns, rows in record order."""
-        html = _render_provenance_table(self._records(), {})
+        html = _render_provenance_table(self._records())
         assert "<th>Producer</th><th>Version</th><th>Parameters</th>" in html
         assert "<td>SBE Data Processing</td>" in html
         assert "<td class='mono'>V 5.2</td>" in html
@@ -275,7 +275,6 @@ class TestRenderProvenanceTable:
         """Structural advisories render as an escaped bullet list under an Advisories heading."""
         html = _render_provenance_table(
             self._records(),
-            {},
             ["Already binned to a pressure grid", "Deck-unit advance is asymmetric"],
         )
         assert "<h3 style='margin-bottom:0.25rem'>Advisories</h3>" in html
@@ -284,21 +283,28 @@ class TestRenderProvenanceTable:
 
     def test_no_advisories_no_heading(self):
         """With no advisories, no Advisories section is emitted."""
-        html = _render_provenance_table(self._records(), {}, [])
+        html = _render_provenance_table(self._records(), [])
         assert "Advisories" not in html
 
     def test_advisories_only_still_renders(self):
         """A cast with only advisories (no records, no time attrs) still renders the note."""
-        html = _render_provenance_table(
-            [], {}, ["Time coordinate is on the system clock"]
-        )
+        html = _render_provenance_table([], ["Time coordinate is on the system clock"])
         assert html is not None
         assert "Advisories" in html
         assert "Time coordinate is on the system clock" in html
 
     def test_time_coordinate_rendered(self):
-        """The time source (SBE phrasing) and the clock offset both appear."""
-        html = _render_provenance_table([], self._TIME)
+        """The time source and clock offset render in the data-ranges time-coordinate table.
+
+        The time coordinate moved out of the provenance panel to the (C) data-ranges appendix;
+        _render_time_coordinate reads the cast file's global attributes.
+        """
+        import xarray as xr
+
+        class _Ctx:
+            ds = xr.Dataset(attrs=self._TIME)
+
+        html = _render_time_coordinate(_Ctx())
         assert "System UTC, first data scan." in html
         assert "5.0 s" in html
 
@@ -316,7 +322,7 @@ class TestRenderProvenanceTable:
                 "pass1_nstd=9.9",
             ),
         ]
-        html = _render_provenance_table(records, {})
+        html = _render_provenance_table(records)
         assert "pass1_nstd=2.0" in html
         assert "wildedit (2)" in html
         assert "pass1_nstd=9.9" in html
@@ -366,12 +372,12 @@ class TestConformanceColumn:
 
     def test_no_ticks_keeps_four_column_table(self):
         """Without ticks the corrections table has no Matches column (unchanged behaviour)."""
-        html = _render_provenance_table(self._records(), {})
+        html = _render_provenance_table(self._records())
         assert "Matches reference" not in html
 
     def test_ticks_add_matches_column_with_status_pips(self):
         """Ticks add the column and render a coloured pip for match / differ / no-reference."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "<th>Matches reference</th>" in html
         assert "conf-match" in html  # green ✓ (matches)
         assert "conf-differ" in html  # red ✗ (differs)
@@ -379,25 +385,25 @@ class TestConformanceColumn:
 
     def test_references_move_to_a_caption(self):
         """Reference values and their sources are listed once in a caption, not per pip."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "Reference values" in html
         assert "SBE manual p.85" in html  # source cited in the caption
 
     def test_deck_row_splits_per_channel(self):
         """The single deck-align record becomes one display row per advanced channel."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "advance primary conductivity 0.073 s" in html
         assert "advance secondary conductivity 0.043 s" in html
 
     def test_variables_column_names_modified_variable(self):
         """The Variables column names the variable each step modified."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "<th>Variables</th>" in html
         assert "conductivity_1" in html and "conductivity_2" in html
 
     def test_split_row_shows_its_own_value_not_the_aggregate(self):
         """Each split row shows its own channel value; the aggregate never lands on row one."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         # The secondary row shows its own advance; the record's aggregate "c0 +0.073 s"
         # string is not stuck on the first split row.
         assert "advance secondary conductivity 0.043 s" in html
@@ -405,12 +411,12 @@ class TestConformanceColumn:
 
     def test_differing_row_is_amber(self):
         """A differing (✗) conformance row is tinted with the vendored warn background."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "background:var(--warn-bg)" in html
 
     def test_reference_and_source_are_visible(self):
         """The reference and its source are shown in the match cell, not hidden in a tooltip."""
-        html = _render_provenance_table(self._records(), {}, ticks=self._ticks())
+        html = _render_provenance_table(self._records(), ticks=self._ticks())
         assert "SBE manual p.85" in html
         assert "title=" not in html  # not tucked away in a hover tooltip
 

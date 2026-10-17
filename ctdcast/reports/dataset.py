@@ -30,6 +30,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
+from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports import design
 from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._navs import nav_for
@@ -240,7 +241,7 @@ def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
             continue
         delta_s = int((stated_t - computed_t) / np.timedelta64(1, "s"))
         out[key] = {
-            "value": str(computed_t).replace("T", " "),
+            "value": nc_tables.fmt_datetime(computed_t),
             "diff": "0 s" if delta_s == 0 else f"{delta_s:+d} s",
             "over": abs(delta_s) > tol["time"],
         }
@@ -298,16 +299,16 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     Opens the file once and runs the vendored
     :mod:`~ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped
     by dimension, scalars, the sensor catalog, grouped globals), keeping the owned
-    ctdcast tables (QC exclusions, sensor linkage/channel) and the coverage check
-    alongside them.  A renamed variable's source name rides each row as
-    ``original_name`` (the ``original → name`` cell), so there is no separate rename table.
+    ctdcast tables (QC exclusions, variable renaming, sensor linkage/channel) and the
+    coverage check alongside them.  A renamed variable's source name also rides each row
+    as ``original_name`` (the in-context ``original → name`` cell).
 
     Returns a dict with ``filename``, ``filesize``, ``dims``, ``summary`` (the headline
     counts), ``coords`` / ``variables`` / ``scalars`` / ``sensor_catalog`` / ``globals``
     (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel``
     (``{"groups", "source"}`` from :func:`~ctdcast.reports._vendored.nc_tables.variables_rows`
-    with an including predicate), ``coverage`` (the recomputed-bounds check) and
-    ``qc_exclusion``.  On any read error returns ``{"filename", "error"}`` so the page
+    with an including predicate), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``
+    and ``rename_map``.  On any read error returns ``{"filename", "error"}`` so the page
     can report it rather than failing to generate.
 
     Parameters
@@ -361,6 +362,11 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             include=_is_channel,
             original_name_attrs=design.ORIGINAL_NAME_ATTRS,
         )
+        # Source → canonical rename table, reconstructed from each variable's recorded
+        # source name; sorted by canonical name.  source_to_canonical already drops
+        # identity entries (source == canonical).  Kept alongside the per-row arrow: the
+        # section is the at-a-glance rename overview, the arrow the in-context detail.
+        rename_map = dict(sorted(source_to_canonical(ds).items(), key=lambda kv: kv[1]))
         return {
             "filename": nc_path.name,
             "filesize": nc_path.stat().st_size if nc_path.exists() else 0,
@@ -376,6 +382,7 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "coverage": _coverage_computed(ds),
             "coverage_note": _coverage_note(),
             "qc_exclusion": _qc_exclusion_rows(ds),
+            "rename_map": rename_map,
         }
 
 

@@ -257,10 +257,15 @@ tr.units th {{
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
-/* Key/value properties tables (provenance, timing, metadata): the row-header label column is
-   not accent-filled — like the attribute disclosure sub-tables — so a long key/value list reads
-   as a list, not a block of header cells.  A `header` row (thead th) keeps the accent fill. */
-.properties tbody th {{ background: transparent; color: var(--text); font-weight: 600; text-align: left; }}
+/* QC flag-count distribution bar and legend (qc_counts_table). Flag colours are inline on each
+   segment (from the vendored QC_FLAG_COLORS), so these rules carry only the layout. */
+.qc-bar {{ display: flex; width: 200px; height: 13px; border-radius: 3px; overflow: hidden; gap: 1px; background: #ecf0f1; }}
+.qc-bar div {{ height: 100%; }}
+.qc-legend {{ display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.75rem; margin: 0.2rem 0 0.6rem; }}
+.qc-legend span {{ display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }}
+/* The source: caption hugs the table it belongs to, not the next one: a table has 1.2rem
+   bottom margin, so pull the caption up under it and keep the gap below before the next table. */
+table + .fig-source {{ margin-top: -0.9rem; margin-bottom: 1.2rem; }}
 /* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
    keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
    gets none).  The heading is a pointer; the active one shows the direction. */

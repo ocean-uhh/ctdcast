@@ -374,6 +374,13 @@ def test_variables_rows_include_and_original_name():
     assert rows[0]["original_name"] == "raw0"
 
 
+def test_fmt_datetime_whole_ms_and_nat():
+    """fmt_datetime renders whole seconds, keeps ms when non-zero, and NaT → em-dash."""
+    assert nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00")) == "2020-01-19 20:30:00"
+    assert nt.fmt_datetime(np.datetime64("2020-01-19T20:30:00.123")) == "2020-01-19 20:30:00.123"
+    assert nt.fmt_datetime(np.datetime64("NaT")) == "—"
+
+
 def test_original_name_identity_is_none():
     """A source name equal to the current name shows no arrow (original_name is None)."""
     ds = xr.Dataset({"v": ("x", np.arange(2.0), {"cnv_original_name": "v"})})
