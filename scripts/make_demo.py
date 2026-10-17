@@ -13,6 +13,7 @@ Maps render without bathymetry if the file is not found.
 
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Allow ``python scripts/make_demo.py`` from the repo root without an editable
@@ -49,6 +50,29 @@ def _demo_processing() -> dict:
     """Read the ``processing`` block from ``config_demo.yaml`` (the single declaration)."""
     with CONFIG_DEMO.open() as f:
         return (yaml.safe_load(f) or {}).get("processing") or {}
+
+
+def _fixed_generated_at() -> str:
+    """Return a stable "Generated" stamp from the newest fixture's ``date_modified``.
+
+    Pins the demo's build stamp to a real, committed date (ISO 8601 sorts
+    chronologically, so ``max`` is the newest) so regenerating the docs does not
+    rewrite every page's timestamp.  Falls back to the current time if no fixture
+    carries ``date_modified``.
+    """
+    stamps = []
+    for src in sorted(NC_DIR.glob("*.nc")):
+        with xr.open_dataset(src, engine="netcdf4") as ds:
+            dm = str(ds.attrs.get("date_modified", ""))
+        if dm:
+            stamps.append(dm)
+    if not stamps:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return (
+        datetime.strptime(max(stamps), "%Y-%m-%dT%H:%M:%SZ")
+        .replace(tzinfo=timezone.utc)
+        .strftime("%Y-%m-%d %H:%M UTC")
+    )
 
 
 CRUISE_INFO = {
@@ -118,6 +142,7 @@ if __name__ == "__main__":
             force=True,
             config=cfg,
             cruise_info=CRUISE_INFO,
+            generated_at=_fixed_generated_at(),
         )
     print("Done.")
     print(f"  Open: {OUT_DIR / 'index.html'}")

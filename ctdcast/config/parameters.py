@@ -26,6 +26,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from ctdcast.reports._vendored.units_display import format_units
+
 if TYPE_CHECKING:
     import xarray as xr
 
@@ -514,10 +516,11 @@ SECTION_BIOGEO_VARS: tuple[str, ...] = (
 def vlabel(var: str, prefix: str = "") -> str:
     """Return a matplotlib axis label for *var* using the VARIABLES registry.
 
-    Format is ``"Label (units)"`` when ``label_units`` is non-empty, or just
-    ``"Label"`` when there are no units (e.g. dimensionless quantities).
-    Units are always in the Unicode display form from ``label_units`` — never
-    the ASCII-safe ``units`` string used for netCDF attributes.
+    Format is ``"Label (units)"`` when the entry has a non-empty ``units``, or just
+    ``"Label"`` when it is dimensionless.  The display unit is derived from the CF
+    ``units`` string by :func:`~ctdcast.reports._vendored.units_display.format_units`
+    (so every entry with ``units`` is labelled, not only the ones that also carry a
+    ``label_units`` pin), never the ASCII-safe ``units`` string itself.
 
     Parameters
     ----------
@@ -535,20 +538,21 @@ def vlabel(var: str, prefix: str = "") -> str:
     """
     entry = VARIABLES.get(var, {})
     lbl = f"{prefix}{entry.get('label', var)}"
-    lu = entry.get("label_units", "")
-    return f"{lbl} ({lu})" if lu else lbl
+    units = format_units(entry.get("units", ""), entry.get("standard_name"))
+    return f"{lbl} ({units})" if units else lbl
 
 
 def vunit(var: str) -> str:
     """Return the Unicode display unit for *var*, or ``""`` when dimensionless.
 
     The unit half of :func:`vlabel`, for field colorbars that place the unit as a
-    title on top of the bar rather than a ``"Label (units)"`` side label.  Uses the
-    ``label_units`` display form (never the ASCII ``units`` netCDF string).  Works
-    for both canonical and single-/dual-sensor-resolved names (both carry the same
-    ``label_units`` in :data:`VARIABLES`).
+    title on top of the bar rather than a ``"Label (units)"`` side label.  Derives
+    the display unit from the CF ``units`` string via
+    :func:`~ctdcast.reports._vendored.units_display.format_units`, so it is defined
+    for every entry with ``units`` and agrees with :func:`vlabel`.
     """
-    return VARIABLES.get(var, {}).get("label_units", "")
+    entry = VARIABLES.get(var, {})
+    return format_units(entry.get("units", ""), entry.get("standard_name"))
 
 
 #: Greek/command replacements for the mathtext→Unicode label converter.

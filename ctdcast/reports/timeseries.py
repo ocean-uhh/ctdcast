@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +33,11 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import as_panel
-from ctdcast.reports._format import _fmt_utc, profile_cast_suffixes
+from ctdcast.reports._format import (
+    _fmt_utc,
+    profile_cast_suffixes,
+    report_generated_at,
+)
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
@@ -98,6 +101,7 @@ def generate_timeseries_page(
     next_name: str | None = None,
     cruise_info: dict[str, Any] | None = None,
     inventory: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-timeseries HTML page for a named group of repeat casts.
@@ -144,6 +148,9 @@ def generate_timeseries_page(
     inventory:
         The "Data inventory:" strip pills (``{"label", "href"}``) shown beneath the
         masthead; see :func:`~ctdcast.reports._navs.inventory_pills`.
+    generated_at:
+        Page build stamp; ``None`` uses the current UTC time.  Threaded from
+        :func:`ctdcast.report` so one build stamps every page identically.
     cfg:
         Report configuration (styling, paths, display) threaded to the plotters.
 
@@ -348,7 +355,7 @@ def generate_timeseries_page(
         "prev_name": prev_name or "",
         "next_name": next_name or "",
         "version": _VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
     }
 
     html = get_template("timeseries_page.html").render(

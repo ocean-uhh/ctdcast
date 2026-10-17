@@ -5,8 +5,24 @@ Internal to ``reports/``; parallels oceanarray's ``report/_html_helpers.py``.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import numpy as np
 import xarray as xr
+
+#: The display form of the "Generated"/build timestamp shown on every report page.
+GENERATED_AT_FMT = "%Y-%m-%d %H:%M UTC"
+
+
+def report_generated_at(generated_at: str | None = None) -> str:
+    """Return the page build stamp: *generated_at* if given, else the current UTC time.
+
+    Threaded from :func:`ctdcast.report` so one build stamps every page with the same
+    value and a caller (the demo) can pin a fixed, reproducible date; ``None`` falls
+    back to the current time, the normal run.  Parallels the injectable ``now`` of
+    :func:`ctdcast.config.global_attrs.provenance_attrs`.
+    """
+    return generated_at or datetime.now(timezone.utc).strftime(GENERATED_AT_FMT)
 
 
 def profile_cast_suffixes(ds: xr.Dataset) -> np.ndarray:

@@ -7,9 +7,12 @@ file missing. Cross-repo equality — are the siblings in sync? — is ``check``
 ``../sibling`` mode, run in review, not a test here.
 """
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 from ctdcast.reports._vendored import check
 
@@ -34,8 +37,6 @@ def test_vendored_python_is_ruff_format_stable():
     Skipped when ruff is not importable (the CI lint job enforces this, so the test job need not
     carry the lint tooling as a dependency).
     """
-    import pytest
-
     pytest.importorskip(
         "ruff", reason="ruff not installed; the lint job enforces format stability"
     )
@@ -47,6 +48,54 @@ def test_vendored_python_is_ruff_format_stable():
     assert result.returncode == 0, (
         f"vendored files are not ruff-format-stable:\n{result.stdout}{result.stderr}"
     )
+
+
+def test_compare_sibling_flags_a_sibling_only_file(tmp_path, capsys):
+    """A file present only in the sibling is drift (the union, not just the local set)."""
+    sibling_vendored = tmp_path / "sibling" / "pkg" / "reports" / "_vendored"
+    shutil.copytree(_VENDORED, sibling_vendored)
+    (sibling_vendored / "rogue.py").write_text(
+        "# only in the sibling\n", encoding="utf-8"
+    )
+    rc = check.compare_sibling(tmp_path / "sibling")
+    out = capsys.readouterr().out
+    assert rc >= 1, "a sibling-only file must count as drift"
+    assert "EXTRA" in out and "rogue.py" in out
+
+
+def test_compare_manifests_by_basename(tmp_path):
+    """``--compare`` diffs two manifests by basename: identical passes, a flipped hash drifts."""
+    local = check.MANIFEST.read_text(encoding="utf-8")
+    other = tmp_path / "MANIFEST.txt"
+    other.write_text(local, encoding="utf-8")
+    assert check.compare_manifests(other) == 0
+
+    flipped, out_lines = False, []
+    for line in local.splitlines():
+        if line and not line.startswith("#") and not flipped:
+            digest, rel = line.split(maxsplit=1)
+            digest = ("1" if digest[0] == "0" else "0") + digest[1:]
+            line = f"{digest}  {rel}"
+            flipped = True
+        out_lines.append(line)
+    other.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    assert check.compare_manifests(other) >= 1
+
+
+def test_parse_manifest_rejects_missing_malformed_and_duplicate(tmp_path):
+    """A missing, malformed, or duplicate-keyed manifest exits 1 with a message, not a traceback."""
+    with pytest.raises(SystemExit):
+        check.parse_manifest(tmp_path / "nope.txt")
+
+    malformed = tmp_path / "malformed.txt"
+    malformed.write_text("this-line-has-no-hash-and-path-split\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        check.parse_manifest(malformed)
+
+    duplicate = tmp_path / "duplicate.txt"
+    duplicate.write_text("aaa  x.py\nbbb  x.py\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        check.parse_manifest(duplicate)
 
 
 def test_no_owned_template_shadows_a_vendored_one():

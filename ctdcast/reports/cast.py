@@ -43,7 +43,7 @@ from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
 from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._figdebug import as_panel
-from ctdcast.reports._format import _fmt_utc
+from ctdcast.reports._format import _fmt_utc, report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._plots import (
     _make_aux_profiles_b64,
@@ -113,6 +113,7 @@ def generate_station_page(
     cruise_info: dict | None = None,
     drop_stub: bool = False,
     inventory: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a per-cast HTML report page and write it to *out_dir/casts/*.
@@ -163,6 +164,9 @@ def generate_station_page(
     inventory : list of dict or None
         The "Data inventory:" strip pills (``{"label", "href"}``) shown beneath the
         masthead; see :func:`~ctdcast.reports._navs.inventory_pills`.
+    generated_at : str or None
+        Page build stamp; ``None`` uses the current UTC time.  Threaded from
+        :func:`ctdcast.report` so one build stamps every page identically.
     cfg : ReportConfig
         Report configuration (styling, paths, display options) threaded to the plotters.
 
@@ -289,10 +293,23 @@ def generate_station_page(
     # Source provenance: which file on disk this page was built from (the stage
     # is encoded in the filename) and when that file was written — so a report
     # always says what data produced it, and a stale/wrong-source page is obvious.
+    # "Processed" is the file's own ``date_modified`` global (set at write time),
+    # not its filesystem mtime, so re-touching or recopying a file — or
+    # regenerating the demo fixtures — does not change the reported time.  Falls
+    # back to the mtime for a file that carries no ``date_modified``.
     source_str = nc_path.name
-    processed_str = datetime.fromtimestamp(
-        nc_path.stat().st_mtime, tz=timezone.utc
-    ).strftime("%Y-%m-%d %H:%M UTC")
+    try:
+        processed_str = (
+            datetime.strptime(
+                str(ds.attrs.get("date_modified", "")), "%Y-%m-%dT%H:%M:%SZ"
+            )
+            .replace(tzinfo=timezone.utc)
+            .strftime("%Y-%m-%d %H:%M UTC")
+        )
+    except ValueError:
+        processed_str = datetime.fromtimestamp(
+            nc_path.stat().st_mtime, tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M UTC")
 
     ctx: dict[str, Any] = {
         "cast_num": cast_num_str,
@@ -310,7 +327,7 @@ def generate_station_page(
         "ladcp_available": ladcp_exists,
         "trim_note": trim_note,
         "cast_notes": cast_notes or [],
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
         "version": _VERSION,
         "source_str": source_str,
         "processed_str": processed_str,

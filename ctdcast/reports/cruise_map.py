@@ -22,7 +22,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +32,7 @@ from ctdcast.analysis.bathymetry import load_gebco
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
+from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored.leaflet import load_leaflet, safe_json
 from ctdcast.reports.design import SHARED_CSS
@@ -374,6 +374,7 @@ def generate_leaflet_map(
     ship_track_nc: Path | None = None,
     cruise: str = "UNK",
     inventory: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> Path | None:
     """Generate a Leaflet.js interactive cruise map at ``<out_dir>/leaflet.html``.
@@ -401,6 +402,9 @@ def generate_leaflet_map(
     inventory : list of dict or None, optional
         The "Data inventory:" strip pills (``{"label", "href"}``) under the
         masthead; ``None`` omits the strip.
+    generated_at : str or None, optional
+        Page build stamp; ``None`` uses the current UTC time.  Threaded from
+        :func:`ctdcast.report` so one build stamps every page identically.
     cfg : ReportConfig, optional
         Report configuration (bathymetry path, map bounds, …) threaded to the drawers.
 
@@ -530,7 +534,7 @@ def generate_leaflet_map(
         lon_min=lon_min,
         lon_max=lon_max,
         version=_VERSION,
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=report_generated_at(generated_at),
     )
 
     out_file.parent.mkdir(parents=True, exist_ok=True)

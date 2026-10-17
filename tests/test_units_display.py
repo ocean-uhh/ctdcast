@@ -77,6 +77,29 @@ def test_overrides_win():
     assert design.unit_label("m s-1") == "m/s"  # ctdcast overrides none
 
 
+def test_plot_modules_use_no_hardcoded_superscript_minus():
+    """No plotting module hard-codes a ``⁻`` unit (e.g. ``m s⁻¹``).
+
+    The LADCP velocity axes had regressed to ``m s⁻¹`` because they were string
+    literals that never passed through the registry, so they did not follow the
+    ``m/s`` display rule.  Every unit label now comes from ``vlabel``/``vunit``
+    (hence ``format_units``); this greps the plotting source so a new literal
+    superscript-minus unit is caught before it reaches a figure.
+    """
+    import ctdcast.plotters.plots as plots_mod
+    import ctdcast.plotters.primitives as primitives_mod
+    import ctdcast.reports._plots as rplots_mod
+
+    offenders = [
+        Path(mod.__file__).name
+        for mod in (plots_mod, rplots_mod, primitives_mod)
+        if "⁻" in Path(mod.__file__).read_text(encoding="utf-8")
+    ]
+    assert offenders == [], (
+        f"plotting modules hard-code a superscript-minus unit: {offenders}"
+    )
+
+
 def test_import_purity_package_neutral():
     """units_display imports only the standard library (no numpy/xarray needed)."""
     src = Path(ud.__file__).read_text(encoding="utf-8")

@@ -1,11 +1,11 @@
 """Base64 PNG encoders — thin wrappers that render a Figure for a page.
 
 Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in
-:mod:`ctdcast.plotters.plots` and encodes it with :func:`render_b64`.  Two use a
-custom wrapper instead of :func:`render_b64`: ``_make_all_sections_map_b64`` still
-delegates drawing to its ``draw_*_fig`` but needs a post-``tight_layout``
-adjustment, and ``_make_ladcp_section_b64`` does its own plotting because it
-returns a list of :class:`RenderedPanel` rather than a single figure.
+:mod:`ctdcast.plotters.plots` and encodes it with :func:`render_b64`.
+``_make_all_sections_map_b64`` uses a custom wrapper instead: it still delegates
+drawing to its ``draw_*_fig`` but needs a post-``tight_layout`` adjustment.
+``_make_ladcp_section_b64`` returns a list of :class:`RenderedPanel` (U and V), so
+it calls :func:`render_b64` once per component against ``draw_ladcp_section_fig``.
 """
 
 from __future__ import annotations
@@ -21,12 +21,11 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import (
-    dense_bathy_along_track,
     interpolate_bathy_at_casts,
 )
+from ctdcast.config.parameters import vunit
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.plots import (
-    _cast_markers,
     _hide_outer_spines,
     _nice_colorbar_bounds,
     draw_all_sections_map_fig,
@@ -34,6 +33,7 @@ from ctdcast.plotters.plots import (
     draw_cruise_map_fig,
     draw_ct_sa_sigma0_fig,
     draw_ladcp_bottomtrack_fig,
+    draw_ladcp_section_fig,
     draw_overview_panel_fig,
     draw_pressure_time_fig,
     draw_qc_histogram_fig,
@@ -51,10 +51,8 @@ from ctdcast.plotters.plots import (
     draw_ts_diagram_timeseries_fig,
     draw_ts_updown_fig,
     draw_updown_diff_fig,
-    section_figsize_and_slot,
 )
 from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
-from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp
 
 # render_b64 is imported from _figdebug (a package-local wrapper around the vendored
 # encoder) so figures are geometry-recorded when CTDCAST_REPORT_DEBUG is set; it delegates
@@ -279,181 +277,35 @@ def _make_ladcp_section_b64(
 
     If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
     with the zero-padded cast number.  Falls back to ``NNN.mat``.
+
+    Each panel is drawn by :func:`~ctdcast.plotters.plots.draw_ladcp_section_fig` and
+    encoded via :func:`render_b64`, so the ``source:`` caption names the draw function
+    and a panel is omitted (not an empty list for the pair) when its component has too
+    few casts.
     """
-    try:
-        with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
-            lat_map = dict(zip(cast_nums, lats, strict=True)) if lats else {}
-            lon_map = dict(zip(cast_nums, lons, strict=True)) if lons else {}
-
-            # Load available casts; record x, cast_num, lat, lon, z, u, v
-            loaded: list[
-                tuple[float, int, float, float, np.ndarray, np.ndarray, np.ndarray]
-            ] = []
-            for cn, xv in zip(cast_nums, x_vals, strict=True):
-                mat_path = find_ladcp_file(ladcp_dir, cn, ladcp_pattern=ladcp_pattern)
-                if mat_path is None:
-                    continue
-                try:
-                    m = read_ladcp(mat_path)
-                    dr = m["dr"]
-                    loaded.append(
-                        (
-                            float(xv),
-                            int(cn),
-                            lat_map.get(cn, float("nan")),
-                            lon_map.get(cn, float("nan")),
-                            np.asarray(dr.z, dtype=float),
-                            np.asarray(dr.u, dtype=float),
-                            np.asarray(dr.v, dtype=float),
-                        )
-                    )
-                except Exception:  # noqa: BLE001
-                    continue
-
-            if len(loaded) < 2:
-                return []
-
-            x_ladcp = np.array([t[0] for t in loaded])
-            cast_nums_ladcp = [t[1] for t in loaded]
-            filt_lats = [t[2] for t in loaded]
-            filt_lons = [t[3] for t in loaded]
-            n_cast = len(loaded)
-
-            # Interpolate to common 10 m depth grid
-            z_max = float(max(t[4].max() for t in loaded))
-            z_grid = np.arange(0.0, z_max + 10.0, 10.0)
-            n_z = len(z_grid)
-
-            u_grid = np.full((n_cast, n_z), np.nan)
-            v_grid = np.full((n_cast, n_z), np.nan)
-            for i, (*_, z, u, v) in enumerate(loaded):
-                idx = np.argsort(z)
-                z_s, u_s, v_s = z[idx], u[idx], v[idx]
-                in_range = (z_grid >= z_s.min()) & (z_grid <= z_s.max())
-                u_grid[i, in_range] = np.interp(z_grid[in_range], z_s, u_s)
-                v_grid[i, in_range] = np.interp(z_grid[in_range], z_s, v_s)
-
-            # Symmetric RdBu_r colormap centred at zero — matched for both panels
-            all_fin = np.concatenate(
-                [u_grid[np.isfinite(u_grid)], v_grid[np.isfinite(v_grid)]]
-            )
-            if not len(all_fin):
-                return []
-            vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
-            bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
-            cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
-            norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
-
-            # Figure size: caller override (timeseries) or aspect-ratio formula (sections)
-            abs_dist = abs(float(x_ladcp[-1] - x_ladcp[0])) if n_cast > 1 else 10.0
-            if figsize is not None:
-                panel_w, panel_h = float(figsize[0]), float(figsize[1])
-            else:
-                (panel_w, panel_h), _ = section_figsize_and_slot(z_max, abs_dist)
-
-            # Dense bathy (smooth fill); fall back to cast-position bathy
-            dense_bathy_x, dense_bathy_d = dense_bathy_along_track(
-                filt_lats, filt_lons, x_ladcp, path=cfg.gebco_path
-            )
-            bathy_coarse = interpolate_bathy_at_casts(
-                filt_lats, filt_lons, path=cfg.gebco_path
-            )
-            bathy_max = (
-                float(np.nanmax(dense_bathy_d))
-                if dense_bathy_d is not None and len(dense_bathy_d)
-                else float(np.nanmax(bathy_coarse))
-                if bathy_coarse is not None and len(bathy_coarse)
-                else 0.0
-            )
-            y_bottom = max(z_max, bathy_max) * 1.05
-
-            panels: list[RenderedPanel] = []
-            for grid_data, panel_title, panel_short, panel_label in (
-                (u_grid, "U velocity (east +)", "U", "U  East +"),
-                (v_grid, "V velocity (north +)", "V", "V  North +"),
-            ):
-                fig, ax = plt.subplots(figsize=(panel_w, panel_h))
-
-                if style == "contourf":
-                    X, Y = np.meshgrid(x_ladcp, z_grid)
-                    Z = np.ma.masked_invalid(grid_data.T)
-                    mappable = ax.contourf(
-                        X, Y, Z, levels=bounds, cmap="RdBu_r", extend="both"
-                    )
-                else:
-                    mappable = ax.pcolormesh(
-                        x_ladcp,
-                        z_grid,
-                        grid_data.T,
-                        cmap=cmap,
-                        norm=norm,
-                        shading="nearest",
-                    )
-                # Same fixed-width, unit-on-top colorbar as the other field figures.
-                unit_colorbar(
-                    ax,
-                    mappable,
-                    unit="m s⁻¹",
-                    ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
-                    extend="both",
-                    reserve=True,
-                    title_loc="left",
-                )
-
-                # Bathymetry — dense interpolation preferred
-                if dense_bathy_x is not None and dense_bathy_d is not None:
-                    ax.fill_between(
-                        dense_bathy_x, dense_bathy_d, y_bottom, color="black", lw=0
-                    )
-                elif bathy_coarse is not None and len(bathy_coarse) == n_cast:
-                    ax.fill_between(
-                        x_ladcp, bathy_coarse, y_bottom, color="black", step="mid", lw=0
-                    )
-
-                ax.set_ylim(y_bottom, 0)
-                ax.set_ylabel("Depth (m)")
-                ax.set_xlabel(x_label)
-
-                # Cast markers — open triangles matching other section panels
-                _cast_markers(ax, x_ladcp, cast_nums_ladcp)
-
-                ax.text(
-                    0.01,
-                    0.97,
-                    panel_label,
-                    transform=ax.transAxes,
-                    va="top",
-                    ha="left",
-                    fontsize=report_tokens.ANNOT_FS,
-                    bbox={
-                        "facecolor": "white",
-                        "alpha": 0.6,
-                        "pad": 2,
-                        "edgecolor": "none",
-                    },
-                )
-                _hide_outer_spines(ax, clean=cfg.clean_spines)
-                fig.tight_layout()
-                _panel_b64 = _fig_to_base64(fig)
-                _figdebug_record(_panel_b64, "_make_ladcp_section_b64", fig)
-                # Drawn inline in this adapter, not by a draw_* function — so the honest
-                # source is the maker itself (self-updates when R6 moves it to plotters/).
-                record_source(_panel_b64, source_for(_make_ladcp_section_b64))
-                panels.append(
-                    RenderedPanel(b64=_panel_b64, title=panel_title, short=panel_short)
-                )
-                plt.close(fig)
-
-            return panels
-    except Exception:
-        if report_tokens.RAISE_ON_PLOT_ERROR:
-            raise
-        warnings.warn(
-            "_make_ladcp_section_b64 failed; panels omitted",
-            RuntimeWarning,
-            stacklevel=2,
+    panels: list[RenderedPanel] = []
+    for component, panel_title, panel_short in (
+        ("U", "U velocity (east +)", "U"),
+        ("V", "V velocity (north +)", "V"),
+    ):
+        b64 = render_b64(
+            draw_ladcp_section_fig,
+            cast_nums,
+            x_vals,
+            x_label,
+            ladcp_dir,
+            component=component,
+            lats=lats,
+            lons=lons,
+            figsize=figsize,
+            ladcp_pattern=ladcp_pattern,
+            style=style,
+            cfg=cfg,
+            optional=True,
         )
-        return []
+        if b64 is not None:
+            panels.append(RenderedPanel(b64=b64, title=panel_title, short=panel_short))
+    return panels
 
 
 def _make_ladcp_overview_b64(
@@ -553,7 +405,7 @@ def _make_ladcp_overview_b64(
                 unit_colorbar(
                     ax,
                     mappable,
-                    unit="m s⁻¹",
+                    unit=vunit("U"),
                     ticks=nice_colorbar_ticks(float(bounds[0]), float(bounds[-1])),
                     extend="both",
                     reserve=True,

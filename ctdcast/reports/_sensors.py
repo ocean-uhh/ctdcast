@@ -15,7 +15,6 @@ the netCDF inventory pages.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +25,7 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.config.sensors import role_label as _role_label
 from ctdcast.config.sensors import role_sort_key as _role_sort_key
 from ctdcast.reports._env import get_template
+from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
@@ -208,6 +208,7 @@ def generate_sensors_page(
     show_nav: bool = True,
     inventory_pills: list[dict[str, str]] | None = None,
     current_href: str = "sbe_sensors.html",
+    generated_at: str | None = None,
 ) -> Path:
     """Render the SBE sensors page for *profiles_path* to *out_path*.
 
@@ -215,7 +216,9 @@ def generate_sensors_page(
     writes a self-contained HTML file.  Returns the written *out_path*.
     ``inventory_pills`` (``{"label", "href"}`` entries) render a cross-navigation
     pill bar to the other compiled-file inventory pages; ``current_href`` marks
-    this page's own pill as the non-link active one.
+    this page's own pill as the non-link active one.  ``generated_at`` pins the page
+    build stamp (``None`` uses the current UTC time), threaded from
+    :func:`ctdcast.report` so one build stamps every page identically.
     """
     meta = read_sensor_tables(profiles_path)
     nav = (
@@ -238,7 +241,7 @@ def generate_sensors_page(
         nav=nav,
         masthead_role="component",
         version=_VERSION,
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=report_generated_at(generated_at),
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")

@@ -19,10 +19,11 @@ Usage
     python -m <pkg>.reports._vendored.check            # verify local copies
     python -m <pkg>.reports._vendored.check --update   # regenerate MANIFEST.txt
     python -m <pkg>.reports._vendored.check ../oceanarray ../glidertest
+    python -m <pkg>.reports._vendored.check --compare ../oceanarray/.../MANIFEST.txt
 
 Exit code is 1 on any drift (local hash mismatch, a recorded file missing, a
-sibling file absent or differing, a sibling path that does not exist, or a
-sibling with no vendored copy); 0 otherwise.
+sibling file absent, extra, or differing, a sibling path that does not exist, a
+sibling with no vendored copy, or two manifests that disagree); 0 otherwise.
 """
 
 from __future__ import annotations
@@ -86,21 +87,32 @@ def _is_cruft(rel: Path) -> bool:
     )
 
 
+def _list_vendored(root: Path) -> list[str]:
+    """Return every vendored file under *root*, path relative to *root*, sorted.
+
+    Skips that root's ``MANIFEST.txt`` and machine cruft (:func:`_is_cruft`); used
+    for the local set (``root == VENDORED_ROOT``) and for a sibling's set, so the
+    cross-repo compare can take the *union* of both directories.
+    """
+    out: list[str] = []
+    manifest = root / "MANIFEST.txt"
+    for p in sorted(root.rglob("*")):
+        if p.is_dir() or p == manifest:
+            continue
+        rel = p.relative_to(root)
+        if _is_cruft(rel):
+            continue
+        out.append(rel.as_posix())
+    return out
+
+
 def vendored_files() -> list[str]:
     """Return every vendored file's path relative to this directory, sorted.
 
     Skips ``MANIFEST.txt`` and machine cruft (:func:`_is_cruft`); the result is
     exactly what must be byte-identical across packages.
     """
-    out: list[str] = []
-    for p in sorted(VENDORED_ROOT.rglob("*")):
-        if p.is_dir() or p == MANIFEST:
-            continue
-        rel = p.relative_to(VENDORED_ROOT)
-        if _is_cruft(rel):
-            continue
-        out.append(rel.as_posix())
-    return out
+    return _list_vendored(VENDORED_ROOT)
 
 
 def sha256(path: Path) -> str:
@@ -117,30 +129,64 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def load_expected() -> dict[str, str]:
-    """Parse ``MANIFEST.txt`` into a ``{relative-path: sha256}`` mapping.
+def parse_manifest(path: Path, *, key_basename: bool = False) -> dict[str, str]:
+    """Parse a manifest file into a ``{key: sha256}`` mapping.
 
-    Exits 1 with a clear message on a missing manifest, a malformed line, or a
-    duplicate path — a silent last-wins would hide a contradictory entry.
+    The key is the recorded relative path, or its basename when *key_basename* is set
+    (used by ``--compare`` so two manifests diff even if a sibling nests the files
+    differently).  Exits 1 with a clear message on a missing manifest, a malformed
+    line, or a duplicate key — a silent last-wins would hide a contradictory entry.
     """
-    if not MANIFEST.exists():
-        raise SystemExit(f"{MANIFEST.name} not found — run: {_INVOKE} --update")
+    if not path.exists():
+        raise SystemExit(f"{path} not found — run: {_INVOKE} --update")
+    what = "basename" if key_basename else "path"
     expected: dict[str, str] = {}
-    for n, raw in enumerate(MANIFEST.read_text(encoding="utf-8").splitlines(), 1):
+    for n, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
         parts = line.split(maxsplit=1)
         if len(parts) != 2:
             raise SystemExit(
-                f"{MANIFEST.name}:{n}: malformed line "
+                f"{path.name}:{n}: malformed line "
                 f"(expected '<sha256>  <path>'): {raw!r}"
             )
         digest, rel = parts
-        if rel in expected:
-            raise SystemExit(f"{MANIFEST.name}:{n}: duplicate path {rel}")
-        expected[rel] = digest
+        key = Path(rel).name if key_basename else rel
+        if key in expected:
+            raise SystemExit(f"{path.name}:{n}: duplicate {what} {key}")
+        expected[key] = digest
     return expected
+
+
+def load_expected() -> dict[str, str]:
+    """Parse the local ``MANIFEST.txt`` into a ``{relative-path: sha256}`` mapping."""
+    return parse_manifest(MANIFEST)
+
+
+def compare_manifests(other: Path) -> int:
+    """Diff the local ``MANIFEST.txt`` against *other* by basename.  Return a mismatch count.
+
+    Verifies sync from the two manifests alone — no sibling checkout needed.  A basename
+    recorded in one manifest but not the other, or with a different hash, counts as drift.
+    """
+    print(f"\n== {MANIFEST} vs {other} ==")
+    here = parse_manifest(MANIFEST, key_basename=True)
+    there = parse_manifest(other, key_basename=True)
+    mismatches = 0
+    for key in sorted(set(here) | set(there)):
+        if key not in there:
+            print(f"  ONLY HERE  {key}")
+            mismatches += 1
+        elif key not in here:
+            print(f"  ONLY THERE {key}")
+            mismatches += 1
+        elif here[key] != there[key]:
+            print(f"  DIFFERS    {key}")
+            mismatches += 1
+        else:
+            print(f"  ok         {key}")
+    return mismatches
 
 
 def sibling_vendored(repo: Path) -> Path | None:
@@ -207,11 +253,12 @@ def verify_local() -> int:
 def compare_sibling(repo: Path) -> int:
     """Byte-compare every vendored file against *repo*'s copy.  Return a mismatch count.
 
-    ``MANIFEST.txt`` is compared too — it is byte-identical across packages, so a
-    sibling with a stale manifest is caught.  A sibling file that is absent or
-    differs counts as drift; a path that does not exist, or a repo with no
-    ``_vendored`` copy, is an error (not silently skipped — else a typo'd path
-    would read as "in sync").
+    Iterates the *union* of both directories (plus ``MANIFEST.txt``), so a file that
+    exists only in the sibling is caught as drift, not silently ignored.  ``MANIFEST.txt``
+    is compared too — it is byte-identical across packages, so a sibling with a stale
+    manifest is caught.  A sibling file that is absent, extra, or differs counts as drift;
+    a path that does not exist, or a repo with no ``_vendored`` copy, is an error (not
+    silently skipped — else a typo'd path would read as "in sync").
     """
     print(f"\n== {repo} ==")
     if not repo.exists():
@@ -221,13 +268,18 @@ def compare_sibling(repo: Path) -> int:
     if there_root is None:
         print("  no _vendored/ copy found — not synced")
         return 1
+    union = set(vendored_files()) | set(_list_vendored(there_root)) | {MANIFEST.name}
     mismatches = 0
-    for rel in [*vendored_files(), MANIFEST.name]:
+    for rel in sorted(union):
+        here = VENDORED_ROOT / rel
         there = there_root / rel
-        if not there.exists():
+        if not here.exists():
+            print(f"  EXTRA     {there} (in sibling, not vendored here)")
+            mismatches += 1
+        elif not there.exists():
             print(f"  MISSING   {there}")
             mismatches += 1
-        elif sha256(VENDORED_ROOT / rel) != sha256(there):
+        elif sha256(here) != sha256(there):
             print(f"  DIFFERS   {there}")
             mismatches += 1
         else:
@@ -236,11 +288,13 @@ def compare_sibling(repo: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
-    """Run the check: verify locally, regenerate the manifest, or compare siblings.
+    """Run the check: verify locally, regenerate the manifest, or compare.
 
-    Three mutually exclusive modes — no arguments verifies the local copy against
+    Mutually exclusive modes — no arguments verifies the local copy against
     ``MANIFEST.txt``; ``--update`` regenerates it; one or more repo paths compares
-    this copy against each sibling.  Returns the failure/mismatch count (0 = ok).
+    this copy against each sibling (union of both directories); ``--compare
+    OTHER/MANIFEST.txt`` diffs the two manifests by basename without a checkout.
+    Returns the failure/mismatch count (0 = ok).
     """
     parser = argparse.ArgumentParser(
         prog=_INVOKE,
@@ -252,18 +306,26 @@ def main(argv: list[str]) -> int:
         help="regenerate MANIFEST.txt from the current files",
     )
     parser.add_argument(
+        "--compare",
+        metavar="OTHER/MANIFEST.txt",
+        help="diff this MANIFEST.txt against another by basename (no checkout needed)",
+    )
+    parser.add_argument(
         "siblings",
         nargs="*",
         metavar="REPO",
         help="sibling repo checkout(s) to compare this copy against",
     )
     args = parser.parse_args(argv)
-    if args.update and args.siblings:
-        parser.error("--update cannot be combined with sibling paths")
+    modes = sum((args.update, args.compare is not None, bool(args.siblings)))
+    if modes > 1:
+        parser.error("--update, --compare and sibling paths are mutually exclusive")
     if args.update:
         write_manifest()
         print(f"wrote {MANIFEST.name} ({len(vendored_files())} files)")
         return 0
+    if args.compare is not None:
+        return 1 if compare_manifests(Path(args.compare)) else 0
     if not args.siblings:
         return 1 if verify_local() else 0
     total = sum(compare_sibling(Path(s)) for s in args.siblings)

@@ -38,6 +38,7 @@ from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._env import get_template
+from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import inventory_pills, inventory_sources, nav_for
 from ctdcast.reports._plots import (
     RenderedPanel,
@@ -95,6 +96,7 @@ def report(
     trim_soak: bool = False,
     dbar_step: int = 1,
     drop_stub: bool = False,
+    generated_at: str | None = None,
 ) -> int:
     """Generate the full ctdcast HTML report suite.
 
@@ -167,6 +169,10 @@ def report(
         to render is dropped and the survivors renumber over it, instead of
         keeping the heading with an "unavailable" placeholder.  Passed through
         to :func:`~ctdcast.reports.cast.generate_station_page`.
+    generated_at:
+        Page build stamp written to every page; ``None`` (the normal run) uses
+        the current UTC time.  Set to a fixed string for a reproducible build
+        (the demo pins it so regenerating does not churn the committed HTML).
 
     Returns
     -------
@@ -203,6 +209,10 @@ def report(
 
     vmin_override = vmin_override or {}
     vmax_override = vmax_override or {}
+
+    # Resolve the build stamp once so every page in this suite carries the same
+    # value (and a fixed stamp, for the reproducible demo, is honoured everywhere).
+    generated_at = report_generated_at(generated_at)
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -379,6 +389,7 @@ def report(
                 cruise_info=cruise_info,
                 drop_stub=drop_stub,
                 inventory=inventory_datasets,
+                generated_at=generated_at,
                 cfg=cfg,
             )
             if _skip_reason:
@@ -448,6 +459,7 @@ def report(
                 next_name=_sec_next,
                 cruise_info=cruise_info,
                 inventory=inventory_datasets,
+                generated_at=generated_at,
                 cfg=cfg,
             )
             if _sec_skip:
@@ -510,6 +522,7 @@ def report(
                 next_name=_ts_next,
                 cruise_info=cruise_info,
                 inventory=inventory_datasets,
+                generated_at=generated_at,
                 cfg=cfg,
             )
             if _ts_skip:
@@ -553,6 +566,7 @@ def report(
                     show_nav=True,
                     inventory_pills=inventory_datasets,
                     current_href=_href,
+                    generated_at=generated_at,
                 )
                 print(f"  [{_href}: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
@@ -577,6 +591,7 @@ def report(
                     show_nav=True,
                     inventory_pills=inventory_datasets,
                     current_href="sbe_sensors.html",
+                    generated_at=generated_at,
                 )
                 print(f"  [sbe_sensors.html: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
@@ -602,6 +617,7 @@ def report(
             timeseries_cfg=timeseries_cfg,
             inventory_datasets=inventory_datasets,
             station_pages_note=station_pages_note,
+            generated_at=generated_at,
             cfg=cfg,
         )
         print(f"  [index.html: {perf_counter() - _t0:.1f}s]")
@@ -618,6 +634,7 @@ def report(
             no_station_pages=not have_per_cast,
             nc_dir=nc_dir,
             inventory_datasets=inventory_datasets,
+            generated_at=generated_at,
             cfg=cfg,
         )
         print(f"  [casts.html: {perf_counter() - _t0:.1f}s]")
@@ -630,6 +647,7 @@ def report(
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
             inventory_datasets=inventory_datasets,
+            generated_at=generated_at,
             cfg=cfg,
         )
         print(f"  [sections.html: {perf_counter() - _t0:.1f}s]")
@@ -642,6 +660,7 @@ def report(
             ladcp_dir=ladcp_dir,
             cruise_info=cruise_info,
             inventory_datasets=inventory_datasets,
+            generated_at=generated_at,
             cfg=cfg,
         )
         print(f"  [timeseries.html: {perf_counter() - _t0:.1f}s]")
@@ -658,6 +677,7 @@ def report(
                 ship_track_nc=ship_track_nc,
                 cruise=cruise,
                 inventory=inventory_datasets,
+                generated_at=generated_at,
                 cfg=cfg,
             )
             print(f"  leaflet map: {'regenerated' if lf_out else 'skipped (no casts)'}")
@@ -692,6 +712,7 @@ def _write_index(
     timeseries_cfg: dict[str, Any] | None = None,
     inventory_datasets: list[dict[str, str]] | None = None,
     station_pages_note: str | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write index.html with header card, stats, overview map, and stacked property panels.
@@ -902,7 +923,7 @@ def _write_index(
         "inventory_datasets": inventory_datasets or [],
         "station_pages_note": station_pages_note,
         "version": _VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
     }
     html = get_template("index.html").render(
         **ctx,
@@ -1170,6 +1191,7 @@ def _write_stations_list(
     no_station_pages: bool = False,
     nc_dir: Path | None = None,
     inventory_datasets: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write casts.html with cruise map, depth pills, and section/timeseries links.
@@ -1275,7 +1297,7 @@ def _write_stations_list(
         "clock": _make_clock_section(nc_dir, cfg=cfg) if nc_dir is not None else None,
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
     }
     html = get_template("casts.html").render(
         **ctx,
@@ -1295,6 +1317,7 @@ def _write_sections_list(
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
     inventory_datasets: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write sections.html with overview map and cards for each section."""
@@ -1407,7 +1430,7 @@ def _write_sections_list(
         "sections_map_b64": sections_map_b64,
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
     }
     html = get_template("sections.html").render(
         **ctx,
@@ -1427,6 +1450,7 @@ def _write_timeseries_list(
     ladcp_dir: Path | None = None,
     cruise_info: dict[str, Any] | None = None,
     inventory_datasets: list[dict[str, str]] | None = None,
+    generated_at: str | None = None,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> None:
     """Write timeseries.html listing all timeseries groups with an overview map."""
@@ -1540,7 +1564,7 @@ def _write_timeseries_list(
         "timeseries_map_b64": timeseries_map_b64,
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": report_generated_at(generated_at),
     }
     html = get_template("timeseries.html").render(
         **ctx,

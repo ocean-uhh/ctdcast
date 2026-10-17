@@ -101,7 +101,7 @@ def unit_colorbar(
     unit : str
         Text placed above the bar (``cax.set_title``) rather than as a rotated
         side label — reads cleanly and, unlike a side label, does not widen the
-        figure.  A unit (``"m s⁻¹"``) or a full label (``"CT (°C)"``); empty
+        figure.  A unit (``"m/s"``) or a full label (``"CT (°C)"``); empty
         renders no title.
     ticks : numpy.ndarray, optional
         Explicit tick positions (e.g. from :func:`nice_colorbar_ticks`).

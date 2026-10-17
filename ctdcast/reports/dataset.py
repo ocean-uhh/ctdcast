@@ -22,7 +22,6 @@ vendored ``variables_tables`` macro, so it reads identically to the inventory pa
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +32,7 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports import design
 from ctdcast.reports._env import _env, get_template
+from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored import nc_tables
 
@@ -395,6 +395,7 @@ def generate_dataset_page(
     show_nav: bool = False,
     inventory_pills: list[dict[str, str]] | None = None,
     current_href: str = "",
+    generated_at: str | None = None,
 ) -> Path:
     """Render the netCDF inventory of *nc_path* to a self-contained HTML *out_path*.
 
@@ -420,6 +421,9 @@ def generate_dataset_page(
         (profiles/ladcp/sensors), rendered as a cross-navigation pill bar.
     current_href:
         The href of this page, rendered as the non-link active pill.
+    generated_at:
+        Page build stamp; ``None`` uses the current UTC time.  Threaded from
+        :func:`ctdcast.report` so one build stamps every page identically.
 
     Returns
     -------
@@ -447,7 +451,7 @@ def generate_dataset_page(
         nav=nav,
         masthead_role="component",
         version=_VERSION,
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=report_generated_at(generated_at),
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")
