@@ -31,14 +31,21 @@ from .design_tokens import (
 )
 
 
-def _emit_root(package_accent: str) -> str:
-    """Return the ``:root { … }`` custom-property block built from the tokens."""
+def _emit_root(
+    package_accent: str, role_overrides: dict[str, str] | None = None
+) -> str:
+    """Return the ``:root { … }`` custom-property block built from the tokens.
+
+    ``role_overrides`` rewrites individual ``--role-<key>`` values, so a package recolours a
+    page role (pills and masthead together) without editing the shared table.
+    """
+    overrides = role_overrides or {}
     lines: list[str] = [":root {"]
     for table in (COLORS, GRAYS, SEMANTIC):
         for key, value in table.items():
             lines.append(f"  --{key}: {value};")
     for key, value in ROLE_ACCENT.items():
-        lines.append(f"  --role-{key}: {value};")
+        lines.append(f"  --role-{key}: {overrides.get(key, value)};")
     lines.append(f"  --package-accent: {package_accent};")
     lines.append(f"  --font-sans: {FONT_SANS};")
     lines.append(f"  --font-mono: {FONT_MONO};")
@@ -89,7 +96,22 @@ def _emit_nav_pills() -> str:
     )
 
 
-def emit_css(package_accent: str) -> str:
+def _emit_masthead_roles() -> str:
+    """Return one ``.masthead.role-<role>`` background rule per :data:`ROLE_ACCENT` key.
+
+    A page's masthead takes the colour of the nav pill that points at it, so the class set is
+    generated from the same table as ``--role-*`` and ``.nav-<role>`` — a new role needs no edit
+    here, and a ``role_overrides`` recolour moves the pill and the masthead together.
+    """
+    return "\n".join(
+        f".masthead.role-{key} {{ background: var(--role-{key}); }}"
+        for key in ROLE_ACCENT
+    )
+
+
+def emit_css(
+    package_accent: str, *, role_overrides: dict[str, str] | None = None
+) -> str:
     """Return the full shared stylesheet as a string, generated from the tokens.
 
     Reproduces the established page look from the design tokens (the current
@@ -107,10 +129,21 @@ def emit_css(package_accent: str) -> str:
         value, e.g. a hex literal or ``var(--ocean)``.  Chosen by the
         package-specific caller; the function itself names no package and holds
         no per-package colour table.
+    role_overrides : dict of str to str, optional
+        ``{role_key: colour}`` rewriting individual ``--role-<key>`` values; each key must be a
+        :data:`~design_tokens.ROLE_ACCENT` key (an unknown key raises, never silently ignored),
+        so pills and mastheads of that role recolour together.  Data palettes stay fixed.
     """
-    root = _emit_root(package_accent)
+    if role_overrides:
+        unknown = set(role_overrides) - set(ROLE_ACCENT)
+        if unknown:
+            raise ValueError(
+                f"role_overrides keys are not ROLE_ACCENT roles: {sorted(unknown)}"
+            )
+    root = _emit_root(package_accent, role_overrides)
     slots = _emit_slots()
     nav_pills = _emit_nav_pills()
+    masthead_roles = _emit_masthead_roles()
     return f"""\
 {root}
 * {{ box-sizing: border-box; }}
@@ -257,6 +290,15 @@ tr.units th {{
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
+/* QC flag-count distribution bar and legend (qc_counts_table). Flag colours are inline on each
+   segment (from the vendored QC_FLAG_COLORS), so these rules carry only the layout. */
+.qc-bar {{ display: flex; width: 200px; height: 13px; border-radius: 3px; overflow: hidden; gap: 1px; background: #ecf0f1; }}
+.qc-bar div {{ height: 100%; }}
+.qc-legend {{ display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.75rem; margin: 0.2rem 0 0.6rem; }}
+.qc-legend span {{ display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }}
+/* The source: caption hugs the table it belongs to, not the next one: a table has 1.2rem
+   bottom margin, so pull the caption up under it and keep the gap below before the next table. */
+table + .fig-source {{ margin-top: -0.9rem; margin-bottom: 1.2rem; }}
 /* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
    keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
    gets none).  The heading is a pointer; the active one shows the direction. */
@@ -296,6 +338,7 @@ th.sorted-desc::after {{ content: " \\25BC"; font-size: 0.8em; }}
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }}
 {nav_pills}
+{masthead_roles}
 .nav-current {{ opacity: 0.5; pointer-events: none; }}
 .nav-missing {{ background: var(--gray-3); opacity: 0.5; pointer-events: none; }}
 .inventory-strip {{ margin: 0 0 1rem; }}

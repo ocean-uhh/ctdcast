@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from ctdcast.reports.cruise_map import generate_leaflet_map
     from ctdcast.reports.dataset import generate_dataset_page, read_dataset_meta
     from ctdcast.reports.index import report
-    from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
     from ctdcast.reports.section import generate_section_page
     from ctdcast.reports.timeseries import generate_timeseries_page
 
@@ -20,8 +19,6 @@ __all__ = [
     "generate_section_page",
     "generate_station_page",
     "generate_timeseries_page",
-    "qc_summary",
-    "qc_thresholds",
     "read_dataset_meta",
     "report",
 ]
@@ -38,8 +35,6 @@ _EXPORTS = {
     "generate_dataset_page": "dataset",
     "read_dataset_meta": "dataset",
     "generate_leaflet_map": "cruise_map",
-    "qc_summary": "qc_tables",
-    "qc_thresholds": "qc_tables",
 }
 
 

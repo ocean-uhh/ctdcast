@@ -132,7 +132,7 @@ jobs:
 
       - name: All tests with coverage gate
         run: |
-          pytest --cov-fail-under=79
+          pytest --cov-fail-under=84
 
       - name: Per-module coverage floors
         run: |

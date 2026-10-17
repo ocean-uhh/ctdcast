@@ -1,73 +1,82 @@
-"""Tests for the report QC readers and the cast-page QC table."""
+"""Tests for the vendored QC builders and the cast-page QC table."""
 
 import xarray as xr
 from conftest import CAST_011
 
 from ctdcast.processors.qc import apply_gross_range
 from ctdcast.processors.stage2 import apply_stage2
+from ctdcast.reports import design
+from ctdcast.reports._vendored.nc_tables import qc_flag_rows, qc_threshold_rows
 from ctdcast.reports.cast import _render_qc_table
-from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
+from ctdcast.reports.qc_tables import collapse_sibling_rows
+
+
+def _qc_ds():
+    """A cast dataset carrying QARTOD flags (stage 2 soak/deck + gross-range)."""
+    with xr.open_dataset(CAST_011, engine="netcdf4") as ds:
+        ds = ds.load()
+    return apply_gross_range(apply_stage2(ds))
 
 
 def _qc_file(tmp_path, name="cast_qc.nc"):
-    """Write a cast file carrying QARTOD flags (stage 2 soak/deck + gross-range)."""
-    with xr.open_dataset(CAST_011, engine="netcdf4") as ds:
-        ds = ds.load()
-    ds = apply_gross_range(apply_stage2(ds))
+    """Write the flagged cast dataset to a file (for the path-taking report functions)."""
     path = tmp_path / name
-    ds.to_netcdf(path)
+    _qc_ds().to_netcdf(path)
     return path
 
 
-class TestQCSummary:
-    """qc_summary reads the flag-count breakdown from a per-cast file."""
+class TestQCFlagRows:
+    """qc_flag_rows reads the flag-count breakdown from each _qc companion."""
 
-    def test_rows_for_a_flagged_file(self, tmp_path):
-        rows = qc_summary(_qc_file(tmp_path))
-        assert rows, "a flagged file must produce summary rows"
+    def test_rows_for_a_flagged_file(self):
+        rows, _ = qc_flag_rows(_qc_ds(), is_qc=design.is_qc)
+        assert rows, "a flagged file must produce rows"
         row = rows[0]
-        assert set(row) == {"var", "total", "flags"}
+        assert set(row) == {"var", "total", "undeclared", "flags"}
         assert row["total"] > 0
+        assert row["undeclared"] is False
         flag = row["flags"][0]
-        assert set(flag) == {"flag", "label", "color", "n", "pct"}
+        assert set(flag) == {"flag", "token", "label", "color", "n", "pct"}
         # counts sum to the total scan count
         assert sum(f["n"] for f in row["flags"]) == row["total"]
 
-    def test_labels_come_from_the_files_flag_meanings(self, tmp_path):
-        rows = qc_summary(_qc_file(tmp_path))
+    def test_labels_come_from_the_files_flag_meanings(self):
+        rows, _ = qc_flag_rows(_qc_ds(), is_qc=design.is_qc)
         labels = {f["label"] for row in rows for f in row["flags"]}
-        # glossed from QARTOD flag_meanings the file declares
-        assert "suspect" in labels  # suspect_or_of_high_interest
-        assert "fail" in labels
-        assert "pass" in labels
+        assert {"suspect", "fail", "pass"} <= labels
 
-    def test_empty_for_a_file_without_qc(self):
+    def test_every_declared_flag_is_a_column_in_declared_order(self):
+        """All declared flags get an entry, in declared order, even zero-count ones."""
+        rows, _ = qc_flag_rows(_qc_ds(), is_qc=design.is_qc)
+        assert [f["flag"] for f in rows[0]["flags"]] == [1, 2, 3, 4, 9]
+
+    def test_empty_for_a_dataset_without_qc(self):
         # CAST_011 is a stage-1 fixture: no _qc companions.
-        assert qc_summary(CAST_011) == []
+        with xr.open_dataset(CAST_011, engine="netcdf4") as ds:
+            rows, _ = qc_flag_rows(ds.load(), is_qc=design.is_qc)
+        assert rows == []
 
-    def test_empty_on_missing_file(self, tmp_path):
-        assert qc_summary(tmp_path / "nope.nc") == []
 
+class TestQCThresholdRows:
+    """qc_threshold_rows reads the gross-range / spike attrs on each _qc companion."""
 
-class TestQCThresholds:
-    """qc_thresholds reads the gross-range attrs stamped on each _qc companion."""
-
-    def test_reads_both_tiers(self, tmp_path):
-        rows = qc_thresholds(_qc_file(tmp_path))
-        assert rows, "gross-range attrs must be readable back"
+    def test_reads_both_tiers(self):
+        rows, _ = qc_threshold_rows(_qc_ds(), is_qc=design.is_qc)
         gr = [r for r in rows if r["test"] == "gross-range"]
         assert gr, "gross-range rows expected"
         assert all({"var", "test", "suspect", "fail"} <= set(r) for r in gr)
         # at least one variable carries a suspect range like [2.0, 40.0]
         assert any(r["suspect"].startswith("[") for r in gr)
 
-    def test_empty_for_a_file_without_qc(self):
-        assert qc_thresholds(CAST_011) == []
+    def test_empty_for_a_dataset_without_qc(self):
+        with xr.open_dataset(CAST_011, engine="netcdf4") as ds:
+            rows, _ = qc_threshold_rows(ds.load(), is_qc=design.is_qc)
+        assert rows == []
 
-    def test_dual_sensors_collapse_when_thresholds_match(self, tmp_path):
-        """conductivity_1 and _2 share thresholds → one 'conductivity_*' row."""
-        rows = qc_thresholds(_qc_file(tmp_path))
-        names = {r["var"] for r in rows}
+    def test_dual_sensors_collapse_when_thresholds_match(self):
+        """conductivity_1 and _2 share thresholds → one 'conductivity_*' row (owned collapse)."""
+        rows, _ = qc_threshold_rows(_qc_ds(), is_qc=design.is_qc)
+        names = {r["var"] for r in collapse_sibling_rows(rows)}
         assert "conductivity_*" in names
         assert "conductivity_1" not in names and "conductivity_2" not in names
 

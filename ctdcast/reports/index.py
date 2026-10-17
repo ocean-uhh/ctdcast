@@ -48,6 +48,7 @@ from ctdcast.reports._plots import (
     _make_section_ts_histogram_b64,
     _make_station_map_b64,  # noqa: F401 — kept for backward compat
 )
+from ctdcast.reports._vendored import nc_tables
 from ctdcast.reports._vendored.page_model import (
     Panel,
     PanelGroup,
@@ -57,8 +58,7 @@ from ctdcast.reports._vendored.page_model import (
     resolve,
 )
 from ctdcast.reports.cast import generate_station_page
-from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
-from ctdcast.reports.qc_tables import qc_summary
+from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS, is_qc
 from ctdcast.reports.section import generate_section_page
 from ctdcast.reports.timeseries import generate_timeseries_page
 
@@ -1631,7 +1631,11 @@ def _cast_qc_pct(nc_path: Path | None) -> float | None:
     """
     if nc_path is None:
         return None
-    rows = qc_summary(nc_path)
+    try:
+        with xr.open_dataset(nc_path, engine="netcdf4", decode_timedelta=False) as ds:
+            rows, _ = nc_tables.qc_flag_rows(ds, is_qc=is_qc)
+    except (OSError, ValueError, KeyError):
+        return None
     if not rows:
         return None
     total = sum(r["total"] for r in rows)

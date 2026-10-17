@@ -315,6 +315,58 @@ QC_TEXT_COLORS: dict[int, str] = {
     3: "#9A6B00",  # suspect orange, darkened for text
 }
 
+#: Grey fallback for a flag token no convention below names.
+QC_FLAG_DEFAULT_COLOR: str = "#999999"
+
+#: Flag-meaning token → its flag value, for each convention a family writer emits, so the
+#: token-keyed colour table is built from the value-keyed :data:`QC_COLORS` (one colour source,
+#: no drift).  QARTOD (ctdcast ``processors/qc.py``) and OceanSITES (oceanarray
+#: ``config/parameters.py``); a token in both maps to the same value, so to the same colour.
+_QC_FLAG_VALUE: dict[str, int] = {
+    # QARTOD
+    "pass": 1,
+    "not_evaluated": 2,
+    "suspect_or_of_high_interest": 3,
+    "fail": 4,
+    "missing_data": 9,
+    # OceanSITES
+    "unknown": 0,
+    "good_data": 1,
+    "probably_good_data": 2,
+    "potentially_correctable_bad_data": 3,
+    "bad_data": 4,
+    "nominal_value": 7,
+    "interpolated_value": 8,
+    "missing_value": 9,
+}
+
+#: QC flag colour keyed by meaning token (so a report colours a flag by what it *means*, not by
+#: a value that differs between conventions), derived from :data:`QC_COLORS`.  A table looks a
+#: token up here; an unlisted token gets :data:`QC_FLAG_DEFAULT_COLOR`.
+QC_FLAG_COLORS: dict[str, str] = {
+    token: QC_COLORS[value] for token, value in _QC_FLAG_VALUE.items()
+}
+
+#: Short display label keyed by meaning token — a shortening of the CF word, nothing invented;
+#: an unlisted token falls back to the token with underscores as spaces.
+QC_FLAG_LABELS: dict[str, str] = {
+    # QARTOD
+    "pass": "pass",
+    "not_evaluated": "not eval",
+    "suspect_or_of_high_interest": "suspect",
+    "fail": "fail",
+    "missing_data": "missing",
+    # OceanSITES
+    "unknown": "unknown",
+    "good_data": "good",
+    "probably_good_data": "probably good",
+    "potentially_correctable_bad_data": "correctable",
+    "bad_data": "bad",
+    "nominal_value": "nominal",
+    "interpolated_value": "interpolated",
+    "missing_value": "missing",
+}
+
 _CMOCEAN_REGISTERED = False
 
 

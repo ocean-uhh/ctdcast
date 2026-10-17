@@ -47,9 +47,6 @@ from ctdcast.reports._vendored.design_tokens import (
     MAX_SECTION_H as _MAX_SECTION_H,
 )
 from ctdcast.reports._vendored.design_tokens import (
-    ROLE_ACCENT,
-)
-from ctdcast.reports._vendored.design_tokens import (
     W_FULL as _W_FULL,
 )
 from ctdcast.reports._vendored.design_tokens import (
@@ -360,7 +357,7 @@ def generate_timeseries_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav=nav_for("timeseries", prefix="../", inventory=inventory or ()),
-        masthead_bg=ROLE_ACCENT["aggregate-b"],
+        masthead_role="aggregate-b",
     )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()

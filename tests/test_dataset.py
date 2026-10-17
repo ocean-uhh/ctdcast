@@ -48,7 +48,7 @@ def test_coverage_check_marks_vertical_not_computed_without_pressure_or_depth():
 
 
 def test_read_meta_structure():
-    """Inventory carries dims, summary, the five builder blocks, rename_map, coverage."""
+    """Inventory carries dims, summary, the five builder blocks, rename_map and coverage."""
     meta = read_dataset_meta(CAST_011)
     assert "error" not in meta
     assert meta["filename"] == "mixsed2_011.nc"
@@ -74,6 +74,20 @@ def test_rename_map_from_cnv_original_name():
     assert rmap.get("t090C") == "ctd_temperature_1"
     # identity entries (source == canonical) are excluded
     assert all(src != canon for src, canon in rmap.items())
+
+
+def test_original_name_on_renamed_rows():
+    """A renamed variable also carries its source name as original_name (the inline arrow)."""
+    meta = read_dataset_meta(CAST_011)
+    by_name = {r["name"]: r for r in _all_var_rows(meta)}
+    # seasenselib records the raw CNV column; the row surfaces it as original_name.
+    assert by_name["ctd_salinity_1"]["original_name"] == "sal00"
+    assert by_name["ctd_temperature_1"]["original_name"] == "t090C"
+    # a pass-through variable (source == name, or none recorded) shows no arrow
+    assert all(
+        r["original_name"] is None or r["original_name"] != r["name"]
+        for r in _all_var_rows(meta)
+    )
 
 
 def test_columned_attrs_excluded_from_expandable():
@@ -226,7 +240,8 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     """The cast page's (C) data-ranges appendix renders the vendored variables table.
 
     Sensors (A) and File provenance (B) precede it for a fixture that carries sensor
-    information and identity attributes, so data ranges is the third appendix (C).
+    information and identity attributes, so data ranges is the third appendix (C); the Time
+    coordinate table is rendered inside it, above the ranges table.
     """
     from ctdcast.reports.cast import generate_station_page
     from ctdcast.reports.index import _read_cast_meta

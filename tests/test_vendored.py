@@ -7,11 +7,14 @@ file missing. Cross-repo equality — are the siblings in sync? — is ``check``
 ``../sibling`` mode, run in review, not a test here.
 """
 
+import subprocess
+import sys
 from pathlib import Path
 
 from ctdcast.reports._vendored import check
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+_VENDORED = _REPO_ROOT / "ctdcast" / "reports" / "_vendored"
 
 
 def test_vendored_copy_matches_its_manifest(capsys):
@@ -19,6 +22,23 @@ def test_vendored_copy_matches_its_manifest(capsys):
     rc = check.main([])
     out = capsys.readouterr().out
     assert rc == 0, f"vendored files drift from MANIFEST.txt:\n{out}"
+
+
+def test_vendored_python_is_ruff_format_stable():
+    """``ruff format`` leaves the vendored Python unchanged.
+
+    A consumer that runs a whole-repo ``ruff format`` must not rewrite a byte-identical copy
+    (which would then fail its own ``check.py``); so the source-of-truth files are kept already
+    formatted here.  Guards the family's re-vendor contract.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "format", "--check", str(_VENDORED)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"vendored files are not ruff-format-stable:\n{result.stdout}{result.stderr}"
+    )
 
 
 def test_no_owned_template_shadows_a_vendored_one():

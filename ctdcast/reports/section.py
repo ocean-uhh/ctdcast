@@ -47,7 +47,6 @@ from ctdcast.reports._plots import (
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
 )
-from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.page_model import (
     Panel,
     PanelGroup,
@@ -408,7 +407,7 @@ def generate_section_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav=nav_for("sections", prefix="../", inventory=inventory or ()),
-        masthead_bg=ROLE_ACCENT["aggregate-a"],
+        masthead_role="aggregate-a",
     )
     out_file.write_text(html, encoding="utf-8")
     ds_all.close()
