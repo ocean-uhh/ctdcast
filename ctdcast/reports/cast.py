@@ -41,7 +41,7 @@ from ctdcast.identity import cast_id_from_name, format_cast_id
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
-from ctdcast.reports._env import get_template
+from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import _fmt_utc
 from ctdcast.reports._navs import nav_for
@@ -423,6 +423,41 @@ _FILE_PROVENANCE_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
+# The cast page's key/value tables (file provenance, time coordinate) share the vendored
+# `properties_table` macro so their shape matches the inventory tables; rendered to markup here
+# because the cast template embeds them with `|safe`.  Values are passed raw — the macro's
+# environment autoescapes.
+_PROPERTIES_FRAGMENT = _env.from_string(
+    "{% import '_nc_tables.html' as nc with context %}"
+    "{{ nc.properties_table(rows, header=header, source=source) }}"
+)
+
+
+def _properties_markup(
+    rows: list[tuple[str, str, str]],
+    *,
+    header: tuple[str, str] | None = None,
+    source: str | None = None,
+) -> str:
+    """Render a key/value properties table through the vendored ``properties_table`` macro.
+
+    Parameters
+    ----------
+    rows : list of tuple of (str, str, str)
+        ``(label, value, kind)`` triples; ``kind`` is ``"code"`` for a monospace value.
+    header : tuple of (str, str) or None, optional
+        The two column-header labels, or None for a bare label/value list.
+    source : str or None, optional
+        The builder-source line, shown only when the package toggles it on.
+
+    Returns
+    -------
+    str
+        The rendered table markup.
+    """
+    return _PROPERTIES_FRAGMENT.render(rows=rows, header=header, source=source)
+
+
 def _render_file_provenance(c: PageCtx) -> str | None:
     """Return the file-identity/provenance key-value table, or None when the file has none.
 
@@ -431,7 +466,7 @@ def _render_file_provenance(c: PageCtx) -> str | None:
     confirm from the report which stage and mode produced the page.
     """
     a = c.ds.attrs
-    rows: list[str] = []
+    rows: list[tuple[str, str, str]] = []
     for key, label in _FILE_PROVENANCE_FIELDS:
         val = a.get(key)
         if val in (None, ""):
@@ -440,12 +475,10 @@ def _render_file_provenance(c: PageCtx) -> str | None:
         if key == "data_mode":
             meaning = str(a.get("data_mode_meaning", "")).strip()
             text = f"{text} ({meaning})" if meaning else text
-        rows.append(
-            f"<tr><th>{escape(label)}</th><td class='mono'>{escape(text)}</td></tr>"
-        )
+        rows.append((label, text, "code"))
     if not rows:
         return None
-    return f'<table class="nc file-provenance"><tbody>{"".join(rows)}</tbody></table>'
+    return _properties_markup(rows)
 
 
 #: Fields that on their own justify the file-provenance section.  Dates are excluded: almost
@@ -899,21 +932,15 @@ def _render_provenance_table(
     if corr_html and instrument_note:
         corr_html += f"<p class='caption'>{escape(instrument_note)}</p>"
 
-    time_rows: list[tuple[str, str]] = []
+    time_rows: list[tuple[str, str, str]] = []
     if src:
-        time_rows.append(("Time coordinate source", str(src)))
+        time_rows.append(("Time coordinate source", str(src), "code"))
     if off is not None:
-        time_rows.append(("Clock offset (NMEA − system)", f"{off} s"))
+        time_rows.append(("Clock offset (NMEA − system)", f"{off} s", "code"))
     time_html = ""
     if time_rows:
-        trows = "".join(
-            f"<tr><td>{escape(k)}</td><td class='mono'>{escape(v)}</td></tr>"
-            for k, v in time_rows
-        )
-        time_html = (
-            f"<h3{tight}>Time coordinate</h3>"
-            "<table class='nc' style='margin-top:0'><thead><tr><th>Property</th>"
-            f"<th>Value</th></tr></thead><tbody>{trows}</tbody></table>"
+        time_html = f"<h3{tight}>Time coordinate</h3>" + _properties_markup(
+            time_rows, header=("Property", "Value")
         )
 
     advisory_html = ""

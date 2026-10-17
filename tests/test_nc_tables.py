@@ -353,3 +353,31 @@ def test_import_purity_package_neutral():
             if top not in allowed_top:
                 offenders.append(node.module)
     assert offenders == [], f"non-neutral imports: {offenders}"
+
+
+def test_variables_rows_include_and_original_name():
+    """include= keeps only accepted names; original_name_attrs surfaces the source name."""
+    ds = xr.Dataset(
+        {
+            "keep_me": ("x", np.arange(3.0), {"cnv_original_name": "raw0"}),
+            "drop_me": ("x", np.arange(3.0)),
+        }
+    )
+    groups, _ = nt.variables_rows(
+        ds,
+        is_qc=lambda _n, _d: False,
+        include=lambda n: n == "keep_me",
+        original_name_attrs=("cnv_original_name",),
+    )
+    rows = [r for _t, g in groups for r in g]
+    assert [r["name"] for r in rows] == ["keep_me"]
+    assert rows[0]["original_name"] == "raw0"
+
+
+def test_original_name_identity_is_none():
+    """A source name equal to the current name shows no arrow (original_name is None)."""
+    ds = xr.Dataset({"v": ("x", np.arange(2.0), {"cnv_original_name": "v"})})
+    groups, _ = nt.variables_rows(
+        ds, is_qc=lambda _n, _d: False, original_name_attrs=("cnv_original_name",)
+    )
+    assert groups[0][1][0]["original_name"] is None

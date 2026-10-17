@@ -257,6 +257,10 @@ tr.units th {{
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
+/* Key/value properties tables (provenance, timing, metadata): the row-header label column is
+   not accent-filled — like the attribute disclosure sub-tables — so a long key/value list reads
+   as a list, not a block of header cells.  A `header` row (thead th) keeps the accent fill. */
+.properties tbody th {{ background: transparent; color: var(--text); font-weight: 600; text-align: left; }}
 /* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
    keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
    gets none).  The heading is a pointer; the active one shows the direction. */

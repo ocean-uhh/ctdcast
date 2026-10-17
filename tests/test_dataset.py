@@ -48,7 +48,7 @@ def test_coverage_check_marks_vertical_not_computed_without_pressure_or_depth():
 
 
 def test_read_meta_structure():
-    """Inventory carries dims, summary, the five builder blocks, rename_map, coverage."""
+    """Inventory carries dims, summary, the five builder blocks and coverage."""
     meta = read_dataset_meta(CAST_011)
     assert "error" not in meta
     assert meta["filename"] == "mixsed2_011.nc"
@@ -65,15 +65,18 @@ def test_read_meta_structure():
         assert key in rows[0]
 
 
-def test_rename_map_from_cnv_original_name():
-    """The renaming table is built from each variable's cnv_original_name."""
+def test_original_name_on_renamed_rows():
+    """A renamed variable carries its source name as original_name (the original → name cell)."""
     meta = read_dataset_meta(CAST_011)
-    rmap = meta["rename_map"]
-    # seasenselib records the raw column; the page maps source -> canonical.
-    assert rmap.get("sal00") == "ctd_salinity_1"
-    assert rmap.get("t090C") == "ctd_temperature_1"
-    # identity entries (source == canonical) are excluded
-    assert all(src != canon for src, canon in rmap.items())
+    by_name = {r["name"]: r for r in _all_var_rows(meta)}
+    # seasenselib records the raw CNV column; the row surfaces it as original_name.
+    assert by_name["ctd_salinity_1"]["original_name"] == "sal00"
+    assert by_name["ctd_temperature_1"]["original_name"] == "t090C"
+    # a pass-through variable (source == name, or none recorded) shows no arrow
+    assert all(
+        r["original_name"] is None or r["original_name"] != r["name"]
+        for r in _all_var_rows(meta)
+    )
 
 
 def test_columned_attrs_excluded_from_expandable():

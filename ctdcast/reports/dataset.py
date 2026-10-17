@@ -30,7 +30,6 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports import design
 from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._navs import nav_for
@@ -283,7 +282,10 @@ def data_ranges_markup(nc_path: Path) -> str | None:
         return None
     with ds:
         groups, source = nc_tables.variables_rows(
-            ds, is_qc=design.is_qc, is_sensor=_is_sensor_var
+            ds,
+            is_qc=design.is_qc,
+            is_sensor=_is_sensor_var,
+            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
         )
     if not groups:
         return None
@@ -296,15 +298,16 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     Opens the file once and runs the vendored
     :mod:`~ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped
     by dimension, scalars, the sensor catalog, grouped globals), keeping the owned
-    ctdcast tables (QC exclusions, variable renaming, sensor linkage/channel) and the
-    coverage check alongside them.
+    ctdcast tables (QC exclusions, sensor linkage/channel) and the coverage check
+    alongside them.  A renamed variable's source name rides each row as
+    ``original_name`` (the ``original → name`` cell), so there is no separate rename table.
 
     Returns a dict with ``filename``, ``filesize``, ``dims``, ``summary`` (the headline
     counts), ``coords`` / ``variables`` / ``scalars`` / ``sensor_catalog`` / ``globals``
     (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel``
     (``{"groups", "source"}`` from :func:`~ctdcast.reports._vendored.nc_tables.variables_rows`
-    with an including predicate), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``
-    and ``rename_map``.  On any read error returns ``{"filename", "error"}`` so the page
+    with an including predicate), ``coverage`` (the recomputed-bounds check) and
+    ``qc_exclusion``.  On any read error returns ``{"filename", "error"}`` so the page
     can report it rather than failing to generate.
 
     Parameters
@@ -322,11 +325,18 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 — surface any backend error on the page
         return {"filename": nc_path.name, "error": str(exc)}
     with ds:
-        coord_rows, coord_src = nc_tables.coords_rows(ds)
-        var_groups, var_src = nc_tables.variables_rows(
-            ds, is_qc=design.is_qc, is_sensor=_is_sensor_var
+        coord_rows, coord_src = nc_tables.coords_rows(
+            ds, original_name_attrs=design.ORIGINAL_NAME_ATTRS
         )
-        scalar_rows, scalar_src = nc_tables.scalars_rows(ds, exclude=_is_sensor_var)
+        var_groups, var_src = nc_tables.variables_rows(
+            ds,
+            is_qc=design.is_qc,
+            is_sensor=_is_sensor_var,
+            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
+        )
+        scalar_rows, scalar_src = nc_tables.scalars_rows(
+            ds, exclude=_is_sensor_var, original_name_attrs=design.ORIGINAL_NAME_ATTRS
+        )
         catalog_rows, catalog_src = nc_tables.sensor_rows(ds)
         global_groups, global_src = nc_tables.globals_rows(
             ds, extras=design.ATTR_GROUP_EXTRAS
@@ -340,15 +350,17 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
         # through nc.variables_tables with the Length/Valid/Valid %/type columns the
         # science table has — owned code chooses the rows, the vendored macro owns the cells.
         linkage_groups, linkage_src = nc_tables.variables_rows(
-            ds, is_qc=design.is_qc, is_sensor=lambda n: not _is_linkage(n)
+            ds,
+            is_qc=design.is_qc,
+            include=_is_linkage,
+            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
         )
         channel_groups, channel_src = nc_tables.variables_rows(
-            ds, is_qc=design.is_qc, is_sensor=lambda n: not _is_channel(n)
+            ds,
+            is_qc=design.is_qc,
+            include=_is_channel,
+            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
         )
-        # Source → canonical rename table, reconstructed from each variable's recorded
-        # source name; sorted by canonical name.  source_to_canonical already drops
-        # identity entries (source == canonical).
-        rename_map = dict(sorted(source_to_canonical(ds).items(), key=lambda kv: kv[1]))
         return {
             "filename": nc_path.name,
             "filesize": nc_path.stat().st_size if nc_path.exists() else 0,
@@ -364,7 +376,6 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "coverage": _coverage_computed(ds),
             "coverage_note": _coverage_note(),
             "qc_exclusion": _qc_exclusion_rows(ds),
-            "rename_map": rename_map,
         }
 
 

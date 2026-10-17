@@ -45,8 +45,8 @@ def test_source_map_covers_present_variables(cast_011):
         assert cast_011[name].attrs.get("source_variable") == _SOURCE_MAP[name]
 
 
-def test_inventory_renaming_table_from_source_variable(tmp_path):
-    """The netCDF-inventory renaming table is built from source_variable."""
+def test_inventory_original_name_from_source_variable(tmp_path):
+    """Inventory rows carry each variable's source_variable as original_name (original → name)."""
     from ctdcast.processors.ladcp import convert_ladcp_cast
     from ctdcast.reports.dataset import read_dataset_meta
 
@@ -54,9 +54,12 @@ def test_inventory_renaming_table_from_source_variable(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         convert_ladcp_cast(MAT_011, out, cast_num=11, force=True)
-    rename_map = read_dataset_meta(out)["rename_map"]
-    assert rename_map.get("dr.u") == "u"
-    assert rename_map.get("dr.lat") == "latitude"
+    meta = read_dataset_meta(out)
+    rows = {r["name"]: r for r in meta["coords"]["rows"]}
+    for _title, grp in meta["variables"]["groups"]:
+        rows.update({r["name"]: r for r in grp})
+    assert rows["u"]["original_name"] == "dr.u"  # data variable
+    assert rows["latitude"]["original_name"] == "dr.lat"  # coordinate
 
 
 if __name__ == "__main__":

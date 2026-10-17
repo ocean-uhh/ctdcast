@@ -69,6 +69,17 @@
 {%- if dtype == "float64" %}<strong><code>{{ dtype }}</code></strong>{% else %}<code>{{ dtype }}</code>{% endif %}
 {%- endmacro %}
 
+{# Variable-identity cell: the canonical name, prefixed `<orig> → ` when the variable was renamed
+   from a source name (row.original_name set and ≠ name). data-sort is the canonical name, so the
+   column sorts by what the file calls the variable, not the original. has_qc appends the inline
+   (_QC) marker (the variables table sets it; coords/scalars rows do not). Public so an owned
+   domain table composes the same cell. #}
+{% macro name_cell(row) %}
+<td data-sort="{{ row.name }}">
+{%- if row.original_name %}<code>{{ row.original_name }}</code> → {% endif %}
+{{- row.name }}{% if row.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
+{%- endmacro %}
+
 {# standard_name (bold mono) over long_name (regular); either may be absent. Public so an
    owned domain table can compose this cell rather than hand-write the markup. #}
 {% macro names_cell(row) %}
@@ -123,7 +134,7 @@
 {{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
-<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
+<tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
 {% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
@@ -152,7 +163,7 @@
 {{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
-<tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
+<tr>{{ name_cell(r) }}
 <td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
 <td data-sort="{{ r.valid_pct }}"{% if r.n_valid < r.n %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
@@ -176,7 +187,7 @@
 {{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
-<tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
+<tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
 <td>{{ names_cell(r) }}</td><td>{{ r.value }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
@@ -207,6 +218,27 @@
 </tbody></table>
 {%- endfor %}{{ _source(source) }}
 {%- else %}{{ _empty("no global attributes") }}{% endif %}
+{%- endmacro %}
+
+{# A key/value properties table — two columns, label then value. Order is editorial, so the
+   whole table opts out of click-to-sort (data-nosort). Each row is a (label, value, kind)
+   triple; `kind` picks the value cell: "code" renders monospace (identifiers, short stamps),
+   anything else plain. `header`, when given, is the (left, right) column-header pair rendered as
+   a thead; omit it for a bare label/value list (e.g. file provenance under its own heading). The
+   row-header label column is not accent-filled (see `.properties tbody th` in css). Vendored so
+   the family's provenance / timing / metadata tables share one shape. #}
+{% macro properties_table(rows, header=None, widths=None, source=None, caption=None) %}
+{%- if rows %}
+{{ _caption(caption) }}
+<table class="nc properties" data-nosort{% if widths %} style="table-layout: fixed"{% endif %}>
+{{ _colgroup(widths) }}
+{%- if header %}<thead><tr><th>{{ header[0] }}</th><th>{{ header[1] }}</th></tr></thead>{% endif %}
+<tbody>
+{%- for label, value, kind in rows %}
+<tr><th scope="row">{{ label }}</th>{% if kind == "code" %}<td class="mono">{{ value }}</td>{% else %}<td>{{ value }}</td>{% endif %}</tr>
+{%- endfor %}
+</tbody></table>{{ _source(source) }}
+{%- endif %}
 {%- endmacro %}
 
 {% macro sensor_table(rows, widths=None, source=None) %}

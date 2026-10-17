@@ -431,7 +431,7 @@ VARIABLES: dict[str, dict] = {
     # LADCP velocity components
     "U": {
         "label": "U",
-        "label_units": "m s⁻¹",
+        "label_units": "m/s",
         "long_name": "Eastward velocity",
         "units": "m s-1",
         "standard_name": "eastward_sea_water_velocity",
@@ -441,7 +441,7 @@ VARIABLES: dict[str, dict] = {
     },
     "V": {
         "label": "V",
-        "label_units": "m s⁻¹",
+        "label_units": "m/s",
         "long_name": "Northward velocity",
         "units": "m s-1",
         "standard_name": "northward_sea_water_velocity",
@@ -452,7 +452,7 @@ VARIABLES: dict[str, dict] = {
     # Stability diagnostics
     "N2": {
         "label": "N²",
-        "label_units": "s⁻²",  # rad² is conventional to omit on oceanographic plots
+        "label_units": "rad²/s²",
         "long_name": "Squared buoyancy frequency",
         "units": "rad2 s-2",
         "standard_name": "square_of_brunt_vaisala_frequency_in_sea_water",

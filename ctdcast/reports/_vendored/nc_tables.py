@@ -234,7 +234,23 @@ def _attr_disclosure(v: xr.DataArray) -> dict[str, str]:
     }
 
 
-def _row_base(ds: xr.Dataset, name: str) -> dict[str, Any]:
+def _original_name(v: xr.DataArray, name: str, attrs: tuple[str, ...]) -> str | None:
+    """Return the variable's source name for the ``original → name`` cell, or ``None``.
+
+    The first attribute present from *attrs* (e.g. ``cnv_original_name``, ``source_variable``)
+    gives the name the variable had before canonicalisation; ``None`` when none is present or
+    the recorded source equals the current name (a pass-through, so no arrow is shown).
+    """
+    for attr in attrs:
+        if attr in v.attrs and str(v.attrs[attr]):
+            src = str(v.attrs[attr])
+            return src if src != name else None
+    return None
+
+
+def _row_base(
+    ds: xr.Dataset, name: str, original_name_attrs: tuple[str, ...] = ()
+) -> dict[str, Any]:
     """Return the fields shared by coordinate, variable and scalar rows."""
     v = ds[name]
     return {
@@ -246,14 +262,17 @@ def _row_base(ds: xr.Dataset, name: str) -> dict[str, Any]:
         # Float is the kind CF expects a unit for; an integer flag/index/channel or a string
         # legitimately has none, so only a float missing its units is a defect (units_cell).
         "is_numeric": v.dtype.kind == "f",
+        "original_name": _original_name(v, name, original_name_attrs),
         "attrs": _attr_disclosure(v),
     }
 
 
-def _value_row(ds: xr.Dataset, name: str) -> dict[str, Any]:
+def _value_row(
+    ds: xr.Dataset, name: str, original_name_attrs: tuple[str, ...] = ()
+) -> dict[str, Any]:
     """Return a row with the full min/max/valid block for a dimensioned variable/coord."""
     v = ds[name]
-    row = _row_base(ds, name)
+    row = _row_base(ds, name, original_name_attrs)
     n = int(np.prod(v.shape)) if v.shape else 1
     v_min_raw: float | None = None
     v_min = v_max = "—"
@@ -286,13 +305,18 @@ def _qc_parent(name: str) -> str:
     return re.sub(r"_qc$", "", name, flags=re.IGNORECASE)
 
 
-def coords_rows(ds: xr.Dataset) -> tuple[list[dict[str, Any]], str]:
+def coords_rows(
+    ds: xr.Dataset, *, original_name_attrs: tuple[str, ...] = ()
+) -> tuple[list[dict[str, Any]], str]:
     """Return ``(rows, source)`` for the coordinate variables.
 
     Parameters
     ----------
     ds : xarray.Dataset
         An open dataset.
+    original_name_attrs : tuple of str, optional
+        Attribute names read, in order, for each row's ``original_name`` (the source name
+        shown as ``original → name``); the first present and non-empty wins.
 
     Returns
     -------
@@ -304,7 +328,7 @@ def coords_rows(ds: xr.Dataset) -> tuple[list[dict[str, Any]], str]:
     """
     rows = []
     for name in sorted(ds.coords):
-        row = _value_row(ds, name)
+        row = _value_row(ds, name, original_name_attrs)
         row["length"] = int(ds[name].size)
         rows.append(row)
     return rows, source_for(coords_rows)
@@ -315,7 +339,9 @@ def variables_rows(
     *,
     is_qc: Callable[[str, xr.Dataset], bool],
     is_sensor: Callable[[str], bool] | None = None,
+    include: Callable[[str], bool] | None = None,
     group_by_dims: bool = True,
+    original_name_attrs: tuple[str, ...] = (),
 ) -> tuple[list[tuple[str, list[dict[str, Any]]]], str]:
     """Return ``([(group_title, rows)], source)`` for the dimensioned data variables.
 
@@ -331,9 +357,16 @@ def variables_rows(
         ``is_qc(name, ds) -> bool`` — the package's QC-companion rule.
     is_sensor : callable, optional
         ``is_sensor(name) -> bool`` — excludes sensor-catalog variables.
+    include : callable, optional
+        ``include(name) -> bool`` — when given, keep **only** names it accepts (a first-class
+        positive predicate, so a caller selecting a subset passes this rather than an inverted
+        ``is_sensor``).  Composes with ``is_qc``/``is_sensor``, which still exclude.
     group_by_dims : bool, default True
         Group variables by their dimension tuple, one group per tuple; the per-group sample
         count goes in the title.  When ``False`` a single ``""``-titled group holds all rows.
+    original_name_attrs : tuple of str, optional
+        Attribute names read, in order, for each row's ``original_name``; the first present
+        and non-empty wins.
 
     Returns
     -------
@@ -344,13 +377,14 @@ def variables_rows(
         The caption string for this builder.
     """
     sensor = is_sensor or (lambda _n: False)
+    keep = include or (lambda _n: True)
     qc_names = {n for n in ds.data_vars if is_qc(n, ds)}
     parents_with_qc = {_qc_parent(n) for n in qc_names}
 
     candidates = [
         n
         for n in sorted(ds.data_vars)
-        if ds[n].ndim >= 1 and n not in qc_names and not sensor(n)
+        if ds[n].ndim >= 1 and n not in qc_names and not sensor(n) and keep(n)
     ]
 
     groups: dict[tuple[str, ...], list[dict[str, Any]]] = {}
@@ -360,7 +394,7 @@ def variables_rows(
         if dims not in groups:
             groups[dims] = []
             order.append(dims)
-        row = _value_row(ds, name)
+        row = _value_row(ds, name, original_name_attrs)
         row["has_qc"] = name in parents_with_qc
         groups[dims].append(row)
 
@@ -382,7 +416,10 @@ def _dims_heading(ds: xr.Dataset, dims: tuple[str, ...]) -> str:
 
 
 def scalars_rows(
-    ds: xr.Dataset, *, exclude: Callable[[str], bool] | None = None
+    ds: xr.Dataset,
+    *,
+    exclude: Callable[[str], bool] | None = None,
+    original_name_attrs: tuple[str, ...] = (),
 ) -> tuple[list[dict[str, Any]], str]:
     """Return ``(rows, source)`` for the 0-d (scalar) variables.
 
@@ -393,6 +430,9 @@ def scalars_rows(
     exclude : callable, optional
         ``exclude(name) -> bool`` — drop a scalar from the table (ctdcast excludes
         ``SENSOR_*``, which has its own catalog).
+    original_name_attrs : tuple of str, optional
+        Attribute names read, in order, for each row's ``original_name``; the first present
+        and non-empty wins.
 
     Returns
     -------
@@ -407,10 +447,100 @@ def scalars_rows(
     for name in sorted(ds.data_vars):
         if ds[name].ndim != 0 or drop(name):
             continue
-        row = _row_base(ds, name)
+        row = _row_base(ds, name, original_name_attrs)
         row["value"] = _scalar_value(ds[name])
         rows.append(row)
     return rows, source_for(scalars_rows)
+
+
+#: QC threshold tests read off each ``{var}_qc`` companion, in display order.  Each entry is
+#: ``(label, suspect_attrs, fail_attrs, kind)``: ``kind="range"`` reads a ``(min, max)`` attr
+#: pair and renders ``[lo, hi]``; ``kind="threshold"`` reads one attr and renders ``|Δ| > x``.
+#: A package extends this tuple in its ``design.py`` for a test it writes; a ``qc_*`` attribute
+#: matching no entry is still shown (an "other" row), never dropped.
+QC_TESTS: tuple[tuple[str, tuple[str, ...], tuple[str, ...], str], ...] = (
+    (
+        "gross-range",
+        ("qc_gross_range_suspect_min", "qc_gross_range_suspect_max"),
+        ("qc_gross_range_fail_min", "qc_gross_range_fail_max"),
+        "range",
+    ),
+    (
+        "spike",
+        ("qc_spike_suspect_threshold",),
+        ("qc_spike_fail_threshold",),
+        "threshold",
+    ),
+)
+
+
+def _threshold_tier(attrs: dict[str, Any], keys: tuple[str, ...], kind: str) -> str | None:
+    """Render one tier (suspect or fail) of a QC test, or ``None`` when it has no value."""
+    values = [attrs.get(k) for k in keys]
+    if all(v is None for v in values):
+        return None
+    if kind == "range":
+        lo, hi = values
+        return f"[{lo}, {hi}]" if lo is not None and hi is not None else None
+    return f"|Δ| > {values[0]}" if values[0] is not None else None
+
+
+def qc_threshold_rows(
+    ds: xr.Dataset,
+    *,
+    is_qc: Callable[[str, xr.Dataset], bool],
+    tests: tuple[tuple[str, tuple[str, ...], tuple[str, ...], str], ...] = QC_TESTS,
+) -> tuple[list[dict[str, Any]], str]:
+    """Return ``(rows, source)`` for the QC thresholds recorded on each ``{var}_qc``.
+
+    One row per (variable, test) from the companion's ``qc_*`` attributes — the values the
+    pipeline actually applied (defaults, config, or per-cast overrides), read off the file
+    rather than parsed from ``history``.  A ``qc_*`` attribute matched by no entry in *tests*
+    is listed as an "other" row with its name and value, never dropped.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        An open dataset carrying the ``{var}_qc`` companions.
+    is_qc : callable
+        ``is_qc(name, ds) -> bool`` — the package's QC-companion rule.
+    tests : tuple, optional
+        The :data:`QC_TESTS` entries; a package passes a widened tuple for a test it writes.
+
+    Returns
+    -------
+    rows : list of dict
+        ``{var, test, suspect, fail}`` rows (a tier with no value renders as an en-dash).
+    source : str
+        The caption string for this builder.
+    """
+    consumed = {k for _label, suspect, fail, _kind in tests for k in (*suspect, *fail)}
+    rows: list[dict[str, Any]] = []
+    for name in sorted(ds.data_vars):
+        if not is_qc(name, ds):
+            continue
+        base = _qc_parent(name)
+        if base not in ds.data_vars:
+            continue
+        a = dict(ds[name].attrs)
+        for label, suspect, fail, kind in tests:
+            s = _threshold_tier(a, suspect, kind)
+            f = _threshold_tier(a, fail, kind)
+            if s or f:
+                rows.append(
+                    {"var": base, "test": label, "suspect": s or "–", "fail": f or "–"}
+                )
+        for key in sorted(a):
+            if key.startswith("qc_") and key not in consumed:
+                rows.append(
+                    {
+                        "var": base,
+                        "test": key[3:].replace("_", " "),
+                        "suspect": str(a[key]),
+                        "fail": "–",
+                    }
+                )
+    return rows, source_for(qc_threshold_rows)
 
 
 def _merge_groups(

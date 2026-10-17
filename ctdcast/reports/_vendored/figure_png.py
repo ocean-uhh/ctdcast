@@ -152,6 +152,10 @@ def render_b64(
         so a caller can capture the cause (e.g. to turn a bare stub into one that
         says why).  Not called when ``RAISE_ON_PLOT_ERROR`` re-raises.  ``None``
         (default) keeps every existing call site valid.
+    source : str or None
+        The ``source:`` caption to record for the rendered PNG (``"<module>.py:<name>"``
+        of the draw function).  ``None`` (default) derives it from *draw* via
+        :func:`source_for`; pass an explicit string when the drawer is wrapped.
 
     Returns
     -------
