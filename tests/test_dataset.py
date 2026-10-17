@@ -10,7 +10,7 @@ from conftest import CAST_011, FIXTURES_NC
 from ctdcast.readers.metadata import _SOURCE_NAME_ATTRS
 from ctdcast.reports.dataset import (
     _coverage_computed,
-    data_range_rows,
+    data_ranges_markup,
     generate_dataset_page,
     read_dataset_meta,
 )
@@ -174,9 +174,12 @@ def test_generated_page_has_family_layout(tmp_path):
     assert 'class="sortable' in html  # the click-to-sort tables
     # ctdcast turns the source caption on, so builder provenance shows under a table
     assert "source:" in html
-    # the coverage table states the amber-flag tolerances
-    assert "exceeds the tolerance" in html
-    assert "depth 1 dbar" in html
+    # a variables table that actually ambers states its rule above the table (the "no caption,
+    # no highlight" family rule); the demo has variables absent from some casts (Valid % < 100)
+    assert "Amber Valid %" in html
+    # the demo's coverage is correctly written, so no coverage cell ambers and its criterion
+    # caption is NOT shown (no highlight -> no caption)
+    assert "|Diff| exceeds the tolerance" not in html
     # the old flat layout is gone
     assert 'class="dims-line"' not in html
 
@@ -220,7 +223,7 @@ def test_inspect_cli_missing_file(tmp_path, capsys):
 
 
 def test_cast_page_has_data_ranges_appendix(tmp_path):
-    """The cast page carries the netCDF data-ranges appendix with label units.
+    """The cast page's (C) data-ranges appendix renders the vendored variables table.
 
     Sensors (A) and File provenance (B) precede it for a fixture that carries sensor
     information and identity attributes, so data ranges is the third appendix (C).
@@ -234,8 +237,9 @@ def test_cast_page_has_data_ranges_appendix(tmp_path):
     html = out.read_text(encoding="utf-8")
     assert 'id="data_ranges"' in html  # appendix section anchor
     assert "(C) netCDF data ranges" in html  # lettered appendix in heading + jump-nav
-    assert "Label units" in html  # the label-units column
-    assert "mS/cm" in html  # a populated label_units value (conductivity)
+    # the appendix is the vendored variables table, not a second hand-rolled inventory table
+    assert "Variables on" in html
+    assert "ctd_temperature_1" in html
 
 
 def test_cast_page_shows_file_provenance_and_processing_level(tmp_path):
@@ -267,8 +271,9 @@ def test_cast_page_shows_file_provenance_and_processing_level(tmp_path):
     assert 'id="file_provenance"' in html  # the new appendix section
     assert "File provenance" in html
     assert "provisional" in html  # data_mode meaning surfaced
-    assert "Processing level" in html  # the new data-ranges column header
-    assert "converted to geophysical values" in html  # the value, in the ranges table
+    # processing_level now lives in the variable's attribute disclosure, not its own column
+    assert "processing_level" in html
+    assert "converted to geophysical values" in html  # the value, in the attrs disclosure
 
 
 def test_cast_page_shows_source_provenance(tmp_path):
@@ -289,16 +294,18 @@ def test_cast_page_shows_source_provenance(tmp_path):
     assert "<dt>Processed</dt>" in html  # separate date field, not crammed in Source
 
 
-def test_data_range_rows_label_units_from_registry():
-    """The cast-page data-ranges rows carry label_units from the VARIABLES registry."""
-    by_name = {r["name"]: r for r in data_range_rows(CAST_011)}
-    assert by_name["ctd_temperature_1"]["label_units"] == "°C"
-    assert by_name["ctd_salinity_1"]["label_units"] == "PSU"
+def test_data_ranges_markup_renders_the_variables_table():
+    """The cast-page data-ranges appendix is the vendored variables table, not a bespoke one."""
+    html = data_ranges_markup(CAST_011)
+    assert html is not None
+    assert "Variables on" in html  # the vendored variables_tables heading
+    assert "ctd_temperature_1" in html
+    assert 'class="sortable' in html  # same sortable table as the inventory page
 
 
-def test_data_range_rows_missing_file_is_empty():
-    """An unreadable file yields no rows (the cast appendix is skipped), not an exception."""
-    assert data_range_rows(Path("/nonexistent/file.nc")) == []
+def test_data_ranges_markup_missing_file_is_none():
+    """An unreadable file yields no appendix (skipped), not an exception."""
+    assert data_ranges_markup(Path("/nonexistent/file.nc")) is None
 
 
 def test_report_generates_inventory_pill_and_page(tmp_path):

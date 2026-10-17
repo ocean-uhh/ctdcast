@@ -297,6 +297,43 @@ def test_coords_and_scalars_tables_take_optional():
     assert "Min / Max</th>" not in html
 
 
+def test_coverage_caption_only_when_a_cell_ambers():
+    """globals_tables shows the coverage criterion caption only when a coverage cell is over."""
+    from ctdcast.reports._env import _env
+
+    groups = [("Spatiotemporal coverage", [("geospatial_lat_max", "float64", "60.0")])]
+    tmpl = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.globals_tables(groups, computed=computed, coverage_note='CRITERION') }}"
+    )
+    over = tmpl.render(
+        groups=groups,
+        computed={"geospatial_lat_max": {"value": "59.0", "diff": "+1", "over": True}},
+        show_source=False,
+    )
+    assert "CRITERION" in over  # a cell ambers -> the rule is stated
+    clean = tmpl.render(
+        groups=groups,
+        computed={"geospatial_lat_max": {"value": "60.0", "diff": "0", "over": False}},
+        show_source=False,
+    )
+    assert "CRITERION" not in clean  # no highlight -> no caption
+
+
+def test_attributes_column_is_not_sortable():
+    """The Attributes heading carries data-nosort and no tabindex, so the JS leaves it inert."""
+    from ctdcast.reports._env import _env
+
+    ds = _synthetic()
+    groups, vsrc = nt.variables_rows(ds, is_qc=_is_qc)
+    html = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "{{ nc.variables_tables(groups, source=vsrc) }}"
+    ).render(groups=groups, vsrc=vsrc, show_source=False)
+    assert "<th data-nosort>Attributes</th>" in html
+    assert '<th tabindex="0">Attributes</th>' not in html
+
+
 def test_import_purity_package_neutral():
     """nc_tables imports only stdlib, numpy, xarray and vendored siblings (relative)."""
     src = Path(nt.__file__).read_text(encoding="utf-8")

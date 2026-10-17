@@ -6,10 +6,13 @@
    Each macro emits the builder's `source:` line when the `show_source` toggle is on. #}
 
 {# One <thead>: a heading row and, when `units` is given, a second row of units under it
-   (the family "numbers alone in the cell, unit written once" convention). #}
-{% macro thead(cols, units=None) %}
+   (the family "numbers alone in the cell, unit written once" convention). A column named in
+   `nosort` gets `data-nosort` and no `tabindex`, so _JS_SORT_TABLES leaves it inert and the
+   th[tabindex] cursor/arrow affordance never appears on it (e.g. the Attributes disclosure
+   column, which holds no sort key). #}
+{% macro thead(cols, units=None, nosort=()) %}
 <thead>
-  <tr>{% for c in cols %}<th tabindex="0">{{ c }}</th>{% endfor %}</tr>
+  <tr>{% for c in cols %}{% if c in nosort %}<th data-nosort>{{ c }}</th>{% else %}<th tabindex="0">{{ c }}</th>{% endif %}{% endfor %}</tr>
   {%- if units %}<tr class="units">{% for u in units %}<th>{{ u }}</th>{% endfor %}</tr>{% endif %}
 </thead>
 {%- endmacro %}
@@ -22,6 +25,13 @@
 {# The provenance line naming the builder; shown only when the package toggles it on. #}
 {% macro _source(source) %}
 {%- if show_source and source %}<div class="fig-source">source: {{ source }}</div>{% endif %}
+{%- endmacro %}
+
+{# A caption above a table (heading → caption → table), stating the rule behind any highlighted
+   cell — the family "no caption, no highlight" rule. Empty when the caller passes none; the
+   caller renders it only when the table actually has a highlighted cell. #}
+{% macro _caption(caption) %}
+{%- if caption %}<p class="caption">{{ caption }}</p>{% endif %}
 {%- endmacro %}
 
 {# "Not applicable" placeholder for an empty table, in the shared caption style. #}
@@ -89,18 +99,21 @@
 {%- else %}<td>—</td>{% endif %}
 {%- endmacro %}
 
-{% macro coords_table(rows, optional=(), widths=None, source=None) %}
+{% macro coords_table(rows, optional=(), widths=None, source=None, caption=None) %}
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set ns = namespace(amber=false) %}
+{%- if show_units %}{% for r in rows %}{% if r.is_numeric and not r.units %}{% set ns.amber = true %}{% endif %}{% endfor %}{% endif %}
 {%- set cols = ["Variable", "Type", "Length"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- set _ = cols.append("Attributes") %}
+{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(cols) }}
+{{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
@@ -114,20 +127,23 @@
    dropped from the heading and every row only when no row in the group carries a value, so a
    string-only group (sensor linkage) loses its always-blank Units and Min / Max while a
    numeric group keeps them. A column not named in `optional` is always shown. #}
-{% macro variables_tables(groups, optional=(), widths=None, source=None) %}
+{% macro variables_tables(groups, optional=(), widths=None, source=None, caption=None) %}
 {%- if groups %}
 {%- for title, rows in groups %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
+{%- set ns = namespace(amber=false) %}
+{%- for r in rows %}{% if r.n_valid < r.n or (show_units and r.is_numeric and not r.units) %}{% set ns.amber = true %}{% endif %}{% endfor %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
 {%- set _ = cols.extend(["Valid", "Valid %", "Attributes"]) %}
 <h3>Variables on {{ title }}</h3>
+{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(cols) }}
+{{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
@@ -141,15 +157,18 @@
 {%- else %}{{ _empty("no dimensioned data variables") }}{% endif %}
 {%- endmacro %}
 
-{% macro scalars_table(rows, optional=(), widths=None, source=None) %}
+{% macro scalars_table(rows, optional=(), widths=None, source=None, caption=None) %}
 {%- if rows %}
 {%- set show_units = ("units" not in optional) or (rows|selectattr("units")|list|length > 0) %}
+{%- set ns = namespace(amber=false) %}
+{%- if show_units %}{% for r in rows %}{% if r.is_numeric and not r.units %}{% set ns.amber = true %}{% endif %}{% endfor %}{% endif %}
 {%- set cols = ["Variable", "Type"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.extend(["Standard / long name", "Value", "Attributes"]) %}
+{%- if caption and ns.amber %}{{ _caption(caption) }}{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(cols) }}
+{{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td><td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}
@@ -169,7 +188,8 @@
 {%- for title, rows in groups %}
 <h3>{{ title }}</h3>
 {%- set show_computed = computed and title == "Spatiotemporal coverage" %}
-{%- if show_computed and coverage_note %}<p class="caption">{{ coverage_note }}</p>{% endif %}
+{%- set has_over = show_computed and (computed.values()|selectattr("over")|list|length > 0) %}
+{%- if has_over and coverage_note %}<p class="caption">{{ coverage_note }}</p>{% endif %}
 <table class="sortable">
 {{ thead(["Attribute", "File value", "Computed", "Diff"] if show_computed else ["Attribute", "Type", "Value"]) }}
 <tbody>
@@ -186,9 +206,10 @@
 
 {% macro sensor_table(rows, widths=None, source=None) %}
 {%- if rows %}
+{%- if rows|selectattr("model_assumed")|list %}<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>{% endif %}
 <table class="sortable var-table"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
-{{ thead(["Sensor", "Model", "Serial", "Calibration", "Standard / long name", "Attributes"]) }}
+{{ thead(["Sensor", "Model", "Serial", "Calibration", "Standard / long name", "Attributes"], nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
 <tr><td>{{ r.name }}</td>
@@ -196,8 +217,6 @@
 <td>{{ r.serial or "—" }}</td><td>{{ r.calibration or "—" }}</td>
 <td>{{ names_cell(r) }}</td><td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
-</tbody></table>
-{%- if rows|selectattr("model_assumed")|list %}<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>{% endif %}
-{{ _source(source) }}
+</tbody></table>{{ _source(source) }}
 {%- else %}{{ _empty("no sensor catalog") }}{% endif %}
 {%- endmacro %}

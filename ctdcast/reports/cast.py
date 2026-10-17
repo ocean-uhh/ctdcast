@@ -67,7 +67,7 @@ from ctdcast.reports._vendored.page_model import (
     Section,
     resolve,
 )
-from ctdcast.reports.dataset import data_range_rows
+from ctdcast.reports.dataset import data_ranges_markup
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 from ctdcast.reports.qc_tables import qc_summary, qc_thresholds
 
@@ -412,32 +412,13 @@ def _render_sensor_table(sensor_info: list[dict[str, Any]]) -> str | None:
 def _render_data_ranges_table(nc_path: Path) -> str | None:
     """Return the per-cast netCDF data-ranges table markup, or None when empty.
 
-    Lists min/max/valid for every variable in the file on disk (not the trimmed
-    or derived data plotted above), plus the display ``label_units`` so a reader
-    can see how a figure's axis label was derived.  Values are escaped here
-    because the manifest table macro emits this payload with ``|safe``.
+    Lists min/max/valid for every variable in the file on disk (not the trimmed or derived
+    data plotted above).  Delegates to :func:`~ctdcast.reports.dataset.data_ranges_markup`,
+    which renders the vendored ``variables_tables`` macro, so this appendix reads identically
+    to the inventory page's "Data variables" section instead of being a second hand-rolled
+    inventory table.
     """
-    rows_data = data_range_rows(nc_path)
-    if not rows_data:
-        return None
-    rows = "".join(
-        f"<tr><td class='mono'>{escape(v['name'])}</td>"
-        f"<td>{escape(str(v['units']))}</td>"
-        f"<td>{escape(str(v['label_units']))}</td>"
-        f"<td class='num'>{escape(str(v['v_min']))}</td>"
-        f"<td class='num'>{escape(str(v['v_max']))}</td>"
-        f"<td class='num'>{escape(str(v['n_valid']))}"
-        f"{' / ' + escape(str(v['n'])) if v['n_valid'] < v['n'] else ''}</td>"
-        f"<td>{escape(str(v.get('processing_level', '')))}</td></tr>"
-        for v in rows_data
-    )
-    return (
-        '<table class="nc data-ranges">'
-        "<thead><tr><th>Variable</th><th>Units</th><th>Label units</th>"
-        "<th class='num'>Min</th><th class='num'>Max</th>"
-        "<th class='num'>Valid</th><th>Processing level</th></tr></thead>"
-        f"<tbody>{rows}</tbody></table>"
-    )
+    return data_ranges_markup(nc_path)
 
 
 #: Global attributes shown in the file-provenance table, in order, with their row labels.
@@ -702,12 +683,14 @@ def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
         return f"<strong>{cell}</strong>" if nondefault else cell
 
     rows = []
+    any_amber = False
     for name in sorted(catalog, key=_channel):
         a = ds[name].attrs
         slope = str(a.get("sensor_calibration_slope", ""))
         offset = str(a.get("sensor_calibration_offset", ""))
         slope_nd = bool(slope) and cal_value_nondefault(slope, 1.0)
         offset_nd = bool(offset) and cal_value_nondefault(offset, 0.0)
+        any_amber = any_amber or slope_nd or offset_nd
         # A row carrying any drift/span correction is tinted amber (the vendored --warn-bg,
         # per-cell so it beats the even-row zebra rule); the differing value is bolded.
         bg = " style='background:var(--warn-bg)'" if (slope_nd or offset_nd) else ""
@@ -729,8 +712,16 @@ def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
     # No <h3>: this single table sits directly under the "Sensors" appendix heading, so a
     # heading of its own would just repeat it.  The pre-catalog fallback keeps its headings,
     # where there really are two tables (device inventory, then calibration state).
+    # The family "no caption, no highlight" rule: when a row is amber, state the criterion
+    # above the table (heading -> caption -> table).
+    caption = (
+        "<p class='caption'>Amber row: a calibration was applied — the sensor's Slope ≠ 1 "
+        "or Offset ≠ 0 (a drift/span correction); the departing value is in bold.</p>"
+        if any_amber
+        else ""
+    )
     return (
-        "<table class='nc'><thead><tr>"
+        f"{caption}<table class='nc'><thead><tr>"
         "<th>Variable</th><th>Role</th><th>Ch</th><th>Device</th><th>Model</th>"
         "<th>Cal date</th><th>Slope</th><th>Offset</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
@@ -821,8 +812,8 @@ def _corrections_rows_with_ticks(
     for tick in ticks:
         by_key.setdefault(tick.key, []).append(tick)
     rows: list[str] = []
-    n = 0  # a 1-based step number, so the processing order stays readable (the table is
-    # data-nosort, but the number makes the sequence explicit and recoverable regardless).
+    n = 0  # a 1-based step number: the table sorts like any other, and the # column is how a
+    # reader sorts back to the applied processing order.
     for r in records:
         rec_ticks = by_key.get(r.key) or [None]
         split = len(rec_ticks) > 1  # a per-channel/per-cell/per-group expansion
@@ -867,11 +858,13 @@ def _corrections_table_html(
             for i, r in enumerate(records, 1)
         )
         head = "<th>#</th><th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
-    # data-nosort: the row order is the processing sequence, so this table never re-sorts
-    # (every other table opts in to sorting by default).
+    # This table sorts like every other; the # column is the way back to the applied order
+    # after a reader has sorted by another column, so the caption says so.
     return (
         f"<h3{tight}>Corrections applied before ctdcast</h3>"
-        f"<table class='nc' data-nosort style='margin-top:0'><thead><tr>{head}</tr></thead>"
+        "<p class='caption'>The # column is the order in which the corrections were applied; "
+        "sort by any column, then by # to return to that order.</p>"
+        f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
         f"<tbody>{body}</tbody></table>"
     )
 

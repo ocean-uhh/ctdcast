@@ -117,6 +117,8 @@ class TestRenderSensorCatalogTable:
         assert (
             "<strong>1.00004096</strong>" in html and "<strong>0.27440</strong>" in html
         )
+        # the "no caption, no highlight" rule: an amber row states its criterion
+        assert "Amber row: a calibration was applied" in html
 
     def test_provenance_table_carries_no_sensor_table_only_a_cross_reference(self):
         """The provenance panel holds no sensor table; it points to the Sensors appendix."""

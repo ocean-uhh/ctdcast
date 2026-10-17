@@ -323,7 +323,7 @@ footer a { color: var(--muted); }
     <h1>profiles_demo.nc</h1>
     <span class="masthead-type">netCDF inventory</span>
   </div>
-  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-17 00:04 UTC</p>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-10-17 08:26 UTC</p>
   
   
 
@@ -393,7 +393,7 @@ footer a { color: var(--muted); }
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Length</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Length</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>N_PROF</td><td><code>int32</code></td><td data-sort="8">8</td>
@@ -415,12 +415,12 @@ footer a { color: var(--muted); }
 <h2 id="s-vars">(2) Data variables</h2>
 <p class="caption">Grouped by dimension; the per-group sample count is in each heading. Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
 
-<h3>Variables on N_PROF (8 samples)</h3>
+<h3>Variables on N_PROF (8 samples)</h3><p class="caption">Amber Valid %: fewer valid values than samples. Amber Units: a floating-point variable with no units attribute (CF expects one).</p>
 <table class="sortable var-table">
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>cast_direction</td>
@@ -516,12 +516,12 @@ footer a { color: var(--muted); }
 <td data-sort="100.0">100.0</td>
 <td data-nosort>—</td></tr>
 </tbody></table>
-<h3>Variables on N_PROF × pressure (8 × 718 = 5,744 samples)</h3>
+<h3>Variables on N_PROF × pressure (8 × 718 = 5,744 samples)</h3><p class="caption">Amber Valid %: fewer valid values than samples. Amber Units: a floating-point variable with no units attribute (CF expects one).</p>
 <table class="sortable var-table">
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>conductivity</td>
@@ -727,12 +727,12 @@ footer a { color: var(--muted); }
 
 <h2 id="s-sensor-catalog">(4) Sensor catalog</h2>
 <p class="caption">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no value range.</p>
-
+<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>
 <table class="sortable var-table">
 
 
 <thead>
-  <tr><th tabindex="0">Sensor</th><th tabindex="0">Model</th><th tabindex="0">Serial</th><th tabindex="0">Calibration</th><th tabindex="0">Standard / long name</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Sensor</th><th tabindex="0">Model</th><th tabindex="0">Serial</th><th tabindex="0">Calibration</th><th tabindex="0">Standard / long name</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>SENSOR_CONDUCTIVITY_3120</td>
@@ -832,8 +832,7 @@ footer a { color: var(--muted); }
     &lt;UserPolynomialSensor SensorID=&#34;61&#34; &gt;
       &lt;Seria</td></tr>
 </tbody></table></details></td></tr>
-</tbody></table><p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>
-<div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:sensor_rows</div>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:sensor_rows</div>
 
 
 
@@ -845,7 +844,7 @@ footer a { color: var(--muted); }
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>sensor_conductivity_1</td>
@@ -951,7 +950,7 @@ footer a { color: var(--muted); }
 
 
 <thead>
-  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th tabindex="0">Attributes</th></tr>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
 </thead>
 <tbody>
 <tr><td>sensor_channel_conductivity_1</td>
@@ -1048,7 +1047,7 @@ footer a { color: var(--muted); }
 <tr><td class="mono">title</td><td><code>string</code></td><td>UNK CTD profiles — all casts, downcast + upcast</td></tr>
 <tr><td class="mono">cruise</td><td><code>string</code></td><td>UNK</td></tr>
 </tbody></table>
-<h3>Spatiotemporal coverage</h3><p class="caption">Computed values are recomputed from the data in this file; Diff is File − Computed, shown amber when it exceeds the tolerance (latitude/longitude 0.001°, depth 1 dbar, time 1 s).</p>
+<h3>Spatiotemporal coverage</h3>
 <table class="sortable">
 
 <thead>
@@ -1089,11 +1088,11 @@ footer a { color: var(--muted); }
   <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
 </thead>
 <tbody>
-<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-10-17T00:03:47Z</td></tr>
-<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-10-17T00:03:47Z</td></tr>
-<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>82f01879-682b-491b-9576-1208145cbe9a</td></tr>
-<tr><td class="mono">history</td><td><code>string</code></td><td>2026-10-17T00:03:47Z ctdcast 0.3.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
-2026-10-17T00:03:47Z ctdcast 0.3.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr>
+<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-10-17T08:25:57Z</td></tr>
+<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-10-17T08:25:57Z</td></tr>
+<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>01b92c6a-5e8c-4c1e-8d1e-9ea55e3bfc92</td></tr>
+<tr><td class="mono">history</td><td><code>string</code></td><td>2026-10-17T08:25:57Z ctdcast 0.3.0 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-10-17T08:25:57Z ctdcast 0.3.0 profiles: compiled 4 casts; mean of raw samples per 1-dbar bin, pressure coordinate is the bin centre; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records (soak/deck and gross-range/spike) before binning</td></tr>
 <tr><td class="mono">source</td><td><code>string</code></td><td>4 per-cast netCDF files compiled by ctdcast from stageN/&lt;stem&gt;_stageN.nc (per-profile source_file records each name)</td></tr>
 <tr><td class="mono">data_mode</td><td><code>string</code></td><td>P</td></tr>
 <tr><td class="mono">data_mode_meaning</td><td><code>string</code></td><td>provisional</td></tr>
@@ -1116,7 +1115,7 @@ document.querySelectorAll('h2').forEach(h => {
 
 
 
-<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.3.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-17 00:04 UTC</footer>
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.3.0 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-10-17 08:26 UTC</footer>
 <script>
 document.querySelectorAll('table').forEach(function (table) {
   if (table.hasAttribute('data-nosort')) { return; }

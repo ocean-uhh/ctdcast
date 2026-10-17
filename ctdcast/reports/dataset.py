@@ -15,7 +15,8 @@ coverage check that recomputes ``geospatial_*`` / ``time_coverage_*`` from the d
 
 :func:`read_dataset_meta` extracts the inventory as plain data;
 :func:`generate_dataset_page` renders it to a self-contained HTML file.
-:func:`data_range_rows` serves the cast page's own data-ranges appendix.
+:func:`data_ranges_markup` renders the cast page's data-ranges appendix through the same
+vendored ``variables_tables`` macro, so it reads identically to the inventory page.
 """
 
 from __future__ import annotations
@@ -29,15 +30,14 @@ import numpy as np
 import xarray as xr
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.config.parameters import VARIABLES
 from ctdcast.readers.metadata import source_to_canonical
 from ctdcast.reports import design
-from ctdcast.reports._env import get_template
+from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored import nc_tables
 from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 
-__all__ = ["data_range_rows", "generate_dataset_page", "read_dataset_meta"]
+__all__ = ["data_ranges_markup", "generate_dataset_page", "read_dataset_meta"]
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)
@@ -49,55 +49,6 @@ def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided
             return "—"
         return f"{x:.4g}"
     return str(x)[:40]
-
-
-def _var_meta(name: str, v: xr.DataArray) -> dict[str, Any]:
-    """Return a flat data-ranges row for one variable or coordinate.
-
-    Used by the cast page's data-ranges appendix (via :func:`data_range_rows`), which
-    wants the ``label_units`` and ``processing_level`` columns the vendored inventory
-    builders do not carry.
-    """
-    # Attributes already shown as their own table columns are omitted from the
-    # expandable set (units, standard_name, long_name); label_units and everything
-    # else remain.
-    _columned = {"units", "standard_name", "long_name"}
-    attrs = {
-        str(k): _fmt_val(val) if isinstance(val, (int, float, np.number)) else str(val)
-        for k, val in v.attrs.items()
-        if k not in _columned
-    }
-    n = int(np.prod(v.shape)) if v.shape else 1
-    v_min = v_max = None
-    n_valid = n
-    if v.dtype.kind in "fiu" and n:
-        vals = np.asarray(v.values)
-        finite = np.isfinite(vals)
-        n_valid = int(finite.sum())
-        if n_valid:
-            v_min = vals[finite].min().item()
-            v_max = vals[finite].max().item()
-    # label_units is the Unicode display form used on figure axes (e.g. "S m⁻¹",
-    # "°C").  Prefer the file's attr; fall back to the VARIABLES registry by
-    # canonical name so it shows even before the writer records it on disk.
-    label_units = v.attrs.get("label_units") or VARIABLES.get(name, {}).get(
-        "label_units", ""
-    )
-    return {
-        "name": name,
-        "dims": ", ".join(str(d) for d in v.dims) or "()",
-        "dtype": str(v.dtype),
-        "units": v.attrs.get("units", ""),
-        "label_units": label_units,
-        "standard_name": v.attrs.get("standard_name", ""),
-        "long_name": v.attrs.get("long_name", ""),
-        "n": n,
-        "n_valid": n_valid,
-        "v_min": _fmt_val(v_min),
-        "v_max": _fmt_val(v_max),
-        "processing_level": v.attrs.get("processing_level", ""),
-        "attrs": attrs,
-    }
 
 
 # The sensor-provenance variables are split out of the science-variable inventory.
@@ -219,9 +170,9 @@ def _coverage_note() -> str:
         else f"latitude {tol['lat']:g}°, longitude {tol['lon']:g}°"
     )
     return (
-        "Computed values are recomputed from the data in this file; Diff is "
-        "File − Computed, shown amber when it exceeds the tolerance "
-        f"({latlon}, depth {tol['vertical']:g} dbar, time {tol['time']:g} s)."
+        "Computed values are recomputed from the data in this file. Diff is File − Computed; "
+        "a cell is amber when |Diff| exceeds the tolerance "
+        f"({latlon}, vertical {tol['vertical']:g} dbar, time {tol['time']:g} s)."
     )
 
 
@@ -297,12 +248,22 @@ def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
     return out
 
 
-def data_range_rows(nc_path: Path) -> list[dict[str, Any]]:
-    """Return flat coordinate + science-variable rows for the cast-page data-ranges table.
+# The inventory "Data variables" table rendered on its own, for the cast page's data-ranges
+# appendix — the same vendored macro the full inventory page uses, so the two never diverge.
+_VARIABLES_FRAGMENT = _env.from_string(
+    "{% import '_nc_tables.html' as nc with context %}"
+    "{{ nc.variables_tables(groups, source=source) }}"
+)
 
-    One :func:`_var_meta` row per coordinate and per non-sensor data variable, in the
-    order the cast page lists them (coordinates first).  Sensor-provenance variables
-    are excluded — they have their own catalog on the inventory page.
+
+def data_ranges_markup(nc_path: Path) -> str | None:
+    """Return the cast page's netCDF data-ranges table as markup, or None when empty.
+
+    Built from the same vendored ``variables_rows`` builder and ``variables_tables`` macro as
+    the inventory page's "Data variables" section, so the per-cast appendix reads identically:
+    variables grouped by dimension, ``_qc`` companions folded into their parent, and the full
+    attribute set (including ``processing_level``) behind each row's disclosure.  Rendered to
+    markup here because the cast template embeds it with ``|safe``.
 
     Parameters
     ----------
@@ -311,19 +272,20 @@ def data_range_rows(nc_path: Path) -> list[dict[str, Any]]:
 
     Returns
     -------
-    list of dict
-        The rows, or an empty list if the file cannot be read.
+    str or None
+        The table markup, or None if the file cannot be read or has no dimensioned variables.
     """
     try:
         ds = xr.open_dataset(nc_path, decode_timedelta=False, engine="netcdf4")
     except Exception:  # noqa: BLE001 — a bad file yields no appendix, never a crash
-        return []
+        return None
     with ds:
-        rows = [_var_meta(n, ds[n]) for n in sorted(ds.coords)]
-        rows += [
-            _var_meta(n, ds[n]) for n in sorted(ds.data_vars) if not _is_sensor_var(n)
-        ]
-        return rows
+        groups, source = nc_tables.variables_rows(
+            ds, is_qc=design.is_qc, is_sensor=_is_sensor_var
+        )
+    if not groups:
+        return None
+    return _VARIABLES_FRAGMENT.render(groups=groups, source=source)
 
 
 def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
