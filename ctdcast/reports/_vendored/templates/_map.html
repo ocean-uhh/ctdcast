@@ -59,7 +59,13 @@
 
   var mapEl = document.getElementById('track-map');
   var img = document.getElementById('track-map-fallback');
-  if (!mapEl || typeof L === 'undefined' || !TRACKS.length) { return; }
+  if (!mapEl || typeof L === 'undefined' || !TRACKS.length) {
+    // No interactive map (empty payload, or Leaflet absent) — the static PNG stands alone, so
+    // the "Hover a track or a row." info box is meaningless; hide it rather than leave it dangling.
+    var infoEl = document.getElementById('track-info');
+    if (infoEl) { infoEl.style.display = 'none'; }
+    return;
+  }
   mapEl.hidden = false;                 // Leaflet cannot size a hidden element
   if (img) { img.style.display = 'none'; }
 

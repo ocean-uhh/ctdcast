@@ -60,7 +60,6 @@ from ctdcast.reports._plots import (
     _make_updown_diff_b64,
 )
 from ctdcast.reports._vendored import nc_tables
-from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.page_model import (
     Panel,
     Profile,
@@ -70,7 +69,7 @@ from ctdcast.reports._vendored.page_model import (
 )
 from ctdcast.reports.dataset import data_ranges_markup
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS, is_qc
-from ctdcast.reports.qc_tables import QC_FLAG_NOTE, _collapse_siblings
+from ctdcast.reports.qc_tables import QC_FLAG_NOTE, collapse_sibling_rows
 
 
 def _dec_to_ddm(deg: float, axis: str) -> str:
@@ -325,7 +324,7 @@ def generate_station_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix="../",
         nav=nav_for("casts", prefix="../", inventory=inventory or ()),
-        masthead_bg=ROLE_ACCENT["entity"],
+        masthead_role="entity",
     )
     out_file.write_text(html, encoding="utf-8")
     ds.close()
@@ -544,8 +543,8 @@ _QC_FRAGMENT = _env.from_string(
 #: Shown only when a variable's QC companion declares no ``flag_values`` (the counts table then
 #: shows its raw integer codes as columns and flags the row amber — the criterion for the amber).
 _QC_UNDECLARED_CAPTION = (
-    "Amber variable: its QC companion declares no flag_values, so the columns are the raw "
-    "integer codes observed rather than named flags."
+    "Amber variable: its QC companion has no flag_values, or its flag_values and flag_meanings "
+    "differ in length, so the columns are the raw integer codes observed rather than named flags."
 )
 
 
@@ -569,7 +568,7 @@ def _render_qc_table(nc_path: Path) -> str | None:
     if not counts:
         return None
     return _QC_FRAGMENT.render(
-        thresholds=_collapse_siblings(thresholds),
+        thresholds=collapse_sibling_rows(thresholds),
         counts=counts,
         note=QC_FLAG_NOTE,
         undeclared_caption=_QC_UNDECLARED_CAPTION,

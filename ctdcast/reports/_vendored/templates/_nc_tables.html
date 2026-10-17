@@ -124,7 +124,7 @@
 {%- set show_minmax = ("minmax" not in optional) or (rows|rejectattr("v_min", "equalto", "—")|list|length > 0) %}
 {%- set show_attrs = ("attrs" not in optional) or (rows|selectattr("attrs")|list|length > 0) %}
 {%- set amber = _rows_amber(rows, show_units) | trim %}
-{%- set cols = ["Variable", "Type", "Length", "Dims"] %}
+{%- set cols = ["Variable", "Dims", "Type", "Length"] %}
 {%- if show_units %}{% set _ = cols.append("Units") %}{% endif %}
 {%- set _ = cols.append("Standard / long name") %}
 {%- if show_minmax %}{% set _ = cols.append("Min / Max") %}{% endif %}
@@ -136,7 +136,7 @@
 {{ thead(cols, nosort=("Attributes",)) }}
 <tbody>
 {%- for r in rows %}
-<tr>{{ name_cell(r) }}<td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td><td>{{ r.dims }}</td>
+<tr>{{ name_cell(r) }}<td>{{ r.dims }}</td><td>{{ dtype_cell(r.dtype) }}</td><td data-sort="{{ r.length }}">{{ "{:,}".format(r.length) }}</td>
 {% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}{% if show_attrs %}<td data-nosort>{{ attr_disclosure(r.attrs) }}</td>{% endif %}</tr>
 {%- endfor %}
 </tbody></table>{{ _source(source) }}
@@ -276,12 +276,16 @@
 {%- set cols = [] %}{% set seen = [] %}
 {%- for r in rows %}{% for f in r.flags %}{% if f.flag not in seen %}{% set _ = seen.append(f.flag) %}{% set _ = cols.append(f) %}{% endif %}{% endfor %}{% endfor %}
 {%- set has_amber = rows|selectattr("undeclared")|list|length > 0 %}
+{# Flag values contributed by an undeclared (malformed-declaration) row — their columns carry the
+   amber marker too, so a raw-integer code merged into a named column still reads as suspect. #}
+{%- set undeclared_flags = [] %}
+{%- for r in rows %}{% if r.undeclared %}{% for f in r.flags %}{% if f.flag not in undeclared_flags %}{% set _ = undeclared_flags.append(f.flag) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
 {%- if caption and has_amber %}{{ _caption(caption) }}{% endif %}
 <div class="qc-legend">{% for f in cols %}<span style="background:{{ f.color }}"></span>{{ f.label }}&nbsp;({{ f.flag }}) {% endfor %}</div>
 <table class="sortable nc qc-counts"{% if widths %} style="table-layout: fixed"{% endif %}>
 {{ _colgroup(widths) }}
 <thead><tr><th tabindex="0">Variable</th><th tabindex="0" class="num">N</th>
-{%- for f in cols %}<th tabindex="0" class="num">{{ f.label }}&nbsp;%</th>{% endfor %}<th data-nosort>Distribution</th></tr></thead>
+{%- for f in cols %}<th tabindex="0" class="num{% if f.flag in undeclared_flags %} cell-bad{% endif %}">{{ f.label }}&nbsp;%</th>{% endfor %}<th data-nosort>Distribution</th></tr></thead>
 <tbody>
 {%- for r in rows %}
 {%- set by_flag = {} %}{% for f in r.flags %}{% set _ = by_flag.update({f.flag: f}) %}{% endfor %}

@@ -503,7 +503,9 @@ QC_TESTS: tuple[tuple[str, tuple[str, ...], tuple[str, ...], str], ...] = (
 )
 
 
-def _threshold_tier(attrs: dict[str, Any], keys: tuple[str, ...], kind: str) -> str | None:
+def _threshold_tier(
+    attrs: dict[str, Any], keys: tuple[str, ...], kind: str
+) -> str | None:
     """Render one tier (suspect or fail) of a QC test, or ``None`` when it has no value."""
     values = [attrs.get(k) for k in keys]
     if all(v is None for v in values):
@@ -627,10 +629,15 @@ def qc_flag_rows(
             continue
         values = ds[name].attrs.get("flag_values")
         meanings = str(ds[name].attrs.get("flag_meanings", "")).split()
-        declared = values is not None and len(np.asarray(values).ravel()) > 0
+        value_list = np.asarray(values).ravel().tolist() if values is not None else []
+        # A well-formed declaration needs flag_values AND a flag_meanings token per value (CF
+        # pairs them positionally).  No flag_values, no flag_meanings, or a length mismatch is a
+        # malformed declaration: fall back to the observed integer codes and flag the row amber,
+        # rather than silently pairing some values with a raw-integer "label".
+        declared = bool(value_list) and len(meanings) == len(value_list)
         if declared:
-            vals = [int(v) for v in np.asarray(values).ravel().tolist()]
-            tokens = [meanings[i] if i < len(meanings) else str(v) for i, v in enumerate(vals)]
+            vals = [int(v) for v in value_list]
+            tokens = list(meanings)
         else:
             vals = sorted({int(v) for v in flags.tolist()})
             tokens = [str(v) for v in vals]
@@ -648,7 +655,12 @@ def qc_flag_rows(
                 }
             )
         rows.append(
-            {"var": base, "total": total, "undeclared": not declared, "flags": flag_entries}
+            {
+                "var": base,
+                "total": total,
+                "undeclared": not declared,
+                "flags": flag_entries,
+            }
         )
     return rows, source_for(qc_flag_rows)
 

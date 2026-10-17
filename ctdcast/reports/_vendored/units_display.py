@@ -49,7 +49,10 @@ TOKENS: dict[str, str] = {
 
 
 def format_units(
-    units: str, standard_name: str | None = None, *, overrides: dict[str, str] | None = None
+    units: str,
+    standard_name: str | None = None,
+    *,
+    overrides: dict[str, str] | None = None,
 ) -> str:
     """Return the display label for a CF/UDUNITS ``units`` string.
 

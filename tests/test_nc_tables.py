@@ -381,6 +381,48 @@ def test_fmt_datetime_whole_ms_and_nat():
     assert nt.fmt_datetime(np.datetime64("NaT")) == "—"
 
 
+def test_qc_flag_label_and_value_token_sets_match():
+    """QC_FLAG_LABELS and _QC_FLAG_VALUE cover the same tokens, so the two cannot drift."""
+    from ctdcast.reports._vendored import design_tokens as dt
+
+    assert set(dt.QC_FLAG_LABELS) == set(dt._QC_FLAG_VALUE)
+
+
+def _qc_dataset(flag_values, flag_meanings):
+    """A one-variable dataset with a QC companion carrying the given flag attrs."""
+    attrs = {}
+    if flag_values is not None:
+        attrs["flag_values"] = np.array(flag_values, dtype=np.int8)
+    if flag_meanings is not None:
+        attrs["flag_meanings"] = flag_meanings
+    return xr.Dataset(
+        {
+            "temp": ("t", np.arange(4.0)),
+            "temp_qc": ("t", np.array([1, 1, 3, 4], dtype=np.int8), attrs),
+        }
+    )
+
+
+def test_qc_flag_rows_declared_when_values_and_meanings_match():
+    """A well-formed companion (values + matching meanings) is declared, not amber."""
+    ds = _qc_dataset([1, 3, 4], "pass suspect_or_of_high_interest fail")
+    rows, _ = nt.qc_flag_rows(ds, is_qc=lambda n, _d: n.endswith("_qc"))
+    assert rows[0]["undeclared"] is False
+    assert [f["flag"] for f in rows[0]["flags"]] == [1, 3, 4]
+
+
+def test_qc_flag_rows_malformed_declaration_is_undeclared():
+    """flag_values with no / short flag_meanings → undeclared (raw-integer columns, amber)."""
+    no_meanings = _qc_dataset([1, 3, 4], None)
+    rows, _ = nt.qc_flag_rows(no_meanings, is_qc=lambda n, _d: n.endswith("_qc"))
+    assert rows[0]["undeclared"] is True  # no flag_meanings
+    short = _qc_dataset([1, 3, 4], "pass suspect")  # 2 meanings for 3 values
+    rows2, _ = nt.qc_flag_rows(short, is_qc=lambda n, _d: n.endswith("_qc"))
+    assert rows2[0]["undeclared"] is True  # length mismatch
+    # raw integer codes observed in the data become the columns
+    assert [f["flag"] for f in rows2[0]["flags"]] == [1, 3, 4]
+
+
 def test_original_name_identity_is_none():
     """A source name equal to the current name shows no arrow (original_name is None)."""
     ds = xr.Dataset({"v": ("x", np.arange(2.0), {"cnv_original_name": "v"})})

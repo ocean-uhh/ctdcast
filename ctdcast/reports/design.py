@@ -27,8 +27,14 @@ from ctdcast.reports._vendored.units_display import format_units
 #: change this one line to rebrand.  Any CSS colour value works.
 PACKAGE_ACCENT: str = "var(--ocean)"
 
+#: ctdcast's per-role colour overrides on the vendored :data:`ROLE_ACCENT` defaults — recolours a
+#: page role (its nav pill and masthead together).  Empty: ctdcast keeps the family role colours.
+#: Each key must be a ``ROLE_ACCENT`` role (an unknown key raises in ``emit_css``); data palettes
+#: (QC colours, track colours, colormaps) are not overridable here.
+ROLE_ACCENT_OVERRIDES: dict[str, str] = {}
+
 #: The generated stylesheet, ready to concatenate into a page ``<style>`` block.
-SHARED_CSS: str = emit_css(PACKAGE_ACCENT)
+SHARED_CSS: str = emit_css(PACKAGE_ACCENT, role_overrides=ROLE_ACCENT_OVERRIDES)
 
 #: ctdcast turns the per-figure ``source:`` caption ON; the vendored default
 #: (``design_tokens.SHOW_FIGURE_SOURCE``) is OFF.  This is the package override —
@@ -231,6 +237,7 @@ __all__ = [
     "PACKAGE_ACCENT",
     "SHARED_CSS",
     "ORIGINAL_NAME_ATTRS",
+    "ROLE_ACCENT_OVERRIDES",
     "TABLE_WIDTHS",
     "UNIT_LABEL_OVERRIDES",
     "VAR_CMAPS",

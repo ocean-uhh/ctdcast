@@ -31,14 +31,21 @@ from .design_tokens import (
 )
 
 
-def _emit_root(package_accent: str) -> str:
-    """Return the ``:root { … }`` custom-property block built from the tokens."""
+def _emit_root(
+    package_accent: str, role_overrides: dict[str, str] | None = None
+) -> str:
+    """Return the ``:root { … }`` custom-property block built from the tokens.
+
+    ``role_overrides`` rewrites individual ``--role-<key>`` values, so a package recolours a
+    page role (pills and masthead together) without editing the shared table.
+    """
+    overrides = role_overrides or {}
     lines: list[str] = [":root {"]
     for table in (COLORS, GRAYS, SEMANTIC):
         for key, value in table.items():
             lines.append(f"  --{key}: {value};")
     for key, value in ROLE_ACCENT.items():
-        lines.append(f"  --role-{key}: {value};")
+        lines.append(f"  --role-{key}: {overrides.get(key, value)};")
     lines.append(f"  --package-accent: {package_accent};")
     lines.append(f"  --font-sans: {FONT_SANS};")
     lines.append(f"  --font-mono: {FONT_MONO};")
@@ -89,7 +96,22 @@ def _emit_nav_pills() -> str:
     )
 
 
-def emit_css(package_accent: str) -> str:
+def _emit_masthead_roles() -> str:
+    """Return one ``.masthead.role-<role>`` background rule per :data:`ROLE_ACCENT` key.
+
+    A page's masthead takes the colour of the nav pill that points at it, so the class set is
+    generated from the same table as ``--role-*`` and ``.nav-<role>`` — a new role needs no edit
+    here, and a ``role_overrides`` recolour moves the pill and the masthead together.
+    """
+    return "\n".join(
+        f".masthead.role-{key} {{ background: var(--role-{key}); }}"
+        for key in ROLE_ACCENT
+    )
+
+
+def emit_css(
+    package_accent: str, *, role_overrides: dict[str, str] | None = None
+) -> str:
     """Return the full shared stylesheet as a string, generated from the tokens.
 
     Reproduces the established page look from the design tokens (the current
@@ -107,10 +129,21 @@ def emit_css(package_accent: str) -> str:
         value, e.g. a hex literal or ``var(--ocean)``.  Chosen by the
         package-specific caller; the function itself names no package and holds
         no per-package colour table.
+    role_overrides : dict of str to str, optional
+        ``{role_key: colour}`` rewriting individual ``--role-<key>`` values; each key must be a
+        :data:`~design_tokens.ROLE_ACCENT` key (an unknown key raises, never silently ignored),
+        so pills and mastheads of that role recolour together.  Data palettes stay fixed.
     """
-    root = _emit_root(package_accent)
+    if role_overrides:
+        unknown = set(role_overrides) - set(ROLE_ACCENT)
+        if unknown:
+            raise ValueError(
+                f"role_overrides keys are not ROLE_ACCENT roles: {sorted(unknown)}"
+            )
+    root = _emit_root(package_accent, role_overrides)
     slots = _emit_slots()
     nav_pills = _emit_nav_pills()
+    masthead_roles = _emit_masthead_roles()
     return f"""\
 {root}
 * {{ box-sizing: border-box; }}
@@ -305,6 +338,7 @@ th.sorted-desc::after {{ content: " \\25BC"; font-size: 0.8em; }}
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }}
 {nav_pills}
+{masthead_roles}
 .nav-current {{ opacity: 0.5; pointer-events: none; }}
 .nav-missing {{ background: var(--gray-3); opacity: 0.5; pointer-events: none; }}
 .inventory-strip {{ margin: 0 0 1rem; }}

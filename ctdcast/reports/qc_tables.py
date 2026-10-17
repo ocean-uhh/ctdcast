@@ -28,7 +28,7 @@ QC_FLAG_NOTE = (
 )
 
 
-def _collapse_siblings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def collapse_sibling_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Merge dual-sensor threshold rows that share identical thresholds.
 
     ``conductivity_1`` and ``conductivity_2`` with the same bounds are one row, labelled

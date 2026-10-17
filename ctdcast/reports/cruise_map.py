@@ -34,7 +34,6 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports._vendored.leaflet import load_leaflet, safe_json
 from ctdcast.reports.design import SHARED_CSS
 
@@ -513,7 +512,7 @@ def generate_leaflet_map(
         css=SHARED_CSS,
         nav=nav_for("interactive", prefix="", inventory=inventory or ()),
         nav_prefix="",
-        masthead_bg=ROLE_ACCENT.get("map", ""),
+        masthead_role="map",
         cruise=cruise,
         leaflet_js=leaflet_js,
         leaflet_css=leaflet_css,

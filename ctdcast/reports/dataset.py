@@ -35,7 +35,6 @@ from ctdcast.reports import design
 from ctdcast.reports._env import _env, get_template
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored import nc_tables
-from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 
 __all__ = ["data_ranges_markup", "generate_dataset_page", "read_dataset_meta"]
 
@@ -446,7 +445,7 @@ def generate_dataset_page(
         js_top_links=design._JS_TOP_LINKS,
         nav_prefix=nav_prefix,
         nav=nav,
-        masthead_bg=ROLE_ACCENT.get("component", ""),
+        masthead_role="component",
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     )

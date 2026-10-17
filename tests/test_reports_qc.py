@@ -8,7 +8,7 @@ from ctdcast.processors.stage2 import apply_stage2
 from ctdcast.reports import design
 from ctdcast.reports._vendored.nc_tables import qc_flag_rows, qc_threshold_rows
 from ctdcast.reports.cast import _render_qc_table
-from ctdcast.reports.qc_tables import _collapse_siblings
+from ctdcast.reports.qc_tables import collapse_sibling_rows
 
 
 def _qc_ds():
@@ -76,7 +76,7 @@ class TestQCThresholdRows:
     def test_dual_sensors_collapse_when_thresholds_match(self):
         """conductivity_1 and _2 share thresholds → one 'conductivity_*' row (owned collapse)."""
         rows, _ = qc_threshold_rows(_qc_ds(), is_qc=design.is_qc)
-        names = {r["var"] for r in _collapse_siblings(rows)}
+        names = {r["var"] for r in collapse_sibling_rows(rows)}
         assert "conductivity_*" in names
         assert "conductivity_1" not in names and "conductivity_2" not in names
 

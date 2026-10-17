@@ -27,7 +27,6 @@ from ctdcast.config.sensors import role_label as _role_label
 from ctdcast.config.sensors import role_sort_key as _role_sort_key
 from ctdcast.reports._env import get_template
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._vendored.design_tokens import ROLE_ACCENT
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
@@ -237,7 +236,7 @@ def generate_sensors_page(
         js_top_links=_JS_TOP_LINKS,
         nav_prefix=nav_prefix,
         nav=nav,
-        masthead_bg=ROLE_ACCENT.get("component", ""),
+        masthead_role="component",
         version=_VERSION,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     )
