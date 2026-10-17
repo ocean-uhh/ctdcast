@@ -2,11 +2,14 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
+import xarray as xr
 from conftest import CAST_011, FIXTURES_NC
 
 from ctdcast.readers.metadata import _SOURCE_NAME_ATTRS
 from ctdcast.reports.dataset import (
+    _coverage_computed,
     data_range_rows,
     generate_dataset_page,
     read_dataset_meta,
@@ -18,6 +21,27 @@ PROFILES_DEMO = Path(__file__).parent / "fixtures" / "profiles_demo.nc"
 def _all_var_rows(meta):
     """Flatten the grouped data-variable rows of an inventory into one list."""
     return [row for _title, group in meta["variables"]["groups"] for row in group]
+
+
+def test_coverage_check_uses_depth_when_no_pressure():
+    """The vertical check picks depth when pressure is absent (the LADCP product)."""
+    ds = xr.Dataset(
+        {"depth": ("z", np.array([0.0, 100.0, 500.0]))},
+        attrs={"geospatial_vertical_min": 0.0, "geospatial_vertical_max": 500.0},
+    )
+    cov = _coverage_computed(ds)
+    assert cov["geospatial_vertical_max"]["over"] is False  # 500 matches the data
+
+
+def test_coverage_check_marks_vertical_not_computed_without_pressure_or_depth():
+    """A stated vertical bound with no pressure/depth variable shows 'not computed', not blank."""
+    ds = xr.Dataset(
+        {"x": ("t", np.array([1.0, 2.0]))},
+        attrs={"geospatial_vertical_min": 0.0, "geospatial_vertical_max": 500.0},
+    )
+    cov = _coverage_computed(ds)
+    assert "not computed" in cov["geospatial_vertical_max"]["value"]
+    assert cov["geospatial_vertical_max"]["over"] is False
 
 
 # --- read_dataset_meta -------------------------------------------------------

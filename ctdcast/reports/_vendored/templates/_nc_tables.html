@@ -60,11 +60,15 @@
 {%- if not row.standard_name and not row.long_name %}—{% endif %}
 {%- endmacro %}
 
-{# Min / Max in one cell; data-sort carries the raw min so thousands separators and the
-   "a / b" form still sort as numbers. Public so an owned domain table can compose it. #}
+{# Min / Max in one cell. Three cases so each sorts right: a numeric row carries the raw min as
+   data-sort (numeric sort); a datetime row (v_min set but v_min_raw is None) carries no data-sort
+   so the JS text-sorts its ISO string, which is chronological; a missing "—" row carries the very
+   negative sentinel -1e308, which parses as a number (keeping a numeric column numeric, never
+   flipping to text) and groups every all-missing row at one end. Public so an owned table composes it. #}
 {% macro minmax_cell(row) %}
-<td{% if row.v_min_raw is not none %} data-sort="{{ row.v_min_raw }}"{% endif %}>
-{%- if row.v_min != "—" %}{{ row.v_min }} / {{ row.v_max }}{% else %}—{% endif %}</td>
+{%- if row.v_min_raw is not none %}<td data-sort="{{ row.v_min_raw }}">{{ row.v_min }} / {{ row.v_max }}</td>
+{%- elif row.v_min != "—" %}<td>{{ row.v_min }} / {{ row.v_max }}</td>
+{%- else %}<td data-sort="-1e308">—</td>{% endif %}
 {%- endmacro %}
 
 {# Valid-count cell: "390" when every value is valid, else "370 / 390" with the shortfall
@@ -81,7 +85,7 @@
    apply. Public so an owned domain table flags the same defect the vendored tables do. #}
 {% macro units_cell(row) %}
 {%- if row.units %}<td>{{ row.units }}</td>
-{%- elif row.dtype.startswith("float") %}<td class="cell-bad">—</td>
+{%- elif row.is_numeric %}<td class="cell-bad">—</td>
 {%- else %}<td>—</td>{% endif %}
 {%- endmacro %}
 
@@ -129,7 +133,7 @@
 <tr><td>{{ r.name }}{% if r.has_qc %} <span class="var-qc">(_QC)</span>{% endif %}</td>
 <td>{{ dtype_cell(r.dtype) }}</td>{% if show_units %}{{ units_cell(r) }}{% endif %}<td>{{ names_cell(r) }}</td>{% if show_minmax %}{{ minmax_cell(r) }}{% endif %}
 <td data-sort="{{ r.n_valid }}">{{ "{:,}".format(r.n_valid) }}</td>
-<td data-sort="{{ r.valid_pct }}"{% if r.valid_pct < 100 %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
+<td data-sort="{{ r.valid_pct }}"{% if r.n_valid < r.n %} class="cell-bad"{% endif %}>{{ r.valid_pct }}</td>
 <td data-nosort>{{ attr_disclosure(r.attrs) }}</td></tr>
 {%- endfor %}
 </tbody></table>

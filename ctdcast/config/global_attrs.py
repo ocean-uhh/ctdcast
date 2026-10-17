@@ -307,6 +307,13 @@ def coverage_attrs(
         # height; the profiles increase downward.
         attrs["geospatial_vertical_positive"] = "down"
 
+    if (time_starts is None) != (time_ends is None):
+        missing = "time_ends" if time_ends is None else "time_starts"
+        raise ValueError(
+            f"coverage_attrs: {missing} is required when the other is given — start and end "
+            "are taken from separate arrays, so a one-sided call would silently drop time "
+            "coverage. Pass the same array for both if the source has one time per profile."
+        )
     if time_starts is not None and time_ends is not None:
         starts = np.asarray(time_starts).ravel()
         ends = np.asarray(time_ends).ravel()

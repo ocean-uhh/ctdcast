@@ -240,7 +240,10 @@ def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
 
     lat_lo, lat_hi = _finite_min_max(ds, "latitude")
     lon_lo, lon_hi = _finite_min_max(ds, "longitude")
-    ver_lo, ver_hi = _finite_min_max(ds, "pressure")
+    # The vertical axis is pressure on a CTD file and depth on the LADCP product; pick the
+    # one present so the vertical bound is actually checked instead of silently skipped.
+    ver_var = next((v for v in ("pressure", "depth") if v in ds.variables), None)
+    ver_lo, ver_hi = _finite_min_max(ds, ver_var) if ver_var else (None, None)
     numeric: tuple[tuple[str, float | None, float], ...] = (
         ("geospatial_lat_min", lat_lo, tol["lat"]),
         ("geospatial_lat_max", lat_hi, tol["lat"]),
@@ -250,13 +253,25 @@ def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
         ("geospatial_vertical_max", ver_hi, tol["vertical"]),
     )
     for key, computed, axis_tol in numeric:
-        if key not in attrs or computed is None:
+        if key not in attrs:
+            continue
+        if computed is None:
+            # A stated bound we cannot recompute. For the vertical bounds, say so rather than
+            # omitting the row — an omitted row is indistinguishable from "not stated", which
+            # is the thing this column exists to distinguish.
+            if key.startswith("geospatial_vertical") and ver_var is None:
+                out[key] = {
+                    "value": "not computed (no pressure or depth variable)",
+                    "diff": "",
+                    "over": False,
+                }
             continue
         try:
             stated = float(attrs[key])
         except (TypeError, ValueError):
             continue
-        diff = computed - stated
+        # Diff is File − Computed (the file's error), matching the table caption.
+        diff = stated - computed
         out[key] = {
             "value": _fmt_val(computed),
             "diff": _fmt_diff(diff),
@@ -273,7 +288,7 @@ def _coverage_computed(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
         stated_t = _parse_iso_second(str(attrs[key]))
         if stated_t is None:
             continue
-        delta_s = int((computed_t - stated_t) / np.timedelta64(1, "s"))
+        delta_s = int((stated_t - computed_t) / np.timedelta64(1, "s"))
         out[key] = {
             "value": str(computed_t).replace("T", " "),
             "diff": "0 s" if delta_s == 0 else f"{delta_s:+d} s",

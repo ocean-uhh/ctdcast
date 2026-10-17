@@ -217,6 +217,26 @@ def test_valid_cell_macro():
     assert "cell-bad" in short
 
 
+def test_minmax_cell_sort_keys():
+    """minmax_cell: numeric→raw data-sort, datetime→no data-sort (ISO text), missing→sentinel."""
+    from ctdcast.reports._env import _env
+
+    tmpl = _env.from_string(
+        "{% import '_nc_tables.html' as nc with context %}"
+        "N{{ nc.minmax_cell(num) }}|D{{ nc.minmax_cell(dt) }}|M{{ nc.minmax_cell(miss) }}"
+    )
+    html = tmpl.render(
+        num={"v_min_raw": 5.0, "v_min": "5", "v_max": "10"},
+        dt={"v_min_raw": None, "v_min": "2026-07-09 10:00", "v_max": "2026-07-09 18:00"},
+        miss={"v_min_raw": None, "v_min": "—", "v_max": "—"},
+    )
+    assert 'data-sort="5.0"' in html  # numeric sorts on the raw min
+    assert html.count("-1e308") == 1  # only the all-missing row gets the sentinel
+    # the datetime cell carries NO data-sort, so the JS text-sorts its ISO string chronologically
+    dt_cell = html.split("|D", 1)[1].split("|M", 1)[0]
+    assert "2026-07-09 10:00" in dt_cell and "data-sort" not in dt_cell
+
+
 def test_units_cell_flags_float_missing_units():
     """units_cell: float w/o units is amber, string w/o units is plain, present units shows."""
     from ctdcast.reports._env import _env
@@ -226,12 +246,12 @@ def test_units_cell_flags_float_missing_units():
         "{{ nc.units_cell(fl) }}|{{ nc.units_cell(st) }}|{{ nc.units_cell(ok) }}"
     )
     html = tmpl.render(
-        fl={"units": "", "dtype": "float64"},
-        st={"units": "", "dtype": "string"},
-        ok={"units": "degree_Celsius", "dtype": "float64"},
+        fl={"units": "", "is_numeric": True},  # float: CF expects a unit
+        st={"units": "", "is_numeric": False},  # string/int: a unit does not apply
+        ok={"units": "degree_Celsius", "is_numeric": True},
     )
     assert 'class="cell-bad">—' in html  # float, no units -> file defect
-    assert html.count("cell-bad") == 1  # the string's missing unit is not a defect
+    assert html.count("cell-bad") == 1  # the non-numeric missing unit is not a defect
     assert "degree_Celsius" in html
 
 

@@ -243,6 +243,9 @@ def _row_base(ds: xr.Dataset, name: str) -> dict[str, Any]:
         "units": str(v.attrs.get("units", "")),
         "standard_name": str(v.attrs.get("standard_name", "")),
         "long_name": str(v.attrs.get("long_name", "")),
+        # Float is the kind CF expects a unit for; an integer flag/index/channel or a string
+        # legitimately has none, so only a float missing its units is a defect (units_cell).
+        "is_numeric": v.dtype.kind == "f",
         "attrs": _attr_disclosure(v),
     }
 
