@@ -5,10 +5,11 @@ convert to it and with what factor — is the shared family data in
 :mod:`ctdcast.reports._vendored.units_tables`, read through
 :func:`ctdcast.reports._vendored.units.resolve_units`; ctdcast's view of it, with its own
 additions, is :data:`ctdcast.config.unit_tables.TABLES`.  This module holds only the transform that
-applies it, :func:`to_canonical_units` — a loop over ``resolve_units`` run on the way out of
-each stage so every written file carries one canonical spelling per quantity, a factor ``≠ 1``
-spelling has its values converted, and an unrecognised spelling stops the run loudly rather
-than being silently overwritten.
+applies it, :func:`to_canonical_units` — a loop over ``resolve_units`` run at the netCDF write
+boundary (every stage persists through the writer, so each stage's output is canonicalised).
+Every written file carries one canonical spelling per quantity, a factor ``≠ 1`` spelling has
+its values converted, and an unrecognised spelling stops the run loudly rather than being
+silently overwritten.
 
 The display spelling (``mS cm-1`` → ``mS/cm``) is a separate concern, derived from the
 canonical string by :func:`ctdcast.config.unit_tables.unit_label`; it is never stored.
@@ -16,6 +17,7 @@ canonical string by :func:`ctdcast.config.unit_tables.unit_label`; it is never s
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -58,9 +60,10 @@ def to_canonical_units(
     A registered variable with *no* units attribute has its canonical filled from the registry
     (ctdcast derives composites and carries channels whose units are supplied at the write
     boundary, not by the reader) — a fill, not a conversion.  The pass is idempotent — a
-    variable already carrying its canonical string is left unchanged — so it runs on the way
-    out of every stage without double-converting.  Unregistered engineering variables (no
-    registry entry and no matching ``standard_name``) are left untouched.
+    variable already carrying its canonical string is left unchanged — so it runs at every
+    write without double-converting (stage 2/3 re-read an already-canonical stage-1 file).
+    Unregistered engineering variables (no registry entry and no matching ``standard_name``)
+    are left untouched.
 
     Parameters
     ----------
@@ -125,6 +128,14 @@ def to_canonical_units(
                 for key in ("dtype", "scale_factor", "add_offset"):
                     converted.encoding.pop(key, None)
                 ds[var] = converted
+                # A factor != 1 scales the values; announce it (never silent — provenance) even
+                # when no log_fn is wired, so the one caller that passes none (the writer) still
+                # surfaces the conversion.  Not stamped on the variable (branch ruling).
+                warnings.warn(
+                    f"{var!r}: values scaled x{factor:g} converting units "
+                    f"{current!r} -> {resolved!r}{where}.",
+                    stacklevel=2,
+                )
             attrs = dict(ds[var].attrs)
             attrs["units"] = resolved
             ds[var].attrs = attrs

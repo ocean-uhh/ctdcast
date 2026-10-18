@@ -61,13 +61,15 @@ def test_temperature_gets_units_metadata():
     assert out["ctd_temperature_1"].attrs["units_metadata"] == "temperature: on_scale"
 
 
-def test_s_per_m_converts_times_ten_without_provenance_attrs():
-    """The seeded `S/m` alias converts conductivity ×10 but stamps no conversion provenance.
+def test_s_per_m_converts_times_ten_and_warns_without_provenance_attrs():
+    """The seeded `S/m` alias converts conductivity ×10, warns, but stamps no provenance.
 
-    Evidence: cnv/mixsed2_004.cnv `c0S/m: Conductivity [S/m]`. 1 S/m = 10 mS/cm.
+    Evidence: cnv/mixsed2_004.cnv `c0S/m: Conductivity [S/m]`. 1 S/m = 10 mS/cm.  A value-scaling
+    conversion is announced loudly (never silent) but not stamped on the variable (branch ruling).
     """
     ds = xr.Dataset({"conductivity_1": ("t", np.array([0.4, 0.5]), {"units": "S/m"})})
-    out = to_canonical_units(ds)
+    with pytest.warns(UserWarning, match=r"conductivity_1.*scaled x10.*S/m.*mS cm-1"):
+        out = to_canonical_units(ds)
     assert out["conductivity_1"].attrs["units"] == "mS cm-1"
     np.testing.assert_allclose(out["conductivity_1"].values, [4.0, 5.0])
     assert "units_converted_from" not in out["conductivity_1"].attrs
@@ -76,8 +78,9 @@ def test_s_per_m_converts_times_ten_without_provenance_attrs():
 
 def test_pass_is_idempotent_under_conversion():
     ds = xr.Dataset({"conductivity_1": ("t", np.array([0.4]), {"units": "S/m"})})
-    out = to_canonical_units(ds)
-    out2 = to_canonical_units(out.copy(deep=True))
+    with pytest.warns(UserWarning, match="scaled x10"):
+        out = to_canonical_units(ds)  # first pass converts and warns
+    out2 = to_canonical_units(out.copy(deep=True))  # second pass is a no-op, no warning
     np.testing.assert_allclose(
         out2["conductivity_1"].values, [4.0]
     )  # not multiplied twice

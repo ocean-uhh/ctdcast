@@ -69,6 +69,20 @@ _KEEP_COORDS: frozenset[str] = frozenset({"latitude", "longitude", "time"})
 # tests/fixtures/oxy/msm_142_1_056_1sec.cnv:37-38 sbeox0/1Mm/L: Oxygen, SBE 43 [umol/l].
 _OXYGEN_PER_VOLUME_UNITS: frozenset[str] = frozenset({"umol/l", "µmol/l", "umol l-1"})
 
+# Raw-voltage spellings for an SBE 43 oxygen channel seasenselib hands back under an oxygen
+# name (`sbeoxNV [V]`).  seasenselib emits `volts`; `v`/`volt` are admitted defensively.  Step 1b
+# stamps the canonical `V` itself so the channel reaches the writer canonical — the branch's
+# accept-set cannot then disagree with the units table about which spelling resolves to `V`.
+_OXYGEN_VOLTAGE_UNITS: frozenset[str] = frozenset({"v", "volt", "volts"})
+
+# Per-mass oxygen spellings a reader may emit; the channel is the basic measured value
+# (ctd_oxygen_N), already per-mass, so no conversion.  Includes the canonical spaced form
+# `umol kg-1` so a non-normalising backend emitting the canonical is classified here, not
+# dropped to the saturation branch.  seasenselib emits the slash form `umol/kg`.
+_OXYGEN_PER_MASS_UNITS: frozenset[str] = frozenset(
+    {"umol/kg", "µmol/kg", "umol kg-1", "µmol kg-1"}
+)
+
 
 def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
     """Rename variables to ctdcast canonical names — dropping nothing.
@@ -160,7 +174,7 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
             continue
         _suffix = "1" if _v in ("oxygen_1", "oxygen") else "2"
         _units = ds[_v].attrs.get("units", "").lower().strip()
-        if "umol/kg" in _units or "µmol/kg" in _units:
+        if any(_spelling in _units for _spelling in _OXYGEN_PER_MASS_UNITS):
             ds = ds.rename({_v: f"ctd_oxygen_{_suffix}"})
         elif any(_spelling in _units for _spelling in _OXYGEN_PER_VOLUME_UNITS):
             if "sbe_density" in ds:
@@ -184,12 +198,14 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
                     "convert it; kept under its source name.",
                     stacklevel=3,
                 )
-        elif _units in ("v", "volt", "volts"):
+        elif _units in _OXYGEN_VOLTAGE_UNITS:
             # A raw SBE 43 oxygen sensor voltage (sbeoxNV [V]) that seasenselib handed back
-            # under an oxygen name — not a saturation.  Keep it as the raw voltage channel so
-            # its units canonicalise to V, not get mislabelled `percent` (the latent bug the
-            # units guard surfaced).
+            # under an oxygen name — not a saturation.  Route it to the raw voltage channel and
+            # stamp the canonical `V` so it reaches the writer canonical (not mislabelled
+            # `percent` — the latent bug the units guard surfaced — and not left as a spelling
+            # like `volt` the units table would then refuse).
             ds = ds.rename({_v: f"oxygen_raw_{_suffix}"})
+            ds[f"oxygen_raw_{_suffix}"].attrs["units"] = "V"
         else:
             # Anything else (% saturation) is the SBE-derived oxygen saturation.
             ds = ds.rename({_v: f"sbe_oxygen_saturation_{_suffix}"})

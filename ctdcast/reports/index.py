@@ -18,7 +18,7 @@ from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.global_attrs import cruise_name
-from ctdcast.config.loader import SectionsConfig
+from ctdcast.config.loader import SectionsConfig, warn_section_yaml_deprecated
 from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
@@ -183,7 +183,9 @@ def report(
     """
     # `groupings_yaml` names what the file actually holds -- sections *and*
     # timeseries.  `section_yaml` named half of it; accepted with a deprecation
-    # warning until 0.5.0 (the config-key warning is raised in config.loader).
+    # warning until 0.5.0 (same notice as the config-key path in config.loader).
+    if groupings_yaml is None and section_yaml is not None:
+        warn_section_yaml_deprecated()
     groupings_yaml = groupings_yaml or section_yaml
 
     cfg = config if config is not None else DEFAULT_REPORT_CONFIG

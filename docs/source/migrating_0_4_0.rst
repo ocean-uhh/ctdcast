@@ -25,7 +25,7 @@ What changed
      - ``config.sensors.serial_slug``
      - public function (old name deprecated, removed in 0.5.0)
    * - Python 3.10 supported
-     - Python 3.11–3.14 (all required in CI)
+     - Python 3.11–3.14 (3.14 allowed to fail in CI)
      - ``requires-python = ">=3.11"``
 
 Reading old files still works: ``original_name`` is read with ``cnv_original_name``

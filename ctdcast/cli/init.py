@@ -908,6 +908,10 @@ def _run_interactive(args: argparse.Namespace) -> int:
 
             _cfg = _yaml.safe_load(initial.read_text()) or {}
             _d = _cfg.get("data", {}) or {}
+            if not _d.get("groupings_yaml") and _d.get("section_yaml"):
+                from ctdcast.config.loader import warn_section_yaml_deprecated
+
+                warn_section_yaml_deprecated()
             _o = _cfg.get("output", {}) or {}
             _ci = _cfg.get("cruise_info", {}) or {}
             _ex = {

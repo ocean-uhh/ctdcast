@@ -7,7 +7,19 @@ from pathlib import Path
 
 import pytest
 
-from ctdcast.config.loader import SectionsConfig, groupings_path
+from ctdcast.config.loader import (
+    SectionsConfig,
+    groupings_path,
+    warn_section_yaml_deprecated,
+)
+
+
+def test_warn_section_yaml_deprecated_names_replacement_and_version() -> None:
+    """The shared helper emits one DeprecationWarning naming groupings_yaml and 0.5.0."""
+    with pytest.warns(
+        DeprecationWarning, match=r"section_yaml.*0\.5\.0.*groupings_yaml"
+    ):
+        warn_section_yaml_deprecated()
 
 
 def test_groupings_path_prefers_groupings_yaml_without_warning() -> None:
@@ -19,12 +31,24 @@ def test_groupings_path_prefers_groupings_yaml_without_warning() -> None:
 
 
 def test_groupings_path_accepts_section_yaml_with_deprecation_warning() -> None:
-    """``section_yaml`` still resolves but warns, naming the replacement and removal version."""
+    """``section_yaml`` config key still resolves but warns (the loader caller)."""
     with pytest.warns(
         DeprecationWarning, match=r"section_yaml.*0\.5\.0.*groupings_yaml"
     ):
         result = groupings_path({"section_yaml": "s.yaml"})
     assert result == Path("s.yaml")
+
+
+def test_report_section_yaml_parameter_warns(tmp_path: Path) -> None:
+    """The programmatic ``report(section_yaml=...)`` parameter warns (the index.report caller)."""
+    from ctdcast.reports.index import report
+
+    nc_dir = tmp_path / "nc"
+    nc_dir.mkdir()  # empty: report discovers no casts and returns without heavy work
+    groupings = tmp_path / "g.yaml"
+    groupings.write_text("sections: {}\ntimeseries: {}\ncruise_info: {}\n")
+    with pytest.warns(DeprecationWarning, match="section_yaml"):
+        report(nc_dir, tmp_path / "out", section_yaml=groupings)
 
 
 def test_from_yaml_roundtrip(tmp_path: Path) -> None:

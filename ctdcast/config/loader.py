@@ -11,6 +11,21 @@ from typing import Any
 import yaml
 
 
+def warn_section_yaml_deprecated() -> None:
+    """Warn that ``section_yaml`` is deprecated in favour of ``groupings_yaml``.
+
+    The single notice for the config-key spelling and the ``report()`` / ``init`` parameter
+    spelling, so every entry point that still honours ``section_yaml`` emits the same
+    ``DeprecationWarning`` naming the replacement and the removal version (0.5.0).
+    """
+    warnings.warn(
+        "`section_yaml` is deprecated and will be removed in 0.5.0; use `groupings_yaml` "
+        "(the file holds both sections: and timeseries:).",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 def groupings_path(data: dict[str, Any] | None) -> Path | None:
     """Return the groupings YAML named by a config ``data:`` block.
 
@@ -33,12 +48,7 @@ def groupings_path(data: dict[str, Any] | None) -> Path | None:
     d = data or {}
     value = d.get("groupings_yaml")
     if value is None and d.get("section_yaml"):
-        warnings.warn(
-            "config key `section_yaml` is deprecated and will be removed in 0.5.0; "
-            "rename it to `groupings_yaml`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        warn_section_yaml_deprecated()
         value = d.get("section_yaml")
     return Path(str(value)) if value else None
 

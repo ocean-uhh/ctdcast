@@ -29,8 +29,9 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
 
     Each registered variable's ``units`` is first canonicalised to its CF spelling by
     :func:`ctdcast.processors.units.to_canonical_units` (which raises
-    :class:`~ctdcast.processors.units.UnitsError` on an unrecognised or missing spelling —
-    the write is aborted, nothing is left on disk).  Then, for each variable present in both
+    :class:`~ctdcast.processors.units.UnitsError` on a *present* unrecognised spelling —
+    the write is aborted, nothing is left on disk — and fills a *missing* units attribute
+    from the registry).  Then, for each variable present in both
     *ds* and ``VARIABLES`` — including coordinates such as ``latitude``/``longitude`` —
     applies ``long_name``, ``standard_name``, and ``comment`` (when defined).  For each
     ``{var}_qc`` variable, generates complete CF flag attributes.  Sets

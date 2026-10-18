@@ -18,6 +18,7 @@ this module is the leaf that lets ``parameters`` import :func:`unit_label` witho
 
 from __future__ import annotations
 
+import functools
 import os
 
 from ctdcast.reports._vendored.units import (
@@ -72,14 +73,18 @@ TABLES: Tables = merge_tables(
 )
 
 
+@functools.cache
 def registry_standard_names() -> dict[str, str]:
     """Return the ``{variable name: standard_name}`` map from the variable registry.
 
     The storage pass needs each variable's CF ``standard_name`` to resolve a scoped spelling
     (``PSU`` is salinity-only) and to canonicalise before the writer stamps ``standard_name``
-    on the dataset.  Built on each call (:mod:`ctdcast.config.parameters` is imported here, not
-    at module level, because ``parameters`` imports :func:`unit_label` from this module and its
-    ``VARIABLES`` does not exist yet while this module is loading).
+    on the dataset.  Cached after the first call — ``VARIABLES`` is a module-level literal that
+    is never mutated at runtime (``load_display_config`` returns a merged copy), and
+    :func:`to_canonical_units` calls this once per write.  :mod:`ctdcast.config.parameters` is
+    imported inside the function, not at module level, because ``parameters`` imports
+    :func:`unit_label` from this module and its ``VARIABLES`` does not exist yet while this
+    module is loading.
 
     Returns
     -------
