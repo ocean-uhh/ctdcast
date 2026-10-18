@@ -24,6 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The cruise map no longer falls back to a CDN: a missing bundled Leaflet asset now raises rather than fetching from jsdelivr/cdnjs or emitting an empty map, so the offline-at-sea guarantee holds at build time instead of failing silently at view time.
 - **Source-name provenance attribute renamed to `original_name`** — the CNV path (consolidated from seasenselib's `cnv_original_name`) and the LADCP reader (was `source_variable`) now both record a variable's raw source name as `original_name`, one family-shared spelling. Files written before 0.4.0 still read: the inventory rename table and `readers.metadata.source_to_canonical` fall back to the old attribute names. New stage files no longer carry `cnv_original_name` / `source_variable`.
 - **Python support is 3.11–3.14** (3.10 dropped; the 3.14 cell is tested but allowed to fail while a dependency wheel may lag). `requires-python` is now `>=3.11`, ruff `target-version` is `py311`, and `datetime.timezone.utc` is written `datetime.UTC`.
+- Stage 1 drops the CNV reader's oxygen `standard_name` when it reclassifies an oxygen channel (to the per-mass measurement, `% saturation`, or raw voltage): the raw channel's name no longer fits the reclassified variable, so the writer assigns the correct one from the registry (`ctd_oxygen_N` → moles-per-mass; the saturation/voltage channels carry none). This keeps a reader's metadata — which can differ between seasenselib releases — from driving unit canonicalisation.
 
 ### Deprecated
 

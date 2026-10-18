@@ -174,6 +174,14 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
             continue
         _suffix = "1" if _v in ("oxygen_1", "oxygen") else "2"
         _units = ds[_v].attrs.get("units", "").lower().strip()
+        # The reader's standard_name describes the raw oxygen channel, but we are about to
+        # reclassify it (per-mass measurement / % saturation / raw voltage), so that name no
+        # longer fits — drop it and let the writer assign the right one from VARIABLES
+        # (ctd_oxygen_N -> moles-per-mass; the saturation/voltage channels carry none).  A
+        # reader that stamps a wrong name is otherwise trusted by to_canonical_units: seasenselib
+        # 0.6.1 labels a % saturation channel moles_of_oxygen_per_unit_mass_in_sea_water, which is
+        # a CANONICAL quantity (umol kg-1), so the saturation would resolve to umol kg-1 and abort.
+        ds[_v].attrs.pop("standard_name", None)
         if any(_spelling in _units for _spelling in _OXYGEN_PER_MASS_UNITS):
             ds = ds.rename({_v: f"ctd_oxygen_{_suffix}"})
         elif any(_spelling in _units for _spelling in _OXYGEN_PER_VOLUME_UNITS):

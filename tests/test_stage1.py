@@ -158,6 +158,45 @@ class TestStage1:
         nc_stems = {parse_stage(p)[0] for p in stage_dir(nc_dir, 1).glob("*.nc")}
         assert cnv_stems == nc_stems
 
+    def test_drops_stray_oxygen_standard_name_on_reclassify(self):
+        """A reader's oxygen standard_name is dropped when stage 1 reclassifies the channel.
+
+        seasenselib 0.6.1 labels a ``% saturation`` oxygen channel with the moles-per-mass
+        standard_name (0.6.0 used volume-fraction); that name is a CANONICAL quantity, so without
+        the drop the reclassified saturation would resolve to ``umol kg-1`` and abort the write
+        (13 CI failures, 2026-10-18).  Guards that a stray reader name cannot drive canonicalisation.
+        """
+        import numpy as np
+        import xarray as xr
+
+        from ctdcast.processors.stage1 import _normalise
+
+        _oxsn = "moles_of_oxygen_per_unit_mass_in_sea_water"
+        ds = xr.Dataset(
+            {
+                "oxygen_1": (
+                    "time",
+                    np.array([95.0, 96.0]),
+                    {"units": "% saturation", "standard_name": _oxsn},
+                ),
+                "oxygen_2": (
+                    "time",
+                    np.array([0.5, 0.6]),
+                    {"units": "volts", "standard_name": _oxsn},
+                ),
+            },
+            coords={"time": np.array([0, 1])},
+        )
+        out = _normalise(ds)
+        # oxygen_1 -> a saturation channel, oxygen_2 -> a raw-voltage channel; neither keeps the
+        # stray moles-per-mass name, so neither is canonicalised against umol kg-1 at the writer.
+        reclassified = [
+            v for v in out.variables if "saturation" in v.lower() or "oxygen_raw" in v
+        ]
+        assert reclassified
+        for v in reclassified:
+            assert "moles_of_oxygen" not in str(out[v].attrs.get("standard_name", ""))
+
     def test_skip_existing_when_force_false(self, tmp_path):
         """Second call with force=False must return 0 (all files already exist)."""
         from ctdcast.processors.stage1 import stage1

@@ -1,6 +1,7 @@
 """Tests for ctdcast.writers.netcdf — CF-compliant netCDF writer."""
 
 import numpy as np
+import pytest
 import xarray as xr
 from conftest import CAST_011
 
@@ -20,6 +21,30 @@ class TestWrite:
         write(ds, out)
         assert out.exists()
         assert out.stat().st_size > 0
+
+    def test_write_aborts_on_unrecognised_units(self, tmp_path):
+        """A registered variable's present-but-unrecognised units aborts the write, no file left.
+
+        Covers the writer's canonicalisation guard: ``to_canonical_units`` raises ``UnitsError``,
+        which ``write`` re-raises naming the output file, and nothing is written to disk.
+        """
+        from ctdcast.processors.units import UnitsError
+        from ctdcast.writers.netcdf import write
+
+        ds = xr.Dataset(
+            {
+                "ctd_temperature_1": (
+                    "time",
+                    np.array([10.0, 11.0]),
+                    {"units": "nonsense"},
+                )
+            },
+            coords={"time": np.array([0, 1])},
+        )
+        out = tmp_path / "bad.nc"
+        with pytest.raises(UnitsError, match=r"ctd_temperature_1.*nonsense.*bad\.nc"):
+            write(ds, out)
+        assert not out.exists()
 
     def test_no_tmp_file_left_behind(self, tmp_path):
         from ctdcast.writers.netcdf import write
