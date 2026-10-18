@@ -46,4 +46,8 @@ def read(cnv_path: Path, *, backend: str = "seasenselib") -> xr.Dataset:
     with tempfile.TemporaryDirectory() as tmpdir:
         nc_path = Path(tmpdir) / (cnv_path.stem + ".nc")
         b.convert_cast(cnv_path, nc_path, force=True)
-        return xr.open_dataset(nc_path, engine="netcdf4").load()
+        # Load into memory AND close the file handle before the TemporaryDirectory is removed:
+        # `.load()` reads the data but leaves the netCDF4 store open, and on Windows an open
+        # handle blocks the cleanup unlink (WinError 32).  The context manager closes it.
+        with xr.open_dataset(nc_path, engine="netcdf4") as ds:
+            return ds.load()
