@@ -87,7 +87,7 @@
 
 {% if meta.rename_map %}
 <h2 id="s-rename">{{ m.heading_text(nums["s-rename"], "Variable renaming") }}</h2>
-<p class="caption">Source → canonical name, from each variable's <code>cnv_original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone. The same rename also shows inline in each variable row's Variable cell.</p>
+<p class="caption">Source → canonical name, from each variable's <code>original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone. The same rename also shows inline in each variable row's Variable cell.</p>
 <table class="sortable">
   <thead><tr><th tabindex="0">Source name</th><th data-nosort></th><th tabindex="0">Canonical name</th></tr></thead>
   <tbody>

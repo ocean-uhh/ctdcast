@@ -19,14 +19,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11"
 dependencies = [
     "gsw>=3.6",
     "cmocean>=3.0",
@@ -53,12 +53,19 @@ docs = [
     "sphinx-rtd-theme>=2.0",
     "myst-parser>=2.0",
 ]
-test = ["pytest>=8", "pytest-cov>=5", "pytest-timeout>=2.3", "pytest-xdist>=3"]
+test = ["pytest>=8", "pytest-cov>=5", "pytest-timeout>=2.3", "pytest-xdist>=3", "seasenselib>=0.6.0"]
+# The CNV reader backend (stage 1, draft) delegates to seasenselib, which normalises
+# Sea-Bird unit spellings upstream (conductivity -> mS cm-1, temperature -> degree_Celsius,
+# oxygen -> umol kg-1); ctdcast's canonical-units guard relies on that, so the floor is the
+# version verified to emit canonical CNV units.  0.6.0 was confirmed by reading every CNV
+# fixture (2026-10-17); the explicit "normalise in pipeline" entry (v0.6.1) is the HEX/SBE37
+# path ctdcast does not read yet.
+cnv = ["seasenselib>=0.6.0"]
 dev = ["ctdcast[test,docs]", "ruff>=0.3"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -303,12 +303,12 @@ def generate_station_page(
             datetime.strptime(
                 str(ds.attrs.get("date_modified", "")), "%Y-%m-%dT%H:%M:%SZ"
             )
-            .replace(tzinfo=timezone.utc)
+            .replace(tzinfo=UTC)
             .strftime("%Y-%m-%d %H:%M UTC")
         )
     except ValueError:
         processed_str = datetime.fromtimestamp(
-            nc_path.stat().st_mtime, tz=timezone.utc
+            nc_path.stat().st_mtime, tz=UTC
         ).strftime("%Y-%m-%d %H:%M UTC")
 
     ctx: dict[str, Any] = {

@@ -13,6 +13,7 @@ import warnings
 
 from ctdcast.config import global_attrs as _global_attrs
 from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.unit_tables import UNIT_LABEL_OVERRIDES, unit_label
 from ctdcast.reports._vendored.css import _JS_SORT_TABLES, _JS_TOP_LINKS, emit_css
 from ctdcast.reports._vendored.design_tokens import CMAPS as _FAMILY_CMAPS
 from ctdcast.reports._vendored.design_tokens import (
@@ -20,7 +21,6 @@ from ctdcast.reports._vendored.design_tokens import (
     register_cmocean,
 )
 from ctdcast.reports._vendored.nc_tables import ATTR_GROUPS as _VENDORED_ATTR_GROUPS
-from ctdcast.reports._vendored.units_display import format_units
 
 #: ctdcast's package accent — chosen here, not in the vendored tokens.  Points at
 #: ``--ocean`` so the accent (wordmark, table header, footer rule) is ocean navy;
@@ -75,48 +75,21 @@ COVERAGE_TOLERANCE: dict[str, float] = {
 TABLE_WIDTHS: dict[str, list[str]] = {}
 
 #: Attribute names, in priority order, that record a variable's source name for the
-#: ``original → name`` cell in the inventory tables.  ``cnv_original_name`` is written by the
-#: CNV reader and ``source_variable`` by the LADCP reader; ``original_name`` is the family-shared
-#: spelling the siblings write.  The first present and non-empty wins.
+#: ``original → name`` cell in the inventory tables.  ``original_name`` is the family-shared
+#: spelling ctdcast writes now (CTD and LADCP alike); ``cnv_original_name`` (CNV) and
+#: ``source_variable`` (LADCP) are the pre-0.4.0 spellings, read for older files.  The first
+#: present and non-empty wins.
 ORIGINAL_NAME_ATTRS: tuple[str, ...] = (
     "original_name",
     "cnv_original_name",
     "source_variable",
 )
 
-#: ctdcast's exact-units-string → label overrides on the vendored family defaults.
-#: Empty: ctdcast takes the vendored display form for every unit (the registry's
-#: ``label_units`` column equals :func:`unit_label` for every entry, pinned by a
-#: test).  Add a ``units -> label`` entry here to pin a ctdcast-specific label the
-#: family rule does not produce, without touching the shared table — the same
-#: pattern as :data:`CMAP_OVERRIDES`.
-UNIT_LABEL_OVERRIDES: dict[str, str] = {}
-
-
-def unit_label(units: str, standard_name: str | None = None) -> str:
-    """Return the display label for a units string, with ctdcast's overrides applied.
-
-    Wraps the vendored :func:`~ctdcast.reports._vendored.units_display.format_units` with
-    ctdcast's :data:`UNIT_LABEL_OVERRIDES`.  Intended as the single override-aware display-unit
-    entry point, but the plot path (``vlabel``/``vunit`` in :mod:`ctdcast.config.parameters`)
-    calls ``format_units`` directly, so an override added here does not yet reach a figure —
-    converging the two on a single override-aware call is deferred to the units-canonicalisation
-    work.  The overrides are empty today, so the two agree; a pin test holds the registry's
-    ``label_units`` to this.
-
-    Parameters
-    ----------
-    units : str
-        CF/UDUNITS units string (e.g. ``"mS cm-1"``).
-    standard_name : str or None, optional
-        CF standard name, for the dimensionless turbidity / salinity labels.
-
-    Returns
-    -------
-    str
-        The display units string; ``""`` when *units* is empty.
-    """
-    return format_units(units, standard_name, overrides=UNIT_LABEL_OVERRIDES)
+# ``unit_label`` and ``UNIT_LABEL_OVERRIDES`` live in :mod:`ctdcast.config.unit_tables` (which
+# imports only the vendored units layer, so ``config.parameters.vlabel`` can route display
+# units through the same ctdcast ``TABLES`` without the ``config`` ↔ ``reports.design`` import
+# cycle).  They are re-exported here so this module's public surface (``design.unit_label`` /
+# the inventory tables' display units) is unchanged.
 
 
 def is_qc(name: str, _ds: object = None) -> bool:

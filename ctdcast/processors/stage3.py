@@ -251,12 +251,18 @@ def _build_preferred_composites(
             # Carry the source channel's attrs (units, standard_name, calibration provenance,
             # processing_level) so the composite is self-describing before the writer runs.
             # But a composite is a per-cast *selection* of one channel, not a renamed source
-            # column, so drop the CNV-origin attrs: `cnv_original_name` / `source_variable` are
-            # the rename-table keys (readers.metadata.source_to_canonical) and would collide
-            # with the indexed channel's own entry, mislabeling which CNV column became which
-            # variable. Drop long_name too, so the writer sets the composite's own
-            # ("… (preferred pair)"), and add the selection provenance.
-            _drop = {"long_name", "cnv_original_name", "source_variable"}
+            # column, so drop the source-name attrs: `original_name` (and the pre-0.4.0
+            # `cnv_original_name` / `source_variable`) are the rename-table keys
+            # (readers.metadata.source_to_canonical) and would collide with the indexed
+            # channel's own entry, mislabeling which CNV column became which variable. Drop
+            # long_name too, so the writer sets the composite's own ("… (preferred pair)"),
+            # and add the selection provenance.
+            _drop = {
+                "long_name",
+                "original_name",
+                "cnv_original_name",
+                "source_variable",
+            }
             attrs = {k: v for k, v in da.attrs.items() if k not in _drop}
             attrs["comment"] = (
                 f"preferred {use} channel; copied from {src} per {group.config_key}"

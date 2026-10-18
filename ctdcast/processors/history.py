@@ -59,7 +59,7 @@ def add_processing_level(attrs: MutableMapping[str, object], value: str) -> None
 
 def _iso_now() -> str:
     """Return the current UTC time as an ISO-8601 ``…Z`` stamp."""
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def append_history(

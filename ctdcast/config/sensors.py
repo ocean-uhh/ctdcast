@@ -215,9 +215,23 @@ class SensorOverrides:
         return {}
 
 
-def sanitize_serial(serial: str) -> str:
+def serial_slug(serial: str) -> str:
     """Apply OG1's rule — non-alphanumerics become underscores — to ``serial``."""
     return re.sub(r"[^0-9A-Za-z]", "_", serial)
+
+
+def sanitize_serial(serial: str) -> str:
+    """Return :func:`serial_slug` of ``serial``; deprecated alias, removed in 0.5.0.
+
+    ``sanitize``/``sanitise`` is a British/American variant word, so the family uses one
+    spelling-neutral name (``serial_slug``) for the filename/variable-safe form.
+    """
+    warnings.warn(
+        "sanitize_serial is deprecated and will be removed in 0.5.0; use serial_slug.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return serial_slug(serial)
 
 
 def catalog_var_name(role: str, serial: str) -> str:
@@ -231,7 +245,7 @@ def catalog_var_name(role: str, serial: str) -> str:
     primary on some casts and secondary on others) is a single catalog entry.
     """
     sensor_type = re.sub(r"_\d+$", "", role).upper()
-    return f"SENSOR_{sensor_type}_{sanitize_serial(serial)}"
+    return f"SENSOR_{sensor_type}_{serial_slug(serial)}"
 
 
 def _is_unresolved(attrs: dict[str, str]) -> bool:

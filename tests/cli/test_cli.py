@@ -533,6 +533,7 @@ class TestReport:
         assert rc == 0
         assert not list((tmp_path / "out").glob("casts/*.html"))
 
+    @pytest.mark.slow
     def test_stations_only_generates_pages(self, tmp_path):
         """Confirm the CLI drives report correctly for stations."""
         cfg = self._write_cfg(tmp_path)
@@ -547,6 +548,7 @@ class TestReport:
         for cast_num in (11, 12, 128, 129):
             assert (tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html").exists()
 
+    @pytest.mark.slow
     def test_cast_flag_generates_single_station(self, tmp_path):
         cfg = self._write_cfg(tmp_path)
         rc = _report.run(_report_ns(config=cfg, only=11, force=True))
@@ -593,6 +595,7 @@ class TestRun:
         _run.run(_run_ns(config=cfg, dry_run=True))
         assert not (tmp_path / "out").exists()
 
+    @pytest.mark.slow
     def test_run_generates_station_pages(self, tmp_path):
         """run with no profiles_nc → skips convert profiles, generates station pages."""
         cfg = self._write_cfg(tmp_path)
@@ -601,6 +604,7 @@ class TestRun:
         for cast_num in (11, 12, 128, 129):
             assert (tmp_path / "out" / "casts" / f"cast_{cast_num:03d}.html").exists()
 
+    @pytest.mark.slow
     def test_run_with_cast_skips_profiles_but_generates_page(self, tmp_path):
         """--only N runs cast-scope stages for that cast and generates only its page."""
         cfg = self._write_cfg(tmp_path)
@@ -641,6 +645,7 @@ class TestRun:
         with pytest.raises(SystemExit):
             parser.parse_args(["config.yaml", "--stage", "ladcp"])
 
+    @pytest.mark.slow
     def test_run_skip_existing_does_not_overwrite(self, tmp_path):
         """--skip-existing leaves existing station pages untouched."""
         cfg = self._write_cfg(tmp_path)

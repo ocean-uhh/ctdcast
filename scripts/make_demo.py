@@ -13,7 +13,7 @@ Maps render without bathymetry if the file is not found.
 
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Allow ``python scripts/make_demo.py`` from the repo root without an editable
@@ -67,10 +67,10 @@ def _fixed_generated_at() -> str:
         if dm:
             stamps.append(dm)
     if not stamps:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        return datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     return (
         datetime.strptime(max(stamps), "%Y-%m-%dT%H:%M:%SZ")
-        .replace(tzinfo=timezone.utc)
+        .replace(tzinfo=UTC)
         .strftime("%Y-%m-%d %H:%M UTC")
     )
 

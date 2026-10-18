@@ -458,7 +458,7 @@ def provenance_attrs(now: _dt.datetime | None = None) -> dict[str, str]:
     -------
     dict of str to str
     """
-    stamp = (now or _dt.datetime.now(_dt.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stamp = (now or _dt.datetime.now(_dt.UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "date_created": stamp,
         "date_modified": stamp,

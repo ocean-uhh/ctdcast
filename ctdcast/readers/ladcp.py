@@ -25,9 +25,10 @@ from ctdcast.identity import format_cast_id
 MatField = Any
 
 #: Canonical variable name → source field in the LDEO ``.mat`` ``dr`` struct.
-#: Written onto each variable as ``source_variable`` so the .mat→canonical
-#: mapping is reconstructable from the output file alone (the LADCP parallel of
-#: the CTD ``cnv_original_name``; feeds the netCDF-inventory renaming table).
+#: Written onto each variable as ``original_name`` (the family-shared provenance
+#: spelling, shared with the CTD path) so the .mat→canonical mapping is
+#: reconstructable from the output file alone and feeds the netCDF-inventory
+#: renaming table.
 _SOURCE_MAP: dict[str, str] = {
     "u": "dr.u",
     "v": "dr.v",
@@ -325,7 +326,7 @@ def read_ladcp_cast(
     # Record the .mat source field on each variable (provenance-in-file).
     for _name, _src in _SOURCE_MAP.items():
         if _name in ds.variables:
-            ds[_name].attrs["source_variable"] = _src
+            ds[_name].attrs["original_name"] = _src
     ds.attrs.update(_provenance_attrs(dr, ps, da))
     return ds
 

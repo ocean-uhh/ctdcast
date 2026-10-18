@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from ctdcast.reports._vendored.units_display import format_units
+from ctdcast.config.unit_tables import unit_label
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -85,7 +85,6 @@ def is_sbe_channel(name: str) -> bool:
 VARIABLES: dict[str, dict] = {
     "pressure": {
         "label": "Pressure",
-        "label_units": "dbar",
         "long_name": "Sea pressure",
         "units": "dbar",
         "standard_name": "sea_water_pressure",
@@ -95,7 +94,6 @@ VARIABLES: dict[str, dict] = {
     },
     "latitude": {
         "label": "Latitude",
-        "label_units": "°N",
         "long_name": "Latitude",
         "units": "degrees_north",
         "standard_name": "latitude",
@@ -105,7 +103,6 @@ VARIABLES: dict[str, dict] = {
     },
     "longitude": {
         "label": "Longitude",
-        "label_units": "°E",
         "long_name": "Longitude",
         "units": "degrees_east",
         "standard_name": "longitude",
@@ -115,7 +112,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_temperature_1": {
         "label": "$T_1$",
-        "label_units": "°C",
         "long_name": "In-situ temperature (primary)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -126,7 +122,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_temperature_2": {
         "label": "$T_2$",
-        "label_units": "°C",
         "long_name": "In-situ temperature (secondary)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -142,7 +137,6 @@ VARIABLES: dict[str, dict] = {
     # silent _1 fallback). The chosen sensor is recorded in sensor_temperature_preferred.
     "ctd_temperature": {
         "label": "T",
-        "label_units": "°C",
         "long_name": "In-situ temperature (preferred pair)",
         "units": "degree_Celsius",
         "standard_name": "sea_water_temperature",
@@ -158,7 +152,6 @@ VARIABLES: dict[str, dict] = {
     # stores salinity, not conductivity).
     "conductivity": {
         "label": "$C$",
-        "label_units": "mS/cm",
         "long_name": "Conductivity (preferred pair)",
         "units": "mS cm-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -168,7 +161,6 @@ VARIABLES: dict[str, dict] = {
     },
     "conductivity_1": {
         "label": "$C_1$",
-        "label_units": "mS/cm",
         "long_name": "Conductivity (primary)",
         "units": "mS cm-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -178,7 +170,6 @@ VARIABLES: dict[str, dict] = {
     },
     "conductivity_2": {
         "label": "$C_2$",
-        "label_units": "mS/cm",
         "long_name": "Conductivity (secondary)",
         "units": "mS cm-1",
         "standard_name": "sea_water_electrical_conductivity",
@@ -188,7 +179,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_salinity_1": {
         "label": "$S_{P1}$",
-        "label_units": "PSU",
         "long_name": "Practical salinity (primary)",
         "units": "1",  # PSS-78 is dimensionless per CF
         "standard_name": "sea_water_practical_salinity",
@@ -199,7 +189,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_salinity_2": {
         "label": "$S_{P2}$",
-        "label_units": "PSU",
         "long_name": "Practical salinity (secondary)",
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
@@ -211,7 +200,6 @@ VARIABLES: dict[str, dict] = {
     # ctd_salinity: preferred-pair composite — see ctd_temperature note above.
     "ctd_salinity": {
         "label": "SP",
-        "label_units": "PSU",
         "long_name": "Practical salinity (preferred pair)",
         "units": "1",
         "standard_name": "sea_water_practical_salinity",
@@ -222,7 +210,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_oxygen_1": {
         "label": "$O_2$",
-        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (primary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -241,7 +228,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_oxygen_2": {
         "label": "$O_2$ (2)",
-        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (secondary)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -260,7 +246,6 @@ VARIABLES: dict[str, dict] = {
     # processing.preferred_oxygen (independent of the T/C pair).
     "ctd_oxygen": {
         "label": "$O_2$",
-        "label_units": "µmol/kg",
         "long_name": "Dissolved oxygen (preferred)",
         "units": "umol kg-1",
         "standard_name": "moles_of_oxygen_per_unit_mass_in_sea_water",
@@ -272,7 +257,6 @@ VARIABLES: dict[str, dict] = {
     # Entry kept for vlabel() and plot metadata; no netCDF write.
     "oxygen_saturation": {
         "label": "$O_2$ sat",
-        "label_units": "%",
         "long_name": "Dissolved oxygen saturation",
         "units": "percent",
         "standard_name": None,
@@ -284,7 +268,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_fluor": {
         "label": "Fluorescence",
-        "label_units": "mg/m³",
         "long_name": "Chlorophyll fluorescence",
         "units": "mg m-3",
         "standard_name": "mass_concentration_of_chlorophyll_in_sea_water",
@@ -294,7 +277,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_turbidity": {
         "label": "Turbidity",
-        "label_units": "NTU",
         "long_name": "Turbidity",
         "units": "1",  # dimensionless per CF for NTU
         "standard_name": "sea_water_turbidity",
@@ -304,7 +286,6 @@ VARIABLES: dict[str, dict] = {
     },
     "ctd_altimeter": {
         "label": "Altimeter",
-        "label_units": "m",
         "long_name": "Altimeter distance to seafloor",
         "units": "m",
         "standard_name": "altitude_of_sea_floor",
@@ -389,7 +370,6 @@ VARIABLES: dict[str, dict] = {
     # TEOS-10 derived — computed on-the-fly by derive_teos10(), not stored in NC
     "conservative_temperature": {
         "label": "CT",
-        "label_units": "°C",
         "long_name": "Conservative Temperature",
         "units": "degree_Celsius",
         "standard_name": "sea_water_conservative_temperature",
@@ -400,7 +380,6 @@ VARIABLES: dict[str, dict] = {
     },
     "absolute_salinity": {
         "label": "SA",
-        "label_units": "g/kg",
         "long_name": "Absolute Salinity",
         "units": "g kg-1",
         "standard_name": "sea_water_absolute_salinity",
@@ -411,7 +390,6 @@ VARIABLES: dict[str, dict] = {
     },
     "sigma0": {
         "label": "$\\sigma_0$",
-        "label_units": "kg/m³",
         "long_name": "Potential density anomaly (ref 0 dbar)",
         "units": "kg m-3",
         "standard_name": "sea_water_sigma_theta",
@@ -422,7 +400,6 @@ VARIABLES: dict[str, dict] = {
     # Derived diagnostics
     "AOU": {
         "label": "AOU",
-        "label_units": "µmol/kg",
         "long_name": "Apparent Oxygen Utilization",
         "units": "umol kg-1",
         "standard_name": None,
@@ -433,7 +410,6 @@ VARIABLES: dict[str, dict] = {
     # LADCP velocity components
     "U": {
         "label": "U",
-        "label_units": "m/s",
         "long_name": "Eastward velocity",
         "units": "m s-1",
         "standard_name": "eastward_sea_water_velocity",
@@ -443,7 +419,6 @@ VARIABLES: dict[str, dict] = {
     },
     "V": {
         "label": "V",
-        "label_units": "m/s",
         "long_name": "Northward velocity",
         "units": "m s-1",
         "standard_name": "northward_sea_water_velocity",
@@ -454,7 +429,6 @@ VARIABLES: dict[str, dict] = {
     # Stability diagnostics
     "N2": {
         "label": "N²",
-        "label_units": "rad²/s²",
         "long_name": "Squared buoyancy frequency",
         "units": "rad2 s-2",
         "standard_name": "square_of_brunt_vaisala_frequency_in_sea_water",
@@ -464,7 +438,6 @@ VARIABLES: dict[str, dict] = {
     },
     "Turner": {
         "label": "Turner angle",
-        "label_units": "°",
         "long_name": "Turner angle",
         "units": "degree",
         "standard_name": None,
@@ -517,10 +490,9 @@ def vlabel(var: str, prefix: str = "") -> str:
     """Return a matplotlib axis label for *var* using the VARIABLES registry.
 
     Format is ``"Label (units)"`` when the entry has a non-empty ``units``, or just
-    ``"Label"`` when it is dimensionless.  The display unit is derived from the CF
-    ``units`` string by :func:`~ctdcast.reports._vendored.units_display.format_units`
-    (so every entry with ``units`` is labelled, not only the ones that also carry a
-    ``label_units`` pin), never the ASCII-safe ``units`` string itself.
+    ``"Label"`` when it is dimensionless.  The display unit is derived from the CF ``units``
+    string by :func:`ctdcast.config.unit_tables.unit_label` (the vendored ``format_units``
+    against ctdcast's ``TABLES``), never the ASCII-safe ``units`` string itself.
 
     Parameters
     ----------
@@ -538,7 +510,7 @@ def vlabel(var: str, prefix: str = "") -> str:
     """
     entry = VARIABLES.get(var, {})
     lbl = f"{prefix}{entry.get('label', var)}"
-    units = format_units(entry.get("units", ""), entry.get("standard_name"))
+    units = unit_label(entry.get("units", ""), entry.get("standard_name"))
     return f"{lbl} ({units})" if units else lbl
 
 
@@ -548,11 +520,11 @@ def vunit(var: str) -> str:
     The unit half of :func:`vlabel`, for field colorbars that place the unit as a
     title on top of the bar rather than a ``"Label (units)"`` side label.  Derives
     the display unit from the CF ``units`` string via
-    :func:`~ctdcast.reports._vendored.units_display.format_units`, so it is defined
+    :func:`ctdcast.config.unit_tables.unit_label`, so it is defined
     for every entry with ``units`` and agrees with :func:`vlabel`.
     """
     entry = VARIABLES.get(var, {})
-    return format_units(entry.get("units", ""), entry.get("standard_name"))
+    return unit_label(entry.get("units", ""), entry.get("standard_name"))
 
 
 #: Greek/command replacements for the mathtext→Unicode label converter.

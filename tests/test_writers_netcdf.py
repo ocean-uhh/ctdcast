@@ -52,14 +52,26 @@ class TestWrite:
             assert "units" in ds_back["temperature_1"].attrs
         ds_back.close()
 
-    def test_known_variable_gets_label_units(self, tmp_path):
+    def test_known_variable_gets_canonical_units_not_label_units(self, tmp_path):
+        """The writer stamps the canonical ``units`` and does not add ``label_units``.
+
+        A fresh dataset (no ``label_units``) is used: the writer no longer writes the attribute,
+        so a variable that arrives without one still has none.  (An old file that already carries
+        ``label_units`` keeps it — the writer does not strip existing attributes.)
+        """
+        import numpy as np
+
         from ctdcast.writers.netcdf import write
 
-        ds = _load(CAST_011)
+        ds = xr.Dataset(
+            {"ctd_salinity_1": ("time", np.array([35.0, 35.1]), {"units": "1"})},
+            coords={"time": np.array([0, 1])},
+        )
         out = tmp_path / "test.nc"
         write(ds, out)
         ds_back = xr.open_dataset(out, engine="netcdf4")
-        assert ds_back["ctd_salinity_1"].attrs.get("label_units") == "PSU"
+        assert ds_back["ctd_salinity_1"].attrs.get("units") == "1"
+        assert "label_units" not in ds_back["ctd_salinity_1"].attrs
         ds_back.close()
 
     def test_per_cast_file_defaults_to_provisional_data_mode(self, tmp_path):

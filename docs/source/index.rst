@@ -47,6 +47,7 @@ Contents
    data_files
    report_output
    provenance_roadmap
+   migrating_0_4_0
    api
 
 .. toctree::

@@ -2,7 +2,7 @@
 # ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.
 # The set is the contents of this directory, minus this file.
 # Regenerate after an intentional edit: python -m <pkg>.reports._vendored.check --update
-3f7de8a26e85c99221f6ec1fa73bed61d975cf37a40109b7c82a1378f680cc54  README.md
+44a80f6a0e24be6684b5ac5b17ee034985b0a7e4daafc5276fe3ee93cb4cbf8f  README.md
 8066cc75e8518178ad36a80f06f5e182959373a168d1388be1b6d4f8e0c0736b  __init__.py
 588ce9e52bc45d89ad2ae2de15c3bcc65a24a465a25a69ba1956c889f0d6d245  check.py
 a3778ed75ba94d40f4bbb53abb8eded2721b86ef8495f9b6da7627ac6d2cf8b1  css.py
@@ -18,4 +18,5 @@ e8b8593c7db2bd3fabd15687a35c52f402d2c42b596db5648f6fa83decba2467  page_model.py
 a60846eb6d54abb24228d87c85871d528d32a00ab86c316f1fdb349bfeb4a511  templates/_map.html
 e0c01eed39ba98b860b571cf71d1e58bca33e0f6ed4ae0d9779ec0d2432297b3  templates/_nav.html
 e899efdb540ee33e1d43a8e1e1f0bc9b0306523dad88b2036820fd5868bf1a13  templates/_nc_tables.html
-a85e08ca9e428017e28af116a0133773fb0eec50ac414d0259eb497f4f5cd410  units_display.py
+20163bf2393810ea3dbc62f2e21e9779bc89f174623090f2e1a3bf38f42a9365  units.py
+916bae2b3b648df9f18f8e606b35d948553c4a41c554b145530ec8c7f3fe8b4a  units_tables.py

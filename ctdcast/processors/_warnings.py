@@ -2,7 +2,7 @@
 
 A whole-cruise stage converts hundreds of casts, and a per-cast library warning
 (a blank instrument serial, a ``db`` vs ``dbar`` unit label) would otherwise print
-once per cast.  :func:`summarise_warnings` collapses captured warnings into one
+once per cast.  :func:`warning_summary` collapses captured warnings into one
 counted line per unique message so the console stays readable without hiding the
 underlying notice.
 """
@@ -12,7 +12,7 @@ from __future__ import annotations
 import warnings
 
 
-def summarise_warnings(caught: list[warnings.WarningMessage]) -> None:
+def warning_summary(caught: list[warnings.WarningMessage]) -> None:
     """Print one counted line per unique captured warning message."""
     counts: dict[str, int] = {}
     for w in caught:

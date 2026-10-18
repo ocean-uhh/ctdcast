@@ -31,10 +31,10 @@ def test_blank_serial_emits_warning():
 
 
 def test_source_variable_recorded(cast_011):
-    """Each mapped variable carries its .mat source field as source_variable."""
-    assert cast_011["u"].attrs.get("source_variable") == "dr.u"
-    assert cast_011["u_shear"].attrs.get("source_variable") == "dr.u_shear_method"
-    assert cast_011["depth"].attrs.get("source_variable") == "dr.z"
+    """Each mapped variable carries its .mat source field as original_name."""
+    assert cast_011["u"].attrs.get("original_name") == "dr.u"
+    assert cast_011["u_shear"].attrs.get("original_name") == "dr.u_shear_method"
+    assert cast_011["depth"].attrs.get("original_name") == "dr.z"
 
 
 def test_source_map_covers_present_variables(cast_011):
@@ -42,7 +42,7 @@ def test_source_map_covers_present_variables(cast_011):
     present = [k for k in _SOURCE_MAP if k in cast_011.variables]
     assert "u" in present and "v" in present
     for name in present:
-        assert cast_011[name].attrs.get("source_variable") == _SOURCE_MAP[name]
+        assert cast_011[name].attrs.get("original_name") == _SOURCE_MAP[name]
 
 
 def test_inventory_original_name_from_source_variable(tmp_path):

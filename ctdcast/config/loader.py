@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ def groupings_path(data: dict[str, Any] | None) -> Path | None:
     against distance) and ``timeseries:`` (repeat stations plotted against time)
     -- so ``groupings_yaml`` is the key, and ``ctd_groupings.yaml`` the
     conventional filename. ``section_yaml`` named only half of what the file
-    does; it stays accepted so existing configs keep working.
+    does; it stays accepted, with a ``DeprecationWarning``, until 0.5.0.
 
     Parameters
     ----------
@@ -30,7 +31,15 @@ def groupings_path(data: dict[str, Any] | None) -> Path | None:
         The path, or ``None`` when neither key is set.
     """
     d = data or {}
-    value = d.get("groupings_yaml") or d.get("section_yaml")
+    value = d.get("groupings_yaml")
+    if value is None and d.get("section_yaml"):
+        warnings.warn(
+            "config key `section_yaml` is deprecated and will be removed in 0.5.0; "
+            "rename it to `groupings_yaml`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        value = d.get("section_yaml")
     return Path(str(value)) if value else None
 
 

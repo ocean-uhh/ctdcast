@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -182,8 +182,8 @@ def report(
 
     """
     # `groupings_yaml` names what the file actually holds -- sections *and*
-    # timeseries.  `section_yaml` named half of it; still accepted so an existing
-    # caller keeps working.
+    # timeseries.  `section_yaml` named half of it; accepted with a deprecation
+    # warning until 0.5.0 (the config-key warning is raised in config.loader).
     groupings_yaml = groupings_yaml or section_yaml
 
     cfg = config if config is not None else DEFAULT_REPORT_CONFIG
@@ -1585,7 +1585,7 @@ def _fmt_mtime(path: Path) -> str:
     """Return a compact local datetime string for *path*'s mtime, or ``"missing"``."""
     try:
         return (
-            datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+            datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             .astimezone()
             .strftime("%Y-%m-%d %H:%M")
         )

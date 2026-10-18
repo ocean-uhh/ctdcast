@@ -24,13 +24,16 @@ jobs:
   test:
     name: ${{ matrix.os }} / Py ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    # 3.14 is tested but allowed to fail: it is the next release, so a wheel for a
+    # dependency may lag; a red 3.14 cell must not block a merge.
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
     strategy:
       fail-fast: true
       matrix:
         # Ubuntu covers the full Python range; macOS and Windows run one version
         # (3.11) only — they catch platform issues, not version issues.
         os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         include:
           - os: macos-latest
             python-version: "3.11"
@@ -123,13 +126,6 @@ jobs:
       - name: Install package
         run: |
           python -m pip install -e ".[test]" --prefer-binary
-
-      - name: Install conversion backend
-        # seasenselib (the CNV reader) is installed only in the coverage job, not
-        # the test matrix — it exercises the stage-1 conversion path so its
-        # coverage counts, without slowing every matrix cell.
-        run: |
-          python -m pip install seasenselib --prefer-binary
 
       - name: All tests with coverage gate
         run: |

@@ -2,9 +2,29 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
-from ctdcast.config.loader import SectionsConfig
+import pytest
+
+from ctdcast.config.loader import SectionsConfig, groupings_path
+
+
+def test_groupings_path_prefers_groupings_yaml_without_warning() -> None:
+    """``groupings_yaml`` is used as-is; the deprecated key is not consulted, so no warning."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any DeprecationWarning would fail here
+        assert groupings_path({"groupings_yaml": "g.yaml"}) == Path("g.yaml")
+    assert groupings_path({}) is None
+
+
+def test_groupings_path_accepts_section_yaml_with_deprecation_warning() -> None:
+    """``section_yaml`` still resolves but warns, naming the replacement and removal version."""
+    with pytest.warns(
+        DeprecationWarning, match=r"section_yaml.*0\.5\.0.*groupings_yaml"
+    ):
+        result = groupings_path({"section_yaml": "s.yaml"})
+    assert result == Path("s.yaml")
 
 
 def test_from_yaml_roundtrip(tmp_path: Path) -> None:

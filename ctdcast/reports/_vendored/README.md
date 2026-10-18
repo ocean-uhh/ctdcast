@@ -2,10 +2,12 @@
 
 The files in this directory are the shared report presentation layer — the
 design tokens, the figure encoder, the CSS generator, the page model, the
-matplotlib style, the shared templates, and the Leaflet map building blocks
+matplotlib style, the shared templates, the Leaflet map building blocks
 (`leaflet.py`, `templates/_map.html`, and the bundled Leaflet library under
-`leaflet/`). They are kept **byte-identical** across ctdcast, oceanarray and
-glidertest.
+`leaflet/`), and the units layer (`units_tables.py`, the canonical spellings and
+their aliases; `units.py`, the `resolve_units` / `merge_tables` / `format_units`
+machinery over them). They are kept **byte-identical** across ctdcast, oceanarray
+and glidertest.
 
 ctdcast `main` is the source of truth. Make an edit here in ctdcast, then
 re-vendor it out to the siblings. Never edit a sibling's copy in place — the

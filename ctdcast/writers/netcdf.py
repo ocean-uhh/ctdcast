@@ -27,12 +27,15 @@ _QARTOD_FLAG_MEANINGS = (
 def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     """Write *ds* to *path* with CF-1.13 attributes and QARTOD flag metadata.
 
-    For each variable present in both *ds* and ``VARIABLES`` — including
-    coordinate variables such as ``latitude``/``longitude`` — applies
-    ``units``, ``long_name``, ``standard_name``, ``label_units``, and
-    ``comment`` (when defined).  For each ``{var}_qc`` variable, generates complete CF flag
-    attributes.  Sets ``Conventions = "CF-1.13"`` unless the caller already
-    declared one (a richer value such as ``"CF-1.13, ACDD-1.3"`` is preserved).
+    Each registered variable's ``units`` is first canonicalised to its CF spelling by
+    :func:`ctdcast.processors.units.to_canonical_units` (which raises
+    :class:`~ctdcast.processors.units.UnitsError` on an unrecognised or missing spelling —
+    the write is aborted, nothing is left on disk).  Then, for each variable present in both
+    *ds* and ``VARIABLES`` — including coordinates such as ``latitude``/``longitude`` —
+    applies ``long_name``, ``standard_name``, and ``comment`` (when defined).  For each
+    ``{var}_qc`` variable, generates complete CF flag attributes.  Sets
+    ``Conventions = "CF-1.13"`` unless the caller already declared one (a richer value such
+    as ``"CF-1.13, ACDD-1.3"`` is preserved).
 
     Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then
     replaces *path* so a failed write never leaves a partial file.
@@ -55,21 +58,28 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     """
     ds = ds.copy()
 
-    # Apply CF metadata from VARIABLES for each known variable.
+    # Canonicalise units at this write boundary: rewrite each registered variable's units to
+    # its canonical spelling (converting the values on a factor != 1), and refuse an
+    # unrecognised or missing spelling rather than silently stamping the registry value over
+    # it.  Lazy import — the stage modules import this writer, so a module-level import of the
+    # processors package would form a cycle.
+    from ctdcast.processors.units import UnitsError, to_canonical_units
+
+    try:
+        ds = to_canonical_units(ds)
+    except UnitsError as exc:
+        raise UnitsError(f"{exc} [writing {path.name}]") from exc
+
+    # Apply CF metadata from VARIABLES for each known variable.  Units are already canonical
+    # (set above), so this pass only fills long_name / standard_name / comment.
     for var, meta in VARIABLES.items():
         if var not in ds:
             continue
         existing = dict(ds[var].attrs)
         if meta.get("long_name"):
             existing.setdefault("long_name", meta["long_name"])
-        if meta.get("units"):
-            existing["units"] = meta["units"]  # always override — CF canonical form
         if meta.get("standard_name"):
             existing.setdefault("standard_name", meta["standard_name"])
-        if meta.get("label_units"):
-            # Unicode display form for figure axes (e.g. "S m⁻¹"); complements the
-            # CF-canonical ASCII ``units``.  Kept if the file already carries one.
-            existing.setdefault("label_units", meta["label_units"])
         if meta.get("comment"):
             # Free-text provenance (e.g. the oxygen line-plumbing assumption); kept if
             # the variable already carries a more specific comment.
@@ -113,7 +123,7 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
     # ``date_modified`` moves on every write; ``date_created`` is set once (first write) and
     # preserved on re-runs — a stage-3 rewrite records when it was rewritten without resetting
     # the creation time. Same UTC form as ``global_attrs.provenance_attrs``.
-    _stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    _stamp = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     global_attrs["date_modified"] = _stamp
     global_attrs.setdefault("date_created", _stamp)
     # Every file carries a ``data_mode`` (OceanSITES reference table 4), so a consumer

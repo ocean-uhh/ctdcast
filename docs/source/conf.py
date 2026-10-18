@@ -4,7 +4,7 @@ import datetime
 
 from ctdcast import __version__
 
-year = datetime.datetime.now(tz=datetime.timezone.utc).date().year
+year = datetime.datetime.now(tz=datetime.UTC).date().year
 
 project = "ctdcast"
 author = "Eleanor Frajka-Williams"

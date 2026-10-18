@@ -21,7 +21,11 @@ class TestBuildProfilesCruise:
         ds.close()
 
     def test_science_vars_get_cf_attrs(self, tmp_path):
-        """Binned science variables carry units/standard_name/long_name/label_units."""
+        """Binned science variables carry units / standard_name / long_name.
+
+        ``label_units`` is no longer written to files (the display spelling is derived
+        from ``units`` by the vendored ``format_units``), so it is not asserted here.
+        """
         from ctdcast.processors.profiles import build_profiles
 
         out = tmp_path / "profiles.nc"
@@ -33,7 +37,7 @@ class TestBuildProfilesCruise:
             assert a.get("standard_name"), f"{var} missing standard_name"
             # long_name must be the descriptive name, not the placeholder var name
             assert a.get("long_name") and a["long_name"] != var
-            assert a.get("label_units"), f"{var} missing label_units"
+            assert "label_units" not in a, f"{var} should no longer carry label_units"
         ds.close()
 
     def test_coords_get_standard_name(self, tmp_path):

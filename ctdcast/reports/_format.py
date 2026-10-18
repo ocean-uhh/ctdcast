@@ -5,7 +5,7 @@ Internal to ``reports/``; parallels oceanarray's ``report/_html_helpers.py``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import xarray as xr
@@ -22,7 +22,7 @@ def report_generated_at(generated_at: str | None = None) -> str:
     back to the current time, the normal run.  Parallels the injectable ``now`` of
     :func:`ctdcast.config.global_attrs.provenance_attrs`.
     """
-    return generated_at or datetime.now(timezone.utc).strftime(GENERATED_AT_FMT)
+    return generated_at or datetime.now(UTC).strftime(GENERATED_AT_FMT)
 
 
 def profile_cast_suffixes(ds: xr.Dataset) -> np.ndarray:

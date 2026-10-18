@@ -35,8 +35,8 @@ _SBE_TIME_FMT = "%b %d %Y %H:%M:%S"
 def _canonical_var(channel: str, rename_map: dict[str, str] | None = None) -> str:
     """Rename an SBE channel to its ctdcast canonical name, or keep it if unmapped.
 
-    *rename_map* is the cast's own ``{sbe_column_name: variable_name}`` built from the
-    reader's ``cnv_original_name`` provenance — the authoritative, cast-specific rename that
+    *rename_map* is the cast's own ``{sbe_column_name: variable_name}`` built from each
+    variable's ``original_name`` provenance — the authoritative, cast-specific rename that
     the reader actually applied. It wins over the static :data:`CNV_ALIASES` fallback, which
     does not cover every unit spelling (``c0mS/cm`` vs ``c0S/m``). A channel neither knows
     keeps its header name — a shown raw name is safer than a wrong rename.
@@ -1166,7 +1166,7 @@ def conformance_ticks(
     :data:`CONFORMANCE_NO_REFERENCE` tick — a dash, never a cross. The comparison reads the
     structured :class:`ProcessingStep` parameters and is producer-agnostic, so the same
     references serve a future stage-3 ledger. *rename_map* is the cast's
-    ``{sbe_column_name: variable_name}`` (from the reader's ``cnv_original_name``), used to
+    ``{sbe_column_name: variable_name}`` (from each variable's ``original_name``), used to
     canonicalise the Variables column to the names the reader actually applied — see
     :func:`_canonical_var`. Returns an empty list for an empty header, or for an instrument
     outside the SBE 9 family (see :func:`conformance_supported`).

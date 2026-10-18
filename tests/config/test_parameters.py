@@ -97,12 +97,18 @@ def test_section_panel_vars_in_variables() -> None:
     assert not missing, f"Panel variables missing from VARIABLES: {missing}"
 
 
-def test_section_panel_vars_have_label_and_label_units() -> None:
-    """Every panel variable must have both 'label' and 'label_units' entries in VARIABLES."""
+def test_section_panel_vars_have_label_and_units() -> None:
+    """Every panel variable must have a 'label' and a canonical 'units' in VARIABLES.
+
+    ``label_units`` was removed; the display unit is derived from ``units`` by
+    :func:`ctdcast.config.unit_tables.unit_label`, so the registry need only carry ``units``.
+    """
     for var in (*SECTION_PHYSICS_VARS, *SECTION_BIOGEO_VARS):
         entry = VARIABLES[var]
         assert "label" in entry, f"{var!r} is missing 'label' in VARIABLES"
-        assert "label_units" in entry, f"{var!r} is missing 'label_units' in VARIABLES"
+        assert entry.get("units") is not None, (
+            f"{var!r} is missing 'units' in VARIABLES"
+        )
 
 
 def test_load_display_config_merges_overrides() -> None:

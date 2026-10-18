@@ -127,7 +127,8 @@ def test_composites_copy_the_preferred_pair_channel() -> None:
     # Provenance recorded on the composite.
     assert "secondary" in ds["ctd_temperature"].attrs["comment"]
     # The composite is a selection, not a renamed source column: it must NOT carry the
-    # source channel's CNV-origin attrs (they key the rename table and would collide).
+    # source channel's source-name attrs (they key the rename table and would collide).
+    assert "original_name" not in ds["conductivity"].attrs
     assert "cnv_original_name" not in ds["conductivity"].attrs
     assert "source_variable" not in ds["conductivity"].attrs
     # but it stays self-describing (units survive).

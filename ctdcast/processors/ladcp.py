@@ -23,7 +23,7 @@ from ctdcast.config.global_attrs import (
     identity_attrs,
 )
 from ctdcast.identity import cast_id_from_name, format_cast_id
-from ctdcast.processors._warnings import summarise_warnings
+from ctdcast.processors._warnings import warning_summary
 from ctdcast.processors.history import append_history
 from ctdcast.processors.stage_layout import (
     is_up_to_date,
@@ -158,7 +158,7 @@ def run_convert(
                 cruise_info=cruise_info,
             ):
                 n_written += 1
-    summarise_warnings(caught)
+    warning_summary(caught)
     return n_written
 
 

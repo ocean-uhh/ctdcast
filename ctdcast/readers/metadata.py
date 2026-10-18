@@ -16,11 +16,13 @@ from ctdcast.config.cnv_header import header_from_raw_metadata, parse_sensor_blo
 from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
 
 #: Per-variable attributes holding the raw source name a reader recorded at read
-#: time: ``cnv_original_name`` (seasenselib CTD) or ``source_variable`` (LADCP
-#: ``.mat`` field).  The source→canonical rename a reader applied is reconstructed
-#: from whichever is present, so provenance lives on each variable rather than a
-#: parallel global mapping that could drift.
-_SOURCE_NAME_ATTRS = ("cnv_original_name", "source_variable")
+#: time.  ``original_name`` is the family-shared spelling ctdcast writes now (CTD and
+#: LADCP alike); ``cnv_original_name`` (seasenselib CTD) and ``source_variable`` (LADCP
+#: ``.mat`` field) are the older spellings, read for files written before 0.4.0.  The
+#: source→canonical rename a reader applied is reconstructed from whichever is present,
+#: so provenance lives on each variable rather than a parallel global mapping that could
+#: drift.
+_SOURCE_NAME_ATTRS = ("original_name", "cnv_original_name", "source_variable")
 
 
 def source_to_canonical(ds: xr.Dataset, *, lower_keys: bool = False) -> dict[str, str]:

@@ -175,7 +175,7 @@ def test_no_attr_layer_returns_history():
 
 
 def test_provenance_is_injectable_and_acdd():
-    now = datetime.datetime(2026, 8, 21, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    now = datetime.datetime(2026, 8, 21, 12, 0, 0, tzinfo=datetime.UTC)
     a = provenance_attrs(now)
     assert a["date_created"] == "2026-08-21T12:00:00Z"
     assert a["date_modified"] == a["date_created"]

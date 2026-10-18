@@ -686,7 +686,7 @@ def build_profiles(
         "pressure": ("pressure", pressure_coord),
     }
     # Science vars carry only the coordinates pointer here; write() supplies
-    # units/long_name/standard_name/label_units from VARIABLES.  A var not in
+    # units/long_name/standard_name from VARIABLES.  A var not in
     # VARIABLES keeps a placeholder long_name so it is not left wholly unlabelled.
     data_vars: dict = {
         v: (
@@ -1052,7 +1052,7 @@ def build_profiles(
 
     # Route through the CF writer so the binned science variables and the
     # latitude/longitude/pressure coordinates receive their VARIABLES metadata
-    # (units, standard_name, long_name, label_units) — a plain to_netcdf here
+    # (units, standard_name, long_name) — a plain to_netcdf here
     # would leave them unlabelled.  write() writes atomically.
     _write_nc(ds_out, profiles_path)
     return True

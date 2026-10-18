@@ -16,6 +16,7 @@ from ctdcast.config.sensors import (
     catalog_var_name,
     resolve_sensor,
     sanitize_serial,
+    serial_slug,
 )
 
 
@@ -263,10 +264,17 @@ def test_catalog_var_name_and_sanitize() -> None:
         catalog_var_name("fluorometer", "FLNTURTD-3219")
         == "SENSOR_FLUOROMETER_FLNTURTD_3219"
     )
-    assert sanitize_serial("FLNTURTD-3219") == "FLNTURTD_3219"
+    assert serial_slug("FLNTURTD-3219") == "FLNTURTD_3219"
     # A device used as both primary and secondary of one type is a SINGLE entry.
     assert catalog_var_name("conductivity_1", "4062") == "SENSOR_CONDUCTIVITY_4062"
     assert catalog_var_name("conductivity_2", "4062") == "SENSOR_CONDUCTIVITY_4062"
+
+
+def test_sanitize_serial_is_a_deprecated_alias() -> None:
+    """The old name warns, names the replacement and the removal version, and still works."""
+    with pytest.warns(DeprecationWarning, match="serial_slug"):
+        result = sanitize_serial("FLNTURTD-3219")
+    assert result == serial_slug("FLNTURTD-3219") == "FLNTURTD_3219"
 
 
 def test_element_mismatch_warns() -> None:

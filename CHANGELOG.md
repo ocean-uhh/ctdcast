@@ -10,7 +10,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Per-figure `source:` caption** — each report figure can carry a line naming the draw function that produced it (`<module>.py:<function>`), for provenance. The mechanism is vendored (`reports/_vendored/figure_png.source_for`/`source_of`, gated by a default-off `SHOW_FIGURE_SOURCE` flag); ctdcast turns it on in its owned `reports/design.py` (`FIGURE_SOURCE = True`), the same override pattern as the colormaps. With the flag off a page is visually identical to before; the stylesheet gains one unused `.fig-source` rule (no element matches it).
-- **Vendored units display layer** — `reports/_vendored/units_display.format_units` turns a CF/UDUNITS `units` string (with optional `standard_name`) into the plot-label form (`mS cm-1` → `mS/cm`, `rad2 s-2` → `rad²/s²`, `degree_Celsius` → `°C`, dimensionless turbidity/salinity → `NTU`/`PSU`). `reports/design.unit_label` layers ctdcast's (currently empty) `UNIT_LABEL_OVERRIDES` on top; the registry's `label_units` column equals the derived label for every entry, pinned by a test so the two cannot drift.
+- **Shared units layer, vendored** — `reports/_vendored/units_tables` holds the family units data (the canonical CF/UDUNITS spelling per CF `standard_name`, the accepted reader-spelling aliases with their conversion factors, and the plot labels); `reports/_vendored/units` holds the machinery over it — `resolve_units` (reader spelling → canonical + factor), `merge_tables` (a package's view over the defaults), and `format_units` (the display label, `mS cm-1` → `mS/cm`, `rad2 s-2` → `rad²/s²`, `degree_Celsius` → `°C`, dimensionless turbidity/salinity → `NTU`/`PSU`). ctdcast's own view is `config.unit_tables.TABLES`, with `unit_label` deriving every plot and table label; a package adds spellings/labels through its override dicts (`CANONICAL_UNIT_OVERRIDES` / `UNIT_ALIAS_EXTRAS` / `UNIT_LABEL_OVERRIDES`), never by editing the shared tables.
+- **Canonical units at every write boundary** — `processors.units.to_canonical_units` rewrites each registered variable's `units` to its canonical spelling as the writer runs: a recognised non-canonical spelling is rewritten (and its values converted when the factor is not 1, e.g. `S/m` → `mS cm-1` ×10, integer packing dropped), a missing unit is filled from the registry, and a present-but-unrecognised spelling raises `UnitsError` and aborts the run rather than being silently stamped over. No per-variable conversion-provenance attribute is written (a factor ≠ 1 is logged).
 - **Vendored `properties_table` macro** for key/value tables (`reports/_vendored/templates/_nc_tables.html`); the cast page's File provenance and Time coordinate tables render through it, so their shape matches the inventory tables.
 - **Vendored QC tables** — the cast-page QC thresholds and flag-count tables are built by `reports/_vendored/nc_tables.qc_threshold_rows` / `qc_flag_rows` and rendered by the `qc_thresholds_table` / `qc_counts_table` macros, driven from each `{var}_qc` companion's own `flag_values` / `flag_meanings` (one column per declared flag, in declared order). Flag labels and colours are keyed by the meaning token (`reports/_vendored/design_tokens.QC_FLAG_LABELS` / `QC_FLAG_COLORS`, covering the QARTOD and OceanSITES vocabularies, derived from `QC_COLORS`), so a flag reads the same across conventions. The `original → name` rename also shows inline in each variable row's Variable cell (the standalone renaming table stays).
 
@@ -21,6 +22,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The vendored report layer is now self-contained: the hash manifest and the drift-check gate moved into `reports/_vendored/` as `MANIFEST.txt` and `check.py` (were `scripts/VENDORED.txt` and `scripts/check_vendored.py`), so a consumer vendors the directory and nothing else. Manifest paths are now directory-relative, and `check.py` locates its own directory, so both files are byte-identical across ctdcast, oceanarray and glidertest. Run the gate with `python -m ctdcast.reports._vendored.check`.
 - The bundled Leaflet assets (`leaflet.min.js`, `leaflet.min.css`) and their `LICENSE` moved into `reports/_vendored/leaflet/`, shared byte-identical across the sibling packages, so the ~160 KB library is bundled once; the cruise map reads them there. No change to generated output.
 - The cruise map no longer falls back to a CDN: a missing bundled Leaflet asset now raises rather than fetching from jsdelivr/cdnjs or emitting an empty map, so the offline-at-sea guarantee holds at build time instead of failing silently at view time.
+- **Source-name provenance attribute renamed to `original_name`** — the CNV path (consolidated from seasenselib's `cnv_original_name`) and the LADCP reader (was `source_variable`) now both record a variable's raw source name as `original_name`, one family-shared spelling. Files written before 0.4.0 still read: the inventory rename table and `readers.metadata.source_to_canonical` fall back to the old attribute names. New stage files no longer carry `cnv_original_name` / `source_variable`.
+- **Python support is 3.11–3.14** (3.10 dropped; all four required in CI, with `continue-on-error` reserved for a future 3.15 cell). `requires-python` is now `>=3.11`, ruff `target-version` is `py311`, and `datetime.timezone.utc` is written `datetime.UTC`.
+
+### Deprecated
+
+- `config.sensors.sanitize_serial` is a deprecated alias of `serial_slug` (the filename/variable-safe serial form) and emits a `DeprecationWarning`; it is removed in 0.5.0. The family uses one spelling-neutral name rather than the British/American `sanitize`/`sanitise` variant.
 
 ### Fixed
 
@@ -29,6 +36,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 
 - Public `reports.qc_summary` and `reports.qc_thresholds` — the cast-page QC flag-count and thresholds tables are now built by the vendored `reports/_vendored/nc_tables.qc_flag_rows` / `qc_threshold_rows` and rendered by the `qc_counts_table` / `qc_thresholds_table` macros. A caller importing `from ctdcast.reports import qc_summary` / `qc_thresholds` (both public in 0.3.0) must switch to the vendored builders.
+- **`label_units`** — the registry column and the per-variable netCDF attribute are gone. The display unit is derived from the CF `units` string by `config.unit_tables.unit_label`, so there is one source of display spelling. New stage files no longer carry `label_units`; a file written before 0.4.0 keeps its copy and readers ignore it.
+
+### Breaking changes
+
+- Output attribute change: stage files no longer carry `label_units` (derived from `units` now) or `cnv_original_name` / `source_variable` (recorded as `original_name`). A downstream reader of those attribute names must read `original_name` (with the old names as a fallback) and derive the display unit from `units`. Files written before 0.4.0 are still read.
+- Python 3.10 is no longer supported (`requires-python = ">=3.11"`).
+- `label_units` was dropped from `config.parameters.VARIABLES`; a caller reading it from the registry must use `config.unit_tables.unit_label(units, standard_name)`.
 
 ## [0.3.0] — 2026-10-12
 
