@@ -124,6 +124,11 @@ def _section_panel_html(
 #: Casts-map container height (CSS px), passed to the vendored ``map_styles`` macro.
 CASTS_MAP_HEIGHT = 420
 
+#: Minimum coastline extent (degrees) for the cast map.  A small open-ocean extent is grown to
+#: this span so a zoom-out reveals nearby land (coastlines are cheap — see
+#: ``coastline_geojson(min_clip_deg=...)``); the map still opens fitted to the casts.
+_COASTLINE_MIN_SPAN_DEG = 10.0
+
 
 def casts_map_payload(
     all_meta: list[dict[str, Any]],
@@ -251,7 +256,9 @@ def casts_map_context(
 
     lat_min, lat_max = min(lats), max(lats)
     lon_min, lon_max = min(lons), max(lons)
-    coastline = coastline_geojson((lon_min, lat_min, lon_max, lat_max))
+    coastline = coastline_geojson(
+        (lon_min, lat_min, lon_max, lat_max), min_clip_deg=_COASTLINE_MIN_SPAN_DEG
+    )
     if coastline == "null" and not _coastline_backend_available():
         warnings.warn(
             "cast map has no land because cartopy is not installed; the map shows tracks "

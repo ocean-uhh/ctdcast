@@ -152,6 +152,7 @@ def coastline_geojson(
     pad_deg: float = 1.0,
     round_ndigits: int = 3,
     aspect: float | None = None,
+    min_clip_deg: float = 0.0,
 ) -> str:
     """Return land-polygon GeoJSON for *bounds*, or the string ``"null"`` if unavailable.
 
@@ -174,6 +175,13 @@ def coastline_geojson(
         Width / height of the map container. When given (and the extent is clipped, not whole-globe),
         the clip box is grown to this aspect so land fills a wide map instead of leaving blank sides
         where the view letterboxes a tall, narrow extent.
+    min_clip_deg : float, default 0.0
+        When > 0, a data extent smaller than this (in either dimension) is grown, centred, to at
+        least this span before the resolution and clip are chosen — so the embedded coastline reaches
+        nearby land and a zoom-out shows it, instead of a tight open-ocean box with no land. Growing
+        first lets a wider box take a coarser resolution, keeping the JSON small. Coastlines are cheap
+        enough for this; a bathymetry raster is not, so a caller adding bathymetry keeps its own tight
+        extent and leaves this at 0.
 
     Returns
     -------
@@ -183,6 +191,13 @@ def coastline_geojson(
         background rather than raising.
     """
     lon_min, lat_min, lon_max, lat_max = bounds
+    if min_clip_deg:
+        lon_c = (lon_min + lon_max) / 2.0
+        lat_c = (lat_min + lat_max) / 2.0
+        if lon_max - lon_min < min_clip_deg:
+            lon_min, lon_max = lon_c - min_clip_deg / 2.0, lon_c + min_clip_deg / 2.0
+        if lat_max - lat_min < min_clip_deg:
+            lat_min, lat_max = lat_c - min_clip_deg / 2.0, lat_c + min_clip_deg / 2.0
     try:
         import cartopy.io.shapereader as shpreader
         from shapely.geometry import box, mapping
@@ -197,7 +212,7 @@ def coastline_geojson(
         if resolution == "110m":
             clip = None
         else:
-            lo0, la0, lo1, la1 = bounds
+            lo0, la0, lo1, la1 = lon_min, lat_min, lon_max, lat_max
             if aspect:
                 lo0, la0, lo1, la1 = _expand_to_aspect(lo0, la0, lo1, la1, aspect)
             clip = box(
