@@ -1286,6 +1286,15 @@ def _write_stations_list(
             pass
     _max_depth = max((m.get("max_depth", 0) for m in all_meta), default=0)
 
+    # Interactive cast map (vendored track_map macro): one point per cast, one polyline per
+    # section, rows hover-linked by data-track-id; the static cruise_map PNG is the print/no-JS
+    # fallback. Lazy import mirrors generate_leaflet_map below.
+    from ctdcast.reports._vendored.leaflet import load_leaflet
+    from ctdcast.reports.cruise_map import CASTS_MAP_HEIGHT, casts_map_context
+
+    _leaflet_js, _leaflet_css = load_leaflet()
+    _map_ctx = casts_map_context(all_meta, sections_cfg or {})
+
     ctx: dict[str, Any] = {
         "cruise": cruise,
         "ship": _ci.get("ship", ""),
@@ -1296,6 +1305,10 @@ def _write_stations_list(
         "stations": stations,
         "no_station_pages": no_station_pages,
         "cruise_map_b64": _make_cruise_map_b64(all_meta, target_h=3.0, cfg=cfg),
+        "leaflet_js": _leaflet_js,
+        "leaflet_css": _leaflet_css,
+        "map_height": CASTS_MAP_HEIGHT,
+        **_map_ctx,
         "clock": _make_clock_section(nc_dir, cfg=cfg) if nc_dir is not None else None,
         "ladcp_configured": ladcp_dir is not None,
         "version": _VERSION,

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
+{% import "_map.html" as mapm %}
 {% set masthead_role = "collection" %}
 
 {% block title %}Station index — {{ cruise }}{% endblock %}
@@ -32,7 +33,9 @@ tbody tr:hover td { background: var(--seafoam); }
   .clock-configs { display:flex; flex-wrap:wrap; gap:1rem; margin:0.5rem 0; }
   .clock-configs > div { flex:1 1 22rem; }
   .clock-configs pre { background:var(--seafoam); padding:0.5rem 0.7rem; border-radius:4px; overflow-x:auto; white-space:pre; }
+  tbody tr.track-hover td { background: var(--seafoam); }
 </style>
+{% if cruise_map_b64 %}{{ mapm.map_styles(leaflet_css, map_height) }}{% endif %}
 {% endblock %}
 
 {% block masthead_meta %}
@@ -50,13 +53,8 @@ tbody tr:hover td { background: var(--seafoam); }
 {% block content %}
 {% if cruise_map_b64 %}
 <h2 id="s-map">{{ m.heading_text(1, "Map") }}</h2>
-<div class="fig-row center">
-  <figure class="slot-half">
-    <img src="data:image/png;base64,{{ cruise_map_b64 }}" alt="All cast positions">
-    {{- m.dbg(cruise_map_b64, "slot-half") }}
-    {%- if show_source %}{% set _src = source_of(cruise_map_b64) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
-  </figure>
-</div>
+<p class="caption">Hover a cast marker or a table row to link the two; click a marker or row to open its station page. The static map prints and shows without JavaScript.</p>
+{{ mapm.track_map(casts_map_payload_json, coastline_json, map_bounds_json, cruise_map_b64, leaflet_js) }}
 {% endif %}
 
 <h2 id="s-table">{{ m.heading_text(2, "Casts") }}</h2>
@@ -79,7 +77,7 @@ tbody tr:hover td { background: var(--seafoam); }
     </thead>
     <tbody>
     {% for s in stations %}
-      <tr{% if not no_station_pages %} onclick="window.location='casts/cast_{{ s.cast_num }}.html'"{% endif %}>
+      <tr data-track-id="cast_{{ s.cast_num }}"{% if not no_station_pages %} onclick="window.location='casts/cast_{{ s.cast_num }}.html'"{% endif %}>
         <td>{% if no_station_pages %}{{ s.cast_num }}{% else %}<a class="cast-link" href="casts/cast_{{ s.cast_num }}.html">{{ s.cast_num }}</a>{% endif %}</td>
         <td class="mono">{{ s.filename }}</td>
         <td>{{ s.time_start_str }}</td>

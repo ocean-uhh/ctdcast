@@ -60,6 +60,10 @@ test = ["pytest>=8", "pytest-cov>=5", "pytest-timeout>=2.3", "pytest-xdist>=3", 
 # a % saturation channel moles-per-mass, which 0.6.0 did not; both verified to convert every
 # committed CNV fixture, 2026-10-18).  0.6.0 is the floor verified against the fixtures.
 cnv = ["seasenselib>=0.6.0"]
+# Land coastline on the interactive maps (Natural Earth via cartopy).  Optional: without it a
+# map draws tracks on a plain background with the lat/lon graticule for reference, and the build
+# logs a RuntimeWarning.  cartopy pulls pyproj/shapely/geos, which is why it is not a core dep.
+maps = ["cartopy>=0.22", "shapely>=2.0"]
 dev = ["ctdcast[test,docs]", "ruff>=0.3"]
 
 [tool.ruff]

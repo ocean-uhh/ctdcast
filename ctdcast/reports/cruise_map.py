@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +35,11 @@ from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
-from ctdcast.reports._vendored.leaflet import load_leaflet, safe_json
+from ctdcast.reports._vendored.leaflet import (
+    coastline_geojson,
+    load_leaflet,
+    safe_json,
+)
 from ctdcast.reports.design import SHARED_CSS
 
 _SECTION_COLOR_DEFAULT = "#7b2d8b"
@@ -55,8 +60,15 @@ def _cast_panel_html(
     m: dict[str, Any],
     section_name: str,
     section_url: str | None,
+    *,
+    with_links: bool = True,
 ) -> str:
-    """Return HTML for the info panel when a cast marker is hovered."""
+    """Return HTML for the info panel when a cast marker is hovered.
+
+    With ``with_links=False`` the trailing station/section links are omitted, for a
+    caller (the vendored ``track_map`` macro) that appends its own link from the
+    payload's ``href`` / ``link_label``.
+    """
     cn = int(m["cast_num"])
     cast_id = m.get("cast_num_str", format_cast_id(cn))
     cast_url = f"casts/cast_{cast_id}.html"
@@ -77,9 +89,10 @@ def _cast_panel_html(
         parts.append(f"Section: {section_name}")
 
     html = "<br>".join(parts)
-    html += f'<br><a href="{cast_url}">→ Station page</a>'
-    if section_name and section_url:
-        html += f'<br><a href="{section_url}">→ Section page</a>'
+    if with_links:
+        html += f'<br><a href="{cast_url}">→ Station page</a>'
+        if section_name and section_url:
+            html += f'<br><a href="{section_url}">→ Section page</a>'
     return html
 
 
@@ -87,8 +100,14 @@ def _section_panel_html(
     section_name: str,
     scfg: dict[str, Any],
     n_found: int,
+    *,
+    with_links: bool = True,
 ) -> str:
-    """Return HTML for the info panel when a section line is hovered."""
+    """Return HTML for the info panel when a section line is hovered.
+
+    With ``with_links=False`` the trailing section link is omitted, for a caller
+    (the vendored ``track_map`` macro) that appends its own link from the payload.
+    """
     section_url = f"sections/section_{section_name}.html"
     desc = scfg.get("description", "")
     parts = [f"<strong>{section_name}</strong>"]
@@ -96,8 +115,149 @@ def _section_panel_html(
         parts.append(desc)
     parts.append(f"{n_found} casts")
     html = "<br>".join(parts)
-    html += f'<br><a href="{section_url}">→ Section page</a>'
+    if with_links:
+        html += f'<br><a href="{section_url}">→ Section page</a>'
     return html
+
+
+#: Casts-map container height (CSS px), passed to the vendored ``map_styles`` macro.
+CASTS_MAP_HEIGHT = 420
+
+
+def casts_map_payload(
+    all_meta: list[dict[str, Any]],
+    sections_cfg: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Return the vendored ``track_map`` payload for ``casts.html``.
+
+    One point per cast (``track`` is a single ``[lat, lon]`` → circle marker) and one
+    polyline per section (in cast order), each a dict
+    ``{id, href, color, track, info, link_label}``.  ``info`` is facts only; the macro
+    appends the ``link_label`` link to ``href``.  Sections are listed before casts so the
+    cast markers draw on top of the section lines.
+
+    Parameters
+    ----------
+    all_meta : list of dict
+        Per-cast metadata (``cast_num``, ``cast_num_str``, ``lat``, ``lon``, ``time_start``,
+        ``max_depth``).
+    sections_cfg : dict or None
+        Section definitions (``cast_numbers``, ``color``, ``description``).
+
+    Returns
+    -------
+    list of dict
+        The track payload.  Casts with no finite position, and sections with fewer than two
+        located casts, are omitted.
+    """
+    sections_cfg = sections_cfg or {}
+    meta_lookup = {int(m["cast_num"]): m for m in all_meta}
+
+    def _located(cn: int) -> bool:
+        m = meta_lookup.get(cn)
+        return m is not None and bool(
+            np.isfinite(float(m.get("lat", np.nan)))
+            and np.isfinite(float(m.get("lon", np.nan)))
+        )
+
+    cast_section: dict[int, tuple[str, str]] = {}
+    for sname, scfg in sections_cfg.items():
+        color = str(scfg.get("color", _SECTION_COLOR_DEFAULT))
+        for cn in expand_cast_numbers(scfg.get("cast_numbers", [])):
+            cast_section.setdefault(cn, (sname, color))
+
+    payload: list[dict[str, Any]] = []
+
+    for sname, scfg in sections_cfg.items():
+        color = str(scfg.get("color", _SECTION_COLOR_DEFAULT))
+        latlons = [
+            [float(meta_lookup[cn]["lat"]), float(meta_lookup[cn]["lon"])]
+            for cn in expand_cast_numbers(scfg.get("cast_numbers", []))
+            if _located(cn)
+        ]
+        if len(latlons) < 2:
+            continue
+        payload.append(
+            {
+                "id": f"section_{sname}",
+                "href": f"sections/section_{sname}.html",
+                "color": color,
+                "track": latlons,
+                "info": _section_panel_html(
+                    sname, scfg, len(latlons), with_links=False
+                ),
+                "link_label": "→ Section page",
+            }
+        )
+
+    for m in all_meta:
+        cn = int(m["cast_num"])
+        if not _located(cn):
+            continue
+        cast_id = m.get("cast_num_str", format_cast_id(cn))
+        sname_c, color_c = cast_section.get(cn, ("", _SECTION_COLOR_DEFAULT))
+        section_url = f"sections/section_{sname_c}.html" if sname_c else None
+        payload.append(
+            {
+                "id": f"cast_{cast_id}",
+                "href": f"casts/cast_{cast_id}.html",
+                "color": color_c,
+                "track": [[float(m["lat"]), float(m["lon"])]],
+                "info": _cast_panel_html(m, sname_c, section_url, with_links=False),
+                "link_label": "→ Station page",
+            }
+        )
+    return payload
+
+
+def casts_map_context(
+    all_meta: list[dict[str, Any]],
+    sections_cfg: dict[str, Any] | None,
+) -> dict[str, str]:
+    """Return the JSON strings the ``casts.html`` interactive map needs.
+
+    Builds the ``track_map`` payload, the land-coastline GeoJSON for the data extent, and
+    the fit bounds, each serialised for the template.  Warns (``RuntimeWarning``) when the
+    coastline is unavailable — cartopy is an optional ``[maps]`` dependency — so a land-less
+    map is never silent.
+
+    Returns
+    -------
+    dict
+        ``{"casts_map_payload_json", "coastline_json", "map_bounds_json"}``.  With no located
+        cast the payload is ``"[]"`` and the coastline/bounds are ``"null"``.
+    """
+    payload = casts_map_payload(all_meta, sections_cfg)
+    lats = [
+        float(m["lat"]) for m in all_meta if np.isfinite(float(m.get("lat", np.nan)))
+    ]
+    lons = [
+        float(m["lon"]) for m in all_meta if np.isfinite(float(m.get("lon", np.nan)))
+    ]
+    if not (payload and lats and lons):
+        return {
+            "casts_map_payload_json": safe_json(payload),
+            "coastline_json": "null",
+            "map_bounds_json": "null",
+        }
+
+    lat_min, lat_max = min(lats), max(lats)
+    lon_min, lon_max = min(lons), max(lons)
+    coastline = coastline_geojson((lon_min, lat_min, lon_max, lat_max))
+    if coastline == "null":
+        warnings.warn(
+            "cast map coastline unavailable (cartopy not installed); the map shows tracks "
+            "and graticule but no land. Install the optional dependency with "
+            "'pip install ctdcast[maps]'.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return {
+        "casts_map_payload_json": safe_json(payload),
+        # Escape `</` so an embedded `</script>` in the GeoJSON cannot close the tag.
+        "coastline_json": coastline.replace("</", "<\\/"),
+        "map_bounds_json": safe_json([[lat_min, lon_min], [lat_max, lon_max]]),
+    }
 
 
 # ---------------------------------------------------------------------------

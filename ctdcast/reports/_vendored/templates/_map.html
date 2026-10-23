@@ -229,7 +229,7 @@
       show(t.info);  // t.info is pre-escaped HTML (see _info_html)
       var report = document.createElement('a');
       report.href = t.href;  // set as a property, never concatenated into innerHTML, so a quoted id cannot inject markup
-      report.textContent = '→ Mission report';
+      report.textContent = t.link_label || '→ Mission report';  // per-payload label; default keeps the glider wording
       info.appendChild(report);
     } else {
       clear();
