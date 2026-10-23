@@ -107,8 +107,8 @@ python -m venv venv && source venv/bin/activate      # or conda
 pip install -e ".[dev]"                              # runtime + test + docs + ruff
 ```
 
-Python 3.10–3.13 are supported; CI runs the full range on Ubuntu and Python 3.11
-on macOS and Windows.
+Python 3.11–3.14 are supported (3.14 is tested but allowed to fail while a dependency
+wheel may lag); CI runs the full range on Ubuntu and Python 3.11 on macOS and Windows.
 
 ## Before you open a pull request
 

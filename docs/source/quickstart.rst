@@ -30,7 +30,7 @@ Sections and time series pages are **not** generated (they require a compiled
 Full workflow prerequisites
 ---------------------------
 
-Python 3.10–3.13 is required.  Create a virtual environment and install from source:
+Python 3.11–3.14 is required.  Create a virtual environment and install from source:
 
 .. code-block:: bash
 

@@ -20,7 +20,7 @@ with no external requests.
 pip install ctdcast
 ```
 
-Reading raw `.cnv` files needs `seasenselib` (`pip install seasenselib`). Python 3.10–3.13 is
+Reading raw `.cnv` files needs `seasenselib` (`pip install seasenselib`). Python 3.11–3.14 is
 supported. See the [installation notes](https://ocean-uhh.github.io/ctdcast/quickstart.html)
 for isolated-environment and from-source options.
 

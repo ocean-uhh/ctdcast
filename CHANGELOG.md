@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-23
+
 ### Added
 
 - **Per-figure `source:` caption** — each report figure can carry a line naming the draw function that produced it (`<module>.py:<function>`), for provenance. The mechanism is vendored (`reports/_vendored/figure_png.source_for`/`source_of`, gated by a default-off `SHOW_FIGURE_SOURCE` flag); ctdcast turns it on in its owned `reports/design.py` (`FIGURE_SOURCE = True`), the same override pattern as the colormaps. With the flag off a page is visually identical to before; the stylesheet gains one unused `.fig-source` rule (no element matches it).
