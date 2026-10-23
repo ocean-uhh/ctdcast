@@ -35,7 +35,7 @@ tbody tr:hover td { background: var(--seafoam); }
   .clock-configs pre { background:var(--seafoam); padding:0.5rem 0.7rem; border-radius:4px; overflow-x:auto; white-space:pre; }
   tbody tr.track-hover td { background: var(--seafoam); }
 </style>
-{% if cruise_map_b64 %}{{ mapm.map_styles(leaflet_css, map_height) }}{% endif %}
+{% if casts_map_payload_json and casts_map_payload_json != "[]" %}{{ mapm.map_styles(leaflet_css, map_height) }}{% endif %}
 {% endblock %}
 
 {% block masthead_meta %}
@@ -51,7 +51,7 @@ tbody tr:hover td { background: var(--seafoam); }
 {% endblock %}
 
 {% block content %}
-{% if cruise_map_b64 %}
+{% if casts_map_payload_json and casts_map_payload_json != "[]" %}
 <h2 id="s-map">{{ m.heading_text(1, "Map") }}</h2>
 <p class="caption">Hover a cast marker or a table row to link the two; click a marker or row to open its station page. The static map prints and shows without JavaScript.</p>
 {{ mapm.track_map(casts_map_payload_json, coastline_json, map_bounds_json, cruise_map_b64, leaflet_js) }}

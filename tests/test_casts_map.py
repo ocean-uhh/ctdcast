@@ -75,6 +75,17 @@ def test_context_json_is_valid_and_bounds_span_the_casts() -> None:
     ]  # [[latMin, lonMin], [latMax, lonMax]]
 
 
+def test_context_bounds_ignore_half_located_casts() -> None:
+    """A cast with a finite lat but no lon is off the map and must not stretch the fit bounds."""
+    all_meta = [_meta(1, 60.0, -30.0), _meta(2, 70.0, float("nan"))]
+    ctx = cruise_map.casts_map_context(all_meta, {})
+    bounds = json.loads(ctx["map_bounds_json"])
+    assert bounds == [
+        [60.0, -30.0],
+        [60.0, -30.0],
+    ]  # cast 2 excluded, so it cannot widen them
+
+
 def test_context_empty_when_no_located_cast() -> None:
     """With no finite position the payload is empty and coastline/bounds are null."""
     ctx = cruise_map.casts_map_context([_meta(1, float("nan"), float("nan"))], {})

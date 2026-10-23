@@ -129,6 +129,17 @@ CASTS_MAP_HEIGHT = 420
 #: ``coastline_geojson(min_clip_deg=...)``); the map still opens fitted to the casts.
 _COASTLINE_MIN_SPAN_DEG = 10.0
 
+#: Marker colour for a cast that belongs to no section (neutral grey, distinct from any section).
+_UNSECTIONED_CAST_COLOR = "#888888"
+
+
+def _finite_latlon(m: dict[str, Any]) -> bool:
+    """Return True when *m* carries a finite latitude and longitude."""
+    return bool(
+        np.isfinite(float(m.get("lat", np.nan)))
+        and np.isfinite(float(m.get("lon", np.nan)))
+    )
+
 
 def casts_map_payload(
     all_meta: list[dict[str, Any]],
@@ -141,6 +152,11 @@ def casts_map_payload(
     ``{id, href, color, track, info, link_label}``.  ``info`` is facts only; the macro
     appends the ``link_label`` link to ``href``.  Sections are listed before casts so the
     cast markers draw on top of the section lines.
+
+    This overlaps :func:`generate_leaflet_map`, which builds the same cast/section geometry
+    in ``leaflet.html``'s own (non-vendored) payload shape; the two stay separate only until
+    V4, when ``leaflet.html`` migrates onto this ``track_map`` payload and the other builder
+    is deleted rather than merged here.
 
     Parameters
     ----------
@@ -158,13 +174,7 @@ def casts_map_payload(
     """
     sections_cfg = sections_cfg or {}
     meta_lookup = {int(m["cast_num"]): m for m in all_meta}
-
-    def _located(cn: int) -> bool:
-        m = meta_lookup.get(cn)
-        return m is not None and bool(
-            np.isfinite(float(m.get("lat", np.nan)))
-            and np.isfinite(float(m.get("lon", np.nan)))
-        )
+    located = {cn for cn, m in meta_lookup.items() if _finite_latlon(m)}
 
     cast_section: dict[int, tuple[str, str]] = {}
     for sname, scfg in sections_cfg.items():
@@ -179,7 +189,7 @@ def casts_map_payload(
         latlons = [
             [float(meta_lookup[cn]["lat"]), float(meta_lookup[cn]["lon"])]
             for cn in expand_cast_numbers(scfg.get("cast_numbers", []))
-            if _located(cn)
+            if cn in located
         ]
         if len(latlons) < 2:
             continue
@@ -198,10 +208,10 @@ def casts_map_payload(
 
     for m in all_meta:
         cn = int(m["cast_num"])
-        if not _located(cn):
+        if cn not in located:
             continue
         cast_id = m.get("cast_num_str", format_cast_id(cn))
-        sname_c, color_c = cast_section.get(cn, ("", _SECTION_COLOR_DEFAULT))
+        sname_c, color_c = cast_section.get(cn, ("", _UNSECTIONED_CAST_COLOR))
         section_url = f"sections/section_{sname_c}.html" if sname_c else None
         payload.append(
             {
@@ -241,21 +251,20 @@ def casts_map_context(
         cast the payload is ``"[]"`` and the coastline/bounds are ``"null"``.
     """
     payload = casts_map_payload(all_meta, sections_cfg)
-    lats = [
-        float(m["lat"]) for m in all_meta if np.isfinite(float(m.get("lat", np.nan)))
+    # Bounds from fully-located casts only (both lat and lon finite), matching the drawn markers —
+    # a half-located cast must not stretch the fit box to a corner with nothing in it.
+    located = [
+        (float(m["lat"]), float(m["lon"])) for m in all_meta if _finite_latlon(m)
     ]
-    lons = [
-        float(m["lon"]) for m in all_meta if np.isfinite(float(m.get("lon", np.nan)))
-    ]
-    if not (payload and lats and lons):
+    if not (payload and located):
         return {
             "casts_map_payload_json": safe_json(payload),
             "coastline_json": "null",
             "map_bounds_json": "null",
         }
 
-    lat_min, lat_max = min(lats), max(lats)
-    lon_min, lon_max = min(lons), max(lons)
+    lat_min, lat_max = min(la for la, _ in located), max(la for la, _ in located)
+    lon_min, lon_max = min(lo for _, lo in located), max(lo for _, lo in located)
     coastline = coastline_geojson(
         (lon_min, lat_min, lon_max, lat_max), min_clip_deg=_COASTLINE_MIN_SPAN_DEG
     )
@@ -538,7 +547,7 @@ def _make_gebco_layers(
 # ---------------------------------------------------------------------------
 
 
-__all__ = ["generate_leaflet_map"]
+__all__ = ["casts_map_context", "casts_map_payload", "generate_leaflet_map"]
 
 
 def generate_leaflet_map(
