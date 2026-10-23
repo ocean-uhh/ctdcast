@@ -55,8 +55,13 @@ The front page shows:
 casts.html
 ------------------
 
-A sortable table listing every cast: cast number, date/time, latitude, longitude, and
-maximum pressure.  Each row links to the corresponding station page.
+An interactive Leaflet map (bundled offline) above a sortable table.  The map shows one
+marker per cast and a line per section; hovering a table row highlights its marker and vice
+versa, and clicking a marker or row opens the station page.  A static map prints and shows
+when JavaScript is off.
+
+The table lists every cast: cast number, date/time, latitude, longitude, and maximum
+pressure.  Each row links to the corresponding station page.
 
 ----
 
