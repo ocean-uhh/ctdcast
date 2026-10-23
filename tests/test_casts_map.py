@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from typing import Any
 
 import pytest
@@ -82,9 +83,20 @@ def test_context_empty_when_no_located_cast() -> None:
     assert ctx["map_bounds_json"] == "null"
 
 
-def test_context_warns_when_coastline_unavailable(monkeypatch) -> None:
-    """A null coastline (cartopy absent) warns, so a land-less map is never silent."""
+def test_context_warns_when_cartopy_missing(monkeypatch) -> None:
+    """A null coastline with cartopy absent warns, so a land-less map traces to the missing dep."""
     monkeypatch.setattr(cruise_map, "coastline_geojson", lambda *a, **k: "null")
-    with pytest.warns(RuntimeWarning, match="coastline unavailable"):
+    monkeypatch.setattr(cruise_map, "_coastline_backend_available", lambda: False)
+    with pytest.warns(RuntimeWarning, match="cartopy is not installed"):
         ctx = cruise_map.casts_map_context([_meta(1, 60.0, -30.0)], {})
+    assert ctx["coastline_json"] == "null"
+
+
+def test_context_quiet_when_cartopy_present_but_no_land(monkeypatch) -> None:
+    """A null coastline with cartopy present is an open-ocean extent, not a problem — no warning."""
+    monkeypatch.setattr(cruise_map, "coastline_geojson", lambda *a, **k: "null")
+    monkeypatch.setattr(cruise_map, "_coastline_backend_available", lambda: True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning fails the test
+        ctx = cruise_map.casts_map_context([_meta(1, 65.7, -29.5)], {})
     assert ctx["coastline_json"] == "null"

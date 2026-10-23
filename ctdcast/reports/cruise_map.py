@@ -20,6 +20,7 @@ Interaction:
 from __future__ import annotations
 
 import base64
+import importlib.util
 import io
 import json
 import warnings
@@ -210,6 +211,11 @@ def casts_map_payload(
     return payload
 
 
+def _coastline_backend_available() -> bool:
+    """Return True when cartopy (the coastline backend) is importable, without importing it."""
+    return importlib.util.find_spec("cartopy") is not None
+
+
 def casts_map_context(
     all_meta: list[dict[str, Any]],
     sections_cfg: dict[str, Any] | None,
@@ -217,9 +223,11 @@ def casts_map_context(
     """Return the JSON strings the ``casts.html`` interactive map needs.
 
     Builds the ``track_map`` payload, the land-coastline GeoJSON for the data extent, and
-    the fit bounds, each serialised for the template.  Warns (``RuntimeWarning``) when the
-    coastline is unavailable — cartopy is an optional ``[maps]`` dependency — so a land-less
-    map is never silent.
+    the fit bounds, each serialised for the template.  When the coastline is ``"null"``
+    *and* cartopy is not installed, warns (``RuntimeWarning``) so a land-less map traces to a
+    missing optional dependency rather than being silent.  A ``"null"`` coastline with cartopy
+    present is not flagged — it means the extent simply contains no land (an open-ocean cruise),
+    which the graticule covers.
 
     Returns
     -------
@@ -244,11 +252,11 @@ def casts_map_context(
     lat_min, lat_max = min(lats), max(lats)
     lon_min, lon_max = min(lons), max(lons)
     coastline = coastline_geojson((lon_min, lat_min, lon_max, lat_max))
-    if coastline == "null":
+    if coastline == "null" and not _coastline_backend_available():
         warnings.warn(
-            "cast map coastline unavailable (cartopy not installed); the map shows tracks "
-            "and graticule but no land. Install the optional dependency with "
-            "'pip install ctdcast[maps]'.",
+            "cast map has no land because cartopy is not installed; the map shows tracks "
+            "and the lat/lon graticule. Install the optional dependency with "
+            "'pip install ctdcast[maps]' for a coastline.",
             RuntimeWarning,
             stacklevel=2,
         )
