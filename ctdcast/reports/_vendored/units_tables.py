@@ -113,6 +113,13 @@ ALIASES: dict[str, dict[str, float]] = {
         "degreeE": 1.0,
         "degreesE": 1.0,
     },
+    # A plane angle (glider heading / pitch / glide-angle): UDUNITS `degree` = pi/180 rad,
+    # unambiguous, so global.  `deg` is NOT a member here — it is scoped to latitude/longitude
+    # below, where the axis disambiguates it; a plane-angle channel using `deg` is refused.
+    "degree": {
+        "degrees": 1.0,  # oceanarray (glider attitude channels)
+        "°": 1.0,  # display form, recovered if it leaks into units
+    },
 }
 
 #: Spellings accepted only for one quantity, keyed by CF ``standard_name`` so the table is

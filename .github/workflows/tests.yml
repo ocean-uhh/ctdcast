@@ -78,6 +78,14 @@ jobs:
         # -n auto: distribute across the runner's cores (pytest-xdist). The suite is
         # CPU-bound on matplotlib renders and has no cross-test ordering dependencies, so
         # this is a ~2.5x local win and cuts the slow Windows cell the most.
+        env:
+          # Windows: the netCDF4 wheel points HDF5_PLUGIN_PATH at its bundled plugins
+          # folder, and HDF5 rescans it on every filter query -- xarray calls var.filters()
+          # once per variable, so each NETCDF4 open costs ~36 ms/variable on the hosted
+          # runner. "::" preloads no plugins. ctdcast writes zlib (built into HDF5), so
+          # only zstd/bzip2/blosc files would need them -- none here. No effect on
+          # Linux/macOS, where plugin scanning is not the bottleneck.
+          HDF5_PLUGIN_PRELOAD: "::"
         run: |
           pytest -m "not slow" --no-cov -n auto
 

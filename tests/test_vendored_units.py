@@ -105,6 +105,18 @@ def test_resolve_scoped_spelling_only_for_its_quantity():
         vu.resolve_units("NTU", "sea_water_practical_salinity", canonical="1")
 
 
+def test_resolve_plane_angle_degree_but_deg_stays_scoped():
+    """degrees/° canonicalise to the plane-angle ``degree``; ``deg`` is lat/lon-only, not global."""
+    assert vu.resolve_units("degrees", canonical="degree") == ("degree", 1.0)
+    assert vu.resolve_units("°", canonical="degree") == ("degree", 1.0)
+    # deg resolves on the lat/lon axes (scoped)...
+    assert vu.resolve_units("deg", "latitude") == ("degrees_north", 1.0)
+    assert vu.resolve_units("deg", "longitude") == ("degrees_east", 1.0)
+    # ...but is refused on a plane-angle channel, where it would be ambiguous.
+    with pytest.raises(vu.UnitsError, match="deg"):
+        vu.resolve_units("deg", canonical="degree")
+
+
 def test_resolve_unknown_spelling_names_string_and_canonical():
     """An unrecognised spelling raises, naming the string and the canonical."""
     with pytest.raises(vu.UnitsError, match=r"nonsense.*degree_Celsius"):
