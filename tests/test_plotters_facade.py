@@ -12,16 +12,17 @@ def test_plots_facade_warns_and_reexports():
     sys.modules.pop("ctdcast.plotters.plots", None)
     with pytest.warns(DeprecationWarning, match="ctdcast.plotters.plots is split"):
         plots = importlib.import_module("ctdcast.plotters.plots")
-    for mod in (maps, profiles, sections, timeseries, ladcp):
+    mods = (maps, profiles, sections, timeseries, ladcp)
+    # Every figure builder is re-exported...
+    for mod in mods:
         for name in dir(mod):
-            obj = getattr(mod, name)
-            if (
-                not name.startswith("_")
-                and callable(obj)
-                and getattr(obj, "__module__", None) == mod.__name__
-            ):
-                assert getattr(plots, name) is obj, name
+            if name.startswith("draw_"):
+                assert getattr(plots, name) is getattr(mod, name), name
                 assert name in plots.__all__, name
+    # ...and every re-export is defined in one of the split modules.
+    split_names = {m.__name__ for m in mods}
+    for name in plots.__all__:
+        assert getattr(plots, name).__module__ in split_names, name
 
 
 def test_no_internal_caller_imports_the_facade():

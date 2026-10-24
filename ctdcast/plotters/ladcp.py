@@ -22,8 +22,8 @@ from ctdcast.config.parameters import (
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.primitives import (
     _cast_markers,
-    _hide_outer_spines,
-    _nice_colorbar_bounds,
+    hide_outer_spines,
+    nice_colorbar_bounds,
     nice_colorbar_ticks,
     unit_colorbar,
 )
@@ -148,7 +148,7 @@ def draw_ladcp_section_fig(
     if not len(all_fin):
         return None
     vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
-    bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
+    bounds = nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
     cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -232,7 +232,7 @@ def draw_ladcp_section_fig(
             "edgecolor": "none",
         },
     )
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -283,5 +283,5 @@ def draw_ladcp_bottomtrack_fig(
         # collide (2-dp ticks ran together as "−0.250.000.25").
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
         ax.xaxis.set_major_formatter(FuncFormatter(lambda val, _pos: f"{val:.1f}"))
-    _hide_outer_spines(*axes, clean=cfg.clean_spines)
+    hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig

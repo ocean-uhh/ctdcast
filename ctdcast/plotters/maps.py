@@ -15,7 +15,7 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.primitives import (
-    _nice_colorbar_bounds,
+    nice_colorbar_bounds,
 )
 from ctdcast.reports._vendored.design_tokens import (
     ANNOT_FS,
@@ -33,10 +33,10 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 
-# Extra margin (degrees) added when loading GEBCO for map rendering.
-# Ensures downsampled pcolormesh edge-cells extend past the axis limits,
-# eliminating white-gap artefacts at map borders.
-_GEBCO_RENDER_PAD: float = 0.5
+#: Extra margin (degrees) added when loading GEBCO for map rendering, so
+#: downsampled pcolormesh edge cells extend past the axis limits and no white
+#: gap shows at the map border.
+GEBCO_RENDER_PAD: float = 0.5
 
 # Land fill on cruise maps.  GEBCO cells above sea level fall below the depth
 # BoundaryNorm and render transparent, so a light-grey axes background shows
@@ -62,7 +62,7 @@ def _map_lim(
     )
 
 
-def _square_map_limits(
+def square_map_limits(
     yl0: float,
     yl1: float,
     xl0: float,
@@ -74,6 +74,20 @@ def _square_map_limits(
     Mercator-equivalent width is ``lon_span * cos(lat)``; if the map would be
     taller than wide, longitude is expanded symmetrically to make it roughly
     square.  Shared aspect principle for all cruise maps.
+
+    Parameters
+    ----------
+    yl0, yl1 : float
+        Southern and northern latitude limits (degrees north).
+    xl0, xl1 : float
+        Western and eastern longitude limits (degrees east).
+    cos_lat : float
+        Cosine of the map's central latitude.
+
+    Returns
+    -------
+    tuple of float
+        ``(yl0, yl1, xl0, xl1)``; latitudes unchanged, longitudes widened if needed.
     """
     lon_span = xl1 - xl0
     lat_span = yl1 - yl0
@@ -184,9 +198,7 @@ def map_panel(
     *cax* is a pre-placed colorbar axes from :func:`_map_layout`; when there is no GEBCO
     to draw it is hidden so no empty box remains.
     """
-    gebco = load_gebco(
-        yl0, yl1, xl0, xl1, margin=_GEBCO_RENDER_PAD, path=cfg.gebco_path
-    )
+    gebco = load_gebco(yl0, yl1, xl0, xl1, margin=GEBCO_RENDER_PAD, path=cfg.gebco_path)
     if gebco is None:
         cax.set_visible(False)
         return
@@ -197,7 +209,7 @@ def map_panel(
     if not len(d_fin):
         cax.set_visible(False)
         return
-    bounds_b = _nice_colorbar_bounds(
+    bounds_b = nice_colorbar_bounds(
         float(d_fin.min()), float(np.percentile(d_fin, 98)), n=12, hard_min=0.0
     )
     cmap_b = plt.get_cmap("Blues", len(bounds_b) - 1)
@@ -311,7 +323,7 @@ def draw_station_map_fig(
     yl0, yl1, xl0, xl1 = _map_lim(
         lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
     )
-    yl0, yl1, xl0, xl1 = _square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
+    yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
     fig, ax, cax, _ = _map_layout(width_in, xl0, xl1, yl0, yl1, cos_lat)
 
@@ -367,7 +379,7 @@ def draw_cruise_map_fig(
     yl0, yl1, xl0, xl1 = _map_lim(
         lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
     )
-    yl0, yl1, xl0, xl1 = _square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
+    yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
     fig, ax, cax, _ = _map_layout(width_in, xl0, xl1, yl0, yl1, cos_lat)
 
@@ -443,13 +455,13 @@ def draw_section_map_fig(
         if yl1 - yl0 < _min_lat_span:
             _cy = 0.5 * (yl0 + yl1)
             yl0, yl1 = _cy - _min_lat_span / 2, _cy + _min_lat_span / 2
-        yl0, yl1, xl0, xl1 = _square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
+        yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
     else:
         margin = max(min_margin, max(lat_hi - lat_lo, lon_hi - lon_lo) * 0.15)
         yl0, yl1, xl0, xl1 = _map_lim(
             lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
         )
-        yl0, yl1, xl0, xl1 = _square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
+        yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
     fig, ax, cax, _ = _map_layout(fig_w, xl0, xl1, yl0, yl1, cos_lat)
 
@@ -513,7 +525,7 @@ def draw_all_sections_map_fig(
     yl0, yl1, xl0, xl1 = _map_lim(
         lat_lo, lat_hi, lon_lo, lon_hi, margin, bounds=cfg.map_bounds
     )
-    yl0, yl1, xl0, xl1 = _square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
+    yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
     ncol = min(len(sections_data), 3)
     legend_rows = math.ceil(len(sections_data) / ncol)

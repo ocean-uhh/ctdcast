@@ -13,7 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- `ctdcast.plotters.plots` is split by subject into `ctdcast.plotters.maps`, `profiles`, `sections`, `timeseries` and `ladcp`; helpers shared by more than one module move to `ctdcast.plotters.primitives`. No figure output changes. The per-figure `source:` caption now names the new module (e.g. `ctdcast/plotters/maps.py:draw_all_sections_map_fig`).
+- `ctdcast.plotters.plots` is split by subject into `ctdcast.plotters.maps`, `profiles`, `sections`, `timeseries` and `ladcp`; helpers shared by more than one module move to `ctdcast.plotters.primitives`. Four helpers the report layer uses are now public: `primitives.hide_outer_spines`, `primitives.nice_colorbar_bounds`, `maps.square_map_limits`, `maps.GEBCO_RENDER_PAD`. No figure output changes. The per-figure `source:` caption now names the new module (e.g. `ctdcast/plotters/maps.py:draw_all_sections_map_fig`).
 
 ### Deprecated
 

@@ -24,8 +24,8 @@ from ctdcast.plotters.primitives import (
     _SIGMA0_CONTOUR_COLOR,
     _TS_COLORS,
     _UPCAST_COLOR,
-    _hide_outer_spines,
     _sigma0_backdrop,
+    hide_outer_spines,
 )
 from ctdcast.processors.stage2 import split_cast
 from ctdcast.readers.ladcp import read_ladcp
@@ -172,7 +172,7 @@ def draw_ts_density_fig(
             fontsize=ANNOT_FS,
         )
         ax_ladcp.set_xlabel("LADCP")
-    _hide_outer_spines(ax_ladcp, clean=cfg.clean_spines)
+    hide_outer_spines(ax_ladcp, clean=cfg.clean_spines)
 
     ax_ctd.set_ylim(float(np.nanmax(p)), 0)
     return fig
@@ -230,7 +230,7 @@ def draw_ts_diagram_fig(
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -281,7 +281,7 @@ def draw_stability_fig(
     ax_tu.set_xlabel(vlabel("Turner"))
     ax_tu.legend(loc="lower right")
     ax_tu.grid(True)
-    _hide_outer_spines(ax_n2, ax_tu, clean=cfg.clean_spines)
+    hide_outer_spines(ax_n2, ax_tu, clean=cfg.clean_spines)
 
     return fig
 
@@ -337,7 +337,7 @@ def draw_aux_profiles_fig(
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left")
-    _hide_outer_spines(*axes, clean=cfg.clean_spines)
+    hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
@@ -396,7 +396,7 @@ def draw_ct_sa_sigma0_fig(
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
     axes[0].legend(loc="center left")
-    _hide_outer_spines(*axes, clean=cfg.clean_spines)
+    hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
@@ -463,7 +463,7 @@ def draw_ts_updown_fig(
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.legend(loc="best", markerscale=2)
     ax.grid(False)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -581,7 +581,7 @@ def draw_qc_histogram_fig(
                 ax.legend(handles, labels, loc="upper left")
 
             ax.grid(True)
-            _hide_outer_spines(ax, clean=cfg.clean_spines)
+            hide_outer_spines(ax, clean=cfg.clean_spines)
 
             n_flagged = int(all_mask.sum()) - int(good_mask.sum())
             if n_flagged:

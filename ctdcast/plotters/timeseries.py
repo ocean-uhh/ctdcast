@@ -19,7 +19,7 @@ from ctdcast.plotters.primitives import (
     _TS_COLORS,
     _UPCAST_COLOR,
     _discrete_norm,
-    _hide_outer_spines,
+    hide_outer_spines,
     nice_colorbar_ticks,
     sigma0_isopycnals,
     unit_colorbar,
@@ -99,7 +99,7 @@ def draw_clock_offset_fig(
     ax.set_xlabel("cast number")
     ax.set_ylabel("clock offset (s)   NMEA − System")
     ax.grid(True)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -313,7 +313,7 @@ def draw_sensor_diff_fig(
 
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(max_p, 0)
-    _hide_outer_spines(*axes, clean=cfg.clean_spines)
+    hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig
 
 
@@ -339,7 +339,7 @@ def draw_pressure_time_fig(
     ax.set_xlabel("Elapsed time (min)")
     ax.set_ylabel(vlabel("pressure"))
     ax.grid(True)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -403,5 +403,5 @@ def draw_updown_diff_fig(
         ax.grid(True)
     axes[0].set_ylabel(vlabel("pressure"))
     axes[0].set_ylim(float(p_grid[-1]), 0)
-    _hide_outer_spines(*axes, clean=cfg.clean_spines)
+    hide_outer_spines(*axes, clean=cfg.clean_spines)
     return fig

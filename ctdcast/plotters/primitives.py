@@ -212,8 +212,16 @@ _UPCAST_COLOR: str = "#666666"
 _SIGMA0_CONTOUR_COLOR: str = "0.4"
 
 
-def _hide_outer_spines(*axes: Axes, clean: bool) -> None:
-    """Hide top and right spines on *axes* when *clean* is True."""
+def hide_outer_spines(*axes: Axes, clean: bool) -> None:
+    """Hide the top and right spines of each axes when *clean* is True.
+
+    Parameters
+    ----------
+    *axes : matplotlib.axes.Axes
+        The axes to despine.
+    clean : bool
+        Despine only when True (``ReportConfig.clean_spines``); otherwise a no-op.
+    """
     if not clean:
         return
     for ax in axes:
@@ -221,7 +229,7 @@ def _hide_outer_spines(*axes: Axes, clean: bool) -> None:
         ax.spines["right"].set_visible(False)
 
 
-def _nice_colorbar_bounds(
+def nice_colorbar_bounds(
     vmin: float,
     vmax: float,
     n: int = 20,
@@ -236,6 +244,20 @@ def _nice_colorbar_bounds(
 
     If *hard_min* or *hard_max* are given, the returned bounds are clipped to
     those values so user-specified colormap limits are honoured exactly.
+
+    Parameters
+    ----------
+    vmin, vmax : float
+        Data range to cover.
+    n : int, default 20
+        Approximate number of colour levels.
+    hard_min, hard_max : float or None, optional
+        Exact limits to clip to and include as end bounds.
+
+    Returns
+    -------
+    numpy.ndarray
+        Monotonic level boundaries, for ``BoundaryNorm`` and the colorbar ticks.
     """
     span = vmax - vmin
     if span <= 0:
@@ -333,7 +355,7 @@ def _discrete_norm(
         _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
         bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
     else:
-        bounds = _nice_colorbar_bounds(v0, v1, n=n, hard_min=vmin, hard_max=vmax)
+        bounds = nice_colorbar_bounds(v0, v1, n=n, hard_min=vmin, hard_max=vmax)
     cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
     return cmap, norm, bounds, cmap_name

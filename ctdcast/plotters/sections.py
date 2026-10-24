@@ -17,10 +17,10 @@ from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.primitives import (
     _cast_markers,
     _discrete_norm,
-    _hide_outer_spines,
-    _nice_colorbar_bounds,
     _sigma0_backdrop,
+    hide_outer_spines,
     mesh_field,
+    nice_colorbar_bounds,
     sigma0_isopycnals,
 )
 from ctdcast.reports._vendored.design_tokens import (
@@ -220,7 +220,7 @@ def draw_section_ts_profiles_fig(
     x_lo, x_hi = float(x_vals.min()), float(x_vals.max())
     if x_hi <= x_lo:
         x_hi = x_lo + 1.0
-    bounds = _nice_colorbar_bounds(x_lo, x_hi, n=12)
+    bounds = nice_colorbar_bounds(x_lo, x_hi, n=12)
     cmap = plt.get_cmap("plasma", len(bounds) - 1)
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -258,7 +258,7 @@ def draw_section_ts_profiles_fig(
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -292,7 +292,7 @@ def draw_ts_diagram_timeseries_fig(
     t_lo, t_hi = float(t_hours[0]), float(t_hours[-1])
     if t_hi <= t_lo:
         t_hi = t_lo + 1.0
-    bounds = _nice_colorbar_bounds(t_lo, t_hi, n=12)
+    bounds = nice_colorbar_bounds(t_lo, t_hi, n=12)
     cmap = plt.get_cmap("plasma", len(bounds) - 1)
     norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -330,7 +330,7 @@ def draw_ts_diagram_timeseries_fig(
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -367,7 +367,7 @@ def draw_section_ts_histogram_fig(
     c_fin = counts_log[np.isfinite(counts_log)]
     if not len(c_fin):
         return None
-    bounds_c = _nice_colorbar_bounds(float(c_fin.min()), float(c_fin.max()), n=12)
+    bounds_c = nice_colorbar_bounds(float(c_fin.min()), float(c_fin.max()), n=12)
     cmap_c = plt.cm.YlOrRd.copy()
     cmap_c.set_bad("white")
     norm_c = mcolors.BoundaryNorm(bounds_c, ncolors=256)
@@ -392,7 +392,7 @@ def draw_section_ts_histogram_fig(
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 
@@ -449,7 +449,7 @@ def draw_section_ts_o2_fig(
     if not len(o2_fin):
         return None
 
-    bounds_o = _nice_colorbar_bounds(
+    bounds_o = nice_colorbar_bounds(
         float(np.nanpercentile(o2_fin, 2)),
         float(np.nanpercentile(o2_fin, 98)),
         n=16,
@@ -477,7 +477,7 @@ def draw_section_ts_o2_fig(
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
     ax.grid(False)
-    _hide_outer_spines(ax, clean=cfg.clean_spines)
+    hide_outer_spines(ax, clean=cfg.clean_spines)
     return fig
 
 

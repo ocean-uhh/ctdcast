@@ -63,3 +63,32 @@ def test_production_reaches_reports_only_through_its_public_surface():
         "production code imports a private reports submodule (use the public name):\n"
         + "\n".join(offenders)
     )
+
+
+def test_production_imports_only_public_plotter_names():
+    """Code outside ``plotters/`` imports no underscored name from ``ctdcast.plotters``.
+
+    The draw layer's private helpers are free to change; anything another layer
+    needs (``reports/``, ``cli/``) is given a public name in its plotter module.
+    """
+    offenders: list[str] = []
+    for py in _PKG.rglob("*.py"):
+        rel = py.relative_to(_PKG)
+        if rel.parts[0] == "plotters":
+            continue
+        tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.level == 0
+                and (node.module or "").startswith("ctdcast.plotters")
+            ):
+                offenders += [
+                    f"{rel}: {node.module}.{a.name}"
+                    for a in node.names
+                    if a.name.startswith("_")
+                ]
+    assert not offenders, (
+        "production code imports a private plotters name (make it public):\n"
+        + "\n".join(offenders)
+    )

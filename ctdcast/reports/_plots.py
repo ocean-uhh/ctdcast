@@ -36,8 +36,8 @@ from ctdcast.plotters.maps import (
     draw_station_map_fig,
 )
 from ctdcast.plotters.primitives import (
-    _hide_outer_spines,
-    _nice_colorbar_bounds,
+    hide_outer_spines,
+    nice_colorbar_bounds,
     nice_colorbar_ticks,
     unit_colorbar,
 )
@@ -359,7 +359,7 @@ def _make_ladcp_overview_b64(
             if not len(all_fin):
                 return []
             vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
-            bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
+            bounds = nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
             cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
             norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -472,7 +472,7 @@ def _make_ladcp_overview_b64(
                         "edgecolor": "none",
                     },
                 )
-                _hide_outer_spines(ax, clean=cfg.clean_spines)
+                hide_outer_spines(ax, clean=cfg.clean_spines)
                 fig.tight_layout()
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_overview_b64", fig)
