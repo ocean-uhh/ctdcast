@@ -1017,7 +1017,7 @@ def _has_ts(c: PageCtx) -> bool:
 def _has_dual_sensors(c: PageCtx) -> bool:
     """Return True when a second temperature *or* salinity sensor is present.
 
-    Mirrors :func:`~ctdcast.plotters.plots.draw_sensor_diff_fig`, which draws the
+    Mirrors :func:`~ctdcast.plotters.timeseries.draw_sensor_diff_fig`, which draws the
     T₁−T₂ and/or S₁−S₂ difference when either pair exists — so the panel must apply
     whenever either is dual, not temperature alone.  (In practice a cast is dual on
     both channels or neither, but gating on both keeps the predicate honest to the

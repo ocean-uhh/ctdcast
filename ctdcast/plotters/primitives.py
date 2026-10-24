@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import math
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
+import gsw
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_size import Fixed
 
+from ctdcast.config.parameters import (
+    VAR_COLORS,
+)
 from ctdcast.reports._vendored.design_tokens import (
     ANNOT_FS,
+    CAST_LABEL_FS,
     CBAR_PAD_IN,
     CBAR_WIDTH_IN,
     CLABEL_FS,
@@ -182,3 +191,201 @@ def mesh_field(
         reserve=True,
         title_loc="left",
     )
+
+
+# ---------------------------------------------------------------------------
+# Shared figure helpers (used by more than one figure module)
+# ---------------------------------------------------------------------------
+
+
+# Derived aliases used throughout this module.
+_TS_COLORS = [
+    VAR_COLORS["conservative_temperature"],
+    VAR_COLORS["absolute_salinity"],
+    VAR_COLORS["sigma0"],
+]
+
+# Upcast trace color (dark grey).  Downcast uses the native per-variable color.
+_UPCAST_COLOR: str = "#666666"
+
+# Grey level for σ₀ density contours on T–S diagrams.
+_SIGMA0_CONTOUR_COLOR: str = "0.4"
+
+
+def hide_outer_spines(*axes: Axes, clean: bool) -> None:
+    """Hide the top and right spines of each axes when *clean* is True.
+
+    Parameters
+    ----------
+    *axes : matplotlib.axes.Axes
+        The axes to despine.
+    clean : bool
+        Despine only when True (``ReportConfig.clean_spines``); otherwise a no-op.
+    """
+    if not clean:
+        return
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+
+def nice_colorbar_bounds(
+    vmin: float,
+    vmax: float,
+    n: int = 20,
+    hard_min: float | None = None,
+    hard_max: float | None = None,
+) -> np.ndarray:
+    """Return a boundary array for a discrete colorbar with approximately *n* levels.
+
+    Steps are chosen from the "nice" ladder [1, 2, 2.5, 5, 10] scaled to the
+    appropriate decade, so ticks land on clean values (e.g. 1.0 rather than 0.8,
+    0.5 rather than 0.4). The range is centred on the midpoint of [vmin, vmax].
+
+    If *hard_min* or *hard_max* are given, the returned bounds are clipped to
+    those values so user-specified colormap limits are honoured exactly.
+
+    Parameters
+    ----------
+    vmin, vmax : float
+        Data range to cover.
+    n : int, default 20
+        Approximate number of colour levels.
+    hard_min, hard_max : float or None, optional
+        Exact limits to clip to and include as end bounds.
+
+    Returns
+    -------
+    numpy.ndarray
+        Monotonic level boundaries, for ``BoundaryNorm`` and the colorbar ticks.
+    """
+    span = vmax - vmin
+    if span <= 0:
+        return np.linspace(vmin - 1, vmin + 1, n + 1)
+    raw_step = span / n
+    mag = 10.0 ** math.floor(math.log10(raw_step))
+    normalized = raw_step / mag  # in [1, 10)
+    # Pick the smallest nice multiplier >= normalized
+    nice_step = 10.0 * mag  # fallback
+    for factor in (1.0, 2.0, 2.5, 5.0, 10.0):
+        if factor >= normalized:
+            nice_step = factor * mag
+            break
+    mid = (vmin + vmax) / 2
+    mid_aligned = round(mid / nice_step) * nice_step
+    lo = mid_aligned - (n / 2) * nice_step
+    bounds = np.array([lo + i * nice_step for i in range(n + 1)])
+    if hard_min is not None or hard_max is not None:
+        lo_clip = hard_min if hard_min is not None else bounds[0]
+        hi_clip = hard_max if hard_max is not None else bounds[-1]
+        bounds = bounds[(bounds >= lo_clip) & (bounds <= hi_clip)]
+        if len(bounds) < 2:
+            bounds = np.linspace(lo_clip, hi_clip, n + 1)
+        if bounds[0] > lo_clip:
+            bounds = np.concatenate([[lo_clip], bounds])
+        if bounds[-1] < hi_clip:
+            bounds = np.concatenate([bounds, [hi_clip]])
+    return bounds
+
+
+def _cast_markers(ax: Axes, x_vals: np.ndarray, cast_labels: list) -> None:
+    """Draw ▼ cast markers and sparse numeric labels along the top edge of *ax*."""
+    trans = ax.get_xaxis_transform()
+    ax.plot(
+        x_vals,
+        [1.03] * len(x_vals),
+        marker="v",
+        ls="none",
+        ms=5,
+        mfc="none",
+        mec="black",
+        mew=0.7,
+        transform=trans,
+        clip_on=False,
+        zorder=6,
+    )
+    n_lab = len(cast_labels)
+    label_step = max(1, n_lab // 20)
+    for i in range(0, n_lab, label_step):
+        ax.text(
+            float(x_vals[i]),
+            1.05,
+            str(cast_labels[i]),
+            transform=trans,
+            ha="center",
+            va="bottom",
+            fontsize=CAST_LABEL_FS,
+            rotation=0,
+        )
+
+
+def _discrete_norm(
+    d_fin: np.ndarray,
+    var: str,
+    vmin: float | None,
+    vmax: float | None,
+    n: int = 20,
+    *,
+    var_cmaps: Mapping[str, str],
+) -> tuple[Any, Any, np.ndarray, str]:
+    """Return ``(cmap, norm, bounds, cmap_name)`` for a discrete colorbar.
+
+    Percentile limits (2nd–98th) are computed from *d_fin* (finite data values)
+    unless overridden by *vmin*/*vmax*.  Includes the oxygen-specific fixed step
+    and a guard against degenerate ranges.  The fourth return value is the
+    colormap name string, needed when calling ``ax.contourf`` which accepts a
+    name rather than a ``Colormap`` object.
+    """
+    cmap_name = var_cmaps.get(var)
+    if cmap_name is None:
+        # Not in the resolved table (a registry gap): resolve through the one
+        # resolver, which warns naming the variable and falls back to viridis —
+        # a gap should not stop a report (a bad name in a config is rejected at
+        # load instead, where cmap_for is called without a default).
+        from ctdcast.reports.design import cmap_for
+
+        cmap_name = cmap_for(var, default="viridis")
+    v0 = vmin if vmin is not None else float(np.percentile(d_fin, 2))
+    v1 = vmax if vmax is not None else float(np.percentile(d_fin, 98))
+    if v0 >= v1:
+        v0, v1 = float(np.percentile(d_fin, 2)), float(np.percentile(d_fin, 98))
+    if var in ("oxsat_1", "oxygen_saturation"):
+        _o2_step = 2.5
+        _o2_lo = math.floor(v0 / _o2_step) * _o2_step
+        _o2_hi = math.ceil(v1 / _o2_step) * _o2_step
+        bounds = np.arange(_o2_lo, _o2_hi + _o2_step * 0.5, _o2_step)
+    else:
+        bounds = nice_colorbar_bounds(v0, v1, n=n, hard_min=vmin, hard_max=vmax)
+    cmap = plt.get_cmap(cmap_name, len(bounds) - 1)
+    norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
+    return cmap, norm, bounds, cmap_name
+
+
+def _sigma0_backdrop(ax: Axes, n: int = 80) -> None:
+    """Draw σ₀ density contours over the current axes extent, behind the data.
+
+    Call this **after** the data has been plotted so the σ₀ grid spans the same
+    salinity/temperature range the axes ended up with.  Gridding on the data
+    percentiles (the previous behaviour) fell short of an outlier-driven axis
+    limit, leaving the contours not filling the panel.  Contours are drawn at
+    zorder 0 (behind the data); the axes limits are restored afterwards because
+    contouring can nudge them.
+    """
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    sa_g = np.linspace(xlim[0], xlim[1], n)
+    ct_g = np.linspace(ylim[0], ylim[1], n)
+    SA_g, CT_g = np.meshgrid(sa_g, ct_g)
+    sig0_g = gsw.sigma0(SA_g, CT_g)
+    cs = ax.contour(
+        SA_g,
+        CT_g,
+        sig0_g,
+        levels=8,
+        colors=_SIGMA0_CONTOUR_COLOR,
+        linewidths=0.6,
+        zorder=0,
+    )
+    ax.clabel(cs, fmt="%.1f", fontsize=CLABEL_FS)
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)

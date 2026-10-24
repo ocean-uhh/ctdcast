@@ -32,7 +32,7 @@ from ctdcast.config.parameters import (
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.identity import compact_cast_list, expand_cast_ids, format_cast_id
-from ctdcast.plotters.plots import section_figsize_and_slot
+from ctdcast.plotters.sections import section_figsize_and_slot
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import as_panel
 from ctdcast.reports._format import (

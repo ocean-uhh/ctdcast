@@ -74,7 +74,7 @@ def test_custom_wrapper_map_registers_its_source():
     assert b64
     assert (
         figure_png.source_of(b64)
-        == "ctdcast/plotters/plots.py:draw_all_sections_map_fig"
+        == "ctdcast/plotters/maps.py:draw_all_sections_map_fig"
     )
 
 

@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from ctdcast.plotters.plots import _deg_tick_step
+from ctdcast.plotters.maps import _deg_tick_step
 
 _NICE = {0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0}
 

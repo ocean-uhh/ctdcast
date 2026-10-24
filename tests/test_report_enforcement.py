@@ -20,7 +20,7 @@ import pytest
 import xarray as xr
 from PIL import Image
 
-import ctdcast.plotters.plots as P
+import ctdcast.plotters.profiles as P
 from ctdcast.analysis.derive import derive_teos10
 from ctdcast.reports._vendored.design_tokens import FIG_DPI, SLOTS, W_FULL
 from ctdcast.reports._vendored.figure_png import render_b64
@@ -124,7 +124,15 @@ def test_templates_self_contained() -> None:
 #: The only per-call figure font sizes a plotter may name (spec §13.3). Every
 #: other size (axes/tick/legend/title) comes from the mplstyle.
 _ALLOWED_FONTSIZE = {"CLABEL_FS", "ANNOT_FS", "CAST_LABEL_FS"}
-_PLOTTER_MODULES = ("plotters/plots.py", "reports/_plots.py")
+_PLOTTER_MODULES = (
+    "plotters/maps.py",
+    "plotters/profiles.py",
+    "plotters/sections.py",
+    "plotters/timeseries.py",
+    "plotters/ladcp.py",
+    "plotters/primitives.py",
+    "reports/_plots.py",
+)
 
 
 def test_no_stray_typography() -> None:

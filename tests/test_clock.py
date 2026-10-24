@@ -247,7 +247,7 @@ class TestPlotter:
         import matplotlib
 
         matplotlib.use("Agg")
-        from ctdcast.plotters.plots import draw_clock_offset_fig
+        from ctdcast.plotters.timeseries import draw_clock_offset_fig
 
         series = _series([2, 2, 3, 2, 2] + [9, 8, 9, 9, 8])
         fig = draw_clock_offset_fig(series, classify_offsets(series))
@@ -256,7 +256,7 @@ class TestPlotter:
 
     def test_empty_segments_returns_none(self) -> None:
         """A verdict with no segments (no_clock_pair) has nothing to plot."""
-        from ctdcast.plotters.plots import draw_clock_offset_fig
+        from ctdcast.plotters.timeseries import draw_clock_offset_fig
 
         assert draw_clock_offset_fig([], classify_offsets([], n_scanned=5)) is None
 

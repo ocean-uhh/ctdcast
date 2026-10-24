@@ -39,9 +39,40 @@ Figure builders
 ---------------
 
 ``draw_*_fig`` functions build and return a matplotlib Figure (or ``None`` when the
-dataset lacks the required variables).
+dataset lacks the required variables). They are grouped by subject.
 
-.. automodule:: ctdcast.plotters.plots
+Maps
+^^^^
+
+.. automodule:: ctdcast.plotters.maps
+   :members:
+   :undoc-members:
+
+Profiles
+^^^^^^^^
+
+.. automodule:: ctdcast.plotters.profiles
+   :members:
+   :undoc-members:
+
+Sections
+^^^^^^^^
+
+.. automodule:: ctdcast.plotters.sections
+   :members:
+   :undoc-members:
+
+Time series
+^^^^^^^^^^^
+
+.. automodule:: ctdcast.plotters.timeseries
+   :members:
+   :undoc-members:
+
+LADCP
+^^^^^
+
+.. automodule:: ctdcast.plotters.ladcp
    :members:
    :undoc-members:
 

@@ -1,7 +1,7 @@
 """Base64 PNG encoders — thin wrappers that render a Figure for a page.
 
-Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in
-:mod:`ctdcast.plotters.plots` and encodes it with :func:`render_b64`.
+Each ``_make_*_b64`` builds a figure via a ``draw_*_fig`` in one of the
+``ctdcast.plotters`` figure modules and encodes it with :func:`render_b64`.
 ``_make_all_sections_map_b64`` uses a custom wrapper instead: it still delegates
 drawing to its ``draw_*_fig`` but needs a post-``tight_layout`` adjustment.
 ``_make_ladcp_section_b64`` returns a list of :class:`RenderedPanel` (U and V), so
@@ -25,34 +25,45 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.config.parameters import vunit
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
-from ctdcast.plotters.plots import (
-    _hide_outer_spines,
-    _nice_colorbar_bounds,
-    draw_all_sections_map_fig,
-    draw_aux_profiles_fig,
-    draw_cruise_map_fig,
-    draw_ct_sa_sigma0_fig,
+from ctdcast.plotters.ladcp import (
     draw_ladcp_bottomtrack_fig,
     draw_ladcp_section_fig,
-    draw_overview_panel_fig,
-    draw_pressure_time_fig,
-    draw_qc_histogram_fig,
-    draw_section_fig,
+)
+from ctdcast.plotters.maps import (
+    draw_all_sections_map_fig,
+    draw_cruise_map_fig,
     draw_section_map_fig,
+    draw_station_map_fig,
+)
+from ctdcast.plotters.primitives import (
+    hide_outer_spines,
+    nice_colorbar_bounds,
+    nice_colorbar_ticks,
+    unit_colorbar,
+)
+from ctdcast.plotters.profiles import (
+    draw_aux_profiles_fig,
+    draw_ct_sa_sigma0_fig,
+    draw_qc_histogram_fig,
+    draw_stability_fig,
+    draw_ts_density_fig,
+    draw_ts_diagram_fig,
+    draw_ts_updown_fig,
+)
+from ctdcast.plotters.sections import (
+    draw_overview_panel_fig,
+    draw_section_fig,
     draw_section_ts_histogram_fig,
     draw_section_ts_o2_fig,
     draw_section_ts_profiles_fig,
-    draw_sensor_diff_fig,
-    draw_stability_fig,
-    draw_station_map_fig,
-    draw_timeseries_fig,
-    draw_ts_density_fig,
-    draw_ts_diagram_fig,
     draw_ts_diagram_timeseries_fig,
-    draw_ts_updown_fig,
+)
+from ctdcast.plotters.timeseries import (
+    draw_pressure_time_fig,
+    draw_sensor_diff_fig,
+    draw_timeseries_fig,
     draw_updown_diff_fig,
 )
-from ctdcast.plotters.primitives import nice_colorbar_ticks, unit_colorbar
 
 # render_b64 is imported from _figdebug (a package-local wrapper around the vendored
 # encoder) so figures are geometry-recorded when CTDCAST_REPORT_DEBUG is set; it delegates
@@ -155,7 +166,7 @@ def _make_station_map_b64(
     """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
 
     The figure is laid out deterministically at a fixed slot width (see
-    :func:`~ctdcast.plotters.plots._map_layout`); *target_h* is retained for
+    :func:`~ctdcast.plotters.maps._map_layout`); *target_h* is retained for
     call-site compatibility but no longer sets the size.
     """
     return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h, cfg=cfg)
@@ -278,7 +289,7 @@ def _make_ladcp_section_b64(
     If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
     with the zero-padded cast number.  Falls back to ``NNN.mat``.
 
-    Each panel is drawn by :func:`~ctdcast.plotters.plots.draw_ladcp_section_fig` and
+    Each panel is drawn by :func:`~ctdcast.plotters.ladcp.draw_ladcp_section_fig` and
     encoded via :func:`render_b64`, so the ``source:`` caption names the draw function
     and a panel is omitted (not an empty list for the pair) when its component has too
     few casts.
@@ -348,7 +359,7 @@ def _make_ladcp_overview_b64(
             if not len(all_fin):
                 return []
             vmax_val = max(float(np.nanpercentile(np.abs(all_fin), 98)), 1e-4)
-            bounds = _nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
+            bounds = nice_colorbar_bounds(-vmax_val, vmax_val, n=20)
             cmap = plt.get_cmap("RdBu_r", len(bounds) - 1)
             norm = mcolors.BoundaryNorm(bounds, ncolors=cmap.N)
 
@@ -461,7 +472,7 @@ def _make_ladcp_overview_b64(
                         "edgecolor": "none",
                     },
                 )
-                _hide_outer_spines(ax, clean=cfg.clean_spines)
+                hide_outer_spines(ax, clean=cfg.clean_spines)
                 fig.tight_layout()
                 _panel_b64 = _fig_to_base64(fig)
                 _figdebug_record(_panel_b64, "_make_ladcp_overview_b64", fig)

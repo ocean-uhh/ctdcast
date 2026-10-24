@@ -1,7 +1,7 @@
 """Frozen per-run report configuration, built once and threaded to the plotters.
 
 ``ReportConfig`` replaces the runtime-mutable display globals that used to live on
-:mod:`ctdcast.plotters.plots` (``GEBCO_PATH``, ``CLEAN_SPINES``, the figsizes, the
+the plotting module (``GEBCO_PATH``, ``CLEAN_SPINES``, the figsizes, the
 map bounds, and the colormap overrides).  Building it once in :func:`ctdcast.report`
 and passing it down makes rendering order-independent and safe to parallelise —
 nothing mutates module state between figures.

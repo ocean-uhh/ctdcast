@@ -203,13 +203,25 @@ def test_merge_raises_on_a_factor_conflict():
 
 def test_plot_modules_use_no_hardcoded_superscript_minus():
     """No plotting module hard-codes a ``⁻`` unit (e.g. ``m s⁻¹``)."""
-    import ctdcast.plotters.plots as plots_mod
+    import ctdcast.plotters.ladcp as ladcp_mod
+    import ctdcast.plotters.maps as maps_mod
     import ctdcast.plotters.primitives as primitives_mod
+    import ctdcast.plotters.profiles as profiles_mod
+    import ctdcast.plotters.sections as sections_mod
+    import ctdcast.plotters.timeseries as timeseries_mod
     import ctdcast.reports._plots as rplots_mod
 
     offenders = [
         Path(mod.__file__).name
-        for mod in (plots_mod, rplots_mod, primitives_mod)
+        for mod in (
+            maps_mod,
+            profiles_mod,
+            sections_mod,
+            timeseries_mod,
+            ladcp_mod,
+            primitives_mod,
+            rplots_mod,
+        )
         if "⁻" in Path(mod.__file__).read_text(encoding="utf-8")
     ]
     assert offenders == [], (
