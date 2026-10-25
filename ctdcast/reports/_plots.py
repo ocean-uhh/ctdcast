@@ -92,13 +92,7 @@ def _make_ts_density_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of CT/SA/σ₀ profiles, optionally alongside LADCP U/V.
-
-    When *ladcp_path* is ``None``, renders a single-column CT/SA/σ₀ triple-axis
-    profile (downcast only).  When *ladcp_path* is given, renders a two-column layout
-    with LADCP U/V on the right; shows a placeholder when the file does not exist so
-    the cast page keeps a consistent appearance for all LADCP-configured casts.
-    """
+    """Encode :func:`~ctdcast.plotters.profiles.draw_ts_density_fig` (CT/SA/σ₀, with LADCP U/V when *ladcp_path* is given)."""
     return render_b64(draw_ts_density_fig, ds, ladcp_path, cfg=cfg)
 
 
@@ -133,10 +127,7 @@ def _make_aux_profiles_b64(
 def _make_ct_sa_sigma0_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
 ) -> str | None:
-    """Return a base64 PNG of CT, SA, σ₀ profiles side-by-side (downcast + grey upcast).
-
-    Three-panel figure matching the style of ``_make_aux_profiles_b64``.
-    """
+    """Encode :func:`~ctdcast.plotters.profiles.draw_ct_sa_sigma0_fig`."""
     return render_b64(draw_ct_sa_sigma0_fig, ds, cfg=cfg)
 
 
@@ -155,12 +146,7 @@ def _make_station_map_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of a GEBCO map with all casts and this cast highlighted.
-
-    The figure is laid out deterministically at a fixed slot width (see
-    :func:`~ctdcast.plotters.maps._map_layout`); *target_h* is retained for
-    call-site compatibility but no longer sets the size.
-    """
+    """Encode :func:`~ctdcast.plotters.maps.draw_station_map_fig`; *target_h* is accepted for call-site compatibility and ignored."""
     return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h, cfg=cfg)
 
 
@@ -170,11 +156,7 @@ def _make_cruise_map_b64(
     target_h: float = 4.0,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of all cast positions (no single-cast highlight).
-
-    Casts are drawn as grey scatter over GEBCO bathymetry.  Cast numbers are
-    annotated for the first and last cast and every 10th in between.
-    """
+    """Encode :func:`~ctdcast.plotters.maps.draw_cruise_map_fig`."""
     return render_b64(draw_cruise_map_fig, all_meta, target_h=target_h, cfg=cfg)
 
 
@@ -196,46 +178,7 @@ def _make_section_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of *var* vs pressure × *x_vals*.
-
-    Parameters
-    ----------
-    ds_prof : xr.Dataset
-        2-D profiles dataset gridded on pressure × *x_vals*.
-    var : str
-        Variable name to plot from *ds_prof*.
-    label : str
-        Variable label shown on the colorbar.
-    x_vals : np.ndarray
-        Along-track x positions for each profile.
-    x_label : str
-        Axis label for the x coordinate.
-    title:
-        Ignored (kept for call-site compatibility). Variable label appears on colorbar.
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    bathy_depths:
-        GEBCO water depth (m) for the bathymetry fill.  If *bathy_x* is also provided
-        the fill uses that dense along-track x array; otherwise falls back to *x_vals*.
-    bathy_x:
-        Along-track x positions (km) for *bathy_depths* when a denser grid is used.
-        Must be the same length as *bathy_depths*.
-    cast_labels:
-        Cast numbers shown as ▼ markers and sparse tick labels along the top edge.
-    vmin, vmax:
-        Colormap limit overrides; auto from 2–98th percentile if ``None``.
-    figsize:
-        Figure size ``(width, height)`` in inches.  When supplied by the caller (e.g.
-        from :func:`section_figsize_and_slot`), the caller's figsize is used unchanged so
-        that the CSS slot and the PNG dimensions stay consistent.  When ``None``,
-        :func:`section_figsize_and_slot` is called on the variable's own valid-data extent.
-    optional:
-        When ``True``, a ``None`` return from :func:`draw_section_fig` is silently
-        accepted (variable absent from this cruise).  When ``False`` (default), ``None``
-        raises :exc:`RuntimeError` if :data:`RAISE_ON_PLOT_ERROR` is set.
-    cfg : ReportConfig
-        Report configuration (GEBCO path, cruise info) threaded to the renderer.
-    """
+    """Encode :func:`~ctdcast.plotters.sections.draw_section_fig`; *optional* marks a variable that may be absent."""
     return render_b64(
         draw_section_fig,
         ds_prof,
@@ -269,24 +212,7 @@ def _make_ladcp_section_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> list[RenderedPanel]:
-    """Return a list of ``RenderedPanel`` objects for LADCP U and V sections.
-
-    Both panels use a matched symmetric RdBu_r colorbar (positive = east/north).
-    Data are interpolated to a 10 m depth grid.  Dense GEBCO bathymetry is used
-    when *lats*/*lons* and ``cfg.gebco_path`` are available.
-
-    If *figsize* is given, each panel uses ``(figsize[0], figsize[1] / 2)``.
-    Otherwise ``section_figsize_and_slot`` determines dimensions.
-
-    If *ladcp_pattern* is given (e.g. ``"msm_142_1_*.mat"``), the ``*`` is replaced
-    with the zero-padded cast number.  Falls back to ``NNN.mat``.
-
-    The ``.mat`` files are read and gridded once by
-    :func:`~ctdcast.plotters.ladcp.ladcp_section_grid`; each panel is drawn from that
-    grid by :func:`~ctdcast.plotters.ladcp.draw_ladcp_section_fig` and encoded via
-    :func:`render_b64`, so the ``source:`` caption names the draw function.  Returns
-    ``[]`` when fewer than two casts carry LADCP data.
-    """
+    """Grid the section's LADCP casts once and encode its U and V panels; ``[]`` when fewer than two casts have LADCP."""
     try:
         grid = ladcp_section_grid(
             cast_nums,
@@ -341,13 +267,7 @@ def _make_ladcp_overview_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> list[RenderedPanel]:
-    """Return full-width LADCP U and V overview panels versus cast number × depth.
-
-    The grid (sort, depth trim, shared colour scale, GEBCO lookup) is built once by
-    :func:`~ctdcast.plotters.ladcp.ladcp_overview_grid`; each component is drawn by
-    :func:`~ctdcast.plotters.ladcp.draw_ladcp_overview_fig`.  Returns ``[]`` if fewer
-    than two casts carry finite velocity.
-    """
+    """Grid ``ladcp_profiles.nc`` once and encode the cruise U and V overview panels; ``[]`` when fewer than two casts have velocity."""
     try:
         grid = ladcp_overview_grid(ds_ladcp, cfg=cfg)
     except Exception:
@@ -380,31 +300,14 @@ def _make_section_ts_profiles_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of per-cast CT–SA profiles coloured by along-track distance.
-
-    Each downcast in *ds_prof* is drawn as a CT–SA line with σ₀ background contours.
-    Colour encodes the corresponding *x_vals* value (along-track km).
-    """
+    """Encode :func:`~ctdcast.plotters.sections.draw_section_ts_profiles_fig`."""
     return render_b64(draw_section_ts_profiles_fig, ds_prof, x_vals, cfg=cfg)
 
 
 def _make_ts_diagram_timeseries_b64(
     ds_ts: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
 ) -> str | None:
-    """Return a base64 PNG of a CT–SA diagram for all timeseries profiles, coloured by time.
-
-    Each profile (N_PROF) is drawn as a line in CT–SA space.  Colour encodes hours
-    since the first profile so temporal evolution is visible.  σ₀ background contours
-    are overlaid.  Returns None if SA or CT are absent or fewer than two profiles exist.
-
-    Parameters
-    ----------
-    ds_ts:
-        2-D profiles dataset with dims ``(N_PROF, pressure)`` and variables
-        ``SA``, ``CT``, ``time_start``.
-    cfg : ReportConfig
-        Report configuration threaded to the renderer.
-    """
+    """Encode :func:`~ctdcast.plotters.sections.draw_ts_diagram_timeseries_fig`."""
     return render_b64(draw_ts_diagram_timeseries_fig, ds_ts, cfg=cfg)
 
 
@@ -432,17 +335,7 @@ def _make_section_map_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of a GEBCO map with the section track.
-
-    *min_margin* sets a floor on the geographic margin for the latitude axis.
-    *min_margin_lon*, when provided, sets a separate floor for the longitude
-    axis and suppresses the N-S-section guard (use for co-located timeseries
-    maps where lat and lon margins should be set independently for a
-    Mercator-square view).
-
-    The co-located/timeseries case (*min_margin_lon* set) renders at one-third
-    width; the section case (no *min_margin_lon*) renders at half width.
-    """
+    """Encode :func:`~ctdcast.plotters.maps.draw_section_map_fig` at third width when *min_margin_lon* is set (time-series location map), else half width."""
     fig_w = (
         report_tokens.W_THIRD if min_margin_lon is not None else report_tokens.W_HALF
     )
@@ -472,33 +365,7 @@ def _make_overview_panel_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of *var* vs pressure × cast number (cruise overview panel).
-
-    *ds_prof* must already be filtered to downcasts and sorted by cast_number.
-    X-axis positions are evenly spaced (0, 1, …, N-1) with cast numbers as tick labels.
-    *bathy_depths* (m, same length as N_PROF) draws a filled black bathymetry below data.
-
-    Parameters
-    ----------
-    ds_prof : xr.Dataset
-        Downcast profiles, sorted by cast_number, gridded on pressure × cast.
-    var : str
-        Variable name to plot from *ds_prof*.
-    label : str
-        Variable label shown on the colorbar.
-    bathy_depths : np.ndarray | None
-        Water depth (m, same length as N_PROF) drawing a filled bathymetry below data.
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    vmin, vmax:
-        Optional colormap limit overrides; auto from 1–99th percentile if ``None``.
-    cast_groups : dict[str, list[int]] | None
-        Named groups of cast numbers used to annotate spans along the top edge.
-    optional:
-        Pass ``True`` for biogeochemical variables that may be absent in some casts.
-    cfg : ReportConfig
-        Report configuration threaded to the renderer.
-    """
+    """Encode :func:`~ctdcast.plotters.sections.draw_overview_panel_fig`; *optional* marks a variable that may be absent."""
     return render_b64(
         draw_overview_panel_fig,
         ds_prof,
@@ -523,21 +390,7 @@ def _make_all_sections_map_b64(
     target_h: float = 4.5,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG showing all section tracks coloured by section.
-
-    Parameters
-    ----------
-    legend_outside:
-        If True, place the legend east of the axes (wider figure).
-    sections_data:
-        List of dicts with keys ``name``, ``color``, ``lats``, ``lons``.
-    all_lats, all_lons:
-        Positions of all casts drawn as a grey background scatter.
-    target_h:
-        Target figure height in inches; width is computed from geographic aspect ratio.
-    cfg : ReportConfig
-        Report configuration threaded to the renderer.
-    """
+    """Encode :func:`~ctdcast.plotters.maps.draw_all_sections_map_fig` without ``tight_layout`` or cropping (the map lays itself out at a fixed width)."""
     fig_result = None
     try:
         with plt.style.context(str(report_tokens.MPLSTYLE_PATH)):
@@ -585,27 +438,7 @@ def _make_timeseries_b64(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> str | None:
-    """Return a base64 PNG of *var* vs cast time × pressure, both down and upcast.
-
-    Parameters
-    ----------
-    ds_prof : xr.Dataset
-        Profiles dataset gridded on cast time × pressure.
-    var : str
-        Variable name to plot from *ds_prof*.
-    label : str
-        Variable label shown on the colorbar.
-    style:
-        ``"pcolormesh"`` (default) or ``"contourf"``.
-    vmin, vmax:
-        Colormap limits; if None, 2nd–98th percentile of valid data.
-    figw:
-        Figure width in inches; auto-computed from profile count if None.
-    optional:
-        Pass ``True`` for biogeochemical variables that may be absent in some casts.
-    cfg : ReportConfig
-        Report configuration threaded to the renderer.
-    """
+    """Encode :func:`~ctdcast.plotters.timeseries.draw_timeseries_fig`; *optional* marks a variable that may be absent."""
     return render_b64(
         draw_timeseries_fig,
         ds_prof,
@@ -623,11 +456,7 @@ def _make_timeseries_b64(
 def _make_sensor_diff_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
 ) -> str | None:
-    """Return a base64 PNG of primary minus secondary sensor difference profiles.
-
-    Shows T₁–T₂ and S₁–S₂ vs pressure with a fixed ±0.01 x-axis.
-    Returns None if no secondary sensor variables are present.
-    """
+    """Encode :func:`~ctdcast.plotters.timeseries.draw_sensor_diff_fig`; None without a secondary sensor."""
     return render_b64(draw_sensor_diff_fig, ds, optional=True, cfg=cfg)
 
 
@@ -641,22 +470,14 @@ def _make_pressure_time_b64(
 def _make_updown_diff_b64(
     ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
 ) -> str | None:
-    """Return a base64 PNG of downcast minus upcast profiles: ΔCT, ΔSA, Δσ₀.
-
-    Both casts are interpolated to a shared 1-dbar pressure grid before differencing.
-    Returns None if the overlap region is less than 10 dbar.
-    """
+    """Encode :func:`~ctdcast.plotters.timeseries.draw_updown_diff_fig`; None when the down/up overlap is under 10 dbar."""
     return render_b64(draw_updown_diff_fig, ds, cfg=cfg)
 
 
 def _make_ladcp_bottomtrack_b64(
     ladcp_path: Path | None, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
 ) -> str | None:
-    """Return a base64 PNG of LADCP bottom-track U and V vs depth.
-
-    Returns None if *ladcp_path* is None or the .mat file lacks ``zbot``, ``ubot``,
-    or ``vbot`` fields.
-    """
+    """Encode :func:`~ctdcast.plotters.ladcp.draw_ladcp_bottomtrack_fig`; None without a bottom-track solution."""
     if ladcp_path is None:
         return None
     return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path, optional=True, cfg=cfg)
