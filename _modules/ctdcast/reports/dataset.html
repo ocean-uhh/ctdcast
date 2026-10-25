@@ -1,0 +1,593 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports.dataset &mdash; ctdcast v0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=97b6c874"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports.dataset</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports.dataset</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Tier-2: a per-file netCDF *data inventory* page.</span>
+
+<span class="sd">Unlike the figure report pages, this one answers "what is actually in this file?"</span>
+<span class="sd">for a developer or data reviewer: every coordinate and variable with its dtype,</span>
+<span class="sd">units, CF names, value range and validity, the sensor catalog, and the global</span>
+<span class="sd">attributes grouped into their canonical sections.  One page per file, generated</span>
+<span class="sd">for ``profiles.nc``, a per-cast cast NC, or any other ctdcast product.</span>
+
+<span class="sd">The tables themselves are built by the package-neutral</span>
+<span class="sd">:mod:`ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped</span>
+<span class="sd">by dimension, scalars, the sensor catalog, grouped globals) and rendered by the</span>
+<span class="sd">vendored ``_nc_tables.html`` macros.  What stays owned here is ctdcast-specific: the</span>
+<span class="sd">QC-exclusion and variable-renaming tables, the sensor linkage/channel tables, and the</span>
+<span class="sd">coverage check that recomputes ``geospatial_*`` / ``time_coverage_*`` from the data.</span>
+
+<span class="sd">:func:`read_dataset_meta` extracts the inventory as plain data;</span>
+<span class="sd">:func:`generate_dataset_page` renders it to a self-contained HTML file.</span>
+<span class="sd">:func:`data_ranges_markup` renders the cast page's data-ranges appendix through the same</span>
+<span class="sd">vendored ``variables_tables`` macro, so it reads identically to the inventory page.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">source_to_canonical</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports</span><span class="w"> </span><span class="kn">import</span> <span class="n">design</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">_env</span><span class="p">,</span> <span class="n">get_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._format</span><span class="w"> </span><span class="kn">import</span> <span class="n">report_generated_at</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._navs</span><span class="w"> </span><span class="kn">import</span> <span class="n">nav_for</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored</span><span class="w"> </span><span class="kn">import</span> <span class="n">nc_tables</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"data_ranges_markup"</span><span class="p">,</span> <span class="s2">"generate_dataset_page"</span><span class="p">,</span> <span class="s2">"read_dataset_meta"</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fmt_val</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>  <span class="c1"># noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)</span>
+<span class="w">    </span><span class="sd">"""Format a scalar min/max value compactly for the table."""</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"—"</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">"—"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)[:</span><span class="mi">40</span><span class="p">]</span>
+
+
+<span class="c1"># The sensor-provenance variables are split out of the science-variable inventory.</span>
+<span class="c1"># ``SENSOR_*`` is the catalog (its own table); the lowercase ``sensor_*`` family is the</span>
+<span class="c1"># per-profile linkage (which catalog variable fills each role) and the ``sensor_channel_*``</span>
+<span class="c1"># raw acquisition channels — both owned CTD-specific tables.  ``_is_sensor_var`` is the</span>
+<span class="c1"># broad predicate (decision: exclude every ``SENSOR_*`` / ``sensor_*`` name) used to keep</span>
+<span class="c1"># all of them out of the science-variable and scalar tables; ``design.is_sensor`` stays</span>
+<span class="c1"># narrow (``SENSOR_*``) for the catalog itself.  A future lowercase ``sensor_``-named</span>
+<span class="c1"># *science* variable would be excluded here — rename it or widen this rule when that happens.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_channel</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a per-profile raw-channel variable."""</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"sensor_channel_"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_linkage</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a per-profile sensor-linkage variable."""</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"sensor_"</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_channel</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_sensor_var</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is any sensor-provenance variable (catalog, linkage, channel)."""</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"SENSOR_"</span><span class="p">,</span> <span class="s2">"sensor_"</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_qc_exclusion_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return the per-variable QC-exclusion summary rows.</span>
+
+<span class="sd">    How many finite input samples each science variable carried and how many were</span>
+<span class="sd">    dropped (QARTOD suspect/fail) before binning.  The denominator is pre-binning</span>
+<span class="sd">    samples, so the fraction is not confounded by binning's own reduction in point</span>
+<span class="sd">    count.  Only variables that recorded the counts (a compiled profiles file)</span>
+<span class="sd">    contribute a row.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">_is_sensor_var</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="k">if</span> <span class="s2">"qc_input_samples"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="ow">or</span> <span class="s2">"qc_excluded_samples"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">n_in</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"qc_input_samples"</span><span class="p">])</span>
+        <span class="n">n_drop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"qc_excluded_samples"</span><span class="p">])</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+                <span class="s2">"n_input"</span><span class="p">:</span> <span class="n">n_in</span><span class="p">,</span>
+                <span class="s2">"n_excluded"</span><span class="p">:</span> <span class="n">n_drop</span><span class="p">,</span>
+                <span class="s2">"pct"</span><span class="p">:</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">n_drop</span> <span class="o">/</span> <span class="n">n_in</span><span class="p">)</span> <span class="k">if</span> <span class="n">n_in</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_finite_min_max</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the finite ``(min, max)`` of a variable, or ``(None, None)`` when absent/empty."""</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"float64"</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">vals</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">vals</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">vals</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_datetime_extreme</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reduce</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``reduce`` of a datetime variable to the second, or ``None`` when absent/empty."""</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">vals</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="s2">"M"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">vals</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnat</span><span class="p">(</span><span class="n">vals</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">vals</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="n">reduce</span><span class="p">(</span><span class="n">vals</span><span class="p">),</span> <span class="s2">"s"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_time_bounds</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">datetime64</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the data's ``(start, end)`` to the second, or ``(None, None)``.</span>
+
+<span class="sd">    The start is the earliest ``time_start`` and the end the latest ``time_end`` —</span>
+<span class="sd">    the two extremes the writer states, each from its own variable, so a correct</span>
+<span class="sd">    file shows ``diff = 0`` and an amber flag means the metadata genuinely disagrees</span>
+<span class="sd">    with the data.  A file with only a single ``time`` coordinate uses it for both.</span>
+<span class="sd">    NaT is dropped.</span>
+<span class="sd">    """</span>
+    <span class="n">start_var</span> <span class="o">=</span> <span class="s2">"time_start"</span> <span class="k">if</span> <span class="s2">"time_start"</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span> <span class="k">else</span> <span class="s2">"time"</span>
+    <span class="n">end_var</span> <span class="o">=</span> <span class="s2">"time_end"</span> <span class="k">if</span> <span class="s2">"time_end"</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span> <span class="k">else</span> <span class="s2">"time"</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">_datetime_extreme</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">start_var</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">),</span>
+        <span class="n">_datetime_extreme</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">end_var</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fmt_diff</span><span class="p">(</span><span class="n">diff</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Format a coverage difference, collapsing a negligible value to a bare ``0``."""</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">5e-5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"0"</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">diff</span><span class="si">:</span><span class="s2">+.3g</span><span class="si">}</span><span class="s2">"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_iso_second</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Parse a written ISO timestamp (trailing ``Z`` allowed) to second precision."""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="n">text</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"Z"</span><span class="p">),</span> <span class="s2">"s"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coverage_note</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the caption stating the amber-flag tolerances for the coverage table."""</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">COVERAGE_TOLERANCE</span>
+    <span class="n">latlon</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"latitude/longitude </span><span class="si">{</span><span class="n">tol</span><span class="p">[</span><span class="s1">'lat'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">°"</span>
+        <span class="k">if</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">]</span> <span class="o">==</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lon"</span><span class="p">]</span>
+        <span class="k">else</span> <span class="sa">f</span><span class="s2">"latitude </span><span class="si">{</span><span class="n">tol</span><span class="p">[</span><span class="s1">'lat'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">°, longitude </span><span class="si">{</span><span class="n">tol</span><span class="p">[</span><span class="s1">'lon'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">°"</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="s2">"Computed values are recomputed from the data in this file. Diff is File − Computed; "</span>
+        <span class="s2">"a cell is amber when |Diff| exceeds the tolerance "</span>
+        <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">latlon</span><span class="si">}</span><span class="s2">, vertical </span><span class="si">{</span><span class="n">tol</span><span class="p">[</span><span class="s1">'vertical'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> dbar, time </span><span class="si">{</span><span class="n">tol</span><span class="p">[</span><span class="s1">'time'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s)."</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coverage_computed</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return the coverage check: ``{attr: {"value", "diff", "over"}}``.</span>
+
+<span class="sd">    Recomputes the ``geospatial_*`` and ``time_coverage_*`` bounds from the data and</span>
+<span class="sd">    compares each against the file's stated value.  ``over`` marks a disagreement</span>
+<span class="sd">    larger than the per-axis tolerance in :data:`ctdcast.reports.design.COVERAGE_TOLERANCE`.</span>
+<span class="sd">    An attribute the file does not state, or a value that cannot be recomputed, is</span>
+<span class="sd">    omitted rather than guessed.</span>
+<span class="sd">    """</span>
+    <span class="n">attrs</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">COVERAGE_TOLERANCE</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">lat_lo</span><span class="p">,</span> <span class="n">lat_hi</span> <span class="o">=</span> <span class="n">_finite_min_max</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"latitude"</span><span class="p">)</span>
+    <span class="n">lon_lo</span><span class="p">,</span> <span class="n">lon_hi</span> <span class="o">=</span> <span class="n">_finite_min_max</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"longitude"</span><span class="p">)</span>
+    <span class="c1"># The vertical axis is pressure on a CTD file and depth on the LADCP product; pick the</span>
+    <span class="c1"># one present so the vertical bound is actually checked instead of silently skipped.</span>
+    <span class="n">ver_var</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"pressure"</span><span class="p">,</span> <span class="s2">"depth"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">ver_lo</span><span class="p">,</span> <span class="n">ver_hi</span> <span class="o">=</span> <span class="n">_finite_min_max</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">ver_var</span><span class="p">)</span> <span class="k">if</span> <span class="n">ver_var</span> <span class="k">else</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">numeric</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">"geospatial_lat_min"</span><span class="p">,</span> <span class="n">lat_lo</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"geospatial_lat_max"</span><span class="p">,</span> <span class="n">lat_hi</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"geospatial_lon_min"</span><span class="p">,</span> <span class="n">lon_lo</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lon"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"geospatial_lon_max"</span><span class="p">,</span> <span class="n">lon_hi</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"lon"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"geospatial_vertical_min"</span><span class="p">,</span> <span class="n">ver_lo</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"vertical"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"geospatial_vertical_max"</span><span class="p">,</span> <span class="n">ver_hi</span><span class="p">,</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"vertical"</span><span class="p">]),</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">computed</span><span class="p">,</span> <span class="n">axis_tol</span> <span class="ow">in</span> <span class="n">numeric</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">computed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># A stated bound we cannot recompute. For the vertical bounds, say so rather than</span>
+            <span class="c1"># omitting the row — an omitted row is indistinguishable from "not stated", which</span>
+            <span class="c1"># is the thing this column exists to distinguish.</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"geospatial_vertical"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ver_var</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">"value"</span><span class="p">:</span> <span class="s2">"not computed (no pressure or depth variable)"</span><span class="p">,</span>
+                    <span class="s2">"diff"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+                    <span class="s2">"over"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stated</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="c1"># Diff is File − Computed (the file's error), matching the table caption.</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">stated</span> <span class="o">-</span> <span class="n">computed</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"value"</span><span class="p">:</span> <span class="n">_fmt_val</span><span class="p">(</span><span class="n">computed</span><span class="p">),</span>
+            <span class="s2">"diff"</span><span class="p">:</span> <span class="n">_fmt_diff</span><span class="p">(</span><span class="n">diff</span><span class="p">),</span>
+            <span class="s2">"over"</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">axis_tol</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="n">t_start</span><span class="p">,</span> <span class="n">t_end</span> <span class="o">=</span> <span class="n">_time_bounds</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">computed_t</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">"time_coverage_start"</span><span class="p">,</span> <span class="n">t_start</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"time_coverage_end"</span><span class="p">,</span> <span class="n">t_end</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="ow">or</span> <span class="n">computed_t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">stated_t</span> <span class="o">=</span> <span class="n">_parse_iso_second</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">stated_t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">delta_s</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">stated_t</span> <span class="o">-</span> <span class="n">computed_t</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">))</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"value"</span><span class="p">:</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">fmt_datetime</span><span class="p">(</span><span class="n">computed_t</span><span class="p">),</span>
+            <span class="s2">"diff"</span><span class="p">:</span> <span class="s2">"0 s"</span> <span class="k">if</span> <span class="n">delta_s</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">delta_s</span><span class="si">:</span><span class="s2">+d</span><span class="si">}</span><span class="s2"> s"</span><span class="p">,</span>
+            <span class="s2">"over"</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">delta_s</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">[</span><span class="s2">"time"</span><span class="p">],</span>
+        <span class="p">}</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="c1"># The inventory "Data variables" table rendered on its own, for the cast page's data-ranges</span>
+<span class="c1"># appendix — the same vendored macro the full inventory page uses, so the two never diverge.</span>
+<span class="n">_VARIABLES_FRAGMENT</span> <span class="o">=</span> <span class="n">_env</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span>
+    <span class="s2">"{</span><span class="si">% i</span><span class="s2">mport '_nc_tables.html' as nc with context %}"</span>
+    <span class="s2">"{{ nc.variables_tables(groups, source=source) }}"</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="data_ranges_markup">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.dataset.data_ranges_markup">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">data_ranges_markup</span><span class="p">(</span><span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cast page's netCDF data-ranges table as markup, or None when empty.</span>
+
+<span class="sd">    Built from the same vendored ``variables_rows`` builder and ``variables_tables`` macro as</span>
+<span class="sd">    the inventory page's "Data variables" section, so the per-cast appendix renders in the same</span>
+<span class="sd">    form: variables grouped by dimension, ``_qc`` companions folded into their parent, and the</span>
+<span class="sd">    full attribute set (including ``processing_level``) behind each row's disclosure.  Every</span>
+<span class="sd">    ``SENSOR_*``/``sensor_*`` variable is excluded (``_is_sensor_var``) — a per-cast file carries</span>
+<span class="sd">    the sensor catalog, not the per-profile linkage/channel the inventory page tables separately.</span>
+<span class="sd">    Rendered to markup here because the cast template embeds it with ``|safe``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_path : pathlib.Path</span>
+<span class="sd">        The netCDF file to read.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        The table markup, or None if the file cannot be read or has no dimensioned variables.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">nc_path</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 — a bad file yields no appendix, never a crash</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">groups</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">variables_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">is_qc</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_qc</span><span class="p">,</span>
+            <span class="n">is_sensor</span><span class="o">=</span><span class="n">_is_sensor_var</span><span class="p">,</span>
+            <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">groups</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">_VARIABLES_FRAGMENT</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="read_dataset_meta">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.dataset.read_dataset_meta">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_dataset_meta</span><span class="p">(</span><span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Read *nc_path* into a plain-data inventory for the netCDF inventory page.</span>
+
+<span class="sd">    Opens the file once and runs the vendored</span>
+<span class="sd">    :mod:`~ctdcast.reports._vendored.nc_tables` builders (coordinates, variables grouped</span>
+<span class="sd">    by dimension, scalars, the sensor catalog, grouped globals), keeping the owned</span>
+<span class="sd">    ctdcast tables (QC exclusions, variable renaming, sensor linkage/channel) and the</span>
+<span class="sd">    coverage check alongside them.  A renamed variable's source name also rides each row</span>
+<span class="sd">    as ``original_name`` (the in-context ``original → name`` cell).</span>
+
+<span class="sd">    Returns a dict with ``filename``, ``filesize``, ``dims``, ``summary`` (the headline</span>
+<span class="sd">    counts), ``coords`` / ``variables`` / ``scalars`` / ``sensor_catalog`` / ``globals``</span>
+<span class="sd">    (each ``{"rows"|"groups", "source"}``), ``sensor_linkage`` / ``sensor_channel``</span>
+<span class="sd">    (``{"groups", "source"}`` from :func:`~ctdcast.reports._vendored.nc_tables.variables_rows`</span>
+<span class="sd">    with an including predicate), ``coverage`` (the recomputed-bounds check), ``qc_exclusion``</span>
+<span class="sd">    and ``rename_map``.  On any read error returns ``{"filename", "error"}`` so the page</span>
+<span class="sd">    can report it rather than failing to generate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_path : pathlib.Path</span>
+<span class="sd">        The netCDF file to inventory.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        The inventory, or an error dict on a read failure.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">nc_path</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 — surface any backend error on the page</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"filename"</span><span class="p">:</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+    <span class="k">with</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">coord_rows</span><span class="p">,</span> <span class="n">coord_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">coords_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span>
+        <span class="p">)</span>
+        <span class="n">var_groups</span><span class="p">,</span> <span class="n">var_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">variables_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">is_qc</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_qc</span><span class="p">,</span>
+            <span class="n">is_sensor</span><span class="o">=</span><span class="n">_is_sensor_var</span><span class="p">,</span>
+            <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">scalar_rows</span><span class="p">,</span> <span class="n">scalar_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">scalars_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">_is_sensor_var</span><span class="p">,</span> <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span>
+        <span class="p">)</span>
+        <span class="n">catalog_rows</span><span class="p">,</span> <span class="n">catalog_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">sensor_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">global_groups</span><span class="p">,</span> <span class="n">global_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">globals_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">extras</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ATTR_GROUP_EXTRAS</span>
+        <span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">summary_counts</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">is_qc</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_qc</span><span class="p">,</span> <span class="n">is_sensor</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_sensor</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">_is_sensor_var</span>
+        <span class="p">)</span>
+        <span class="c1"># Linkage and channel are per-profile sensor variables, kept out of the science</span>
+        <span class="c1"># tables (decision) but shown in their own sections. Build them through the same</span>
+        <span class="c1"># vendored variables_rows builder with an *including* predicate, so they render</span>
+        <span class="c1"># through nc.variables_tables with the Length/Valid/Valid %/type columns the</span>
+        <span class="c1"># science table has — owned code chooses the rows, the vendored macro owns the cells.</span>
+        <span class="n">linkage_groups</span><span class="p">,</span> <span class="n">linkage_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">variables_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">is_qc</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_qc</span><span class="p">,</span>
+            <span class="n">include</span><span class="o">=</span><span class="n">_is_linkage</span><span class="p">,</span>
+            <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">channel_groups</span><span class="p">,</span> <span class="n">channel_src</span> <span class="o">=</span> <span class="n">nc_tables</span><span class="o">.</span><span class="n">variables_rows</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">is_qc</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">is_qc</span><span class="p">,</span>
+            <span class="n">include</span><span class="o">=</span><span class="n">_is_channel</span><span class="p">,</span>
+            <span class="n">original_name_attrs</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">ORIGINAL_NAME_ATTRS</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Source → canonical rename table, reconstructed from each variable's recorded</span>
+        <span class="c1"># source name; sorted by canonical name.  source_to_canonical already drops</span>
+        <span class="c1"># identity entries (source == canonical).  Kept alongside the per-row arrow: the</span>
+        <span class="c1"># section is the at-a-glance rename overview, the arrow the in-context detail.</span>
+        <span class="n">rename_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">source_to_canonical</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="n">kv</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"filename"</span><span class="p">:</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">"filesize"</span><span class="p">:</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span> <span class="k">if</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"dims"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sizes</span><span class="p">),</span>
+            <span class="s2">"summary"</span><span class="p">:</span> <span class="n">summary</span><span class="p">,</span>
+            <span class="s2">"coords"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"rows"</span><span class="p">:</span> <span class="n">coord_rows</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">coord_src</span><span class="p">},</span>
+            <span class="s2">"variables"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">var_groups</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">var_src</span><span class="p">},</span>
+            <span class="s2">"scalars"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"rows"</span><span class="p">:</span> <span class="n">scalar_rows</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">scalar_src</span><span class="p">},</span>
+            <span class="s2">"sensor_catalog"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"rows"</span><span class="p">:</span> <span class="n">catalog_rows</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">catalog_src</span><span class="p">},</span>
+            <span class="s2">"sensor_linkage"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">linkage_groups</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">linkage_src</span><span class="p">},</span>
+            <span class="s2">"sensor_channel"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">channel_groups</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">channel_src</span><span class="p">},</span>
+            <span class="s2">"globals"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">global_groups</span><span class="p">,</span> <span class="s2">"source"</span><span class="p">:</span> <span class="n">global_src</span><span class="p">},</span>
+            <span class="s2">"coverage"</span><span class="p">:</span> <span class="n">_coverage_computed</span><span class="p">(</span><span class="n">ds</span><span class="p">),</span>
+            <span class="s2">"coverage_note"</span><span class="p">:</span> <span class="n">_coverage_note</span><span class="p">(),</span>
+            <span class="s2">"qc_exclusion"</span><span class="p">:</span> <span class="n">_qc_exclusion_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">),</span>
+            <span class="s2">"rename_map"</span><span class="p">:</span> <span class="n">rename_map</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="generate_dataset_page">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.dataset.generate_dataset_page">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_dataset_page</span><span class="p">(</span>
+    <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">out_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">nav_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">show_nav</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">inventory_pills</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">current_href</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">generated_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Render the netCDF inventory of *nc_path* to a self-contained HTML *out_path*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nc_path:</span>
+<span class="sd">        The netCDF file to inventory.</span>
+<span class="sd">    out_path:</span>
+<span class="sd">        Destination HTML path (parent directories are created).</span>
+<span class="sd">    title:</span>
+<span class="sd">        Page title; defaults to the file name.</span>
+<span class="sd">    cruise:</span>
+<span class="sd">        Cruise identifier shown in the footer; empty for a standalone inspection.</span>
+<span class="sd">    nav_prefix:</span>
+<span class="sd">        Relative path prefix to the report root for the page-nav links (``""``</span>
+<span class="sd">        when the page sits beside ``index.html``).</span>
+<span class="sd">    show_nav:</span>
+<span class="sd">        Render the full report page-nav when ``True`` (the in-report cruise</span>
+<span class="sd">        inventory page).  Standalone inspections leave it ``False`` so the nav's</span>
+<span class="sd">        report-relative links are not shown for an arbitrary file.</span>
+<span class="sd">    inventory_pills:</span>
+<span class="sd">        ``{"label", "href"}`` entries for the compiled-file inventory pages</span>
+<span class="sd">        (profiles/ladcp/sensors), rendered as a cross-navigation pill bar.</span>
+<span class="sd">    current_href:</span>
+<span class="sd">        The href of this page, rendered as the non-link active pill.</span>
+<span class="sd">    generated_at:</span>
+<span class="sd">        Page build stamp; ``None`` uses the current UTC time.  Threaded from</span>
+<span class="sd">        :func:`ctdcast.report` so one build stamps every page identically.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Path</span>
+<span class="sd">        The written *out_path*.</span>
+<span class="sd">    """</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">read_dataset_meta</span><span class="p">(</span><span class="n">nc_path</span><span class="p">)</span>
+    <span class="n">nav</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">nav_for</span><span class="p">(</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="n">prefix</span><span class="o">=</span><span class="n">nav_prefix</span><span class="p">,</span>
+            <span class="n">inventory</span><span class="o">=</span><span class="n">inventory_pills</span> <span class="ow">or</span> <span class="p">(),</span>
+            <span class="n">inventory_current</span><span class="o">=</span><span class="n">current_href</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">show_nav</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">html</span> <span class="o">=</span> <span class="n">get_template</span><span class="p">(</span><span class="s2">"dataset.html"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span>
+        <span class="n">page_title</span><span class="o">=</span><span class="n">title</span> <span class="ow">or</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">cruise</span><span class="o">=</span><span class="n">cruise</span><span class="p">,</span>
+        <span class="n">css</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">SHARED_CSS</span><span class="p">,</span>
+        <span class="n">js_top_links</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">_JS_TOP_LINKS</span><span class="p">,</span>
+        <span class="n">nav_prefix</span><span class="o">=</span><span class="n">nav_prefix</span><span class="p">,</span>
+        <span class="n">nav</span><span class="o">=</span><span class="n">nav</span><span class="p">,</span>
+        <span class="n">masthead_role</span><span class="o">=</span><span class="s2">"component"</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="n">_VERSION</span><span class="p">,</span>
+        <span class="n">generated_at</span><span class="o">=</span><span class="n">report_generated_at</span><span class="p">(</span><span class="n">generated_at</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">out_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_path</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

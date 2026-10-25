@@ -1,0 +1,901 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.plotters.sections &mdash; ctdcast v0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=97b6c874"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.plotters.sections</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.plotters.sections</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Section figure builders: depth–distance sections, section T–S panels and the overview panel."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mcolors</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">vlabel</span><span class="p">,</span>
+    <span class="n">vunit</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.report_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span> <span class="n">ReportConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.plotters.primitives</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_cast_markers</span><span class="p">,</span>
+    <span class="n">_discrete_norm</span><span class="p">,</span>
+    <span class="n">_sigma0_backdrop</span><span class="p">,</span>
+    <span class="n">hide_outer_spines</span><span class="p">,</span>
+    <span class="n">mesh_field</span><span class="p">,</span>
+    <span class="n">nice_colorbar_bounds</span><span class="p">,</span>
+    <span class="n">sigma0_isopycnals</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MAX_SECTION_H</span> <span class="k">as</span> <span class="n">_MAX_SECTION_H</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MIN_SECTION_H</span> <span class="k">as</span> <span class="n">_MIN_SECTION_H</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SECTION_STRETCH</span> <span class="k">as</span> <span class="n">_SECTION_STRETCH</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">W_FULL</span> <span class="k">as</span> <span class="n">_W_FULL</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">W_HALF</span> <span class="k">as</span> <span class="n">_W_HALF</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">W_THIRD</span> <span class="k">as</span> <span class="n">_W_THIRD</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">W_TWOTHIRDS</span> <span class="k">as</span> <span class="n">_W_TWOTHIRDS</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">pen</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="overview_figsize">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.overview_figsize">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">overview_figsize</span><span class="p">(</span>
+    <span class="n">overview_size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the overview-panel figure size: *width_in* wide at *overview_size*'s aspect.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    overview_size : tuple of float</span>
+<span class="sd">        ``(width, height)`` in inches from the report configuration; only its</span>
+<span class="sd">        aspect ratio is used when *width_in* is given.</span>
+<span class="sd">    width_in : float or None</span>
+<span class="sd">        Figure width in inches (the slot the panel is shown in); None keeps</span>
+<span class="sd">        *overview_size* unchanged.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of float</span>
+<span class="sd">        ``(width, height)`` in inches.</span>
+<span class="sd">    """</span>
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">overview_size</span>
+    <span class="k">if</span> <span class="n">width_in</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">width_in</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">width_in</span><span class="p">)</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="section_figsize_and_slot">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.section_figsize_and_slot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">section_figsize_and_slot</span><span class="p">(</span>
+    <span class="n">p_max_dbar</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dist_km</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return figure size and CSS slot class for a section pcolormesh plot.</span>
+
+<span class="sd">    The figure width is always a **canonical slot width** (one of ``SLOTS``), so</span>
+<span class="sd">    the rendered PNG fills its slot at the same oversample as every other figure and</span>
+<span class="sd">    the browser never rescales it — otherwise a section rendered at a between-slots</span>
+<span class="sd">    width is squeezed into the nearest slot box, shrinking its baked-in fonts.</span>
+
+<span class="sd">    Aspect is calibrated (``_SECTION_STRETCH``) so KTout (416 dbar, 94 km) is short</span>
+<span class="sd">    at full width.  The widest slot whose resulting height stays within</span>
+<span class="sd">    ``_MAX_SECTION_H`` is chosen; height then follows the data aspect (floored at</span>
+<span class="sd">    ``_MIN_SECTION_H``).  A section too deep for even the narrowest slot keeps that</span>
+<span class="sd">    slot's width and accepts the height cap.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_max_dbar:</span>
+<span class="sd">        Maximum pressure in the section (dbar).</span>
+<span class="sd">    dist_km:</span>
+<span class="sd">        Total along-track distance of the section (km).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of ``((fig_w, fig_h), css_slot)`` where ``fig_w`` equals the slot's</span>
+<span class="sd">    canonical inch width and ``css_slot`` is one of ``"slot-full"``,</span>
+<span class="sd">    ``"slot-twothirds"``, ``"slot-half"``, or ``"slot-third"``.</span>
+<span class="sd">    """</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">dist_km</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># abs: x_vals may be flipped for east→west sections</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">p_max_dbar</span> <span class="o">/</span> <span class="p">(</span><span class="n">dist</span> <span class="o">*</span> <span class="n">_SECTION_STRETCH</span><span class="p">)</span>  <span class="c1"># fig_h per inch of fig_w</span>
+    <span class="c1"># Widest canonical slot whose height stays within the cap; the aspect ratio</span>
+    <span class="c1"># means a narrower width yields a shorter figure, so descending widths fit.</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">"slot-full"</span><span class="p">,</span> <span class="n">_W_FULL</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"slot-twothirds"</span><span class="p">,</span> <span class="n">_W_TWOTHIRDS</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"slot-half"</span><span class="p">,</span> <span class="n">_W_HALF</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"slot-third"</span><span class="p">,</span> <span class="n">_W_THIRD</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">slot</span><span class="p">,</span> <span class="n">fig_w</span> <span class="o">=</span> <span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># deepest sections fall back to the narrowest slot</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">width</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">*</span> <span class="n">ratio</span> <span class="o">&lt;=</span> <span class="n">_MAX_SECTION_H</span><span class="p">:</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">fig_w</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span> <span class="n">width</span>
+            <span class="k">break</span>
+    <span class="n">fig_h</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">fig_w</span> <span class="o">*</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">_MIN_SECTION_H</span><span class="p">),</span> <span class="n">_MAX_SECTION_H</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">fig_w</span><span class="p">,</span> <span class="n">fig_h</span><span class="p">),</span> <span class="n">slot</span></div>
+
+
+
+<div class="viewcode-block" id="draw_section_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_section_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_section_fig</span><span class="p">(</span>
+    <span class="n">ds_prof</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="c1"># noqa: ARG001 — full label retained for callers; figure shows units only</span>
+    <span class="n">x_vals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">x_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>  <span class="c1"># noqa: ARG001</span>
+    <span class="n">style</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"pcolormesh"</span><span class="p">,</span>
+    <span class="n">bathy_depths</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bathy_x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_labels</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a Figure of *var* vs pressure × along-track distance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_prof : xarray.Dataset</span>
+<span class="sd">        Profiles gridded on ``pressure`` × profile, one profile per *x_vals* entry.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        Variable to plot from *ds_prof*.</span>
+<span class="sd">    label : str</span>
+<span class="sd">        Accepted for call-site compatibility; the colorbar shows units only.</span>
+<span class="sd">    x_vals : numpy.ndarray</span>
+<span class="sd">        Along-track position of each profile.</span>
+<span class="sd">    x_label : str</span>
+<span class="sd">        x-axis label.</span>
+<span class="sd">    title : str</span>
+<span class="sd">        Accepted for call-site compatibility and ignored.</span>
+<span class="sd">    style : {"pcolormesh", "contourf"}</span>
+<span class="sd">        Field rendering.</span>
+<span class="sd">    bathy_depths : numpy.ndarray, optional</span>
+<span class="sd">        Water depth (m) for the bathymetry fill, at *bathy_x* when given, else at</span>
+<span class="sd">        *x_vals*.</span>
+<span class="sd">    bathy_x : numpy.ndarray, optional</span>
+<span class="sd">        Denser along-track positions (km) for *bathy_depths*; used only when its</span>
+<span class="sd">        length matches, otherwise the fill falls back to *x_vals*.</span>
+<span class="sd">    cast_labels : list, optional</span>
+<span class="sd">        Cast numbers drawn as markers along the top edge (same length as *x_vals*).</span>
+<span class="sd">    vmin, vmax : float, optional</span>
+<span class="sd">        Colour limits; each defaults to the 2nd / 98th percentile of the data.</span>
+<span class="sd">    figsize : tuple of float, optional</span>
+<span class="sd">        ``(width, height)`` in inches, used unchanged so a caller can keep the PNG</span>
+<span class="sd">        and its slot consistent; when None, :func:`section_figsize_and_slot` sets it</span>
+<span class="sd">        from the data's depth and along-track extent.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``var_cmaps`` gives the colormap for *var*.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when *var* is absent or has no finite values.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="n">valid_cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_cols</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">p_trim</span> <span class="o">=</span> <span class="n">pressure</span><span class="p">[:</span> <span class="n">valid_cols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">data_trim</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:</span> <span class="n">valid_cols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">d_fin</span> <span class="o">=</span> <span class="n">data_trim</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data_trim</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">d_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">cmap_name</span> <span class="o">=</span> <span class="n">_discrete_norm</span><span class="p">(</span>
+        <span class="n">d_fin</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">,</span> <span class="n">var_cmaps</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">var_cmaps</span>
+    <span class="p">)</span>
+
+    <span class="n">dist</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_vals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">10.0</span>
+    <span class="n">p_max_data</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_trim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">figsize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig_w</span><span class="p">,</span> <span class="n">fig_h</span> <span class="o">=</span> <span class="n">figsize</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">fig_w</span><span class="p">,</span> <span class="n">fig_h</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="n">section_figsize_and_slot</span><span class="p">(</span><span class="n">p_max_data</span><span class="p">,</span> <span class="n">dist</span><span class="p">)</span>
+
+    <span class="c1"># Y extent: deeper of data max and bathy max</span>
+    <span class="n">p_max_bathy</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">bathy_depths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">)</span>
+        <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="p">)</span>
+    <span class="n">y_bottom</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">p_max_data</span><span class="p">,</span> <span class="n">p_max_bathy</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.05</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">fig_w</span><span class="p">,</span> <span class="n">fig_h</span><span class="p">))</span>
+
+    <span class="n">mesh_field</span><span class="p">(</span>
+        <span class="n">ax</span><span class="p">,</span>
+        <span class="n">fig</span><span class="p">,</span>
+        <span class="n">x_vals</span><span class="p">,</span>
+        <span class="n">p_trim</span><span class="p">,</span>
+        <span class="n">data_trim</span><span class="p">,</span>
+        <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">cmap_name</span><span class="o">=</span><span class="n">cmap_name</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+        <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">,</span>
+        <span class="n">cbar_label</span><span class="o">=</span><span class="n">vunit</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">bathy_depths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bx</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">bathy_x</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">bathy_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bathy_x</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">))</span>
+            <span class="k">else</span> <span class="n">x_vals</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">bx</span><span class="p">):</span>
+            <span class="n">step</span> <span class="o">=</span> <span class="s2">"mid"</span> <span class="k">if</span> <span class="n">bathy_x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+                <span class="n">bx</span><span class="p">,</span> <span class="n">bathy_depths</span><span class="p">,</span> <span class="n">y_bottom</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"#3a3a3a"</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">var</span> <span class="o">==</span> <span class="s2">"sigma0"</span><span class="p">:</span>
+        <span class="n">sigma0_isopycnals</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">x_vals</span><span class="p">,</span> <span class="n">p_trim</span><span class="p">,</span> <span class="n">data_trim</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">y_bottom</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"pressure"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x_label</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cast_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">cast_labels</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_vals</span><span class="p">):</span>
+        <span class="n">_cast_markers</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">x_vals</span><span class="p">,</span> <span class="n">cast_labels</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_section_ts_profiles_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_section_ts_profiles_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_section_ts_profiles_fig</span><span class="p">(</span>
+    <span class="n">ds_prof</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">x_vals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_THIRD</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a Figure of per-cast CT–SA profiles coloured by along-track distance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_prof : xarray.Dataset</span>
+<span class="sd">        Section profiles with ``absolute_salinity`` and ``conservative_temperature``.</span>
+<span class="sd">    x_vals : numpy.ndarray</span>
+<span class="sd">        Along-track position (km) of each profile; sets the colour.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``clean_spines`` sets the despine.</span>
+<span class="sd">    width_in : float, default ``W_THIRD``</span>
+<span class="sd">        Figure width in inches (third slot); the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when SA or CT is absent or has no finite values.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"absolute_salinity"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span> <span class="ow">or</span> <span class="s2">"conservative_temperature"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">sa_all</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">ct_all</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">sa_fin</span> <span class="o">=</span> <span class="n">sa_all</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa_all</span><span class="p">)]</span>
+    <span class="n">ct_fin</span> <span class="o">=</span> <span class="n">ct_all</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct_all</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">sa_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">sa_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+    <span class="n">ct_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">ct_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+
+    <span class="n">x_lo</span><span class="p">,</span> <span class="n">x_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">x_hi</span> <span class="o">&lt;=</span> <span class="n">x_lo</span><span class="p">:</span>
+        <span class="n">x_hi</span> <span class="o">=</span> <span class="n">x_lo</span> <span class="o">+</span> <span class="mf">1.0</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">nice_colorbar_bounds</span><span class="p">(</span><span class="n">x_lo</span><span class="p">,</span> <span class="n">x_hi</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+    <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s2">"plasma"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">ncolors</span><span class="o">=</span><span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">3.8</span> <span class="o">/</span> <span class="n">_W_THIRD</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sa_all</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa_all</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct_all</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">sa_all</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mask</span><span class="p">],</span>
+            <span class="n">ct_all</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mask</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">x_vals</span><span class="p">[</span><span class="n">i</span><span class="p">]))),</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+            <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="n">_sigma0_backdrop</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="n">sm</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">ScalarMappable</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">set_array</span><span class="p">([])</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span>
+        <span class="n">sm</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">orientation</span><span class="o">=</span><span class="s2">"horizontal"</span><span class="p">,</span>
+        <span class="n">location</span><span class="o">=</span><span class="s2">"bottom"</span><span class="p">,</span>
+        <span class="n">ticks</span><span class="o">=</span><span class="n">bounds</span><span class="p">[::</span><span class="mi">2</span><span class="p">],</span>
+        <span class="n">pad</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span>
+        <span class="n">shrink</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+        <span class="n">aspect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="s2">"Along-track distance (km)"</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"absolute_salinity"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"conservative_temperature"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">hide_outer_spines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">clean_spines</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_ts_diagram_timeseries_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_ts_diagram_timeseries_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_ts_diagram_timeseries_fig</span><span class="p">(</span>
+    <span class="n">ds_ts</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_THIRD</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a CT–SA diagram Figure for all time-series profiles, coloured by time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_ts : xarray.Dataset</span>
+<span class="sd">        Profiles (``N_PROF`` × ``pressure``) with ``absolute_salinity``,</span>
+<span class="sd">        ``conservative_temperature`` and ``time_start``.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``clean_spines`` sets the despine.</span>
+<span class="sd">    width_in : float, default ``W_THIRD``</span>
+<span class="sd">        Figure width in inches (third slot); the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when SA or CT is absent, fewer than two profiles exist, or no value is finite.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"absolute_salinity"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_ts</span> <span class="ow">or</span> <span class="s2">"conservative_temperature"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_ts</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">sa_all</span> <span class="o">=</span> <span class="n">ds_ts</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">ct_all</span> <span class="o">=</span> <span class="n">ds_ts</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">if</span> <span class="n">sa_all</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">sa_fin</span> <span class="o">=</span> <span class="n">sa_all</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa_all</span><span class="p">)]</span>
+    <span class="n">ct_fin</span> <span class="o">=</span> <span class="n">ct_all</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct_all</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">sa_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">sa_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa_fin</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+    <span class="n">ct_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">ct_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct_fin</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+
+    <span class="c1"># Colourbar: hours since first profile</span>
+    <span class="n">t_ns</span> <span class="o">=</span> <span class="n">ds_ts</span><span class="p">[</span><span class="s2">"time_start"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"datetime64[ns]"</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">t_hours</span> <span class="o">=</span> <span class="p">(</span><span class="n">t_ns</span> <span class="o">-</span> <span class="n">t_ns</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mf">3.6e12</span>
+    <span class="n">t_lo</span><span class="p">,</span> <span class="n">t_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">t_hours</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">t_hours</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">t_hi</span> <span class="o">&lt;=</span> <span class="n">t_lo</span><span class="p">:</span>
+        <span class="n">t_hi</span> <span class="o">=</span> <span class="n">t_lo</span> <span class="o">+</span> <span class="mf">1.0</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">nice_colorbar_bounds</span><span class="p">(</span><span class="n">t_lo</span><span class="p">,</span> <span class="n">t_hi</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+    <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s2">"plasma"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">ncolors</span><span class="o">=</span><span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">3.8</span> <span class="o">/</span> <span class="n">_W_THIRD</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sa_all</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa_all</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct_all</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">sa_all</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mask</span><span class="p">],</span>
+            <span class="n">ct_all</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mask</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t_hours</span><span class="p">[</span><span class="n">i</span><span class="p">]))),</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+            <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="n">_sigma0_backdrop</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="n">sm</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">ScalarMappable</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">set_array</span><span class="p">([])</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span>
+        <span class="n">sm</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">orientation</span><span class="o">=</span><span class="s2">"horizontal"</span><span class="p">,</span>
+        <span class="n">location</span><span class="o">=</span><span class="s2">"bottom"</span><span class="p">,</span>
+        <span class="n">ticks</span><span class="o">=</span><span class="n">bounds</span><span class="p">[::</span><span class="mi">2</span><span class="p">],</span>
+        <span class="n">pad</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span>
+        <span class="n">shrink</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+        <span class="n">aspect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="s2">"Hours since start"</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"absolute_salinity"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"conservative_temperature"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">hide_outer_spines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">clean_spines</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_section_ts_histogram_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_section_ts_histogram_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_section_ts_histogram_fig</span><span class="p">(</span>
+    <span class="n">ds_prof</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_THIRD</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a CT–SA two-dimensional count histogram Figure (log₁₀ colour) for section profiles.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_prof : xarray.Dataset</span>
+<span class="sd">        Profiles with ``absolute_salinity`` and ``conservative_temperature``.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``clean_spines`` sets the despine.</span>
+<span class="sd">    width_in : float, default ``W_THIRD``</span>
+<span class="sd">        Figure width in inches (third slot); the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when SA or CT is absent or fewer than ten valid points remain.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"absolute_salinity"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span> <span class="ow">or</span> <span class="s2">"conservative_temperature"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">sa</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">ct</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+    <span class="n">sa</span><span class="p">,</span> <span class="n">ct</span> <span class="o">=</span> <span class="n">sa</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">ct</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Clip to 0.5–99.5th percentile so a single outlier cast doesn't blow out the range.</span>
+    <span class="n">sa_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">sa_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+    <span class="n">ct_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">ct_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+
+    <span class="n">sa_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+    <span class="n">ct_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+    <span class="n">counts</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram2d</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="p">[</span><span class="n">sa_edges</span><span class="p">,</span> <span class="n">ct_edges</span><span class="p">])</span>
+
+    <span class="n">sa_c</span> <span class="o">=</span> <span class="p">(</span><span class="n">sa_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sa_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">ct_c</span> <span class="o">=</span> <span class="p">(</span><span class="n">ct_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">ct_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">counts_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">T</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">counts</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+
+    <span class="n">c_fin</span> <span class="o">=</span> <span class="n">counts_log</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">counts_log</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">c_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">bounds_c</span> <span class="o">=</span> <span class="n">nice_colorbar_bounds</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">c_fin</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="nb">float</span><span class="p">(</span><span class="n">c_fin</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span> <span class="n">n</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+    <span class="n">cmap_c</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">YlOrRd</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">cmap_c</span><span class="o">.</span><span class="n">set_bad</span><span class="p">(</span><span class="s2">"white"</span><span class="p">)</span>
+    <span class="n">norm_c</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">bounds_c</span><span class="p">,</span> <span class="n">ncolors</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">3.8</span> <span class="o">/</span> <span class="n">_W_THIRD</span><span class="p">))</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">sa_c</span><span class="p">,</span> <span class="n">ct_c</span><span class="p">,</span> <span class="n">counts_log</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap_c</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm_c</span><span class="p">)</span>
+    <span class="n">_sigma0_backdrop</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span>
+        <span class="n">pc</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">orientation</span><span class="o">=</span><span class="s2">"horizontal"</span><span class="p">,</span>
+        <span class="n">location</span><span class="o">=</span><span class="s2">"bottom"</span><span class="p">,</span>
+        <span class="n">ticks</span><span class="o">=</span><span class="n">bounds_c</span><span class="p">[::</span><span class="mi">2</span><span class="p">],</span>
+        <span class="n">pad</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span>
+        <span class="n">shrink</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+        <span class="n">aspect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="sa">r</span><span class="s2">"$\log_</span><span class="si">{10}</span><span class="s2">$(count)"</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"absolute_salinity"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"conservative_temperature"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">hide_outer_spines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">clean_spines</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_section_ts_o2_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_section_ts_o2_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_section_ts_o2_fig</span><span class="p">(</span>
+    <span class="n">ds_prof</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_THIRD</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a CT–SA Figure coloured by the median oxygen in each T–S bin (bins with at least two points).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_prof : xarray.Dataset</span>
+<span class="sd">        Profiles with ``absolute_salinity``, ``conservative_temperature`` and an</span>
+<span class="sd">        oxygen variable.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``clean_spines`` sets the despine.</span>
+<span class="sd">    width_in : float, default ``W_THIRD``</span>
+<span class="sd">        Figure width in inches (third slot); the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when SA, CT or oxygen is absent or fewer than ten valid points remain.</span>
+<span class="sd">    """</span>
+    <span class="n">_o2_var</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"oxygen_saturation"</span><span class="p">,</span> <span class="s2">"oxsat_1"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds_prof</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="s2">"absolute_salinity"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span>
+        <span class="ow">or</span> <span class="s2">"conservative_temperature"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span>
+        <span class="ow">or</span> <span class="n">_o2_var</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">sa</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"absolute_salinity"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">ct</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"conservative_temperature"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">o2</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="n">_o2_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">o2</span><span class="p">)</span>
+    <span class="n">sa</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">o2</span> <span class="o">=</span> <span class="n">sa</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">ct</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">o2</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">sa_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">sa_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+    <span class="n">ct_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">ct_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">))</span>
+
+    <span class="n">n_sa</span><span class="p">,</span> <span class="n">n_ct</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span>
+    <span class="n">sa_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">,</span> <span class="n">n_sa</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ct_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">,</span> <span class="n">n_ct</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">sa_c</span> <span class="o">=</span> <span class="p">(</span><span class="n">sa_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sa_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">ct_c</span> <span class="o">=</span> <span class="p">(</span><span class="n">ct_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">ct_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">sa_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">sa_edges</span><span class="p">,</span> <span class="n">sa</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">"right"</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_sa</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ct_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">ct_edges</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">"right"</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_ct</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">flat</span> <span class="o">=</span> <span class="n">sa_b</span> <span class="o">*</span> <span class="n">n_ct</span> <span class="o">+</span> <span class="n">ct_b</span>
+
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span>
+    <span class="n">flat_s</span><span class="p">,</span> <span class="n">o2_s</span> <span class="o">=</span> <span class="n">flat</span><span class="p">[</span><span class="n">order</span><span class="p">],</span> <span class="n">o2</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+    <span class="n">uniq_f</span><span class="p">,</span> <span class="n">starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">flat_s</span><span class="p">,</span> <span class="n">return_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">stops</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">starts</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="nb">len</span><span class="p">(</span><span class="n">flat_s</span><span class="p">)]</span>
+
+    <span class="n">o2_flat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_sa</span> <span class="o">*</span> <span class="n">n_ct</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">fi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">uniq_f</span><span class="p">):</span>
+        <span class="n">pts</span> <span class="o">=</span> <span class="n">o2_s</span><span class="p">[</span><span class="n">starts</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="p">:</span> <span class="n">stops</span><span class="p">[</span><span class="n">k</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">o2_flat</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">fi</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">pts</span><span class="p">))</span>
+
+    <span class="n">o2_grid</span> <span class="o">=</span> <span class="n">o2_flat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_sa</span><span class="p">,</span> <span class="n">n_ct</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (ct_bins, sa_bins) for pcolormesh</span>
+    <span class="n">o2_fin</span> <span class="o">=</span> <span class="n">o2_grid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">o2_grid</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">o2_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">bounds_o</span> <span class="o">=</span> <span class="n">nice_colorbar_bounds</span><span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">o2_fin</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">o2_fin</span><span class="p">,</span> <span class="mi">98</span><span class="p">)),</span>
+        <span class="n">n</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cmap_o</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s2">"RdYlGn"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds_o</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">norm_o</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">bounds_o</span><span class="p">,</span> <span class="n">ncolors</span><span class="o">=</span><span class="n">cmap_o</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">3.8</span> <span class="o">/</span> <span class="n">_W_THIRD</span><span class="p">))</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">sa_c</span><span class="p">,</span> <span class="n">ct_c</span><span class="p">,</span> <span class="n">o2_grid</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap_o</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm_o</span><span class="p">)</span>
+    <span class="n">_sigma0_backdrop</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span>
+        <span class="n">pc</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">orientation</span><span class="o">=</span><span class="s2">"horizontal"</span><span class="p">,</span>
+        <span class="n">location</span><span class="o">=</span><span class="s2">"bottom"</span><span class="p">,</span>
+        <span class="n">ticks</span><span class="o">=</span><span class="n">bounds_o</span><span class="p">[::</span><span class="mi">2</span><span class="p">],</span>
+        <span class="n">pad</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span>
+        <span class="n">shrink</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+        <span class="n">aspect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cb</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="sa">r</span><span class="s2">"Median $O_2$ saturation (%)"</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">sa_lo</span><span class="p">,</span> <span class="n">sa_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ct_lo</span><span class="p">,</span> <span class="n">ct_hi</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"absolute_salinity"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"conservative_temperature"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">hide_outer_spines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">clean</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">clean_spines</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_overview_panel_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.sections.draw_overview_panel_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_overview_panel_fig</span><span class="p">(</span>
+    <span class="n">ds_prof</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="c1"># noqa: ARG001 — full label retained for callers; figure shows units only</span>
+    <span class="n">bathy_depths</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">style</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"pcolormesh"</span><span class="p">,</span>
+    <span class="n">vmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">vmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ReportConfig</span> <span class="o">=</span> <span class="n">DEFAULT_REPORT_CONFIG</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a Figure of *var* vs pressure × cast number (cruise overview panel).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds_prof : xarray.Dataset</span>
+<span class="sd">        Downcast profiles sorted by ``cast_number``; casts are evenly spaced</span>
+<span class="sd">        along x with cast numbers as tick labels.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        Variable to plot from *ds_prof*.</span>
+<span class="sd">    label : str</span>
+<span class="sd">        Accepted for call-site compatibility; the colorbar shows units only.</span>
+<span class="sd">    bathy_depths : numpy.ndarray, optional</span>
+<span class="sd">        Water depth (m) at each cast (length ``N_PROF``), drawn as a black fill.</span>
+<span class="sd">    style : {"pcolormesh", "contourf"}</span>
+<span class="sd">        Field rendering.</span>
+<span class="sd">    vmin, vmax : float, optional</span>
+<span class="sd">        Colour limits; each defaults to the 2nd / 98th percentile of the data.</span>
+<span class="sd">    cast_groups : dict of str to list of int, optional</span>
+<span class="sd">        Section colour → cast numbers, drawn as coloured markers above the axes.</span>
+<span class="sd">    cfg : ReportConfig</span>
+<span class="sd">        Report configuration; ``var_cmaps`` is used, and ``overview_figsize``</span>
+<span class="sd">        sets the size (its aspect ratio only, when *width_in* is given).</span>
+<span class="sd">    width_in : float, optional</span>
+<span class="sd">        Figure width in inches (the slot the panel is shown in); the height</span>
+<span class="sd">        follows ``overview_figsize``'s aspect.  None uses ``overview_figsize`` as is.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        The figure, or None when *var* is absent or has no finite values.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds_prof</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>  <span class="c1"># (N_PROF, N_P)</span>
+    <span class="n">cast_nums</span> <span class="o">=</span> <span class="n">ds_prof</span><span class="p">[</span><span class="s2">"cast_number"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">valid_cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_cols</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">p_trim</span> <span class="o">=</span> <span class="n">pressure</span><span class="p">[:</span> <span class="n">valid_cols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">data_trim</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:</span> <span class="n">valid_cols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">d_fin</span> <span class="o">=</span> <span class="n">data_trim</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data_trim</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">d_fin</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">cmap</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">cmap_name</span> <span class="o">=</span> <span class="n">_discrete_norm</span><span class="p">(</span>
+        <span class="n">d_fin</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="p">,</span> <span class="n">var_cmaps</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">var_cmaps</span>
+    <span class="p">)</span>
+
+    <span class="n">x_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cast_nums</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Y extent: deeper of data max and bathy</span>
+    <span class="n">p_max_data</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_trim</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">p_max_bathy</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">bathy_depths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bathy_depths</span><span class="p">)</span>
+        <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="p">)</span>
+    <span class="n">y_bottom</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">p_max_data</span><span class="p">,</span> <span class="n">p_max_bathy</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.05</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">overview_figsize</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">overview_figsize</span><span class="p">,</span> <span class="n">width_in</span><span class="p">))</span>
+
+    <span class="c1"># Subtle cast-position gridlines drawn before the fill so the fill sits on top.</span>
+    <span class="c1"># Use multiples of 5 or 10 cast numbers as grid positions.</span>
+    <span class="n">n_casts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cast_nums</span><span class="p">)</span>
+    <span class="n">_grid_step</span> <span class="o">=</span> <span class="mi">5</span> <span class="k">if</span> <span class="n">n_casts</span> <span class="o">&lt;=</span> <span class="mi">100</span> <span class="k">else</span> <span class="mi">10</span>
+    <span class="n">_cast_to_xpos</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">):</span> <span class="n">x_pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cn</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cast_nums</span><span class="p">)}</span>
+    <span class="k">for</span> <span class="n">cn_i</span><span class="p">,</span> <span class="n">cn</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cast_nums</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">)</span> <span class="o">%</span> <span class="n">_grid_step</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+                <span class="n">x_pos</span><span class="p">[</span><span class="n">cn_i</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">"white"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+
+    <span class="n">mesh_field</span><span class="p">(</span>
+        <span class="n">ax</span><span class="p">,</span>
+        <span class="n">fig</span><span class="p">,</span>
+        <span class="n">x_pos</span><span class="p">,</span>
+        <span class="n">p_trim</span><span class="p">,</span>
+        <span class="n">data_trim</span><span class="p">,</span>
+        <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">cmap_name</span><span class="o">=</span><span class="n">cmap_name</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+        <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">,</span>
+        <span class="n">cbar_label</span><span class="o">=</span><span class="n">vunit</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">bathy_depths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+            <span class="n">x_pos</span><span class="p">,</span> <span class="n">bathy_depths</span><span class="p">,</span> <span class="n">y_bottom</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"#3a3a3a"</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="s2">"mid"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">var</span> <span class="o">==</span> <span class="s2">"sigma0"</span><span class="p">:</span>
+        <span class="n">sigma0_isopycnals</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">x_pos</span><span class="p">,</span> <span class="n">p_trim</span><span class="p">,</span> <span class="n">data_trim</span><span class="p">)</span>
+
+    <span class="c1"># Open triangle markers above top axis for casts belonging to each group</span>
+    <span class="k">if</span> <span class="n">cast_groups</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">color</span><span class="p">,</span> <span class="n">group_casts</span> <span class="ow">in</span> <span class="n">cast_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">gx</span> <span class="o">=</span> <span class="p">[</span><span class="n">_cast_to_xpos</span><span class="p">[</span><span class="n">cn</span><span class="p">]</span> <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">group_casts</span> <span class="k">if</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">_cast_to_xpos</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">gx</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                    <span class="n">gx</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gx</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.03</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="s2">"v"</span><span class="p">,</span>
+                    <span class="n">facecolors</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span>
+                    <span class="n">edgecolors</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span>
+                    <span class="n">clip_on</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">zorder</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                    <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">(),</span>
+                <span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">y_bottom</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">vlabel</span><span class="p">(</span><span class="s2">"pressure"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Cast number"</span><span class="p">)</span>
+
+    <span class="c1"># Tick marks at multiples of 5 or 10, matching the grid lines</span>
+    <span class="n">tick_cast_nums</span> <span class="o">=</span> <span class="p">[</span><span class="n">cn</span> <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">cast_nums</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">)</span> <span class="o">%</span> <span class="n">_grid_step</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">tick_xpos</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_cast_to_xpos</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">)]</span> <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">tick_cast_nums</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_cast_to_xpos</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">tick_xpos</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">tick_xpos</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span>
+            <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">))</span> <span class="k">for</span> <span class="n">cn</span> <span class="ow">in</span> <span class="n">tick_cast_nums</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">cn</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_cast_to_xpos</span><span class="p">],</span>
+            <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span>
+            <span class="n">ha</span><span class="o">=</span><span class="s2">"right"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

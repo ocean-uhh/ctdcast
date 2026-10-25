@@ -1,0 +1,555 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._vendored.design_tokens &mdash; ctdcast v0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=97b6c874"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Quickstart guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Demo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../demo.html">About the demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../registries.html">Registries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../report_output.html">Report output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../provenance_roadmap.html">Provenance roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._vendored.design_tokens</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._vendored.design_tokens</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Shared report design tokens — the single source of every presentation value.</span>
+
+<span class="sd">This module is written to be **vendored** across the packages that share the</span>
+<span class="sd">report design system.  It is</span>
+<span class="sd">package-neutral — it names no package and holds only data (plus the mplstyle</span>
+<span class="sd">path, resolved relative to this file so no package name appears in the text) — so</span>
+<span class="sd">the copies can be frozen and checked later; for now this document and convention</span>
+<span class="sd">are the shared reference (no cross-repo hash test yet).  A value that belongs to</span>
+<span class="sd">one package (a scientific variable registry) does **not** live here.</span>
+
+<span class="sd">Layering: this is a leaf — it imports only :mod:`pathlib` at module load.</span>
+<span class="sd">``cmocean`` (which provides the ``cmo.*`` entries in :data:`CMAPS`) is imported</span>
+<span class="sd">lazily by :func:`register_cmocean`, only when such a name is actually requested,</span>
+<span class="sd">so no CSS- or geometry-only importer pays its cost.  Both the plotters (which</span>
+<span class="sd">size figures from :data:`SLOTS` and read :data:`CMAPS`) and the report/CSS layer</span>
+<span class="sd">read this module; it reads nothing of theirs.</span>
+
+<span class="sd">Templates and plotters read these values; they never restate them.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Style file and error policy</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># The report mplstyle sits next to this module under config/, with a</span>
+<span class="c1"># package-neutral name so this line is byte-identical across packages.</span>
+<span class="n">MPLSTYLE_PATH</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">"report.mplstyle"</span><span class="p">)</span>
+
+<span class="c1"># When True, a plotting failure (or a None from a required panel) re-raises</span>
+<span class="c1"># instead of being swallowed.  Test infrastructure toggles this at runtime; the</span>
+<span class="c1"># default False is identical across packages.  Read at call time by both the</span>
+<span class="c1"># plotters and the encoder so a single flag governs both.</span>
+<span class="n">RAISE_ON_PLOT_ERROR</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1">#: Vendored default for the per-figure ``source:`` caption (which draw function</span>
+<span class="c1">#: produced each panel).  OFF here — a package turns it on in its owned design</span>
+<span class="c1">#: module (ctdcast: ``reports/design.py`` ``FIGURE_SOURCE``), never in the shared</span>
+<span class="c1">#: table.  Read into the report env as the ``show_source`` template global.</span>
+<span class="n">SHOW_FIGURE_SOURCE</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Geometry</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">CONTENT_MAX_PX</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1150</span>  <span class="c1"># body max-width</span>
+<span class="n">CONTENT_PAD_PX</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span>  <span class="c1"># body padding, each side</span>
+<span class="n">USABLE_PX</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">CONTENT_MAX_PX</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">CONTENT_PAD_PX</span>  <span class="c1"># 1086</span>
+<span class="n">W_FULL</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">9.0</span>  <span class="c1"># full-slot figure width in inches (the basis of SLOTS)</span>
+<span class="n">FIG_DPI</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">150</span>  <span class="c1"># savefig dpi; with W_FULL this fixes every PNG width</span>
+<span class="c1"># Oversample (png_px / display_px) is DERIVED, not a free knob: W_FULL, FIG_DPI</span>
+<span class="c1"># and USABLE_PX over-determine it, so declaring all three independently would</span>
+<span class="c1"># guarantee a contradiction.  The true value is ≈1.243, not a round 1.25 — the</span>
+<span class="c1"># difference is invisible, and keeping W_FULL and FIG_DPI clean (they are the two</span>
+<span class="c1"># that appear in code, as figsize and savefig dpi) reproduces the package's existing</span>
+<span class="c1"># PNG widths exactly.  Nothing reads this; it is documentation.</span>
+<span class="n">OVERSAMPLE</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">W_FULL</span> <span class="o">*</span> <span class="n">FIG_DPI</span> <span class="o">/</span> <span class="n">USABLE_PX</span>  <span class="c1"># ≈ 1.2431</span>
+<span class="n">PNG_PALETTE_COLORS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span>  <span class="c1"># 8-bit palette quantization in the encoder</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Slot table</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># name -&gt; (fraction of USABLE_PX, figure width in inches).</span>
+<span class="c1"># Invariant asserted by the slot-contract test: inches == W_FULL * fraction, so</span>
+<span class="c1"># display_px / fig_in is identical for every figure and one font size renders at</span>
+<span class="c1"># one on-screen size everywhere.  Test 2 asserts each saved PNG is exactly</span>
+<span class="c1"># round(inches * FIG_DPI) px wide (1350 / 900 / 810 / 675 / 540 / 450 / 338).</span>
+<span class="n">SLOTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"full"</span><span class="p">:</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">),</span>
+    <span class="s2">"twothirds"</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span>
+    <span class="s2">"three-fifths"</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">5.4</span><span class="p">),</span>
+    <span class="s2">"half"</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span>
+    <span class="s2">"two-fifths"</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">),</span>
+    <span class="s2">"third"</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span>
+    <span class="s2">"quarter"</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">2.25</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="c1"># Ergonomic width aliases (inches) for plotter call sites; derived from SLOTS.</span>
+<span class="n">W_TWOTHIRDS</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"twothirds"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">W_THREE_FIFTHS</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"three-fifths"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">W_HALF</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"half"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">W_TWO_FIFTHS</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"two-fifths"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">W_THIRD</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"third"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">W_QUARTER</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SLOTS</span><span class="p">[</span><span class="s2">"quarter"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c1"># Aspect-locked figure constants.</span>
+<span class="n">SECTION_STRETCH</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="mf">16.0</span>  <span class="c1"># calibrated: 416 dbar × 94 km → 2.5 in tall at full width</span>
+<span class="p">)</span>
+<span class="n">MAX_SECTION_H</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.2</span>  <span class="c1"># height cap; tall/narrow sections get a narrower fig_w</span>
+<span class="n">MIN_SECTION_H</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>  <span class="c1"># height floor</span>
+
+<span class="c1"># Colorbar geometry in inches — a *fixed* width (not a fraction of the axes) so the</span>
+<span class="c1"># bar and its right margin are identical across every field figure regardless of</span>
+<span class="c1"># slot width, matching the fixed-width ethos of SLOTS.</span>
+<span class="n">CBAR_WIDTH_IN</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.12</span>  <span class="c1"># colorbar bar thickness</span>
+<span class="n">CBAR_PAD_IN</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>  <span class="c1"># gap between the axes and the colorbar</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Figure annotation font sizes (points)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># The only per-call font sizes a plotter may set: matplotlib does not route</span>
+<span class="c1"># annotation text through a style key, so these cannot come from the mplstyle.</span>
+<span class="c1"># Everything else (axes/tick/legend/title sizes) is the mplstyle's job and must</span>
+<span class="c1"># not be set per call.  The "no stray typography" test allow-lists exactly these</span>
+<span class="c1"># three names.</span>
+<span class="n">CLABEL_FS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># ax.clabel() contour labels</span>
+<span class="n">ANNOT_FS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># colorbar unit titles + in-axes annotation / panel-label text</span>
+<span class="n">CAST_LABEL_FS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>  <span class="c1"># dense in-axes cast-number labels on maps and sections</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Figure line widths — GMT named pen-width ladder (points)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># matplotlib linewidths are in points, the same unit as GMT's pen widths, so</span>
+<span class="c1"># plotters name line weights from GMT's ladder (``pen("thin")``) instead of</span>
+<span class="c1"># hardcoding numbers.  Values verified against the GMT line tutorial:</span>
+<span class="c1">#   https://www.generic-mapping-tools.org/gmt-examples/tutorials/basics/line.html</span>
+<span class="c1"># The "no stray typography" test allow-lists the pen() helper.</span>
+<span class="n">GMT_PEN</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"faint"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="s2">"thinnest"</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span>
+    <span class="s2">"default"</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span>
+    <span class="s2">"thinner"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="s2">"thin"</span><span class="p">:</span> <span class="mf">0.75</span><span class="p">,</span>
+    <span class="s2">"thick"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="s2">"thicker"</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+    <span class="s2">"thickest"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+    <span class="s2">"fat"</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
+    <span class="s2">"fatter"</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">,</span>
+    <span class="s2">"fattest"</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="s2">"wide"</span><span class="p">:</span> <span class="mf">18.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="pen">
+<a class="viewcode-back" href="../../../../api.html#ctdcast.reports._vendored.design_tokens.pen">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pen</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a matplotlib linewidth in points for a GMT pen-width *name*.</span>
+
+<span class="sd">    Borrows GMT's named pen ladder (``faint`` … ``wide``) so plotters name line</span>
+<span class="sd">    weights (``lw=pen("thin")``) rather than hardcoding numbers.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">GMT_PEN</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Spacing and radii  [data; applied by emit_css()]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">SPACE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"1"</span><span class="p">:</span> <span class="s2">"4px"</span><span class="p">,</span>
+    <span class="s2">"2"</span><span class="p">:</span> <span class="s2">"8px"</span><span class="p">,</span>
+    <span class="s2">"3"</span><span class="p">:</span> <span class="s2">"12px"</span><span class="p">,</span>
+    <span class="s2">"4"</span><span class="p">:</span> <span class="s2">"16px"</span><span class="p">,</span>
+    <span class="s2">"5"</span><span class="p">:</span> <span class="s2">"24px"</span><span class="p">,</span>
+    <span class="s2">"6"</span><span class="p">:</span> <span class="s2">"32px"</span><span class="p">,</span>
+    <span class="s2">"7"</span><span class="p">:</span> <span class="s2">"48px"</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">RADII</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"card"</span><span class="p">:</span> <span class="s2">"8px"</span><span class="p">,</span> <span class="s2">"btn"</span><span class="p">:</span> <span class="s2">"4px"</span><span class="p">,</span> <span class="s2">"pill"</span><span class="p">:</span> <span class="s2">"999px"</span><span class="p">}</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Typography  [data; applied by emit_css()]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># THE single source of page font sizes.  Nothing else in the repository sets a</span>
+<span class="c1"># page font size.  Values in rem (the browser's 16px root, exactly as the current</span>
+<span class="c1"># CSS uses them) plus one absolute px for the body base.  This is the established,</span>
+<span class="c1"># reviewed page scale — the values to match, not a redesign.  Keyed</span>
+<span class="c1"># by role, matching the CSS custom</span>
+<span class="c1"># properties emit_css() generates.  Figure font sizes are a *separate* knob (the</span>
+<span class="c1"># mplstyle, in points).</span>
+<span class="n">TYPE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"root"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"14px"</span><span class="p">,</span> <span class="s2">"line"</span><span class="p">:</span> <span class="s2">"1.5"</span><span class="p">},</span>  <span class="c1"># body base</span>
+    <span class="s2">"h1"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"1.75rem"</span><span class="p">,</span> <span class="s2">"weight"</span><span class="p">:</span> <span class="s2">"700"</span><span class="p">},</span>  <span class="c1"># masthead title</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"1.35rem"</span><span class="p">,</span> <span class="s2">"weight"</span><span class="p">:</span> <span class="s2">"700"</span><span class="p">},</span>  <span class="c1"># .masthead-type page label</span>
+    <span class="s2">"h2"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"1rem"</span><span class="p">},</span>  <span class="c1"># section headings — colour/weight/underline, not size</span>
+    <span class="s2">"h3"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.88rem"</span><span class="p">},</span>  <span class="c1"># subsection headings inside a panel (un-numbered)</span>
+    <span class="s2">"meta"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.84rem"</span><span class="p">},</span>  <span class="c1"># meta-grid &lt;dd&gt;</span>
+    <span class="s2">"note"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.92rem"</span><span class="p">},</span>  <span class="c1"># .note, .caption, .explainer</span>
+    <span class="s2">"nav"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.8rem"</span><span class="p">},</span>  <span class="c1"># jump-nav, .btn-nav</span>
+    <span class="s2">"cap"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.92rem"</span><span class="p">},</span>  <span class="c1"># figcaption</span>
+    <span class="s2">"xs"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.75rem"</span><span class="p">},</span>  <span class="c1"># breadcrumb, footer</span>
+    <span class="s2">"top"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.72rem"</span><span class="p">},</span>  <span class="c1"># ↑ top link</span>
+    <span class="s2">"dt"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"size"</span><span class="p">:</span> <span class="s2">"0.7rem"</span><span class="p">},</span>  <span class="c1"># meta-grid &lt;dt&gt;, jump-nav ▸</span>
+<span class="p">}</span>
+
+<span class="c1"># Page font stacks.  The CSS uses the native `system-ui` stack —</span>
+<span class="c1"># zero-install, matches the host OS.  The *figure* font is separate (the mplstyle</span>
+<span class="c1"># names a Helvetica stack); figure text is baked into a raster, so the two need</span>
+<span class="c1"># not match.</span>
+<span class="n">FONT_SANS</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">'system-ui, -apple-system, "Segoe UI", sans-serif'</span>
+<span class="n">FONT_MONO</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s1">'ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace'</span>
+<span class="p">)</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Colour — base tokens  [data; applied]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="n">COLORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"ocean"</span><span class="p">:</span> <span class="s2">"#1a3a5c"</span><span class="p">,</span>  <span class="c1"># headings, structural dark</span>
+    <span class="s2">"seafoam"</span><span class="p">:</span> <span class="s2">"#e8f4f8"</span><span class="p">,</span>  <span class="c1"># h2 underline, jump-nav background</span>
+    <span class="s2">"muted"</span><span class="p">:</span> <span class="s2">"#95a5a6"</span><span class="p">,</span>  <span class="c1"># footer, breadcrumb separators, ↑ top</span>
+    <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"#2c3e50"</span><span class="p">,</span>  <span class="c1"># body text</span>
+    <span class="s2">"rule"</span><span class="p">:</span> <span class="s2">"#dfe6e9"</span><span class="p">,</span>  <span class="c1"># table borders, hairlines</span>
+    <span class="s2">"bg"</span><span class="p">:</span> <span class="s2">"#ffffff"</span><span class="p">,</span>  <span class="c1"># page background</span>
+    <span class="s2">"bg-sunken"</span><span class="p">:</span> <span class="s2">"#f7f9fa"</span><span class="p">,</span>  <span class="c1"># table zebra, card interiors</span>
+    <span class="s2">"warn"</span><span class="p">:</span> <span class="s2">"#e67e22"</span><span class="p">,</span>  <span class="c1"># .warn border and icon</span>
+    <span class="s2">"warn-bg"</span><span class="p">:</span> <span class="s2">"#fdf3e7"</span><span class="p">,</span>  <span class="c1"># .warn background</span>
+    <span class="s2">"error"</span><span class="p">:</span> <span class="s2">"#c0392b"</span><span class="p">,</span>  <span class="c1"># failed QC, sentinel values</span>
+<span class="p">}</span>
+
+<span class="c1"># Role accent: masthead background + nav pill.  `landing` is the</span>
+<span class="c1"># summary/index accent; entity/collection/component share the structural dark</span>
+<span class="c1"># --ocean; the aggregate and map roles have their own colours.  The `landing`</span>
+<span class="c1"># value is a per-package choice (see the spec's role table).</span>
+<span class="n">ROLE_ACCENT</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"landing"</span><span class="p">:</span> <span class="s2">"#2980b9"</span><span class="p">,</span>  <span class="c1"># summary / index accent</span>
+    <span class="s2">"entity"</span><span class="p">:</span> <span class="s2">"#1a3a5c"</span><span class="p">,</span>
+    <span class="s2">"collection"</span><span class="p">:</span> <span class="s2">"#1a3a5c"</span><span class="p">,</span>
+    <span class="s2">"component"</span><span class="p">:</span> <span class="s2">"#1a3a5c"</span><span class="p">,</span>
+    <span class="s2">"aggregate-a"</span><span class="p">:</span> <span class="s2">"#8e44ad"</span><span class="p">,</span>  <span class="c1"># sections</span>
+    <span class="s2">"aggregate-b"</span><span class="p">:</span> <span class="s2">"#27ae60"</span><span class="p">,</span>  <span class="c1"># timeseries</span>
+    <span class="s2">"map"</span><span class="p">:</span> <span class="s2">"#ee3377"</span><span class="p">,</span>
+    <span class="s2">"up"</span><span class="p">:</span> <span class="s2">"#5d6d7e"</span><span class="p">,</span>  <span class="c1"># back / up-link pill (masthead nav)</span>
+<span class="p">}</span>
+
+<span class="c1"># Okabe–Ito qualitative palette for track / section colours — colour-blind-safe,</span>
+<span class="c1"># in a fixed order so the Nth track is the same colour across packages.  Data</span>
+<span class="c1"># only; a package assigns them (e.g. per section / per track) at its own call</span>
+<span class="c1"># sites.  Yellow is last: faint as a thin line on a light map.</span>
+<span class="n">TRACK_COLORS</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"#0072B2"</span><span class="p">,</span>  <span class="c1"># blue</span>
+    <span class="s2">"#E69F00"</span><span class="p">,</span>  <span class="c1"># orange</span>
+    <span class="s2">"#009E73"</span><span class="p">,</span>  <span class="c1"># bluish green</span>
+    <span class="s2">"#D55E00"</span><span class="p">,</span>  <span class="c1"># vermillion</span>
+    <span class="s2">"#CC79A7"</span><span class="p">,</span>  <span class="c1"># reddish purple</span>
+    <span class="s2">"#56B4E9"</span><span class="p">,</span>  <span class="c1"># sky blue</span>
+    <span class="s2">"#000000"</span><span class="p">,</span>  <span class="c1"># black</span>
+    <span class="s2">"#F0E442"</span><span class="p">,</span>  <span class="c1"># yellow</span>
+<span class="p">]</span>
+
+<span class="c1"># Per-quantity colormaps — the family default for each physical quantity, by a</span>
+<span class="c1"># short quantity word.  A package's variable registry points its "cmap" at a</span>
+<span class="c1"># quantity (resolved through here) or carries a literal colormap name; a package</span>
+<span class="c1"># may override a default in its own reports/design.py.  QC_COLORS and</span>
+<span class="c1"># TRACK_COLORS are deliberately NOT here — they encode meaning, not a scale.</span>
+<span class="c1"># cmo.* names come from cmocean (imported above).  Values: family-colormaps note.</span>
+<span class="n">CMAPS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"temperature"</span><span class="p">:</span> <span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+    <span class="s2">"salinity"</span><span class="p">:</span> <span class="s2">"YlGnBu_r"</span><span class="p">,</span>
+    <span class="s2">"conductivity"</span><span class="p">:</span> <span class="s2">"GnBu"</span><span class="p">,</span>
+    <span class="s2">"density"</span><span class="p">:</span> <span class="s2">"BuPu"</span><span class="p">,</span>
+    <span class="s2">"depth"</span><span class="p">:</span> <span class="s2">"cmo.deep"</span><span class="p">,</span>
+    <span class="s2">"velocity"</span><span class="p">:</span> <span class="s2">"RdBu_r"</span><span class="p">,</span>  <span class="c1"># diverging about zero</span>
+    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"plasma"</span><span class="p">,</span>
+    <span class="s2">"oxygen"</span><span class="p">:</span> <span class="s2">"cmo.oxy"</span><span class="p">,</span>
+    <span class="s2">"oxygen_saturation"</span><span class="p">:</span> <span class="s2">"BrBG"</span><span class="p">,</span>  <span class="c1"># plain scale over range, not centred on 100 %</span>
+    <span class="s2">"chlorophyll"</span><span class="p">:</span> <span class="s2">"YlGn"</span><span class="p">,</span>
+    <span class="s2">"turbidity"</span><span class="p">:</span> <span class="s2">"YlOrBr"</span><span class="p">,</span>
+    <span class="s2">"backscatter"</span><span class="p">:</span> <span class="s2">"OrRd"</span><span class="p">,</span>
+    <span class="s2">"par"</span><span class="p">:</span> <span class="s2">"cmo.solar"</span><span class="p">,</span>
+    <span class="s2">"stratification"</span><span class="p">:</span> <span class="s2">"plasma"</span><span class="p">,</span>
+    <span class="s2">"direction"</span><span class="p">:</span> <span class="s2">"twilight"</span><span class="p">,</span>  <span class="c1"># cyclic</span>
+<span class="p">}</span>
+
+<span class="c1"># Bridge from a variable's CF standard_name to a quantity, so a package whose</span>
+<span class="c1"># registry carries standard_names resolves to a colormap without restating the</span>
+<span class="c1"># quantity per variable.  A variable with no standard name gives an explicit</span>
+<span class="c1"># "cmap" (a quantity word or a literal) in its own registry instead.</span>
+<span class="n">QUANTITY_BY_STANDARD_NAME</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"sea_water_temperature"</span><span class="p">:</span> <span class="s2">"temperature"</span><span class="p">,</span>
+    <span class="s2">"sea_water_conservative_temperature"</span><span class="p">:</span> <span class="s2">"temperature"</span><span class="p">,</span>
+    <span class="s2">"sea_water_potential_temperature"</span><span class="p">:</span> <span class="s2">"temperature"</span><span class="p">,</span>
+    <span class="s2">"sea_water_practical_salinity"</span><span class="p">:</span> <span class="s2">"salinity"</span><span class="p">,</span>
+    <span class="s2">"sea_water_absolute_salinity"</span><span class="p">:</span> <span class="s2">"salinity"</span><span class="p">,</span>
+    <span class="s2">"sea_water_electrical_conductivity"</span><span class="p">:</span> <span class="s2">"conductivity"</span><span class="p">,</span>
+    <span class="s2">"sea_water_sigma_theta"</span><span class="p">:</span> <span class="s2">"density"</span><span class="p">,</span>
+    <span class="s2">"sea_water_density"</span><span class="p">:</span> <span class="s2">"density"</span><span class="p">,</span>
+    <span class="s2">"sea_water_pressure"</span><span class="p">:</span> <span class="s2">"depth"</span><span class="p">,</span>
+    <span class="s2">"depth"</span><span class="p">:</span> <span class="s2">"depth"</span><span class="p">,</span>
+    <span class="s2">"eastward_sea_water_velocity"</span><span class="p">:</span> <span class="s2">"velocity"</span><span class="p">,</span>
+    <span class="s2">"northward_sea_water_velocity"</span><span class="p">:</span> <span class="s2">"velocity"</span><span class="p">,</span>
+    <span class="s2">"upward_sea_water_velocity"</span><span class="p">:</span> <span class="s2">"velocity"</span><span class="p">,</span>
+    <span class="s2">"sea_water_speed"</span><span class="p">:</span> <span class="s2">"speed"</span><span class="p">,</span>
+    <span class="s2">"sea_water_velocity_to_direction"</span><span class="p">:</span> <span class="s2">"direction"</span><span class="p">,</span>
+    <span class="s2">"sea_water_velocity_from_direction"</span><span class="p">:</span> <span class="s2">"direction"</span><span class="p">,</span>
+    <span class="s2">"direction_of_sea_water_velocity"</span><span class="p">:</span> <span class="s2">"direction"</span><span class="p">,</span>  <span class="c1"># deprecated CF name, mapped for old files</span>
+    <span class="s2">"moles_of_oxygen_per_unit_mass_in_sea_water"</span><span class="p">:</span> <span class="s2">"oxygen"</span><span class="p">,</span>
+    <span class="s2">"mole_concentration_of_dissolved_molecular_oxygen_in_sea_water"</span><span class="p">:</span> <span class="s2">"oxygen"</span><span class="p">,</span>
+    <span class="s2">"mass_concentration_of_chlorophyll_in_sea_water"</span><span class="p">:</span> <span class="s2">"chlorophyll"</span><span class="p">,</span>
+    <span class="s2">"concentration_of_chlorophyll_in_sea_water"</span><span class="p">:</span> <span class="s2">"chlorophyll"</span><span class="p">,</span>
+    <span class="s2">"sea_water_turbidity"</span><span class="p">:</span> <span class="s2">"turbidity"</span><span class="p">,</span>
+    <span class="s2">"square_of_brunt_vaisala_frequency_in_sea_water"</span><span class="p">:</span> <span class="s2">"stratification"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># QARTOD / OceanSITES QC-flag colours — colour-blind-safe (Okabe-Ito good/suspect/</span>
+<span class="c1"># fail: teal green / orange / vermillion, which the old red/green pair was not).</span>
+<span class="c1"># Keyed by flag value.  Like TRACK_COLORS these encode meaning, so they are NOT</span>
+<span class="c1"># overridable — a flag colour must read the same in every report.  The colour is</span>
+<span class="c1"># carried by the bar/marker/chip, never on its own (tables also carry the word);</span>
+<span class="c1"># flag 2 "probably good" is sky blue where a solid fill is needed.  emit_css()</span>
+<span class="c1"># mirrors this into the ``--qc-&lt;flag&gt;`` CSS variables from the same dict.</span>
+<span class="n">QC_COLORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">0</span><span class="p">:</span> <span class="s2">"#999999"</span><span class="p">,</span>  <span class="c1"># no QC performed — neutral grey</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="s2">"#009E73"</span><span class="p">,</span>  <span class="c1"># good — teal green</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="s2">"#56B4E9"</span><span class="p">,</span>  <span class="c1"># probably good — sky blue</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="s2">"#E69F00"</span><span class="p">,</span>  <span class="c1"># suspect — orange</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="s2">"#D55E00"</span><span class="p">,</span>  <span class="c1"># fail — vermillion</span>
+    <span class="mi">7</span><span class="p">:</span> <span class="s2">"#CC79A7"</span><span class="p">,</span>  <span class="c1"># nominal — reddish purple</span>
+    <span class="mi">8</span><span class="p">:</span> <span class="s2">"#0072B2"</span><span class="p">,</span>  <span class="c1"># interpolated — blue</span>
+    <span class="mi">9</span><span class="p">:</span> <span class="s2">"#bdbdbd"</span><span class="p">,</span>  <span class="c1"># missing — light grey</span>
+<span class="p">}</span>
+
+<span class="c1"># Darkened text variants, for a QC colour used as small text ink rather than a</span>
+<span class="c1"># fill (orange is only 2.25:1 on white as text; this is 4.7:1).  Only suspect</span>
+<span class="c1"># needs one; vermillion and teal are acceptable for bold/large text.</span>
+<span class="n">QC_TEXT_COLORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="s2">"#9A6B00"</span><span class="p">,</span>  <span class="c1"># suspect orange, darkened for text</span>
+<span class="p">}</span>
+
+<span class="c1">#: Grey fallback for a flag token no convention below names.</span>
+<span class="n">QC_FLAG_DEFAULT_COLOR</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"#999999"</span>
+
+<span class="c1">#: Flag-meaning token → its flag value, for each convention a family writer emits, so the</span>
+<span class="c1">#: token-keyed colour table is built from the value-keyed :data:`QC_COLORS` (one colour source,</span>
+<span class="c1">#: no drift).  QARTOD (ctdcast ``processors/qc.py``) and OceanSITES (oceanarray</span>
+<span class="c1">#: ``config/parameters.py``); a token in both maps to the same value, so to the same colour.</span>
+<span class="n">_QC_FLAG_VALUE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># QARTOD</span>
+    <span class="s2">"pass"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">"not_evaluated"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">"suspect_or_of_high_interest"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">"fail"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s2">"missing_data"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="c1"># OceanSITES</span>
+    <span class="s2">"unknown"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">"good_data"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">"probably_good_data"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">"potentially_correctable_bad_data"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">"bad_data"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s2">"nominal_value"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="s2">"interpolated_value"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">"missing_value"</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: QC flag colour keyed by meaning token (so a report colours a flag by what it *means*, not by</span>
+<span class="c1">#: a value that differs between conventions), derived from :data:`QC_COLORS`.  A table looks a</span>
+<span class="c1">#: token up here; an unlisted token gets :data:`QC_FLAG_DEFAULT_COLOR`.</span>
+<span class="n">QC_FLAG_COLORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">token</span><span class="p">:</span> <span class="n">QC_COLORS</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="k">for</span> <span class="n">token</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_QC_FLAG_VALUE</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="c1">#: Short display label keyed by meaning token — a shortening of the CF word, nothing invented;</span>
+<span class="c1">#: an unlisted token falls back to the token with underscores as spaces.</span>
+<span class="n">QC_FLAG_LABELS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># QARTOD</span>
+    <span class="s2">"pass"</span><span class="p">:</span> <span class="s2">"pass"</span><span class="p">,</span>
+    <span class="s2">"not_evaluated"</span><span class="p">:</span> <span class="s2">"not eval"</span><span class="p">,</span>
+    <span class="s2">"suspect_or_of_high_interest"</span><span class="p">:</span> <span class="s2">"suspect"</span><span class="p">,</span>
+    <span class="s2">"fail"</span><span class="p">:</span> <span class="s2">"fail"</span><span class="p">,</span>
+    <span class="s2">"missing_data"</span><span class="p">:</span> <span class="s2">"missing"</span><span class="p">,</span>
+    <span class="c1"># OceanSITES</span>
+    <span class="s2">"unknown"</span><span class="p">:</span> <span class="s2">"unknown"</span><span class="p">,</span>
+    <span class="s2">"good_data"</span><span class="p">:</span> <span class="s2">"good"</span><span class="p">,</span>
+    <span class="s2">"probably_good_data"</span><span class="p">:</span> <span class="s2">"probably good"</span><span class="p">,</span>
+    <span class="s2">"potentially_correctable_bad_data"</span><span class="p">:</span> <span class="s2">"correctable"</span><span class="p">,</span>
+    <span class="s2">"bad_data"</span><span class="p">:</span> <span class="s2">"bad"</span><span class="p">,</span>
+    <span class="s2">"nominal_value"</span><span class="p">:</span> <span class="s2">"nominal"</span><span class="p">,</span>
+    <span class="s2">"interpolated_value"</span><span class="p">:</span> <span class="s2">"interpolated"</span><span class="p">,</span>
+    <span class="s2">"missing_value"</span><span class="p">:</span> <span class="s2">"missing"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">_CMOCEAN_REGISTERED</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="register_cmocean">
+<a class="viewcode-back" href="../../../../api.html#ctdcast.reports._vendored.design_tokens.register_cmocean">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">register_cmocean</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Register cmocean's ``cmo.*`` colormaps with matplotlib, once.</span>
+
+<span class="sd">    Called only when a ``cmo.*`` name is actually requested (from a colormap</span>
+<span class="sd">    resolver, or a config validator's colormap check), so neither the import</span>
+<span class="sd">    cost nor cmocean's own import-time deprecation warnings are paid on an</span>
+<span class="sd">    import of this module that never touches a cmocean map.  cmocean 3.x builds</span>
+<span class="sd">    its colormaps with the deprecated ``ListedColormap(N=...)`` (its code, not</span>
+<span class="sd">    ours), emitting one ``MatplotlibDeprecationWarning`` per map; those are</span>
+<span class="sd">    silenced here at their source — the import — rather than by a global filter.</span>
+<span class="sd">    """</span>
+    <span class="k">global</span> <span class="n">_CMOCEAN_REGISTERED</span>
+    <span class="k">if</span> <span class="n">_CMOCEAN_REGISTERED</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
+
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">MatplotlibDeprecationWarning</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">cmocean</span>  <span class="c1"># noqa: F401  # the import registers the cmo.* names</span>
+    <span class="n">_CMOCEAN_REGISTERED</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<span class="c1"># The package accent — a small masthead wordmark, the table header</span>
+<span class="c1"># and the footer's border-top — is NOT a value in this vendored file.  Each</span>
+<span class="c1"># package chooses it locally and passes it to ``emit_css(package_accent)`` (see</span>
+<span class="c1"># each repo's ``reports/design.py``), so no per-package colour is encoded here.</span>
+
+<span class="c1"># Neutral gray scale — consolidates the ad-hoc grays that the per-page template</span>
+<span class="c1"># &lt;style&gt; blocks used (text shades, hairlines, sunken fills).  Emitted as</span>
+<span class="c1"># --gray-1 (lightest) … --gray-7 (near-black).  A few template literals shift to</span>
+<span class="c1"># the nearest step here; the changes are small and were signed off on OdB.</span>
+<span class="n">GRAYS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"gray-1"</span><span class="p">:</span> <span class="s2">"#f5f7fa"</span><span class="p">,</span>  <span class="c1"># lightest sunken fill (cast-note / card backgrounds)</span>
+    <span class="s2">"gray-2"</span><span class="p">:</span> <span class="s2">"#e0e0e0"</span><span class="p">,</span>  <span class="c1"># hairlines, borders</span>
+    <span class="s2">"gray-3"</span><span class="p">:</span> <span class="s2">"#aaaaaa"</span><span class="p">,</span>  <span class="c1"># faint text ("not generated" placeholders)</span>
+    <span class="s2">"gray-4"</span><span class="p">:</span> <span class="s2">"#888888"</span><span class="p">,</span>  <span class="c1"># soft secondary text, &lt;details&gt; summaries</span>
+    <span class="s2">"gray-5"</span><span class="p">:</span> <span class="s2">"#555555"</span><span class="p">,</span>  <span class="c1"># secondary body text, descriptions</span>
+    <span class="s2">"gray-6"</span><span class="p">:</span> <span class="s2">"#333333"</span><span class="p">,</span>  <span class="c1"># strong text (cast/trim notes, filenames)</span>
+    <span class="s2">"gray-7"</span><span class="p">:</span> <span class="s2">"#111111"</span><span class="p">,</span>  <span class="c1"># darkest text (interactive-map labels)</span>
+<span class="p">}</span>
+
+<span class="c1"># Semantic status colours used by badges and banners.  --error/--warn already</span>
+<span class="c1"># exist in COLORS; --ok is new (the LADCP-present badge green).</span>
+<span class="n">SEMANTIC</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"ok"</span><span class="p">:</span> <span class="s2">"#2c6e49"</span><span class="p">,</span>  <span class="c1"># LADCP-present badge; "good/available" green</span>
+<span class="p">}</span>
+<span class="c1"># Note: leaflet.html is a standalone page that does not load this shared CSS, so</span>
+<span class="c1"># its dark-UI palette (#1a1a2e / #aed6f1 / #4a6fa5) stays as literals there —</span>
+<span class="c1"># tokenizing it would need the :root injected into that page.</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
