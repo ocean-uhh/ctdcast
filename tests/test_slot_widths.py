@@ -119,8 +119,7 @@ def test_overview_panel_takes_the_slot_width_at_the_configured_aspect(report_dir
     import xarray as xr
 
     from ctdcast.config.report_config import ReportConfig
-    from ctdcast.plotters.primitives import overview_figsize
-    from ctdcast.plotters.sections import draw_overview_panel_fig
+    from ctdcast.plotters.sections import draw_overview_panel_fig, overview_figsize
 
     assert overview_figsize((12.0, 4.0), W_FULL) == (W_FULL, W_FULL / 3.0)
     assert overview_figsize((12.0, 4.0), None) == (12.0, 4.0)

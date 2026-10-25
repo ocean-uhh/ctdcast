@@ -152,13 +152,25 @@ def draw_timeseries_fig(
     cfg : ReportConfig
         Report configuration; ``var_cmaps`` gives the colormap for *var*.
     figw : float, optional
-        Deprecated alias of *width_in*, removed in 0.7.0.
+        Deprecated alias of *width_in*, removed in 0.7.0; passing both raises
+        ``TypeError``.
 
     Returns
     -------
     matplotlib.figure.Figure or None
         The figure, or None when *var* or ``time_start`` is absent or no value is finite.
     """
+    if figw is not None:
+        if width_in is not None:
+            msg = "pass width_in= only; figw= is its deprecated alias"
+            raise TypeError(msg)
+        warnings.warn(
+            "draw_timeseries_fig(figw=) is deprecated; use width_in=. "
+            "figw is removed in 0.7.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        width_in = figw
     import matplotlib.dates as mdates
 
     if var not in ds_prof or "time_start" not in ds_prof:
@@ -208,14 +220,6 @@ def draw_timeseries_fig(
 
     t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
     n_prof = len(t_mpl)
-    if figw is not None:
-        warnings.warn(
-            "draw_timeseries_fig(figw=) is deprecated; use width_in=. "
-            "figw is removed in 0.7.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        width_in = figw
     fw = width_in
     if fw is None:
         # Mirror the step function in timeseries.py so standalone callers

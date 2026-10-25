@@ -26,10 +26,10 @@ from ctdcast.plotters.primitives import (
     hide_outer_spines,
     nice_colorbar_bounds,
     nice_colorbar_ticks,
-    overview_figsize,
     unit_colorbar,
 )
 from ctdcast.plotters.sections import (
+    overview_figsize,
     section_figsize_and_slot,
 )
 from ctdcast.readers.ladcp import find_ladcp_file, read_ladcp

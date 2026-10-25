@@ -25,7 +25,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Deprecated
 
 - `ctdcast.plotters.plots` re-exports the public figure builders from the new modules and emits a `DeprecationWarning` on import; it is removed in 0.7.0.
-- `draw_section_map_fig(fig_w=)` and `draw_timeseries_fig(figw=)` are deprecated aliases of `width_in=` and warn; removed in 0.7.0.
+- `draw_section_map_fig(fig_w=)` and `draw_timeseries_fig(figw=)` are deprecated aliases of `width_in=` and warn; passing both raises `TypeError`; removed in 0.7.0.
 
 ## [0.4.0] — 2026-10-23
 

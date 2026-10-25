@@ -93,7 +93,7 @@ class RenderedPanel:
     figsize: tuple[float, float] | None = None
     """Figure dimensions ``(width, height)`` in inches, or ``None`` when not recorded."""
     slot: str | None = None
-    """CSS slot class (e.g. ``"slot-full"``) matching the PNG aspect ratio, or ``None``."""
+    """``SLOTS`` key (e.g. ``"full"``) the PNG was drawn for and is shown in, or ``None``."""
 
 
 def _make_ts_density_b64(

@@ -88,3 +88,16 @@ def test_old_width_keywords_warn_and_still_work(tmp_path):
         old = draw_timeseries_fig(ds, "ctd_temperature_1", "T", figw=4.5)
     new = draw_timeseries_fig(ds, "ctd_temperature_1", "T", width_in=4.5)
     assert old.get_size_inches()[0] == new.get_size_inches()[0] == 4.5
+
+
+def test_old_width_keyword_warns_even_when_nothing_is_drawn_and_conflicts_raise():
+    import numpy as np
+
+    from ctdcast.plotters.maps import draw_section_map_fig
+
+    with pytest.warns(DeprecationWarning, match="fig_w"):
+        assert draw_section_map_fig([np.nan], [np.nan], [1], fig_w=3.0) is None
+    with pytest.raises(TypeError, match="width_in= only"):
+        draw_section_map_fig(
+            [60.0, 60.2], [-30.0, -30.4], [1, 2], width_in=4.5, fig_w=3.0
+        )

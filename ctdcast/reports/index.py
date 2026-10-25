@@ -69,6 +69,7 @@ from ctdcast.reports.timeseries import generate_timeseries_page
 _MAP_SLOT = "half"
 _TS_SLOT = "third"
 _OVERVIEW_SLOT = "full"
+_CLOCK_SLOT = "full"
 
 
 # ---------------------------------------------------------------------------
@@ -1187,7 +1188,14 @@ def _make_clock_section(
     # The one gate both the CLI and this page read, so they cannot disagree.
     status = correction_status(coordinate_counts)
     figure_b64 = (
-        render_b64(draw_clock_offset_fig, series, verdict, cfg=cfg, optional=True)
+        render_b64(
+            draw_clock_offset_fig,
+            series,
+            verdict,
+            cfg=cfg,
+            width_in=_slot_width(_CLOCK_SLOT),
+            optional=True,
+        )
         if verdict.segments
         else None
     )
@@ -1202,6 +1210,7 @@ def _make_clock_section(
         "segments": segments,
         "casts": casts,
         "figure_b64": figure_b64,
+        "slot": _CLOCK_SLOT,
         "suggested_yaml": suggested if status == "apply" else None,
         "correction_status": status,
     }

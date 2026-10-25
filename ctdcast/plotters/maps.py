@@ -473,7 +473,7 @@ def draw_section_map_fig(
     min_margin_lon: float | None = None,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
-    width_in: float = _W_HALF,
+    width_in: float | None = None,
     fig_w: float | None = None,
 ) -> plt.Figure | None:
     """Return a GEBCO map Figure with the section track.
@@ -496,16 +496,31 @@ def draw_section_map_fig(
     cfg : ReportConfig
         Report configuration; ``gebco_path`` supplies the bathymetry and
         ``map_bounds`` can fix the extent.
-    width_in : float, default ``W_HALF``
-        Figure width in inches (half slot); the height follows from the map extent.
+    width_in : float, optional
+        Figure width in inches; None means ``W_HALF`` (the half slot).  The height
+        follows from the map extent.
     fig_w : float, optional
-        Deprecated alias of *width_in*, removed in 0.7.0.
+        Deprecated alias of *width_in*, removed in 0.7.0; passing both raises
+        ``TypeError``.
 
     Returns
     -------
     matplotlib.figure.Figure or None
         The figure, or None when no position is finite.
     """
+    if fig_w is not None:
+        if width_in is not None:
+            msg = "pass width_in= only; fig_w= is its deprecated alias"
+            raise TypeError(msg)
+        warnings.warn(
+            "draw_section_map_fig(fig_w=) is deprecated; use width_in=. "
+            "fig_w is removed in 0.7.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        width_in = fig_w
+    if width_in is None:
+        width_in = _W_HALF
     lats_arr = np.array(lats)
     lons_arr = np.array(lons)
     mask = np.isfinite(lats_arr) & np.isfinite(lons_arr)
@@ -545,14 +560,6 @@ def draw_section_map_fig(
         )
         yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
-    if fig_w is not None:
-        warnings.warn(
-            "draw_section_map_fig(fig_w=) is deprecated; use width_in=. "
-            "fig_w is removed in 0.7.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        width_in = fig_w
     fig, ax, cax, _ = _map_layout(width_in, xl0, xl1, yl0, yl1, cos_lat)
 
     map_panel(ax, cax, xl0, xl1, yl0, yl1, cfg=cfg)

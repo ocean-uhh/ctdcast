@@ -19,7 +19,6 @@ from ctdcast.plotters.primitives import (
     hide_outer_spines,
     mesh_field,
     nice_colorbar_bounds,
-    overview_figsize,
     sigma0_isopycnals,
 )
 from ctdcast.reports._vendored.design_tokens import (
@@ -46,6 +45,31 @@ from ctdcast.reports._vendored.design_tokens import (
 from ctdcast.reports._vendored.design_tokens import (
     pen,
 )
+
+
+def overview_figsize(
+    overview_size: tuple[float, float], width_in: float | None
+) -> tuple[float, float]:
+    """Return the overview-panel figure size: *width_in* wide at *overview_size*'s aspect.
+
+    Parameters
+    ----------
+    overview_size : tuple of float
+        ``(width, height)`` in inches from the report configuration; only its
+        aspect ratio is used when *width_in* is given.
+    width_in : float or None
+        Figure width in inches (the slot the panel is shown in); None keeps
+        *overview_size* unchanged.
+
+    Returns
+    -------
+    tuple of float
+        ``(width, height)`` in inches.
+    """
+    w, h = overview_size
+    if width_in is None:
+        return float(w), float(h)
+    return float(width_in), float(width_in) * float(h) / float(w)
 
 
 def section_figsize_and_slot(
