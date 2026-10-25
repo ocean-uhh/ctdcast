@@ -123,8 +123,9 @@ display:
   # Profile figure size [width_inches, height_inches].
   # profile_figsize: [7, 10]
 
-  # Overview panel figure size [width_inches, height_inches].
-  # overview_figsize: [12, 4]
+  # Overview panel shape [width, height]: the panel is drawn at the full slot width,
+  # so only the ratio counts (default [9, 3]).
+  # overview_figsize: [9, 3]
 
   # Per-variable colormap overrides (variable names as in the netCDF file).
   # var_cmaps:

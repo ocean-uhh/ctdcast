@@ -18,6 +18,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Section, time-series and cruise-summary pages draw their fixed-width figures (section and location maps, T–S diagrams and histograms, the all-sections maps) at the width of the slot they are shown in; each page names those slots once. No figure output changes.
 - `plotters.maps.draw_section_map_fig` and `plotters.timeseries.draw_timeseries_fig` take the figure width as `width_in`, like the other draw functions.
 
+### Fixed
+
+- Cruise-overview panels in reports built with `ctdcast report` / `ctdcast run` were drawn 12 in wide and shown in the 9 in full-width slot, so their labels appeared at 75 % of the size of every other figure. Overview panels (CTD and LADCP) are now drawn at the slot width, keeping the configured aspect ratio, and the CLI falls back to the library defaults for `overview_figsize` / `profile_figsize` instead of its own `[12, 4]` / `[7, 10]`. The default overview shape is now 9 × 3 in (3:1) in `ReportConfig`, for API- and CLI-built reports alike (API-built panels were 9 × 4.5 in); `display: overview_figsize` still overrides the shape.
+
 ### Deprecated
 
 - `ctdcast.plotters.plots` re-exports the public figure builders from the new modules and emits a `DeprecationWarning` on import; it is removed in 0.7.0.

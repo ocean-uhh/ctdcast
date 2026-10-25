@@ -6,8 +6,8 @@ map bounds, and the colormap overrides).  Building it once in :func:`ctdcast.rep
 and passing it down makes rendering order-independent and safe to parallelise —
 nothing mutates module state between figures.
 
-``DEFAULT_REPORT_CONFIG`` reproduces the previous module-global defaults exactly, so
-a drawer called without a config renders byte-identically to before.
+``DEFAULT_REPORT_CONFIG`` holds the defaults: the previous module-global values, except
+the overview-panel shape, which is 9 × 3 in (3:1).
 """
 
 from __future__ import annotations
@@ -47,7 +47,8 @@ class ReportConfig:
     profile_figsize : tuple of float
         Figure size in inches for the T–S density profile figure.
     overview_figsize : tuple of float
-        Figure size in inches for the cruise-overview panel figure.
+        ``(width, height)`` in inches of the cruise-overview panels.  The report
+        draws them at the full slot width, so only the aspect ratio is used there.
     map_lat_min, map_lat_max, map_lon_min, map_lon_max : float or None
         Explicit map bounds; ``None`` falls back to a data-driven extent.
     var_cmaps : Mapping[str, str]
@@ -57,7 +58,8 @@ class ReportConfig:
     gebco_path: Path | None = None
     clean_spines: bool = True
     profile_figsize: tuple[float, float] = (7.0, 10.0)
-    overview_figsize: tuple[float, float] = (9.0, 4.5)
+    # The one place the overview-panel shape is set (3:1); the CLI falls back to it.
+    overview_figsize: tuple[float, float] = (9.0, 3.0)
     map_lat_min: float | None = None
     map_lat_max: float | None = None
     map_lon_min: float | None = None

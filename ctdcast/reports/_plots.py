@@ -311,6 +311,7 @@ def _make_ladcp_overview_b64(
     style: str = "pcolormesh",
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> list[RenderedPanel]:
     """Grid ``ladcp_profiles.nc`` once and encode the cruise U and V overview panels; ``[]`` when fewer than two casts have velocity."""
     try:
@@ -333,7 +334,13 @@ def _make_ladcp_overview_b64(
         ("V", "V velocity (north +)"),
     ):
         b64 = render_b64(
-            draw_ladcp_overview_fig, grid, component, cast_groups, style, cfg=cfg
+            draw_ladcp_overview_fig,
+            grid,
+            component,
+            cast_groups,
+            style,
+            cfg=cfg,
+            **_width_kw(width_in),
         )
         if b64 is not None:
             panels.append(RenderedPanel(b64=b64, title=panel_title, short=component))
@@ -426,6 +433,7 @@ def _make_overview_panel_b64(
     optional: bool = False,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.sections.draw_overview_panel_fig`; *optional* marks a variable that may be absent."""
     return render_b64(
@@ -440,6 +448,7 @@ def _make_overview_panel_b64(
         cast_groups=cast_groups,
         optional=optional,
         cfg=cfg,
+        **_width_kw(width_in),
     )
 
 

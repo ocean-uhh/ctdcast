@@ -26,6 +26,7 @@ from ctdcast.plotters.primitives import (
     hide_outer_spines,
     nice_colorbar_bounds,
     nice_colorbar_ticks,
+    overview_figsize,
     unit_colorbar,
 )
 from ctdcast.plotters.sections import (
@@ -499,6 +500,7 @@ def draw_ladcp_overview_fig(
     style: str = "pcolormesh",
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> plt.Figure:
     """Return one full-width LADCP velocity panel versus cast number × depth.
 
@@ -517,7 +519,11 @@ def draw_ladcp_overview_fig(
     style : {"pcolormesh", "contourf"}
         Field rendering.
     cfg : ReportConfig
-        Report configuration; ``overview_figsize`` and ``clean_spines`` are used.
+        Report configuration; ``clean_spines`` is used, and ``overview_figsize``
+        sets the size (its aspect ratio only, when *width_in* is given).
+    width_in : float, optional
+        Figure width in inches (the slot the panel is shown in); the height
+        follows ``overview_figsize``'s aspect.  None uses ``overview_figsize`` as is.
 
     Returns
     -------
@@ -544,7 +550,7 @@ def draw_ladcp_overview_fig(
     tick_xpos = [x_pos[i] for i in tick_idx]
     tick_labels = [str(int(cast_nums[i])) for i in tick_idx]
 
-    fig, ax = plt.subplots(figsize=cfg.overview_figsize)
+    fig, ax = plt.subplots(figsize=overview_figsize(cfg.overview_figsize, width_in))
 
     for gx in tick_xpos:
         ax.axvline(gx, color="white", alpha=0.25, zorder=0)

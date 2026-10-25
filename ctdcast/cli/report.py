@@ -293,8 +293,8 @@ def run(args: argparse.Namespace) -> int:
     # Build the frozen display config once and pass it down (no module globals).
     from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 
-    pf = display.get("profile_figsize", [7, 10])
-    ov = display.get("overview_figsize", [12, 4])
+    pf = display.get("profile_figsize", DEFAULT_REPORT_CONFIG.profile_figsize)
+    ov = display.get("overview_figsize", DEFAULT_REPORT_CONFIG.overview_figsize)
     var_cmaps = dict(DEFAULT_REPORT_CONFIG.var_cmaps)
     if display.get("var_cmaps"):
         var_cmaps.update(display["var_cmaps"])

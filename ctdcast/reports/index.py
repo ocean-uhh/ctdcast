@@ -68,6 +68,7 @@ from ctdcast.reports.timeseries import generate_timeseries_page
 #: width (``_slot_width``) and shown in the same slot.
 _MAP_SLOT = "half"
 _TS_SLOT = "third"
+_OVERVIEW_SLOT = "full"
 
 
 # ---------------------------------------------------------------------------
@@ -867,11 +868,15 @@ def _write_index(
                     vmax=_vmax,
                     cast_groups=cast_groups,
                     cfg=cfg,
+                    width_in=_slot_width(_OVERVIEW_SLOT),
                 )
                 # title is the panel's HTML caption on index.html, so use the
                 # HTML-ready label (mathtext subscripts rendered as Unicode).
                 return RenderedPanel(
-                    b64=b64, title=vlabel_html(resolved), short=resolved
+                    b64=b64,
+                    title=vlabel_html(resolved),
+                    short=resolved,
+                    slot=_OVERVIEW_SLOT,
                 )
 
             physics_panels_idx = tuple(
@@ -907,8 +912,13 @@ def _write_index(
                 ladcp_profiles_path, decode_timedelta=False, engine="netcdf4"
             ).load()
             velocity_panels_idx = tuple(
-                _make_ladcp_overview_b64(
-                    ds_ladcp, cast_groups=cast_groups, style=section_style, cfg=cfg
+                dataclasses.replace(p, slot=_OVERVIEW_SLOT)
+                for p in _make_ladcp_overview_b64(
+                    ds_ladcp,
+                    cast_groups=cast_groups,
+                    style=section_style,
+                    cfg=cfg,
+                    width_in=_slot_width(_OVERVIEW_SLOT),
                 )
             )
             ds_ladcp.close()
@@ -975,10 +985,10 @@ class IndexPageCtx:
 
 
 def _index_overview_panel(rp: RenderedPanel) -> Panel:
-    """Wrap a pre-rendered full-width cruise overview panel, captioned by variable."""
+    """Wrap a pre-rendered cruise overview panel, captioned by variable, at the slot it was drawn for."""
     return Panel(
         id=f"index_{rp.short or rp.title}",
-        slot="full",
+        slot=rp.slot,
         caption=rp.title,
         render=lambda _c, _b64=rp.b64: _b64,
     )

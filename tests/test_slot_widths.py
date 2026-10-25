@@ -112,3 +112,52 @@ def test_png_width_equals_displayed_width(report_dir: Path, page: str) -> None:
         assert width == round(W_FULL * shown * FIG_DPI), (
             f"{page}: PNG {width} px shown at {round(W_FULL * shown * FIG_DPI)} px"
         )
+
+
+def test_overview_panel_takes_the_slot_width_at_the_configured_aspect(report_dir: Path):
+    """A CLI-style ``overview_figsize`` of 12 x 4 in still yields a full-slot-wide panel."""
+    import xarray as xr
+
+    from ctdcast.config.report_config import ReportConfig
+    from ctdcast.plotters.primitives import overview_figsize
+    from ctdcast.plotters.sections import draw_overview_panel_fig
+
+    assert overview_figsize((12.0, 4.0), W_FULL) == (W_FULL, W_FULL / 3.0)
+    assert overview_figsize((12.0, 4.0), None) == (12.0, 4.0)
+    with xr.open_dataset(
+        report_dir / "profiles.nc", engine="netcdf4", decode_timedelta=False
+    ) as ds:
+        down = ds.isel(N_PROF=ds["cast_type"].values == "down").load()
+    fig = draw_overview_panel_fig(
+        down,
+        "ctd_temperature_1",
+        "T",
+        cfg=ReportConfig(overview_figsize=(12.0, 4.0)),
+        width_in=W_FULL,
+    )
+    assert tuple(fig.get_size_inches()) == pytest.approx((W_FULL, W_FULL / 3.0))
+
+
+@pytest.mark.slow
+def test_cli_report_overview_panels_fill_their_slot(tmp_path: Path) -> None:
+    """``ctdcast report`` on the demo config draws the overview panels at the slot width."""
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    cfg = (root / "config_demo.yaml").read_text(encoding="utf-8")
+    cfg = cfg.replace("tests/fixtures", str(root / "tests" / "fixtures"))
+    cfg = cfg.replace("  dir: demo_report", f"  dir: {tmp_path / 'out'}")
+    (tmp_path / "config.yaml").write_text(cfg, encoding="utf-8")
+    subprocess.run(
+        [sys.executable, "-m", "ctdcast", "report", str(tmp_path / "config.yaml")],
+        check=True,
+        capture_output=True,
+    )
+    index = tmp_path / "out" / "index.html"
+    found = _slotted(index)
+    full = [b64 for shown, b64 in found if shown == 1.0]
+    assert full, "no full-width figures on index.html"
+    for b64 in full:
+        width = Image.open(io.BytesIO(base64.b64decode(b64))).size[0]
+        assert width == round(W_FULL * FIG_DPI)
