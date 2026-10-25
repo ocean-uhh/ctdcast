@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
@@ -107,3 +108,45 @@ def test_no_stubs_on_a_complete_fixture() -> None:
     report = resolve_cast(_ctx(_CAST_011, ladcp_dir=_LADCP))
     stubs = [(s.id, p.id) for s in report.sections for p in s.panels if p.is_stub]
     assert stubs == [], f"applies_to/render drift — unexpected stubs: {stubs}"
+
+
+def _png_width(b64: str) -> int:
+    import base64
+    import io
+
+    from PIL import Image
+
+    return Image.open(io.BytesIO(base64.b64decode(b64))).size[0]
+
+
+def test_every_fixed_slot_figure_is_drawn_at_its_slot_width() -> None:
+    """A cast-page figure's PNG is exactly its slot's width, so its text matches its neighbours.
+
+    Covers every figure panel with a fixed slot that renders for cast 011 with LADCP
+    (the no-LADCP T–S profile is the known exception, tested below).
+    """
+    from ctdcast.reports._vendored.design_tokens import FIG_DPI, SLOTS
+
+    ctx = _ctx(_CAST_011, ladcp_dir=_LADCP)
+    checked = []
+    for pid, panel in CAST_PANELS.items():
+        if panel.kind != "figure" or not isinstance(panel.slot, str):
+            continue
+        b64 = panel.render(ctx)
+        if not isinstance(b64, str):
+            continue  # not applicable to this cast (e.g. no secondary sensor)
+        assert _png_width(b64) == round(SLOTS[panel.slot][1] * FIG_DPI), pid
+        checked.append(pid)
+    assert len(checked) >= 10, checked
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="no-LADCP T–S profile is drawn at profile_figsize (7.0 in) in a 5.4 in slot",
+)
+def test_ts_density_without_ladcp_matches_its_slot() -> None:
+    from ctdcast.reports._vendored.design_tokens import FIG_DPI, SLOTS
+
+    panel = CAST_PANELS["ts_density"]
+    b64 = panel.render(_ctx(_CAST_011))
+    assert _png_width(b64) == round(SLOTS[panel.slot][1] * FIG_DPI)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -60,11 +61,13 @@ from ctdcast.reports._plots import (
     _make_updown_diff_b64,
 )
 from ctdcast.reports._vendored import nc_tables
+from ctdcast.reports._vendored.design_tokens import SLOTS
 from ctdcast.reports._vendored.page_model import (
     Panel,
     Profile,
     ResolvedReport,
     Section,
+    Stub,
     resolve,
 )
 from ctdcast.reports.dataset import data_ranges_markup
@@ -1056,8 +1059,32 @@ def _has_provenance(c: PageCtx) -> bool:
     return header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) is not None
 
 
-#: Cast panel registry — each wraps an existing ``_make_*_b64`` adapter unchanged,
-#: reading only from :class:`PageCtx`.  Slots mirror the current cast.html layout.
+def _figure_panel(
+    panel_id: str,
+    slot: str,
+    make: Callable[[PageCtx, float], str | None],
+    *,
+    when: Callable[[PageCtx], bool] | None = None,
+    **panel_kw: Any,  # noqa: ANN401  # forwarded verbatim to Panel
+) -> Panel:
+    """Build a figure :class:`Panel` whose PNG is drawn at its slot's width.
+
+    The slot is named once: *make* receives ``(ctx, width_in)`` with ``width_in`` taken
+    from :data:`SLOTS`, so the figure and the slot it is shown in cannot disagree.
+    When *when* is given and returns False, the panel renders ``None``.
+    """
+    width_in = SLOTS[slot][1]
+
+    def render(c: PageCtx) -> str | Stub | None:
+        if when is not None and not when(c):
+            return None
+        return as_panel(lambda: make(c, width_in))
+
+    return Panel(id=panel_id, slot=slot, render=render, **panel_kw)
+
+
+#: Cast panel registry, reading only from :class:`PageCtx`.  Fixed-width figures go
+#: through :func:`_figure_panel`, which draws each PNG at its slot's width.
 CAST_PANELS: dict[str, Panel] = {
     "ts_density": Panel(
         id="ts_density",
@@ -1068,74 +1095,69 @@ CAST_PANELS: dict[str, Panel] = {
             )
         ),
     ),
-    "station_map": Panel(
-        id="station_map",
-        slot="two-fifths",
-        render=lambda c: as_panel(
-            lambda: _make_station_map_b64(
-                c.lat, c.lon, c.all_meta, target_h=2.75, cfg=c.cfg
-            )
+    "station_map": _figure_panel(
+        "station_map",
+        "two-fifths",
+        lambda c, w: _make_station_map_b64(
+            c.lat, c.lon, c.all_meta, target_h=2.75, cfg=c.cfg, width_in=w
         ),
     ),
-    "ts_updown": Panel(
-        id="ts_updown",
-        slot="two-fifths",
-        render=lambda c: as_panel(lambda: _make_ts_updown_b64(c.ds, cfg=c.cfg)),
+    "ts_updown": _figure_panel(
+        "ts_updown",
+        "two-fifths",
+        lambda c, w: _make_ts_updown_b64(c.ds, cfg=c.cfg, width_in=w),
     ),
-    "ct_sa_sigma0": Panel(
-        id="ct_sa_sigma0",
-        slot="full",
-        render=lambda c: as_panel(lambda: _make_ct_sa_sigma0_b64(c.ds, cfg=c.cfg)),
+    "ct_sa_sigma0": _figure_panel(
+        "ct_sa_sigma0",
+        "full",
+        lambda c, w: _make_ct_sa_sigma0_b64(c.ds, cfg=c.cfg, width_in=w),
     ),
-    "aux": Panel(
-        id="aux",
-        slot="full",
-        render=lambda c: as_panel(lambda: _make_aux_profiles_b64(c.ds, cfg=c.cfg)),
+    "aux": _figure_panel(
+        "aux",
+        "full",
+        lambda c, w: _make_aux_profiles_b64(c.ds, cfg=c.cfg, width_in=w),
     ),
-    "ts_diagram": Panel(
-        id="ts_diagram",
-        slot="third",
+    "ts_diagram": _figure_panel(
+        "ts_diagram",
+        "third",
+        lambda c, w: _make_ts_diagram_b64(c.ds, cfg=c.cfg, width_in=w),
         caption="Contours: σ₀ (kg m⁻³) — potential density referenced to surface",
-        render=lambda c: as_panel(lambda: _make_ts_diagram_b64(c.ds, cfg=c.cfg)),
     ),
-    "stability": Panel(
-        id="stability",
-        slot="twothirds",
-        render=lambda c: as_panel(lambda: _make_stability_b64(c.ds, cfg=c.cfg)),
+    "stability": _figure_panel(
+        "stability",
+        "twothirds",
+        lambda c, w: _make_stability_b64(c.ds, cfg=c.cfg, width_in=w),
     ),
-    "ladcp_bottomtrack": Panel(
-        id="ladcp_bottomtrack",
-        slot="third",
-        render=lambda c: (
-            as_panel(lambda: _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg))
-            if c.ladcp_exists
-            else None
-        ),
+    "ladcp_bottomtrack": _figure_panel(
+        "ladcp_bottomtrack",
+        "third",
+        lambda c, w: _make_ladcp_bottomtrack_b64(c.ladcp_path, cfg=c.cfg, width_in=w),
+        when=lambda c: c.ladcp_exists,
     ),
-    "pressure_time": Panel(
-        id="pressure_time",
-        slot="third",
+    "pressure_time": _figure_panel(
+        "pressure_time",
+        "third",
+        lambda c, w: _make_pressure_time_b64(c.ds, cfg=c.cfg, width_in=w),
         caption="Cast trajectory: pressure vs elapsed time",
-        render=lambda c: as_panel(lambda: _make_pressure_time_b64(c.ds, cfg=c.cfg)),
     ),
-    "sensor_diff": Panel(
-        id="sensor_diff",
-        slot="twothirds",
+    "sensor_diff": _figure_panel(
+        "sensor_diff",
+        "twothirds",
+        lambda c, w: _make_sensor_diff_b64(c.ds, cfg=c.cfg, width_in=w),
         applies_to=_has_dual_sensors,
         caption=(
             "T₁−T₂, S₁−S₂: primary minus secondary sensor. "
             "Ideal: scatter around zero with ±0.01 spread."
         ),
-        render=lambda c: as_panel(lambda: _make_sensor_diff_b64(c.ds, cfg=c.cfg)),
     ),
-    "updown_diff": Panel(
-        id="updown_diff",
-        slot="full",
+    "updown_diff": _figure_panel(
+        "updown_diff",
+        "full",
+        lambda c, w: _make_updown_diff_b64(c.ds, cfg=c.cfg, width_in=w),
         caption=(
             "ΔCT, ΔSA, Δσ₀ downcast minus upcast on 1-dbar grid — "
             "measures hysteresis from pump lag or sensor response time"
         ),
-        render=lambda c: as_panel(lambda: _make_updown_diff_b64(c.ds, cfg=c.cfg)),
     ),
     "sensors_table": Panel(
         id="sensors_table",
@@ -1154,15 +1176,15 @@ CAST_PANELS: dict[str, Panel] = {
         kind="table",
         render=_render_data_ranges,
     ),
-    "qc_histogram": Panel(
-        id="qc_histogram",
-        slot="full",
+    "qc_histogram": _figure_panel(
+        "qc_histogram",
+        "full",
+        lambda c, w: _make_qc_histogram_b64(c.nc_path, cfg=c.cfg, width_in=w),
         caption=(
             "Data-value distributions: grey = all data, colour = kept "
             "(soak/deck and missing excluded); orange dashed = gross-range "
             "suspect threshold. A threshold outside the data flags a mis-set bound."
         ),
-        render=lambda c: as_panel(lambda: _make_qc_histogram_b64(c.nc_path, cfg=c.cfg)),
     ),
     "qc_flags": Panel(
         id="qc_flags",

@@ -70,6 +70,11 @@ from ctdcast.reports._vendored.figure_png import (
 )
 
 
+def _width_kw(width_in: float | None) -> dict[str, float]:
+    """Return ``{"width_in": width_in}``, or ``{}`` to keep the draw function's default width."""
+    return {} if width_in is None else {"width_in": width_in}
+
+
 @dataclasses.dataclass(frozen=True)
 class RenderedPanel:
     """A rendered figure plus the layout metadata the HTML template needs."""
@@ -97,45 +102,67 @@ def _make_ts_density_b64(
 
 
 def _make_ts_diagram_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of a T-S diagram colored by O₂ saturation."""
-    return render_b64(draw_ts_diagram_fig, ds, cfg=cfg)
+    return render_b64(draw_ts_diagram_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_stability_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of N² and Turner angle (2-panel)."""
-    return render_b64(draw_stability_fig, ds, cfg=cfg)
+    return render_b64(draw_stability_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_qc_histogram_b64(
-    nc_path: Path, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    nc_path: Path,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of per-variable data-value distributions with QC thresholds."""
-    return render_b64(draw_qc_histogram_fig, nc_path, optional=True, cfg=cfg)
+    return render_b64(
+        draw_qc_histogram_fig, nc_path, optional=True, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_aux_profiles_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of O₂ sat, fluorescence, turbidity profiles (downcast + pale upcast)."""
-    return render_b64(draw_aux_profiles_fig, ds, optional=True, cfg=cfg)
+    return render_b64(
+        draw_aux_profiles_fig, ds, optional=True, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_ct_sa_sigma0_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.profiles.draw_ct_sa_sigma0_fig`."""
-    return render_b64(draw_ct_sa_sigma0_fig, ds, cfg=cfg)
+    return render_b64(draw_ct_sa_sigma0_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_ts_updown_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of CT–SA scatter: downcast in blue, upcast in red, σ₀ contours."""
-    return render_b64(draw_ts_updown_fig, ds, cfg=cfg)
+    return render_b64(draw_ts_updown_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_station_map_b64(
@@ -145,9 +172,18 @@ def _make_station_map_b64(
     target_h: float = 4.5,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.maps.draw_station_map_fig`; *target_h* is accepted for call-site compatibility and ignored."""
-    return render_b64(draw_station_map_fig, lat, lon, all_meta, target_h, cfg=cfg)
+    return render_b64(
+        draw_station_map_fig,
+        lat,
+        lon,
+        all_meta,
+        target_h,
+        cfg=cfg,
+        **_width_kw(width_in),
+    )
 
 
 def _make_cruise_map_b64(
@@ -454,30 +490,50 @@ def _make_timeseries_b64(
 
 
 def _make_sensor_diff_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.timeseries.draw_sensor_diff_fig`; None without a secondary sensor."""
-    return render_b64(draw_sensor_diff_fig, ds, optional=True, cfg=cfg)
+    return render_b64(
+        draw_sensor_diff_fig, ds, optional=True, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_pressure_time_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of pressure vs elapsed time (cast trajectory + bottle stops)."""
-    return render_b64(draw_pressure_time_fig, ds, cfg=cfg)
+    return render_b64(draw_pressure_time_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_updown_diff_b64(
-    ds: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.timeseries.draw_updown_diff_fig`; None when the down/up overlap is under 10 dbar."""
-    return render_b64(draw_updown_diff_fig, ds, cfg=cfg)
+    return render_b64(draw_updown_diff_fig, ds, cfg=cfg, **_width_kw(width_in))
 
 
 def _make_ladcp_bottomtrack_b64(
-    ladcp_path: Path | None, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ladcp_path: Path | None,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.ladcp.draw_ladcp_bottomtrack_fig`; None without a bottom-track solution."""
     if ladcp_path is None:
         return None
-    return render_b64(draw_ladcp_bottomtrack_fig, ladcp_path, optional=True, cfg=cfg)
+    return render_b64(
+        draw_ladcp_bottomtrack_fig,
+        ladcp_path,
+        optional=True,
+        cfg=cfg,
+        **_width_kw(width_in),
+    )
