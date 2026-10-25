@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,9 +45,6 @@ from ctdcast.reports._vendored.design_tokens import (
 from ctdcast.reports._vendored.design_tokens import (
     pen,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 def section_figsize_and_slot(

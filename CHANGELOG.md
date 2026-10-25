@@ -13,7 +13,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- `ctdcast.plotters.plots` is split by subject into `ctdcast.plotters.maps`, `profiles`, `sections`, `timeseries` and `ladcp`; helpers shared by more than one module move to `ctdcast.plotters.primitives`. Four helpers the report layer uses are now public: `primitives.hide_outer_spines`, `primitives.nice_colorbar_bounds`, `maps.square_map_limits`, `maps.GEBCO_RENDER_PAD`. No figure output changes. The per-figure `source:` caption now names the new module (e.g. `ctdcast/plotters/maps.py:draw_all_sections_map_fig`).
+- `ctdcast.plotters.plots` is split by subject into `ctdcast.plotters.maps`, `profiles`, `sections`, `timeseries` and `ladcp`; helpers shared by more than one module move to `ctdcast.plotters.primitives`. Four helpers the report layer uses are now public: `primitives.hide_outer_spines`, `primitives.nice_colorbar_bounds`, `maps.square_map_limits`, `maps.GEBCO_RENDER_PAD`. Draw functions with a fixed width take `width_in` (default: the previous width; height follows at a fixed aspect). No figure output changes. The per-figure `source:` caption now names the new module (e.g. `ctdcast/plotters/maps.py:draw_all_sections_map_fig`).
+- LADCP report panels read each cast once: `plotters.ladcp.ladcp_section_grid` and `ladcp_overview_grid` load, grid and scale the data once per page, shared by the U and V panels (section and time-series pages previously read every `.mat` file and repeated the GEBCO lookup twice). The cruise LADCP overview is drawn by the new `draw_ladcp_overview_fig`, so its `source:` caption names a draw function; `draw_ladcp_section_fig` takes an optional `grid=`. Same pixels.
 
 ### Deprecated
 

@@ -7,22 +7,48 @@ import pytest
 
 from ctdcast.plotters import ladcp, maps, profiles, sections, timeseries
 
+#: The public names ``ctdcast.plotters.plots`` defined before the split (v0.4.0).
+#: The façade keeps exactly these importable; functions added since are not in it.
+_PRE_SPLIT_PUBLIC = {
+    "draw_all_sections_map_fig",
+    "draw_aux_profiles_fig",
+    "draw_clock_offset_fig",
+    "draw_cruise_map_fig",
+    "draw_ct_sa_sigma0_fig",
+    "draw_ladcp_bottomtrack_fig",
+    "draw_ladcp_section_fig",
+    "draw_overview_panel_fig",
+    "draw_pressure_time_fig",
+    "draw_qc_histogram_fig",
+    "draw_section_fig",
+    "draw_section_map_fig",
+    "draw_section_ts_histogram_fig",
+    "draw_section_ts_o2_fig",
+    "draw_section_ts_profiles_fig",
+    "draw_sensor_diff_fig",
+    "draw_stability_fig",
+    "draw_station_map_fig",
+    "draw_timeseries_fig",
+    "draw_ts_density_fig",
+    "draw_ts_diagram_fig",
+    "draw_ts_diagram_timeseries_fig",
+    "draw_ts_updown_fig",
+    "draw_updown_diff_fig",
+    "map_panel",
+    "section_figsize_and_slot",
+}
+
 
 def test_plots_facade_warns_and_reexports():
     sys.modules.pop("ctdcast.plotters.plots", None)
     with pytest.warns(DeprecationWarning, match="ctdcast.plotters.plots is split"):
         plots = importlib.import_module("ctdcast.plotters.plots")
-    mods = (maps, profiles, sections, timeseries, ladcp)
-    # Every figure builder is re-exported...
-    for mod in mods:
-        for name in dir(mod):
-            if name.startswith("draw_"):
-                assert getattr(plots, name) is getattr(mod, name), name
-                assert name in plots.__all__, name
-    # ...and every re-export is defined in one of the split modules.
-    split_names = {m.__name__ for m in mods}
-    for name in plots.__all__:
-        assert getattr(plots, name).__module__ in split_names, name
+    assert set(plots.__all__) == _PRE_SPLIT_PUBLIC
+    split = {m.__name__: m for m in (maps, profiles, sections, timeseries, ladcp)}
+    for name in _PRE_SPLIT_PUBLIC:
+        obj = getattr(plots, name)
+        assert obj.__module__ in split, name
+        assert getattr(split[obj.__module__], name) is obj, name
 
 
 def test_no_internal_caller_imports_the_facade():

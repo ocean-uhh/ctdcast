@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import gsw
 import matplotlib.colors as mcolors
@@ -49,10 +48,6 @@ from ctdcast.reports._vendored.design_tokens import (
 from ctdcast.reports._vendored.design_tokens import (
     W_TWOTHIRDS as _W_TWOTHIRDS,
 )
-
-if TYPE_CHECKING:
-    pass
-
 
 _LADCP_U_COLOR: str = VAR_COLORS["U"]
 
