@@ -75,6 +75,11 @@ def _width_kw(width_in: float | None) -> dict[str, float]:
     return {} if width_in is None else {"width_in": width_in}
 
 
+def _slot_width(slot: str) -> float:
+    """Return the width in inches of the display *slot* (a ``SLOTS`` key)."""
+    return report_tokens.SLOTS[slot][1]
+
+
 @dataclasses.dataclass(frozen=True)
 class RenderedPanel:
     """A rendered figure plus the layout metadata the HTML template needs."""
@@ -191,9 +196,12 @@ def _make_cruise_map_b64(
     *,
     target_h: float = 4.0,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.maps.draw_cruise_map_fig`."""
-    return render_b64(draw_cruise_map_fig, all_meta, target_h=target_h, cfg=cfg)
+    return render_b64(
+        draw_cruise_map_fig, all_meta, target_h=target_h, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_section_b64(
@@ -337,30 +345,48 @@ def _make_section_ts_profiles_b64(
     x_vals: np.ndarray,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.sections.draw_section_ts_profiles_fig`."""
-    return render_b64(draw_section_ts_profiles_fig, ds_prof, x_vals, cfg=cfg)
+    return render_b64(
+        draw_section_ts_profiles_fig, ds_prof, x_vals, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_ts_diagram_timeseries_b64(
-    ds_ts: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds_ts: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.sections.draw_ts_diagram_timeseries_fig`."""
-    return render_b64(draw_ts_diagram_timeseries_fig, ds_ts, cfg=cfg)
+    return render_b64(
+        draw_ts_diagram_timeseries_fig, ds_ts, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_section_ts_histogram_b64(
-    ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds_prof: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of a CT–SA 2-D count histogram (log₁₀ colour) for section profiles."""
-    return render_b64(draw_section_ts_histogram_fig, ds_prof, cfg=cfg)
+    return render_b64(
+        draw_section_ts_histogram_fig, ds_prof, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_section_ts_o2_b64(
-    ds_prof: xr.Dataset, *, cfg: ReportConfig = DEFAULT_REPORT_CONFIG
+    ds_prof: xr.Dataset,
+    *,
+    cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Return a base64 PNG of CT–SA histogram coloured by median O₂ saturation per bin."""
-    return render_b64(draw_section_ts_o2_fig, ds_prof, optional=True, cfg=cfg)
+    return render_b64(
+        draw_section_ts_o2_fig, ds_prof, optional=True, cfg=cfg, **_width_kw(width_in)
+    )
 
 
 def _make_section_map_b64(
@@ -372,11 +398,9 @@ def _make_section_map_b64(
     min_margin_lon: float | None = None,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
-    """Encode :func:`~ctdcast.plotters.maps.draw_section_map_fig` at third width when *min_margin_lon* is set (time-series location map), else half width."""
-    fig_w = (
-        report_tokens.W_THIRD if min_margin_lon is not None else report_tokens.W_HALF
-    )
+    """Encode :func:`~ctdcast.plotters.maps.draw_section_map_fig`; *width_in* is the slot's width."""
     return render_b64(
         draw_section_map_fig,
         lats,
@@ -385,8 +409,8 @@ def _make_section_map_b64(
         title=title,
         min_margin=min_margin,
         min_margin_lon=min_margin_lon,
-        fig_w=fig_w,
         cfg=cfg,
+        **_width_kw(width_in),
     )
 
 
@@ -427,6 +451,7 @@ def _make_all_sections_map_b64(
     *,
     target_h: float = 4.5,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float | None = None,
 ) -> str | None:
     """Encode :func:`~ctdcast.plotters.maps.draw_all_sections_map_fig` without ``tight_layout`` or cropping (the map lays itself out at a fixed width)."""
     fig_result = None
@@ -439,6 +464,7 @@ def _make_all_sections_map_b64(
                 legend_outside,
                 target_h=target_h,
                 cfg=cfg,
+                **_width_kw(width_in),
             )
             if fig_result is None:
                 return None
@@ -471,7 +497,7 @@ def _make_timeseries_b64(
     style: str = "pcolormesh",
     vmin: float | None = None,
     vmax: float | None = None,
-    figw: float | None = None,
+    width_in: float | None = None,
     optional: bool = False,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
@@ -485,7 +511,7 @@ def _make_timeseries_b64(
         style=style,
         vmin=vmin,
         vmax=vmax,
-        figw=figw,
+        width_in=width_in,
         optional=optional,
         cfg=cfg,
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -126,9 +127,10 @@ def draw_timeseries_fig(
     style: str = "pcolormesh",
     vmin: float | None = None,
     vmax: float | None = None,
-    figw: float | None = None,
+    width_in: float | None = None,
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    figw: float | None = None,
 ) -> plt.Figure | None:
     """Return a Figure of *var* vs cast time × pressure, downcasts and upcasts.
 
@@ -144,11 +146,13 @@ def draw_timeseries_fig(
         Field rendering.
     vmin, vmax : float, optional
         Colour limits; each defaults to the 2nd / 98th percentile of the data.
-    figw : float, optional
+    width_in : float, optional
         Figure width in inches.  When None it follows the profile count: full
         width for 30 or more, half for 15 or more, else third.
     cfg : ReportConfig
         Report configuration; ``var_cmaps`` gives the colormap for *var*.
+    figw : float, optional
+        Deprecated alias of *width_in*, removed in 0.7.0.
 
     Returns
     -------
@@ -204,7 +208,15 @@ def draw_timeseries_fig(
 
     t_mpl = mdates.date2num(times.astype("datetime64[ms]").astype("O"))
     n_prof = len(t_mpl)
-    fw = figw
+    if figw is not None:
+        warnings.warn(
+            "draw_timeseries_fig(figw=) is deprecated; use width_in=. "
+            "figw is removed in 0.7.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        width_in = figw
+    fw = width_in
     if fw is None:
         # Mirror the step function in timeseries.py so standalone callers
         # get a slot-consistent width even without the Tier-2 caller.

@@ -47,9 +47,9 @@
 {% if timeseries_map_b64 %}
 <h2 id="s-map">{{ m.heading_text(1, "Timeseries locations") }}</h2>
 <div class="fig-row center">
-  <figure class="slot-half">
+  <figure class="slot-{{ map_slot }}">
     <img src="data:image/png;base64,{{ timeseries_map_b64 }}" alt="Timeseries locations map">
-    {{- m.dbg(timeseries_map_b64, "slot-half") }}
+    {{- m.dbg(timeseries_map_b64, "slot-" ~ map_slot) }}
     {%- if show_source %}{% set _src = source_of(timeseries_map_b64) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
   </figure>
 </div>

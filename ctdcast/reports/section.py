@@ -49,6 +49,7 @@ from ctdcast.reports._plots import (
     _make_section_ts_histogram_b64,
     _make_section_ts_o2_b64,
     _make_section_ts_profiles_b64,
+    _slot_width,
 )
 from ctdcast.reports._vendored.page_model import (
     Panel,
@@ -75,6 +76,13 @@ from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
 __all__ = ["generate_section_page"]
+
+
+#: Display slots of the fixed-width section figures.  Each figure is drawn at its
+#: slot's width (``_slot_width``) and its panel shows it in the same slot, so the
+#: two cannot disagree.
+_MAP_SLOT = "half"
+_TS_SLOT = "third"
 
 
 def generate_section_page(
@@ -319,17 +327,26 @@ def generate_section_page(
             RenderedPanel(
                 title="Profiles coloured by distance",
                 short="Profiles",
-                b64=_make_section_ts_profiles_b64(ds_sec, x_vals, cfg=cfg),
+                b64=_make_section_ts_profiles_b64(
+                    ds_sec, x_vals, cfg=cfg, width_in=_slot_width(_TS_SLOT)
+                ),
+                slot=_TS_SLOT,
             ),
             RenderedPanel(
                 title="2-D histogram (log count)",
                 short="Histogram",
-                b64=_make_section_ts_histogram_b64(ds_sec, cfg=cfg),
+                b64=_make_section_ts_histogram_b64(
+                    ds_sec, cfg=cfg, width_in=_slot_width(_TS_SLOT)
+                ),
+                slot=_TS_SLOT,
             ),
             RenderedPanel(
                 title="Median O₂ saturation",
                 short="O₂",
-                b64=_make_section_ts_o2_b64(ds_sec, cfg=cfg),
+                b64=_make_section_ts_o2_b64(
+                    ds_sec, cfg=cfg, width_in=_slot_width(_TS_SLOT)
+                ),
+                slot=_TS_SLOT,
             ),
         )
         if p.b64
@@ -362,7 +379,12 @@ def generate_section_page(
     # and renumbered, like the index and timeseries location maps), rather than
     # rendering live inside resolve() where a None would surface as a stub.
     map_b64 = _make_section_map_b64(
-        lats, lons, cast_nums_int, title=section_name, cfg=cfg
+        lats,
+        lons,
+        cast_nums_int,
+        title=section_name,
+        cfg=cfg,
+        width_in=_slot_width(_MAP_SLOT),
     )
 
     page_ctx = SectionPageCtx(
@@ -531,10 +553,10 @@ def _ladcp_panel(rp: RenderedPanel) -> Panel:
 
 
 def _ts_panel(rp: RenderedPanel) -> Panel:
-    """Wrap a pre-rendered T–S diagram panel as a third-width manifest :class:`Panel`."""
+    """Wrap a pre-rendered T–S diagram panel in a :class:`Panel` at the slot it was drawn for."""
     return Panel(
         id=f"ts_{rp.short}",
-        slot="third",
+        slot=rp.slot,
         caption=rp.title,
         render=lambda _c, _b64=rp.b64: _b64,
     )
@@ -559,7 +581,7 @@ def _biogeo_present(c: SectionPageCtx) -> list[str]:
 SECTION_PANELS: dict[str, Panel] = {
     "section_map": Panel(
         id="section_map",
-        slot="half",
+        slot=_MAP_SLOT,
         applies_to=lambda c: c.map_b64 is not None,
         render=lambda c: c.map_b64,
     ),

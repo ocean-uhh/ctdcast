@@ -45,18 +45,10 @@ from ctdcast.reports._plots import (
     _make_section_map_b64,
     _make_timeseries_b64,
     _make_ts_diagram_timeseries_b64,
+    _slot_width,
 )
 from ctdcast.reports._vendored.design_tokens import (
     MAX_SECTION_H as _MAX_SECTION_H,
-)
-from ctdcast.reports._vendored.design_tokens import (
-    W_FULL as _W_FULL,
-)
-from ctdcast.reports._vendored.design_tokens import (
-    W_HALF as _W_HALF,
-)
-from ctdcast.reports._vendored.design_tokens import (
-    W_THIRD as _W_THIRD,
 )
 from ctdcast.reports._vendored.page_model import (
     Panel,
@@ -82,6 +74,12 @@ from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 
 __all__ = ["generate_timeseries_page"]
+
+
+#: Display slots of the fixed-width time-series figures.  Each figure is drawn at
+#: its slot's width (``_slot_width``) and its panel shows it in the same slot.
+_MAP_SLOT = "third"
+_TS_SLOT = "third"
 
 
 def generate_timeseries_page(
@@ -268,32 +266,34 @@ def generate_timeseries_page(
             min_margin=_margin_lat,
             min_margin_lon=_margin_lon,
             cfg=cfg,
+            width_in=_slot_width(_MAP_SLOT),
         )
 
     vmin = vmin_override or {}
     vmax = vmax_override or {}
 
-    # Slot and figure width based on cast count
+    # Field-panel slot from the cast count; the figure width is that slot's width.
     if n_casts >= 30:
         ts_slot = "slot-full"
-        ts_figw = _W_FULL
     elif n_casts >= 15:
         ts_slot = "slot-half"
-        ts_figw = _W_HALF
     else:
         ts_slot = "slot-third"
-        ts_figw = _W_THIRD
+    ts_figw = _slot_width(ts_slot.removeprefix("slot-"))
 
     # T–S diagram is a single auxiliary panel; a None means an empty plot, so it is
     # rendered here and fed to the T–S section only when present (silently omitted
     # otherwise, as before), rather than shown as an "unavailable" stub.
-    _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(ds_ts, cfg=cfg)
+    _ts_diagram_b64: str | None = _make_ts_diagram_timeseries_b64(
+        ds_ts, cfg=cfg, width_in=_slot_width(_TS_SLOT)
+    )
     ts_panels = (
         (
             RenderedPanel(
                 b64=_ts_diagram_b64,
                 title="T–S diagram (profiles coloured by time)",
                 short="T–S diagram",
+                slot=_TS_SLOT,
             ),
         )
         if _ts_diagram_b64
@@ -428,7 +428,7 @@ def _ts_field_render(
                 style=c.section_style,
                 vmin=_vmin,
                 vmax=_vmax,
-                figw=c.ts_figw,
+                width_in=c.ts_figw,
                 optional=optional,
                 cfg=c.cfg,
             )
@@ -458,10 +458,10 @@ def _ts_ladcp_panel(rp: RenderedPanel) -> Panel:
 
 
 def _ts_diagram_panel(rp: RenderedPanel) -> Panel:
-    """Wrap the pre-rendered T–S diagram as a third-width :class:`Panel`."""
+    """Wrap the pre-rendered T–S diagram in a :class:`Panel` at the slot it was drawn for."""
     return Panel(
         id="ts_diagram_panel",
-        slot="third",
+        slot=rp.slot,
         render=lambda _c, _b64=rp.b64: _b64,
     )
 
@@ -479,7 +479,7 @@ def _ts_biogeo_present(c: TimeseriesPageCtx) -> list[str]:
 TIMESERIES_PANELS: dict[str, Panel] = {
     "ts_location_map": Panel(
         id="ts_location_map",
-        slot="third",
+        slot=_MAP_SLOT,
         applies_to=lambda c: c.fig_location_b64 is not None,
         render=lambda c: c.fig_location_b64,
     ),

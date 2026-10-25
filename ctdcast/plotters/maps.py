@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.colors as mcolors
@@ -471,8 +472,9 @@ def draw_section_map_fig(
     min_margin: float = 0.03,
     min_margin_lon: float | None = None,
     *,
-    fig_w: float = _W_HALF,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
+    width_in: float = _W_HALF,
+    fig_w: float | None = None,
 ) -> plt.Figure | None:
     """Return a GEBCO map Figure with the section track.
 
@@ -491,11 +493,13 @@ def draw_section_map_fig(
         Separate minimum longitude margin (degrees).  When given, latitude and
         longitude margins are set independently and a minimum 0.2° latitude span
         is enforced — used for the co-located time-series location map.
-    fig_w : float, default ``W_HALF``
-        Figure width in inches.
     cfg : ReportConfig
         Report configuration; ``gebco_path`` supplies the bathymetry and
         ``map_bounds`` can fix the extent.
+    width_in : float, default ``W_HALF``
+        Figure width in inches (half slot); the height follows from the map extent.
+    fig_w : float, optional
+        Deprecated alias of *width_in*, removed in 0.7.0.
 
     Returns
     -------
@@ -541,7 +545,15 @@ def draw_section_map_fig(
         )
         yl0, yl1, xl0, xl1 = square_map_limits(yl0, yl1, xl0, xl1, cos_lat)
 
-    fig, ax, cax, _ = _map_layout(fig_w, xl0, xl1, yl0, yl1, cos_lat)
+    if fig_w is not None:
+        warnings.warn(
+            "draw_section_map_fig(fig_w=) is deprecated; use width_in=. "
+            "fig_w is removed in 0.7.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        width_in = fig_w
+    fig, ax, cax, _ = _map_layout(width_in, xl0, xl1, yl0, yl1, cos_lat)
 
     map_panel(ax, cax, xl0, xl1, yl0, yl1, cfg=cfg)
 

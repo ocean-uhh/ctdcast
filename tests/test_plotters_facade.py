@@ -63,3 +63,28 @@ def test_no_internal_caller_imports_the_facade():
         and "ctdcast.plotters.plots import" in p.read_text(encoding="utf-8")
     ]
     assert offenders == []
+
+
+def test_old_width_keywords_warn_and_still_work(tmp_path):
+    """``fig_w=`` and ``figw=`` are deprecated aliases of ``width_in=`` until 0.7.0."""
+    import xarray as xr
+    from conftest import FIXTURES_NC
+
+    from ctdcast.plotters.maps import draw_section_map_fig
+    from ctdcast.plotters.timeseries import draw_timeseries_fig
+    from ctdcast.processors.profiles import build_profiles
+
+    lats, lons = [60.0, 60.2], [-30.0, -30.4]
+    with pytest.warns(DeprecationWarning, match="fig_w"):
+        old = draw_section_map_fig(lats, lons, [1, 2], fig_w=3.0)
+    new = draw_section_map_fig(lats, lons, [1, 2], width_in=3.0)
+    assert old.get_size_inches()[0] == new.get_size_inches()[0] == 3.0
+
+    prof = tmp_path / "profiles.nc"
+    build_profiles(FIXTURES_NC, prof, force=True)
+    with xr.open_dataset(prof, engine="netcdf4", decode_timedelta=False) as ds:
+        ds = ds.load()
+    with pytest.warns(DeprecationWarning, match="figw"):
+        old = draw_timeseries_fig(ds, "ctd_temperature_1", "T", figw=4.5)
+    new = draw_timeseries_fig(ds, "ctd_temperature_1", "T", width_in=4.5)
+    assert old.get_size_inches()[0] == new.get_size_inches()[0] == 4.5

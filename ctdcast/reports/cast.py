@@ -59,9 +59,9 @@ from ctdcast.reports._plots import (
     _make_ts_diagram_b64,
     _make_ts_updown_b64,
     _make_updown_diff_b64,
+    _slot_width,
 )
 from ctdcast.reports._vendored import nc_tables
-from ctdcast.reports._vendored.design_tokens import SLOTS
 from ctdcast.reports._vendored.page_model import (
     Panel,
     Profile,
@@ -1070,10 +1070,10 @@ def _figure_panel(
     """Build a figure :class:`Panel` whose PNG is drawn at its slot's width.
 
     The slot is named once: *make* receives ``(ctx, width_in)`` with ``width_in`` taken
-    from :data:`SLOTS`, so the figure and the slot it is shown in cannot disagree.
+    from the slot table, so the figure and the slot it is shown in cannot disagree.
     When *when* is given and returns False, the panel renders ``None``.
     """
-    width_in = SLOTS[slot][1]
+    width_in = _slot_width(slot)
 
     def render(c: PageCtx) -> str | Stub | None:
         if when is not None and not when(c):
