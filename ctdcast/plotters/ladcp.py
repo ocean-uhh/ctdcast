@@ -236,7 +236,9 @@ def draw_ladcp_section_fig(
     grid : LadcpSectionGrid, optional
         A grid already built by :func:`ladcp_section_grid` for these casts.  Pass it
         when drawing both components so the files are read once; when ``None`` it is
-        built here from the arguments above.
+        built here from the arguments above.  When given, *cast_nums*, *x_vals*,
+        *ladcp_dir*, *lats*, *lons* and *ladcp_pattern* are not read: the grid must
+        have been built from the same casts.
 
     Returns
     -------
@@ -339,7 +341,22 @@ def draw_ladcp_bottomtrack_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a LADCP bottom-track U and V vs depth Figure."""
+    """Return LADCP bottom-track U and V vs depth.
+
+    Parameters
+    ----------
+    ladcp_path : pathlib.Path or None
+        LADCP ``.mat`` file for this cast.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when *ladcp_path* is None or the file has no bottom-track solution.
+    """
     if ladcp_path is None:
         return None
 

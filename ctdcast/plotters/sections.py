@@ -113,7 +113,46 @@ def draw_section_fig(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
-    """Return a Figure of *var* vs pressure × *x_vals*."""
+    """Return a Figure of *var* vs pressure × along-track distance.
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Profiles gridded on ``pressure`` × profile, one profile per *x_vals* entry.
+    var : str
+        Variable to plot from *ds_prof*.
+    label : str
+        Accepted for call-site compatibility; the colorbar shows units only.
+    x_vals : numpy.ndarray
+        Along-track position of each profile.
+    x_label : str
+        x-axis label.
+    title : str
+        Accepted for call-site compatibility and ignored.
+    style : {"pcolormesh", "contourf"}
+        Field rendering.
+    bathy_depths : numpy.ndarray, optional
+        Water depth (m) for the bathymetry fill, at *bathy_x* when given, else at
+        *x_vals*.
+    bathy_x : numpy.ndarray, optional
+        Denser along-track positions (km) for *bathy_depths*; used only when its
+        length matches, otherwise the fill falls back to *x_vals*.
+    cast_labels : list, optional
+        Cast numbers drawn as markers along the top edge (same length as *x_vals*).
+    vmin, vmax : float, optional
+        Colour limits; each defaults to the 2nd / 98th percentile of the data.
+    figsize : tuple of float, optional
+        ``(width, height)`` in inches, used unchanged so a caller can keep the PNG
+        and its slot consistent; when None, :func:`section_figsize_and_slot` sets it
+        from the data's depth and along-track extent.
+    cfg : ReportConfig
+        Report configuration; ``var_cmaps`` gives the colormap for *var*.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when *var* is absent or has no finite values.
+    """
     if var not in ds_prof:
         return None
     pressure = ds_prof["pressure"].values
@@ -197,7 +236,24 @@ def draw_section_ts_profiles_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a Figure of per-cast CT–SA profiles coloured by along-track distance."""
+    """Return a Figure of per-cast CT–SA profiles coloured by along-track distance.
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Section profiles with ``absolute_salinity`` and ``conservative_temperature``.
+    x_vals : numpy.ndarray
+        Along-track position (km) of each profile; sets the colour.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when SA or CT is absent or has no finite values.
+    """
     if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
         return None
     sa_all = ds_prof["absolute_salinity"].values  # (N_PROF, N_P)
@@ -263,7 +319,23 @@ def draw_ts_diagram_timeseries_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a CT–SA diagram Figure for all timeseries profiles, coloured by time."""
+    """Return a CT–SA diagram Figure for all time-series profiles, coloured by time.
+
+    Parameters
+    ----------
+    ds_ts : xarray.Dataset
+        Profiles (``N_PROF`` × ``pressure``) with ``absolute_salinity``,
+        ``conservative_temperature`` and ``time_start``.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when SA or CT is absent, fewer than two profiles exist, or no value is finite.
+    """
     if "absolute_salinity" not in ds_ts or "conservative_temperature" not in ds_ts:
         return None
     sa_all = ds_ts["absolute_salinity"].values  # (N_PROF, N_P)
@@ -335,7 +407,22 @@ def draw_section_ts_histogram_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a CT–SA 2-D count histogram Figure (log₁₀ colour) for section profiles."""
+    """Return a CT–SA two-dimensional count histogram Figure (log₁₀ colour) for section profiles.
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Profiles with ``absolute_salinity`` and ``conservative_temperature``.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when SA or CT is absent or fewer than ten valid points remain.
+    """
     if "absolute_salinity" not in ds_prof or "conservative_temperature" not in ds_prof:
         return None
     sa = ds_prof["absolute_salinity"].values.ravel()
@@ -397,7 +484,23 @@ def draw_section_ts_o2_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a CT–SA histogram Figure coloured by median O₂ saturation per bin."""
+    """Return a CT–SA Figure coloured by the median oxygen in each T–S bin (bins with at least two points).
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Profiles with ``absolute_salinity``, ``conservative_temperature`` and an
+        oxygen variable.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when SA, CT or oxygen is absent or fewer than ten valid points remain.
+    """
     _o2_var = next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds_prof), None)
     if (
         "absolute_salinity" not in ds_prof
@@ -488,7 +591,33 @@ def draw_overview_panel_fig(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
-    """Return a Figure of *var* vs pressure × cast number (cruise overview panel)."""
+    """Return a Figure of *var* vs pressure × cast number (cruise overview panel).
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Downcast profiles sorted by ``cast_number``; casts are evenly spaced
+        along x with cast numbers as tick labels.
+    var : str
+        Variable to plot from *ds_prof*.
+    label : str
+        Accepted for call-site compatibility; the colorbar shows units only.
+    bathy_depths : numpy.ndarray, optional
+        Water depth (m) at each cast (length ``N_PROF``), drawn as a black fill.
+    style : {"pcolormesh", "contourf"}
+        Field rendering.
+    vmin, vmax : float, optional
+        Colour limits; each defaults to the 2nd / 98th percentile of the data.
+    cast_groups : dict of str to list of int, optional
+        Section colour → cast numbers, drawn as coloured markers above the axes.
+    cfg : ReportConfig
+        Report configuration; ``var_cmaps`` and ``overview_figsize`` are used.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when *var* is absent or has no finite values.
+    """
     if var not in ds_prof:
         return None
     pressure = ds_prof["pressure"].values

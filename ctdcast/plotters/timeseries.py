@@ -62,6 +62,22 @@ def draw_clock_offset_fig(
     that is not there. Each segment mean is drawn as a horizontal rule over its cast range and each
     changepoint as a vertical rule. Returns ``None`` when there is nothing to plot (no segments —
     a ``no_clock_pair`` or ``insufficient`` verdict).
+
+    Parameters
+    ----------
+    series : list of CastClock
+        Per-cast clock offsets, in cast order.
+    verdict : ClockVerdict
+        Segmentation of *series* (segment means and changepoints).
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_FULL``
+        Figure width in inches (full slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when there is nothing to plot (no segments).
     """
     from ctdcast.analysis.clock import cast_number
 
@@ -114,7 +130,31 @@ def draw_timeseries_fig(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
-    """Return a Figure of *var* vs cast time × pressure, both down and upcast."""
+    """Return a Figure of *var* vs cast time × pressure, downcasts and upcasts.
+
+    Parameters
+    ----------
+    ds_prof : xarray.Dataset
+        Profiles with ``time_start``, ``time_end``, ``cast_number`` and ``cast_type``.
+    var : str
+        Variable to plot from *ds_prof*.
+    label : str
+        Accepted for call-site compatibility; the colorbar shows units only.
+    style : {"pcolormesh", "contourf"}
+        Field rendering.
+    vmin, vmax : float, optional
+        Colour limits; each defaults to the 2nd / 98th percentile of the data.
+    figw : float, optional
+        Figure width in inches.  When None it follows the profile count: full
+        width for 30 or more, half for 15 or more, else third.
+    cfg : ReportConfig
+        Report configuration; ``var_cmaps`` gives the colormap for *var*.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when *var* or ``time_start`` is absent or no value is finite.
+    """
     import matplotlib.dates as mdates
 
     if var not in ds_prof or "time_start" not in ds_prof:
@@ -261,7 +301,23 @@ def draw_sensor_diff_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_TWOTHIRDS,
 ) -> plt.Figure | None:
-    """Return a primary minus secondary sensor difference profiles Figure."""
+    """Return primary-minus-secondary sensor difference profiles (T₁−T₂, S₁−S₂).
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with a primary and a secondary temperature and/or
+        salinity channel.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_TWOTHIRDS``
+        Figure width in inches (two-thirds slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when neither a temperature nor a salinity pair is present.
+    """
     p = ds["pressure"].values
     _t1 = next((v for v in ("ctd_temperature_1", "temperature_1") if v in ds), None)
     _t2 = next((v for v in ("ctd_temperature_2", "temperature_2") if v in ds), None)
@@ -323,7 +379,22 @@ def draw_pressure_time_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a pressure vs elapsed time Figure (cast trajectory + bottle stops)."""
+    """Return a pressure vs elapsed time Figure (cast trajectory and bottle stops).
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and ``time``.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure.
+    """
     p = ds["pressure"].values
     t_raw = ds["time"].values
 
@@ -349,7 +420,25 @@ def draw_updown_diff_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_FULL,
 ) -> plt.Figure | None:
-    """Return a downcast minus upcast profiles Figure: ΔCT, ΔSA, Δσ₀."""
+    """Return downcast-minus-upcast profiles of ΔCT, ΔSA and Δσ₀ on a shared 1 dbar grid.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10), and the cast is split at
+        the turnaround.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_FULL``
+        Figure width in inches (full slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when either half has fewer than five levels, the down/up overlap is under
+        10 dbar, or no difference can be formed.
+    """
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
 

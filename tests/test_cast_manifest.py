@@ -140,6 +140,33 @@ def test_every_fixed_slot_figure_is_drawn_at_its_slot_width() -> None:
     assert len(checked) >= 10, checked
 
 
+def test_slot_width_keeps_each_figures_aspect() -> None:
+    """Passing the slot width changes nothing at today's widths: same PNG size as the default."""
+    import base64
+    import io
+
+    from PIL import Image
+
+    import ctdcast.reports._plots as rp
+
+    ctx = _ctx(_CAST_011, ladcp_dir=_LADCP)
+    defaults = {
+        "station_map": lambda: rp._make_station_map_b64(
+            ctx.lat, ctx.lon, ctx.all_meta, target_h=2.75, cfg=ctx.cfg
+        ),
+        "ts_updown": lambda: rp._make_ts_updown_b64(ctx.ds, cfg=ctx.cfg),
+        "ct_sa_sigma0": lambda: rp._make_ct_sa_sigma0_b64(ctx.ds, cfg=ctx.cfg),
+        "aux": lambda: rp._make_aux_profiles_b64(ctx.ds, cfg=ctx.cfg),
+        "ts_diagram": lambda: rp._make_ts_diagram_b64(ctx.ds, cfg=ctx.cfg),
+        "stability": lambda: rp._make_stability_b64(ctx.ds, cfg=ctx.cfg),
+        "pressure_time": lambda: rp._make_pressure_time_b64(ctx.ds, cfg=ctx.cfg),
+        "updown_diff": lambda: rp._make_updown_diff_b64(ctx.ds, cfg=ctx.cfg),
+    }
+    size = lambda b: Image.open(io.BytesIO(base64.b64decode(b))).size  # noqa: E731
+    for pid, make in defaults.items():
+        assert size(CAST_PANELS[pid].render(ctx)) == size(make()), pid
+
+
 @pytest.mark.xfail(
     strict=True,
     reason="no-LADCP T–S profile is drawn at profile_figsize (7.0 in) in a 5.4 in slot",

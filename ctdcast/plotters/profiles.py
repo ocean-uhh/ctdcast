@@ -60,7 +60,25 @@ def draw_ts_density_fig(
     *,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
-    """Return a CT/SA/σ₀ profiles Figure, optionally alongside LADCP U/V."""
+    """Return a CT/SA/σ₀ profile Figure, optionally alongside LADCP U/V.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10) and the downcast is selected.
+    ladcp_path : pathlib.Path, optional
+        LADCP ``.mat`` file for this cast.  None draws the single-column profile
+        at ``cfg.profile_figsize``; a path draws a second column with U/V, or a
+        placeholder when the file does not exist.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` and ``profile_figsize`` are used.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure.
+    """
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values
@@ -179,7 +197,24 @@ def draw_ts_diagram_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a T-S diagram Figure colored by O₂ saturation."""
+    """Return a T–S diagram Figure coloured by oxygen saturation.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10) and the downcast is selected.
+        Needs ``oxygen_saturation`` (or the old ``oxsat_1``).
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_THIRD``
+        Figure width in inches (third slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when there is no oxygen saturation or fewer than five valid points.
+    """
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
     sa = ds_down["absolute_salinity"].values
@@ -235,7 +270,23 @@ def draw_stability_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_TWOTHIRDS,
 ) -> plt.Figure | None:
-    """Return a N² and Turner angle (2-panel) Figure."""
+    """Return downcast profiles of buoyancy frequency squared (N²) and the Turner angle.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10) and the downcast is selected.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_TWOTHIRDS``
+        Figure width in inches (two-thirds slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when the downcast has fewer than three levels.
+    """
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
     p = ds_down["pressure"].values.astype(float)
@@ -287,7 +338,23 @@ def draw_aux_profiles_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_FULL,
 ) -> plt.Figure | None:
-    """Return a O₂ sat, fluorescence, turbidity profiles Figure (downcast + pale upcast)."""
+    """Return side-by-side profiles of oxygen saturation, fluorescence and turbidity.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset; each of ``oxygen_saturation``, ``ctd_fluor`` and
+        ``ctd_turbidity`` (or their old names) found in it gets a panel.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_FULL``
+        Figure width in inches (full slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when none of the three variables is present.
+    """
     vars_labels = [
         (
             next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds), None),
@@ -342,7 +409,23 @@ def draw_ct_sa_sigma0_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_FULL,
 ) -> plt.Figure | None:
-    """Return a CT, SA, σ₀ profiles side-by-side Figure (downcast + grey upcast)."""
+    """Return side-by-side CT, SA and σ₀ profiles (downcast, with the upcast in grey).
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10) and the downcast is selected.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_FULL``
+        Figure width in inches (full slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when none of CT, SA, σ₀ is available.
+    """
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
 
@@ -401,7 +484,23 @@ def draw_ts_updown_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_TWO_FIFTHS,
 ) -> plt.Figure | None:
-    """Return a CT–SA scatter Figure: downcast in blue, upcast in red, σ₀ contours."""
+    """Return a T–S diagram Figure overlaying the downcast and the upcast.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
+        are derived here (TEOS-10) and the downcast is selected.
+    cfg : ReportConfig
+        Report configuration; ``clean_spines`` sets the despine.
+    width_in : float, default ``W_TWO_FIFTHS``
+        Figure width in inches (two-fifths slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when the downcast has no valid CT/SA pair.
+    """
     ds_teos = add_teos10(ds)
     ds_down, ds_up = split_cast(ds_teos)
 

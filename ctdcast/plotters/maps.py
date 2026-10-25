@@ -195,8 +195,19 @@ def map_panel(
 ) -> None:
     """Draw the GEBCO depth field into *ax* and its 'Depth (m)' colorbar into *cax*.
 
-    *cax* is a pre-placed colorbar axes from :func:`_map_layout`; when there is no GEBCO
-    to draw it is hidden so no empty box remains.
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Map axes to draw the depth field into.
+    cax : matplotlib.axes.Axes
+        Pre-placed colorbar axes from the map layout; hidden when there is no
+        GEBCO to draw, so no empty box remains.
+    xl0, xl1 : float
+        Western and eastern longitude limits (degrees east).
+    yl0, yl1 : float
+        Southern and northern latitude limits (degrees north).
+    cfg : ReportConfig
+        Report configuration; ``gebco_path`` supplies the bathymetry.
     """
     gebco = load_gebco(yl0, yl1, xl0, xl1, margin=GEBCO_RENDER_PAD, path=cfg.gebco_path)
     if gebco is None:
@@ -308,7 +319,28 @@ def draw_station_map_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_TWO_FIFTHS,
 ) -> plt.Figure | None:
-    """Return a GEBCO map Figure with all casts and this cast highlighted."""
+    """Return a GEBCO map Figure with all casts and this cast highlighted.
+
+    Parameters
+    ----------
+    lat, lon : float
+        Position of this cast (degrees north, degrees east).
+    all_meta : list of dict
+        Every cast of the cruise, each with ``lat`` and ``lon``; non-finite
+        positions are skipped.
+    target_h : float
+        Accepted for call-site compatibility and ignored; the layout sets the height.
+    cfg : ReportConfig
+        Report configuration; ``gebco_path`` supplies the bathymetry and
+        ``map_bounds`` can fix the extent.
+    width_in : float, default ``W_TWO_FIFTHS``
+        Figure width in inches (two-fifths slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when no cast in *all_meta* has a finite position.
+    """
     all_lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
     all_lons = [m["lon"] for m in all_meta if np.isfinite(m.get("lon", np.nan))]
 
@@ -360,7 +392,26 @@ def draw_cruise_map_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_HALF,
 ) -> plt.Figure | None:
-    """Return a Figure of all cast positions (no single-cast highlight)."""
+    """Return a GEBCO map Figure of all cast positions, without a highlighted cast.
+
+    Parameters
+    ----------
+    all_meta : list of dict
+        Every cast of the cruise, each with ``lat``, ``lon`` and ``cast_num``;
+        non-finite positions are skipped.
+    target_h : float
+        Accepted for call-site compatibility and ignored; the layout sets the height.
+    cfg : ReportConfig
+        Report configuration; ``gebco_path`` supplies the bathymetry and
+        ``map_bounds`` can fix the extent.
+    width_in : float, default ``W_HALF``
+        Figure width in inches (half slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when no cast in *all_meta* has a finite position.
+    """
     lats = [m["lat"] for m in all_meta if np.isfinite(m.get("lat", np.nan))]
     lons = [m["lon"] for m in all_meta if np.isfinite(m.get("lon", np.nan))]
     nums = [
@@ -423,7 +474,34 @@ def draw_section_map_fig(
     fig_w: float = _W_HALF,
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
 ) -> plt.Figure | None:
-    """Return a GEBCO map Figure with the section track."""
+    """Return a GEBCO map Figure with the section track.
+
+    Parameters
+    ----------
+    lats, lons : list of float
+        Cast positions along the section; non-finite positions are skipped.
+    cast_nums : list of int
+        Cast numbers, same length as *lats*.
+    title : str
+        Accepted for call-site compatibility and ignored.
+    min_margin : float, default 0.03
+        Minimum margin (degrees) around the track; the margin is otherwise a
+        fraction of the track extent.
+    min_margin_lon : float, optional
+        Separate minimum longitude margin (degrees).  When given, latitude and
+        longitude margins are set independently and a minimum 0.2° latitude span
+        is enforced — used for the co-located time-series location map.
+    fig_w : float, default ``W_HALF``
+        Figure width in inches.
+    cfg : ReportConfig
+        Report configuration; ``gebco_path`` supplies the bathymetry and
+        ``map_bounds`` can fix the extent.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when no position is finite.
+    """
     lats_arr = np.array(lats)
     lons_arr = np.array(lons)
     mask = np.isfinite(lats_arr) & np.isfinite(lons_arr)
@@ -507,7 +585,30 @@ def draw_all_sections_map_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_HALF,
 ) -> plt.Figure | None:
-    """Return a Figure showing all section tracks coloured by section."""
+    """Return a GEBCO map Figure showing every section track in its own colour.
+
+    Parameters
+    ----------
+    sections_data : list of dict
+        One dict per section with ``name``, ``color``, ``lats`` and ``lons``.
+    all_lats, all_lons : list of float
+        Positions of all casts, drawn as a grey background scatter.
+    legend_outside : bool
+        Accepted for call-site compatibility and ignored; the legend sits in a
+        reserved row below the map.
+    target_h : float
+        Accepted for call-site compatibility and ignored; the layout sets the height.
+    cfg : ReportConfig
+        Report configuration; ``gebco_path`` supplies the bathymetry and
+        ``map_bounds`` can fix the extent.
+    width_in : float, default ``W_HALF``
+        Figure width in inches (half slot); the height follows at a fixed aspect.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, or None when *sections_data* is empty or no position is finite.
+    """
     if not sections_data:
         return None
     all_s_lats = [y for s in sections_data for y in s["lats"]] + list(all_lats)

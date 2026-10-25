@@ -66,3 +66,36 @@ def test_section_reads_each_mat_file_once(monkeypatch):
     )
     assert [p.short for p in panels] == ["U", "V"]
     assert len(reads) == 2
+
+
+def test_section_panel_is_the_same_with_and_without_a_prebuilt_grid():
+    from ctdcast.plotters.ladcp import draw_ladcp_section_fig, ladcp_section_grid
+    from ctdcast.reports._vendored.figure_png import render_b64
+
+    args = ([128, 129], np.array([0.0, 5.0]), "Distance (km)", FIXTURES_LADCP)
+    grid = ladcp_section_grid(args[0], args[1], args[3])
+    for component in ("U", "V"):
+        built_here = render_b64(draw_ladcp_section_fig, *args, component=component)
+        shared = render_b64(
+            draw_ladcp_section_fig, *args, component=component, grid=grid
+        )
+        assert built_here == shared, component
+
+
+def test_section_grid_failure_warning_names_the_cause(monkeypatch):
+    from ctdcast.reports._plots import _make_ladcp_section_b64
+    from ctdcast.reports._vendored import design_tokens
+
+    # The suite raises on plot errors; the report itself warns and omits the panels.
+    monkeypatch.setattr(design_tokens, "RAISE_ON_PLOT_ERROR", False)
+
+    with pytest.warns(RuntimeWarning, match="ladcp_section_grid failed.*ValueError"):
+        panels = _make_ladcp_section_b64(
+            [128, 129],
+            np.array([0.0, 5.0]),
+            "Distance (km)",
+            FIXTURES_LADCP,
+            lats=[60.0],  # wrong length
+            lons=[-30.0, -30.1],
+        )
+    assert panels == []

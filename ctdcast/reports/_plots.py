@@ -259,11 +259,12 @@ def _make_ladcp_section_b64(
             ladcp_pattern=ladcp_pattern,
             cfg=cfg,
         )
-    except Exception:
+    except Exception as exc:
         if report_tokens.RAISE_ON_PLOT_ERROR:
             raise
         warnings.warn(
-            "ladcp_section_grid failed; LADCP section panels omitted",
+            "ladcp_section_grid failed; LADCP section panels omitted: "
+            f"{type(exc).__name__}: {exc}",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -306,11 +307,12 @@ def _make_ladcp_overview_b64(
     """Grid ``ladcp_profiles.nc`` once and encode the cruise U and V overview panels; ``[]`` when fewer than two casts have velocity."""
     try:
         grid = ladcp_overview_grid(ds_ladcp, cfg=cfg)
-    except Exception:
+    except Exception as exc:
         if report_tokens.RAISE_ON_PLOT_ERROR:
             raise
         warnings.warn(
-            "ladcp_overview_grid failed; LADCP overview panels omitted",
+            "ladcp_overview_grid failed; LADCP overview panels omitted: "
+            f"{type(exc).__name__}: {exc}",
             RuntimeWarning,
             stacklevel=2,
         )
