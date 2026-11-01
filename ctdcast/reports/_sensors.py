@@ -349,7 +349,7 @@ def generate_sensors_page(
     *,
     cruise: str = "",
     nav_prefix: str = "",
-    show_nav: bool = True,
+    show_nav: bool = False,
     inventory_pills: list[dict[str, str]] | None = None,
     current_href: str = "sbe_sensors.html",
     generated_at: str | None = None,
@@ -367,8 +367,10 @@ def generate_sensors_page(
         Cruise identifier for the title and footer.
     nav_prefix : str, optional
         Relative path to the report root for the page-nav links.
-    show_nav : bool, default True
-        Render the report page-nav.
+    show_nav : bool, default False
+        Render the full report page-nav when ``True`` (the in-report sensors page).
+        Standalone inspections leave it ``False`` so the nav's report-relative links
+        are not shown beside a page with no sibling report files.
     inventory_pills : list of dict, optional
         ``{"label", "href"}`` entries for the compiled-file inventory pages, rendered as a
         cross-navigation pill bar.
