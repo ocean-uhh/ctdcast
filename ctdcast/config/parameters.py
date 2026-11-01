@@ -328,6 +328,38 @@ VARIABLES: dict[str, dict] = {
         "long_name": "SeaBird scan count",
         "units": "1",
     },
+    # Read from a raw .hex at stage 1 (readers/hex.py): the deck unit's per-scan status words,
+    # and the SBE 43 oxygen converted at read time with seabirdscientific (uncorrected T/S, no
+    # tau or hysteresis correction) as a quick look until stage 3 derives ctd_oxygen.
+    "sbe_oxygen_1": {
+        "long_name": "SBE 43 oxygen, quick-look from the raw voltage, primary",
+        "comment": "converted by ctdcast with Sea-Bird's seabirdscientific toolkit, not by SBE "
+        "Data Processing; uncorrected T/S, no tau or hysteresis correction",
+        "units": "umol kg-1",
+    },
+    "sbe_oxygen_2": {
+        "long_name": "SBE 43 oxygen, quick-look from the raw voltage, secondary",
+        "comment": "converted by ctdcast with Sea-Bird's seabirdscientific toolkit, not by SBE "
+        "Data Processing; uncorrected T/S, no tau or hysteresis correction",
+        "units": "umol kg-1",
+    },
+    "pump_status": {"long_name": "SBE 911plus pump status (1 = on)", "units": "1"},
+    "bottom_contact_status": {
+        "long_name": "SBE 911plus bottom contact status (1 = no contact)",
+        "units": "1",
+    },
+    "bottle_confirm_status": {
+        "long_name": "SBE 911plus bottle-fire confirm status (1 = confirm detected)",
+        "units": "1",
+    },
+    "modem_status": {
+        "long_name": "SBE 911plus modem status (0 = carrier detected)",
+        "units": "1",
+    },
+    "data_integrity": {
+        "long_name": "SBE 911plus data-integrity counter",
+        "units": "1",
+    },
     "sbe_oxygen_saturation_1": {
         "long_name": "SeaBird-computed oxygen saturation, primary",
         "units": "percent",

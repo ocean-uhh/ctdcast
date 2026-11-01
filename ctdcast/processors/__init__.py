@@ -42,6 +42,11 @@ class StagePaths:
     """
 
     cnv_dir: Path | None = None
+    #: Raw SBE 911plus ``.hex`` + ``.xmlcon`` input, the alternative to ``cnv_dir``.
+    hex_dir: Path | None = None
+    #: Which raw CTD input stage 1 reads: ``"cnv"`` or ``"hex"``.  The two are mutually
+    #: exclusive for a cruise; only the named one is ever read.
+    ctd_raw_format: str = "cnv"
     ctd_root: Path | None = None
     ladcp_dir: Path | None = None
     ladcp_root: Path | None = None
@@ -49,6 +54,11 @@ class StagePaths:
     #: means "derive it from the root", which is the normal case.
     profiles_override: Path | None = None
     ladcp_profiles_override: Path | None = None
+
+    @property
+    def ctd_raw_dir(self) -> Path | None:
+        """The raw CTD input directory stage 1 reads: ``hex_dir`` or ``cnv_dir``, by format."""
+        return self.hex_dir if self.ctd_raw_format == "hex" else self.cnv_dir
 
     @property
     def profiles_path(self) -> Path | None:
@@ -80,10 +90,20 @@ class StagePaths:
         data : dict
             The config's ``data:`` mapping.
 
+        The raw CTD format is ``data.ctd_raw_format`` (``cnv`` or ``hex``).  When it is absent
+        and only one of ``cnv_dir`` / ``hex_dir`` is set, that one is the format; with both set
+        it must be named, so a stray directory never decides what a cruise is read from.
+
         Returns
         -------
         StagePaths
             Paths for whichever sources are configured; ``None`` for the rest.
+
+        Raises
+        ------
+        ValueError
+            If ``ctd_raw_format`` is not ``cnv``/``hex``, names a directory that is not set, or
+            is absent while both ``cnv_dir`` and ``hex_dir`` are set.
         """
 
         def _p(*keys: str) -> Path | None:
@@ -92,8 +112,28 @@ class StagePaths:
                     return Path(str(data[k]))
             return None
 
+        cnv_dir, hex_dir = _p("cnv_dir"), _p("hex_dir")
+        fmt = data.get("ctd_raw_format")
+        if fmt is None:
+            if cnv_dir is not None and hex_dir is not None:
+                raise ValueError(
+                    "data.cnv_dir and data.hex_dir are both set: name the one stage 1 reads "
+                    "with data.ctd_raw_format: cnv or hex."
+                )
+            fmt = "hex" if hex_dir is not None else "cnv"
+        fmt = str(fmt).strip().lower()
+        if fmt not in ("cnv", "hex"):
+            raise ValueError(
+                f"data.ctd_raw_format must be 'cnv' or 'hex', not {fmt!r}."
+            )
+        if fmt == "hex" and hex_dir is None:
+            raise ValueError(
+                "data.ctd_raw_format is 'hex' but data.hex_dir is not set."
+            )
         return cls(
-            cnv_dir=_p("cnv_dir"),
+            cnv_dir=cnv_dir,
+            hex_dir=hex_dir,
+            ctd_raw_format=fmt,
             ctd_root=_p("ctd_root", "nc_dir"),
             ladcp_dir=_p("ladcp_dir"),
             ladcp_root=_p("ladcp_root", "ladcp_nc"),
@@ -160,10 +200,13 @@ def _run_stage1(
     sensor catalog at stage 1.
     """
     total = 0
-    if paths.cnv_dir is not None and paths.ctd_root is not None:
+    if paths.ctd_raw_format == "hex":
+        # The format decides the reader; the .hex glob ignores case (Seasave writes both).
+        backend, pattern = "hex", "*.[hH][eE][xX]"
+    if paths.ctd_raw_dir is not None and paths.ctd_root is not None:
         total += (
             _stage1.run(
-                paths.cnv_dir,
+                paths.ctd_raw_dir,
                 paths.ctd_root,
                 force=force,
                 dry_run=dry_run,
@@ -374,6 +417,8 @@ def process(
     *,
     cnv_dir: Path | str | None = None,
     ctd_root: Path | str | None = None,
+    hex_dir: Path | str | None = None,
+    ctd_raw_format: str | None = None,
     ladcp_dir: Path | str | None = None,
     ladcp_root: Path | str | None = None,
     # Superseded by the roots above; still accepted so an existing caller keeps
@@ -405,6 +450,9 @@ def process(
         CTD pipeline paths.  ``cnv_dir`` is the external CNV input; ``ctd_root``
         is the directory ctdcast owns, holding ``stage1/`` … ``stage3/`` and the
         compiled product.  Present → CTD participates in the relevant stages.
+    hex_dir, ctd_raw_format:
+        Raw SBE 911plus ``.hex`` input and the switch between it and ``cnv_dir``
+        (``"cnv"`` or ``"hex"``; see :meth:`StagePaths.from_config`).
     ladcp_dir, ladcp_root:
         LADCP equivalents.  Present → LADCP participates in stage 1 (convert)
         and ``profiles`` (compile).
@@ -437,6 +485,8 @@ def process(
     paths = StagePaths.from_config(
         {
             "cnv_dir": cnv_dir,
+            "hex_dir": hex_dir,
+            "ctd_raw_format": ctd_raw_format,
             "ctd_root": ctd_root,
             "nc_dir": nc_dir,
             "ladcp_dir": ladcp_dir,

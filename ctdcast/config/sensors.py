@@ -111,6 +111,13 @@ ROLE_VARIABLE: dict[str, str] = {
     "altimeter": "ctd_altimeter",
 }
 
+#: Role base -> the raw-signal variable base to link when the role's measured variable is
+#: absent: a cast read from a ``.hex`` carries the SBE 43 voltage (``oxygen_raw_N``) at stage 1,
+#: and ``ctd_oxygen`` only once stage 3 derives it.
+ROLE_RAW_VARIABLE: dict[str, str] = {
+    "oxygen": "oxygen_raw",
+}
+
 #: Frequency-sensor role bases: their datcnv Slope/Offset is a drift knob applied to the
 #: derived value, so they carry ``sensor_calibration_slope``/``_offset``.  Voltage sensors
 #: (oxygen, fluorometer, …) have a native Slope/Offset that is not a drift knob and is

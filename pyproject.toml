@@ -39,6 +39,9 @@ dependencies = [
     "pyyaml>=6.0",
     "ruamel.yaml>=0.18",
     "scipy>=1.9",
+    # Sea-Bird's toolkit: decodes and converts raw SBE 911plus .hex at stage 1.  Pinned below
+    # 4 so its next API change is an upgrade ctdcast chooses, not a broken install.
+    "seabirdscientific>=3.1,<4",
 ]
 
 [project.urls]

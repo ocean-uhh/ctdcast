@@ -124,7 +124,9 @@ class Clocks:
     ``offset_seconds`` is ``nmea_utc - system_utc`` (positive when the system clock is
     slow relative to GPS), or ``None`` if either timestamp is absent or unparseable.
     ``system_dt`` / ``nmea_dt`` are the same two clocks already parsed to ``datetime`` while
-    computing the offset, exposed so callers need not re-parse the verbatim strings.
+    computing the offset, exposed so callers need not re-parse the verbatim strings;
+    ``system_upload_dt`` is ``system_upload`` parsed the same way (the PC clock at the first
+    scan of a ``.hex``).
     """
 
     system_upload: str | None = None
@@ -133,6 +135,7 @@ class Clocks:
     offset_seconds: float | None = None
     system_dt: datetime | None = None
     nmea_dt: datetime | None = None
+    system_upload_dt: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -366,6 +369,7 @@ def parse_star_block(header_text: str) -> Acquisition:
         offset_seconds=offset_seconds,
         system_dt=sys_dt,
         nmea_dt=nmea_dt,
+        system_upload_dt=_parse_sbe_time(system_upload),
     )
     return Acquisition(
         deck_unit=deck_unit,

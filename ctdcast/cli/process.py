@@ -44,7 +44,7 @@ def build_parser(
     """Build the argument parser for ``ctdcast process``."""
     _epilog = """
 Processing stages:
-  Stage 1: convert CNV files to per-cast netCDF  (reads data.cnv_dir)
+  Stage 1: convert raw CTD files to per-cast netCDF  (reads data.cnv_dir, or data.hex_dir)
   Stage 2: flag pre-soak and post-recovery records with QARTOD flag 4
   Stage 3: gross-range QC and conductivity calibration (reads processing: config)
   profiles: bin per-cast netCDF to profiles.nc on a 1-dbar grid
@@ -206,7 +206,11 @@ def run(args: argparse.Namespace) -> int:
     # and of the derived product paths.  The pre-flight checks below read it too,
     # rather than re-reading the raw keys — otherwise a config using the root keys
     # passes resolution and then fails a guard written against the old spelling.
-    paths = StagePaths.from_config(data)
+    try:
+        paths = StagePaths.from_config(data)
+    except ValueError as exc:
+        print(f"Config error: {exc}", file=sys.stderr)
+        return 1
 
     requested = stages_for(args.stage)
     names = {s.name for s in requested}
@@ -221,9 +225,10 @@ def run(args: argparse.Namespace) -> int:
     # its output, or an output without its input — is an error, not a silent
     # no-op: the wrapper would otherwise skip it and exit 0 having written nothing.
     if "stage1" in names:
-        if paths.cnv_dir and not paths.ctd_root:
+        raw_key = f"data.{paths.ctd_raw_format}_dir"
+        if paths.ctd_raw_dir and not paths.ctd_root:
             print(
-                "Config error: stage 1 has data.cnv_dir but no data.ctd_root.",
+                f"Config error: stage 1 has {raw_key} but no data.ctd_root.",
                 file=sys.stderr,
             )
             return 1
@@ -234,16 +239,17 @@ def run(args: argparse.Namespace) -> int:
             )
             return 1
         if not (
-            (paths.cnv_dir and paths.ctd_root) or (paths.ladcp_dir and paths.ladcp_root)
+            (paths.ctd_raw_dir and paths.ctd_root)
+            or (paths.ladcp_dir and paths.ladcp_root)
         ):
             print(
-                "Config error: stage 1 needs data.cnv_dir+ctd_root (CTD) or "
+                "Config error: stage 1 needs data.cnv_dir or data.hex_dir, plus ctd_root (CTD), or "
                 "data.ladcp_dir+ladcp_root (LADCP).",
                 file=sys.stderr,
             )
             return 1
-        if paths.cnv_dir and not paths.cnv_dir.exists():
-            print(f"cnv_dir not found: {paths.cnv_dir}", file=sys.stderr)
+        if paths.ctd_raw_dir and not paths.ctd_raw_dir.exists():
+            print(f"{raw_key} not found: {paths.ctd_raw_dir}", file=sys.stderr)
             return 1
         if paths.ladcp_dir and not paths.ladcp_dir.exists():
             print(f"ladcp_dir not found: {paths.ladcp_dir}", file=sys.stderr)

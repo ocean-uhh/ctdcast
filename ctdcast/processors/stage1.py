@@ -37,6 +37,7 @@ from ctdcast.config.parameters import (
 )
 from ctdcast.config.sensors import (
     FREQUENCY_ROLES,
+    ROLE_RAW_VARIABLE,
     ROLE_VARIABLE,
     SensorOverrides,
     SensorRegistry,
@@ -311,7 +312,8 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
                 timestamp=n.timestamp,
                 prepend=True,
             )
-    append_history(ds.attrs, "normalise (CNV → canonical names)", stage="stage1")
+    _source = "hex" if ds.attrs.get("input_format") == "hex" else "CNV"
+    append_history(ds.attrs, f"normalise ({_source} → canonical names)", stage="stage1")
 
     # Step 5: stamp the immutable cruise identity.  identity_attrs returns {} when
     # cruise_info is None/empty, so this is a no-op for callers that pass no config
@@ -364,7 +366,11 @@ def _sensor_variable(role: str, ds: xr.Dataset) -> str | None:
     if var_base is None:
         return None
     suffix = role[len(base) :] if role != base else ""  # "_1"/"_2" for an indexed role
-    return resolve_sensor_var(ds, f"{var_base}{suffix}")
+    var = resolve_sensor_var(ds, f"{var_base}{suffix}")
+    raw_base = ROLE_RAW_VARIABLE.get(base)
+    if raw_base is not None and var not in ds and f"{raw_base}{suffix or '_1'}" in ds:
+        return f"{raw_base}{suffix or '_1'}"
+    return var
 
 
 def _build_cast_sensor_catalog(
@@ -556,8 +562,106 @@ class _SeasenselibBackend:
         return True
 
 
+def find_xmlcon(hex_path: Path) -> Path:
+    """Return the ``.xmlcon`` beside *hex_path* with the same stem, matched case-insensitively.
+
+    Seasave's own naming mixes case (``MIXSED2_004_b.hex`` beside ``MIXSED2_004_B.XMLCON``), so
+    both the stem and the extension are compared without case.
+
+    Parameters
+    ----------
+    hex_path : pathlib.Path
+        The ``.hex`` file.
+
+    Returns
+    -------
+    pathlib.Path
+        The matching ``.xmlcon``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If there is no matching ``.xmlcon``, or more than one.
+    """
+    stem = hex_path.stem.lower()
+    matches = [
+        p
+        for p in hex_path.parent.iterdir()
+        if p.suffix.lower() == ".xmlcon" and p.stem.lower() == stem
+    ]
+    if len(matches) != 1:
+        found = ", ".join(p.name for p in matches) or "none"
+        raise FileNotFoundError(
+            f"{hex_path.name}: expected one {hex_path.stem}.xmlcon beside it (any case), found {found}"
+        )
+    return matches[0]
+
+
+class _HexBackend:
+    """CTD backend that reads SBE 911plus ``.hex`` + ``.xmlcon`` with seabirdscientific."""
+
+    def convert_cast(
+        self,
+        cnv_path: Path,
+        nc_path: Path,
+        *,
+        force: bool = False,
+        cruise_info: dict | None = None,
+        sensor_overrides: SensorOverrides | None = None,
+    ) -> bool:
+        """Convert one ``.hex`` (with the ``.xmlcon`` beside it) to a native-rate netCDF.
+
+        Parameters
+        ----------
+        cnv_path:
+            Path to the raw ``.hex`` file (the protocol's name for the raw input).
+        nc_path:
+            Desired output netCDF path.
+        force:
+            If True, overwrite an existing nc_path.
+        cruise_info:
+            The config ``cruise_info:`` mapping, stamped as cruise identity on the output.
+        sensor_overrides:
+            The config ``sensors:`` overrides, used to resolve the per-cast sensor catalog.
+
+        Returns
+        -------
+        bool
+            True if the file was written; False if skipped (already exists).
+        """
+        from ctdcast.analysis.derive import derive_salinity
+        from ctdcast.readers.hex import read_hex
+
+        if nc_path.exists() and not force:
+            return False
+        xmlcon_path = find_xmlcon(cnv_path)
+        ds = read_hex(cnv_path, xmlcon_path)
+        note = ds.attrs.pop("time_anchor_note", "")
+        ds = _normalise(ds, cruise_info=cruise_info)
+        # Practical salinity from the converted C/T/P of each line (gsw.SP_from_C), so a hex
+        # cast's stage-1 file carries salinity as a CNV cast's does; stage 3 re-derives it
+        # whenever conductivity changes.
+        ds = derive_salinity(ds)
+        ds = _build_cast_sensor_catalog(ds, sensor_overrides or SensorOverrides())
+        append_history(
+            ds.attrs,
+            f"read {cnv_path.name} + {xmlcon_path.name} with seabirdscientific "
+            f"{ds.attrs.get('seabirdscientific_version', '?')} at the native scan rate; {note}",
+            stage="stage1",
+        )
+        ds.attrs["source_hex"] = cnv_path.name
+        ds.attrs["source_xmlcon"] = xmlcon_path.name
+        ds.attrs["processing_stage"] = 1
+        _cid = cast_id_from_name(cnv_path.stem)
+        if _cid is not None:
+            ds.attrs["cast_id"] = format_cast_id(*_cid)
+        write_nc(ds, nc_path)
+        return True
+
+
 _BACKENDS: dict[str, type] = {
     "seasenselib": _SeasenselibBackend,
+    "hex": _HexBackend,
 }
 
 
@@ -567,7 +671,7 @@ def get_ctd_backend(name: str) -> CtdBackend:
     Parameters
     ----------
     name:
-        Currently only ``"seasenselib"``.
+        ``"seasenselib"`` (``.cnv``) or ``"hex"`` (SBE 911plus ``.hex`` + ``.xmlcon``).
 
     Raises
     ------

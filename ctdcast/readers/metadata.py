@@ -181,6 +181,19 @@ def _role_from_comment(rest: str) -> str | None:
     return f"{base}_{index}" if base in INDEXED_ROLES else base
 
 
+def _xmlcon_from_raw_metadata(raw_metadata: str | None) -> str | None:
+    """Return the ``.xmlcon`` text a ``.hex`` cast's ``raw_metadata`` carries, or None."""
+    if not raw_metadata:
+        return None
+    try:
+        envelope = json.loads(raw_metadata)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    blocks = envelope.get("blocks") if isinstance(envelope, dict) else None
+    text = blocks.get("xmlcon") if isinstance(blocks, dict) else None
+    return text if isinstance(text, str) and text else None
+
+
 def parse_sensor_channels(ds: xr.Dataset) -> list[dict]:
     """Return one full descriptor per sensor channel in *ds*, from the raw header.
 
@@ -190,12 +203,22 @@ def parse_sensor_channels(ds: xr.Dataset) -> list[dict]:
     canonical ``role`` and normalises the ``calibration_date``. ``Free`` (unused) channels
     get ``role = None`` and an empty serial.
 
-    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent. Each dict has
-    ``channel``, ``element``, ``sensor_id``, ``serial``, ``calibration_date`` (normalised),
-    ``slope``, ``offset`` and ``role`` (canonical role or ``None``).
+    A cast read from a ``.hex`` has no ``<Sensors>`` block in its header; its sensors come
+    from the ``.xmlcon`` carried in ``raw_metadata``, rendered in the same record shape by
+    :func:`ctdcast.readers.xmlcon.sensor_records`.
+
+    Returns ``[]`` if ``raw_metadata`` carries neither a header sensor block nor an
+    ``.xmlcon``. Each dict has ``channel``, ``element``, ``sensor_id``, ``serial``,
+    ``calibration_date`` (normalised), ``slope``, ``offset`` and ``role`` (canonical role or
+    ``None``).
     """
-    header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
+    raw = ds.attrs.get("raw_metadata")
+    header = header_from_raw_metadata(raw)
     records = parse_sensor_block(header or "")
+    if not records and (xmlcon := _xmlcon_from_raw_metadata(raw)):
+        from ctdcast.readers.xmlcon import parse_xmlcon, sensor_records
+
+        records = sensor_records(parse_xmlcon(xmlcon))
     for r in records:
         comment = r.pop("comment")
         r["role"] = _role_from_comment(comment) if comment else None

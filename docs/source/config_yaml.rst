@@ -16,12 +16,13 @@ only the second kind is safe to delete and regenerate:
    :widths: 22 78
 
    * - Inputs — read, never written
-     - ``cnv_dir``, ``ladcp_dir``, ``gebco_nc``, ``groupings_yaml``
+     - ``cnv_dir``, ``hex_dir``, ``ladcp_dir``, ``gebco_nc``, ``groupings_yaml``
    * - Output roots — created and written by ctdcast
      - ``ctd_root``, ``ladcp_root``
 
-Reading raw Sea-Bird ``.hex`` is planned; it will arrive as a further input key
-(``hex_dir``) beside ``cnv_dir``, not as a change to the roots.
+A cruise's raw CTD input is either its CNV files (``cnv_dir``) or its raw SBE 911plus
+``.hex`` files (``hex_dir``), never both: ``ctd_raw_format`` names which one stage 1
+reads, so a stray directory never changes what a cruise is read from.
 
 .. list-table::
    :header-rows: 1
@@ -43,7 +44,26 @@ Reading raw Sea-Bird ``.hex`` is planned; it will arrive as a further input key
    * - ``cnv_dir``
      - no
      - Directory of calibrated CNV files, one per cast — an input ctdcast only
-       reads.  Required to run stage 1.
+       reads.  Stage 1 needs ``cnv_dir`` or ``hex_dir``.
+   * - ``hex_dir``
+     - no
+     - Directory of raw SBE 911plus ``.hex`` files, each with its ``.xmlcon`` beside
+       it (same name, any case: ``MIXSED2_004_b.hex`` pairs with
+       ``MIXSED2_004_B.XMLCON``).  Stage 1 reads them at the native 24 Hz with
+       Sea-Bird's ``seabirdscientific`` toolkit, converting temperature,
+       conductivity (mS/cm), pressure, and the ECO, altimeter and C-Star channels
+       with the ``.xmlcon`` coefficients, Slope and Offset.  Every voltage channel
+       is also kept as raw volts (``volt<N>_raw``; an SBE 43 as ``oxygen_raw_<N>``),
+       with a quick-look ``sbe_oxygen_<N>`` until stage 3 derives ``ctd_oxygen``.
+       Time is the header's ``NMEA UTC (Time)`` plus one scan interval per scan,
+       falling back to the PC upload time (with a warning) when NMEA is missing
+       or more than an hour off.  No Sea-Bird processing (filters, edits, cell
+       thermal mass) is applied: a hex cast's profiles will not match a processed
+       CNV's until stage 3 applies those steps.
+   * - ``ctd_raw_format``
+     - no
+     - ``cnv`` or ``hex``: which raw input stage 1 reads.  May be left out when only
+       one of ``cnv_dir`` / ``hex_dir`` is set; required when both are.
    * - ``ladcp_dir``
      - no
      - Directory of processed LADCP ``.mat`` files, one per cast — an input
