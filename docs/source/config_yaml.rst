@@ -261,11 +261,16 @@ devices in one role.
        fluorometer:                     # sharpen the generic default to the combined unit
          sensor_model: "WET Labs ECO FLNTU(RT)D"
          sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"
+         model_source: operator
        turbidity:
          sensor_model: "WET Labs ECO FLNTU(RT)D"
          sensor_model_vocabulary: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1531/"
+         model_source: operator
      aliases:
-       "3508": "FLNTURTD-3508"          # one device recorded under two serial spellings
+       # the value is the canonical serial spelling and becomes the catalog entry
+       # name, so both recorded spellings fold onto SENSOR_FLUOROMETER_3508 /
+       # SENSOR_TURBIDITY_3508 rather than the long ..._FLNTURTD_3508 names
+       "FLNTURTD-3508": "3508"
 
 Roles: ``temperature_1``/``_2``, ``conductivity_1``/``_2``, ``oxygen_1``/``_2``,
 ``pressure``, ``fluorometer``, ``turbidity``, ``transmissometer``, ``ph``,

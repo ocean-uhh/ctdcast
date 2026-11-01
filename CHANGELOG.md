@@ -26,6 +26,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - LADCP report panels read each cast once: `plotters.ladcp.ladcp_section_grid` and `ladcp_overview_grid` load, grid and scale the data once per page, shared by the U and V panels (section and time-series pages previously read every `.mat` file and repeated the GEBCO lookup twice). The cruise LADCP overview is drawn by the new `draw_ladcp_overview_fig`, so its `source:` caption names a draw function; `draw_ladcp_section_fig` takes an optional `grid=`. Same pixels.
 - Section, time-series and cruise-summary pages draw their fixed-width figures (section and location maps, T–S diagrams and histograms, the all-sections maps) at the width of the slot they are shown in; each page names those slots once. No figure output changes.
 - `plotters.maps.draw_section_map_fig` and `plotters.timeseries.draw_timeseries_fig` take the figure width as `width_in`, like the other draw functions.
+- Docs: the `sensors` block example (`config_yaml.rst` and `config_demo.yaml`) writes the serial alias as `"FLNTURTD-3508": "3508"` — the value is the canonical serial and becomes the catalog entry name — and adds `model_source: operator` to the FLNTU overrides, so a combined FLNTU(RT)D yields the short `SENSOR_FLUOROMETER_3508` / `SENSOR_TURBIDITY_3508` names rather than the long `…_FLNTURTD_3508` form.
 
 ### Fixed
 
