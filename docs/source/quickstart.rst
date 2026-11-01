@@ -40,6 +40,9 @@ Python 3.11–3.14 is required.  Create a virtual environment and install from s
    source venv/bin/activate        # macOS / Linux
    pip install -e .
 
+Land coastlines on the interactive maps need the optional ``maps`` extra (cartopy and
+shapely): ``pip install -e ".[maps]"``.  Without it the maps draw over a lat/lon graticule.
+
 To verify the installation, run the bundled demo against the committed fixture casts:
 
 .. code-block:: bash
