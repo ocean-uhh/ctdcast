@@ -65,42 +65,28 @@ _RE_SENSOR_SPAN = re.compile(
 
 @dataclass(frozen=True)
 class XmlconSensor:
-    """One ``<Sensor>`` of an ``.xmlcon``.
+    """One ``<Sensor>`` of an ``.xmlcon``."""
 
-    Attributes
-    ----------
-    index : int
-        The ``.xmlcon`` index, 0-based.
-    element : str
-        The sensor's element tag, e.g. ``"TemperatureSensor"``.
-    sensor_id : str
-        Sea-Bird's ``SensorID`` for the element.
-    serial : str
-        The serial number as written (may be empty).
-    calibration_date : str
-        The calibration date as written (may be empty).
-    kind : str
-        ``"frequency"`` or ``"voltage"``.
-    number : int
-        The channel number within its kind: frequency 0–4, voltage 0–7.
-    comment : str
-        The quantity text Seasave would write in the CNV sensor comment, e.g.
-        ``"Temperature, 2"``.
-    body : str
-        The sensor element's XML, verbatim, with Unix newlines.
-    node : xml.etree.ElementTree.Element
-        The parsed sensor element (the child of ``<Sensor>``).
-    """
-
+    #: The ``.xmlcon`` index, 0-based.
     index: int
+    #: The sensor's element tag, e.g. ``"TemperatureSensor"``.
     element: str
+    #: Sea-Bird's ``SensorID`` for the element.
     sensor_id: str
+    #: The serial number as written (may be empty).
     serial: str
+    #: The calibration date as written (may be empty).
     calibration_date: str
+    #: ``"frequency"`` or ``"voltage"``.
     kind: str
+    #: The channel number within its kind: frequency 0–4, voltage 0–7.
     number: int
+    #: The quantity text Seasave would write in the CNV sensor comment, e.g. ``"Temperature,
+    #: 2"``.
     comment: str
+    #: The sensor element's XML, verbatim, with Unix newlines.
     body: str
+    #: The parsed sensor element (the child of ``<Sensor>``).
     node: ET.Element = field(repr=False, compare=False)
 
     def value(self, tag: str) -> float:
@@ -145,38 +131,29 @@ class XmlconSensor:
 
 @dataclass(frozen=True)
 class XmlconInstrument:
-    """The parsed ``<Instrument>`` of an ``.xmlcon``.
+    """The parsed ``<Instrument>`` of an ``.xmlcon``."""
 
-    Attributes
-    ----------
-    name : str
-        The instrument name, e.g. ``"SBE 911plus/917plus CTD"``.
-    instrument_type : int
-        Sea-Bird's ``Instrument Type`` code (8 is the 911plus).
-    frequency_channels_suppressed : int
-        Number of frequency channels suppressed (0–2).
-    voltage_words_suppressed : int
-        Number of voltage words suppressed (0–4); each word is two channels.
-    scans_to_average : int
-        Scans averaged by the deck unit.
-    nmea_position_added, nmea_time_added, nmea_depth_added : bool
-        What the deck unit appends to each scan from the ship's NMEA feed.
-    scan_time_added, surface_par_added : bool
-        Whether the PC's scan time or a surface PAR voltage is appended to each scan.
-    sensors : tuple of XmlconSensor
-        The sensors, in index order.
-    """
-
+    #: The instrument name, e.g. ``"SBE 911plus/917plus CTD"``.
     name: str
+    #: Sea-Bird's ``Instrument Type`` code (8 is the 911plus).
     instrument_type: int
+    #: Number of frequency channels suppressed (0–2).
     frequency_channels_suppressed: int
+    #: Number of voltage words suppressed (0–4); each word is two channels.
     voltage_words_suppressed: int
+    #: Scans averaged by the deck unit.
     scans_to_average: int
+    #: Whether the deck unit appends the ship's NMEA position to each scan.
     nmea_position_added: bool
+    #: Whether the deck unit appends the ship's NMEA time to each scan.
     nmea_time_added: bool
+    #: Whether the deck unit appends the ship's NMEA depth to each scan.
     nmea_depth_added: bool
+    #: Whether the PC's scan time is appended to each scan.
     scan_time_added: bool
+    #: Whether a surface PAR voltage is appended to each scan.
     surface_par_added: bool
+    #: The sensors, in index order.
     sensors: tuple[XmlconSensor, ...]
 
     @property

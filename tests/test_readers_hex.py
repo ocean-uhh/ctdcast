@@ -1,7 +1,7 @@
 """Tests for the SBE 911plus .hex/.xmlcon readers and the stage-1 hex backend.
 
 Real data only.  The committed fixture is the first 3,600 scans (150 s, 7-98 dbar) of OdB cast
-MIXSED2_011 with its acquisition .xmlcon (tests/fixtures/hex_slice/).  Full-length casts live in
+MIXSED2_011 with its acquisition .xmlcon and bottle log (tests/fixtures/hex_slice/).  Full-length casts live in
 tests/fixtures/hex/, which is git-ignored; tests that need them skip when it is empty.  The
 committed CNV fixtures for the same casts are the Sea-Bird reference.
 """
@@ -341,3 +341,33 @@ def test_cast_page_skips_stability_at_native_rate(slice_ds):
     assert reason is not None and "24 Hz" in reason
     with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as binned:
         assert _native_rate_reason(SimpleNamespace(ds=binned), "N²") is None
+
+
+def test_stage1_records_bottle_log_check_when_present(tmp_path):
+    """A .bl beside the .hex is checked and recorded; bottle logs are optional."""
+    raw = tmp_path / "raw"
+    shutil.copytree(SLICE, raw)  # the slice keeps cast 011's real .bl
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stage1(raw, tmp_path / "ctd", backend="hex", pattern="*.[hH][eE][xX]")
+    with xr.open_dataset(
+        next((tmp_path / "ctd").rglob("*.nc")), engine="netcdf4"
+    ) as ds:
+        assert ds.attrs["time_bottle_log_check"].startswith(
+            "bottle-log check passed: 6 bottle(s)"
+        )
+        assert "bottle-log check passed" in ds.attrs["history"]
+
+
+def test_stage1_without_bottle_log_is_silent(tmp_path):
+    raw = tmp_path / "raw"
+    shutil.copytree(SLICE, raw)
+    (raw / "MIXSED2_011.bl").unlink()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        stage1(raw, tmp_path / "ctd", backend="hex", pattern="*.[hH][eE][xX]")
+    assert not any("bottle" in str(w.message) for w in caught)
+    with xr.open_dataset(
+        next((tmp_path / "ctd").rglob("*.nc")), engine="netcdf4"
+    ) as ds:
+        assert "time_bottle_log_check" not in ds.attrs

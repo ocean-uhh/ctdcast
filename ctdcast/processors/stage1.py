@@ -562,6 +562,50 @@ class _SeasenselibBackend:
         return True
 
 
+def _siblings(path: Path, suffix: str) -> list[Path]:
+    """Files beside *path* with the same stem and extension *suffix*, both compared without case."""
+    stem = path.stem.lower()
+    return [
+        p
+        for p in path.parent.iterdir()
+        if p.suffix.lower() == suffix and p.stem.lower() == stem
+    ]
+
+
+def _bottle_log_note(hex_path: Path, ds: xr.Dataset) -> str | None:
+    """Check the cast's ``.bl`` against its scan clock, if it has one; None when it has none.
+
+    Bottle logs are optional: a cast without one is read without comment.  The check is
+    recorded either way it comes out, and a failure also warns: it means the upload time is
+    not the first scan, or scans were dropped, so the time axis cannot be trusted.
+    """
+    from ctdcast.config.cnv_header import header_from_raw_metadata, parse_star_block
+    from ctdcast.readers.hex import check_bottle_log
+
+    logs = _siblings(hex_path, ".bl")
+    if len(logs) != 1:
+        return None
+    header = header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
+    upload = parse_star_block(header).clocks.system_upload_dt
+    if upload is None:
+        return None
+    check = check_bottle_log(
+        logs[0], upload, float(ds.attrs["sample_interval_seconds"])
+    )
+    if check.n_bottles == 0:
+        return None
+    verdict = "passed" if check.passed else "FAILED"
+    note = (
+        f"bottle-log check {verdict}: {check.n_bottles} bottle(s) in {logs[0].name}, fire times "
+        f"within {check.max_deviation_seconds:.2f} s of upload time + scan x interval"
+    )
+    if not check.passed:
+        warnings.warn(
+            f"{hex_path.name}: {note}; the time axis may be wrong", stacklevel=2
+        )
+    return note
+
+
 def find_xmlcon(hex_path: Path) -> Path:
     """Return the ``.xmlcon`` beside *hex_path* with the same stem, matched case-insensitively.
 
@@ -583,12 +627,7 @@ def find_xmlcon(hex_path: Path) -> Path:
     FileNotFoundError
         If there is no matching ``.xmlcon``, or more than one.
     """
-    stem = hex_path.stem.lower()
-    matches = [
-        p
-        for p in hex_path.parent.iterdir()
-        if p.suffix.lower() == ".xmlcon" and p.stem.lower() == stem
-    ]
+    matches = _siblings(hex_path, ".xmlcon")
     if len(matches) != 1:
         found = ", ".join(p.name for p in matches) or "none"
         raise FileNotFoundError(
@@ -649,6 +688,9 @@ class _HexBackend:
             f"{ds.attrs.get('seabirdscientific_version', '?')} at the native scan rate; {note}",
             stage="stage1",
         )
+        if (bottle_note := _bottle_log_note(cnv_path, ds)) is not None:
+            ds.attrs["time_bottle_log_check"] = bottle_note
+            append_history(ds.attrs, bottle_note, stage="stage1")
         ds.attrs["source_hex"] = cnv_path.name
         ds.attrs["source_xmlcon"] = xmlcon_path.name
         ds.attrs["processing_stage"] = 1

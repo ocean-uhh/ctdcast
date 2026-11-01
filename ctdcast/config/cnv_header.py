@@ -389,6 +389,26 @@ def header_from_raw_metadata(raw_metadata: str | None) -> str | None:
     string is not required to match, so a schema bump degrades gracefully rather than
     raising — only a change to the envelope *shape* yields ``None``.
     """
+    return raw_metadata_block(raw_metadata, "header")
+
+
+def raw_metadata_block(raw_metadata: str | None, name: str) -> str | None:
+    """Return one named text block of a stage-1 ``raw_metadata`` envelope, or None.
+
+    Parameters
+    ----------
+    raw_metadata : str or None
+        The ``raw_metadata`` attribute (JSON).
+    name : str
+        The block: ``"header"`` (CNV or ``.hex`` header) or ``"xmlcon"`` (a ``.hex``
+        cast's ``.xmlcon``).
+
+    Returns
+    -------
+    str or None
+        The block's text; ``None`` if the attribute is absent, not JSON, or has no
+        non-empty string under ``blocks.<name>``.
+    """
     if not raw_metadata:
         return None
     try:
@@ -400,8 +420,8 @@ def header_from_raw_metadata(raw_metadata: str | None) -> str | None:
     blocks = envelope.get("blocks")
     if not isinstance(blocks, dict):
         return None
-    header = blocks.get("header")
-    return header if isinstance(header, str) and header else None
+    block = blocks.get(name)
+    return block if isinstance(block, str) and block else None
 
 
 def parse_start_time(header_text: str) -> StartTime:

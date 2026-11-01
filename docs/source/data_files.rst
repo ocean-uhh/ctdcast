@@ -106,12 +106,26 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``spar``
      - Surface PAR in µmol photons m⁻² s⁻¹ (deck-mounted reference sensor).
    * - ``volt{N}_raw``
-     - Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. ``N`` is the zero-based voltage channel index.
+     - Raw voltage (V) for sensors whose conversion is not implemented (e.g. pH) or whose calibration coefficients are absent. ``N`` is the zero-based voltage channel index. A cast read from ``.hex`` keeps every voltage channel this way, converted or not.
+   * - ``oxygen_raw_1`` / ``oxygen_raw_2``
+     - Raw SBE 43 oxygen sensor voltage (V); the input stage 3 derives ``ctd_oxygen`` from.
+   * - ``sbe_oxygen_1`` / ``sbe_oxygen_2``
+     - ``.hex`` casts only: quick-look SBE 43 oxygen in µmol kg⁻¹, converted at read time by ctdcast with Sea-Bird's ``seabirdscientific`` toolkit (uncorrected T/S, no tau or hysteresis correction). Dropped at stage 2 with the other ``sbe_`` channels.
+   * - ``pump_status``, ``bottom_contact_status``, ``bottle_confirm_status``, ``modem_status``, ``data_integrity``
+     - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter.
+
+A cast read from ``.hex`` is at the native scan rate (24 Hz on a 911plus), with no
+Sea-Bird processing applied; its conductivity, temperature and pressure carry the
+``.xmlcon`` Slope and Offset they were converted with (``xmlcon_slope``,
+``xmlcon_offset``) and the conversion function (``conversion_method``).
 
 Global attributes: cruise identity (``cruise``, ``platform_*``, ``expocode``),
 ``raw_filename``, ``raw_metadata``, a stamped ``history``, and the upstream
 correction ledger (``sbe_*``, ``correction_*``, ``time_coordinate_source``,
-``time_clock_offset_seconds``). Each is described in the table below.
+``time_clock_offset_seconds``). Each is described in the table below. A ``.hex`` cast
+adds ``input_format`` (``"hex"``), ``sample_interval_seconds``,
+``seabirdscientific_version``, and ``time_bottle_log_check`` when a ``.bl`` bottle log was
+beside it; its ``raw_metadata`` holds the ``.hex`` header and the ``.xmlcon`` verbatim.
 
 File identity and lineage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,7 +142,8 @@ from — so the chain back to the raw CNV is readable from any single output.
   was read. In ``profiles.nc`` it is a per-``N_PROF`` variable, naming the source cast file
   per profile (the compiled file has its own ``tracking_id`` global attribute).
 - Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
-  attribute instead — ``source_cnv`` for CTD, ``source_mat`` for LADCP.
+  attribute instead — ``source_cnv`` for a CNV cast, ``source_hex`` and ``source_xmlcon``
+  for a ``.hex`` cast, ``source_mat`` for LADCP.
 - ``processing_stage`` (``1``/``2``/``3``) records the stage in the file itself, not only in
   the filename, so a file copied out of its stage directory still declares what it is — the
   form a cross-package consumer (caldip) reads.

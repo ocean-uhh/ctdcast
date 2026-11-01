@@ -93,17 +93,11 @@ _STATUS_VARS = {
 
 @dataclass(frozen=True)
 class HexFile:
-    """A ``.hex`` split into its header and scan lines.
+    """A ``.hex`` split into its header and scan lines."""
 
-    Attributes
-    ----------
-    header : str
-        The ``*`` header lines up to and including ``*END*``, Unix newlines.
-    lines : list of str
-        One hexadecimal string per scan, stripped.
-    """
-
+    #: The ``*`` header lines up to and including ``*END*``, Unix newlines.
     header: str
+    #: One hexadecimal string per scan, stripped.
     lines: list[str]
 
 
@@ -253,21 +247,14 @@ def _cal_attrs(sensor: XmlconSensor, method: str, **extra: object) -> dict:
 
 @dataclass(frozen=True)
 class TimeAnchor:
-    """The time of a cast's first scan and where it came from.
+    """The time of a cast's first scan and where it came from."""
 
-    Attributes
-    ----------
-    t0 : datetime
-        Time of the first scan (naive, UTC or PC clock as ``source`` says).
-    source : str
-        The ``time_coordinate_source`` wording, in Sea-Bird's bracket vocabulary:
-        ``"NMEA time, header"`` or ``"System UTC, first data scan"``.
-    note : str
-        Why this anchor was chosen, for ``history``.
-    """
-
+    #: Time of the first scan (naive, UTC or PC clock as ``source`` says).
     t0: datetime
+    #: The ``time_coordinate_source`` wording, in Sea-Bird's bracket vocabulary: ``"NMEA time,
+    #: header"`` or ``"System UTC, first data scan"``.
     source: str
+    #: Why this anchor was chosen, for ``history``.
     note: str
 
 
@@ -331,20 +318,13 @@ def time_anchor(
 
 @dataclass(frozen=True)
 class BottleCheck:
-    """Result of checking bottle-fire times against bottle-fire scan numbers.
+    """Result of checking bottle-fire times against bottle-fire scan numbers."""
 
-    Attributes
-    ----------
-    n_bottles : int
-        Number of bottle lines read.
-    max_deviation_seconds : float
-        Largest ``|fire time − (upload time + scan × interval)|``, in seconds.
-    passed : bool
-        Whether every bottle is within the tolerance.
-    """
-
+    #: Number of bottle lines read.
     n_bottles: int
+    #: Largest ``|fire time − (upload time + scan × interval)|``, in seconds.
     max_deviation_seconds: float
+    #: Whether every bottle is within the tolerance.
     passed: bool
 
 

@@ -173,6 +173,10 @@ include = ["ctdcast*"]
 # first pass -- so 100 is the seed, not an aspiration. 95 would have licensed an
 # untested branch in the module every other step of the stack rests on.
 "ctdcast/processors/stage_layout.py" = 100
+# New in proc/stage1-hex; measured from the committed slice only (the full casts are
+# git-ignored, so CI never sees them): hex 92.4, xmlcon 92.3.
+"ctdcast/readers/hex.py"             = 92
+"ctdcast/readers/xmlcon.py"          = 92
 # Pure functions over header text, no I/O, measured 100% (93 stmts, 0 missing). 100 is
 # the seed, not an aspiration -- the deck-unit advance it recovers is the load-bearing
 # finding of the upstream-provenance work, so no branch may go untested.
