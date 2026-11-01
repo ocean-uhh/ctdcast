@@ -92,11 +92,11 @@ def draw_ts_density_fig(
         Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
         are derived here (TEOS-10) and the downcast is selected.
     ladcp_path : pathlib.Path, optional
-        LADCP ``.mat`` file for this cast.  None draws the single-column profile
-        at ``cfg.profile_figsize``; a path draws a second column with U/V, or a
-        placeholder when the file does not exist.
+        LADCP ``.mat`` file for this cast.  A path draws a second column with U/V, or a
+        placeholder when the file does not exist.  None keeps the same two-column layout
+        and leaves the LADCP column empty, so the CTD panel has the same width either way.
     cfg : ReportConfig
-        Report configuration; ``clean_spines`` and ``profile_figsize`` are used.
+        Report configuration; ``clean_spines`` is used.
 
     Returns
     -------
@@ -110,40 +110,10 @@ def draw_ts_density_fig(
     sa = ds_down["absolute_salinity"].values
     sig = ds_down["sigma0"].values
 
-    if ladcp_path is None:
-        # Single-column: CT/SA/σ₀ triple-axis profile only
-        fig, ax0 = plt.subplots(figsize=cfg.profile_figsize)
-        ax1 = ax0.twiny()
-        ax2 = ax0.twiny()
-        (l0,) = ax0.plot(ct, p, color=_TS_COLORS[0], label="CT")
-        (l1,) = ax1.plot(sa, p, color=_TS_COLORS[1], label="SA")
-        (l2,) = ax2.plot(sig, p, color=_TS_COLORS[2], label="σ₀")
-        # ax1/ax2 use the top spine — restore visibility even if cfg.clean_spines.
-        ax2.spines["top"].set_position(("axes", 1.12))
-        ax1.spines["top"].set_visible(True)
-        ax2.spines["top"].set_visible(True)
-        for ax, line in zip((ax0, ax1, ax2), (l0, l1, l2), strict=True):
-            ax.xaxis.label.set_color(line.get_color())
-            ax.tick_params(axis="x", colors=line.get_color())
-            ax.spines["top"].set_edgecolor(line.get_color())
-        for ax, vals in ((ax0, ct), (ax1, sa), (ax2, sig)):
-            fin = vals[np.isfinite(vals)]
-            if len(fin) > 1:
-                lo, hi = float(np.percentile(fin, 1)), float(np.percentile(fin, 99))
-                pad = max((hi - lo) * 0.05, 1e-6)
-                ax.set_xlim(lo - pad, hi + pad)
-        ax0.set_ylim(float(np.nanmax(p)), 0)
-        ax0.set_ylabel(vlabel("pressure"))
-        ax0.set_xlabel(vlabel("conservative_temperature"), color=_TS_COLORS[0])
-        ax1.set_xlabel(vlabel("absolute_salinity"), color=_TS_COLORS[1])
-        ax2.set_xlabel(vlabel("sigma0"), color=_TS_COLORS[2])
-        ax0.grid(True)
-        if cfg.clean_spines:
-            ax0.spines["right"].set_visible(False)
-        return fig
-
-    # Two-column: CT/SA/σ₀ on left + LADCP U/V on right
-    ladcp_available = ladcp_path.exists()
+    # Two-column: CT/SA/σ₀ on left + LADCP U/V on right.  Without LADCP the layout is the
+    # same and the right-hand axis is left undrawn, so the CTD panel is the same width on
+    # every cast page whether or not the cruise has LADCP.
+    ladcp_available = ladcp_path is not None and ladcp_path.exists()
     z: np.ndarray | None = None
     u: np.ndarray | None = None
     v: np.ndarray | None = None
@@ -189,8 +159,10 @@ def draw_ts_density_fig(
     if cfg.clean_spines:
         ax_ctd.spines["right"].set_visible(False)
 
-    # Right panel: LADCP data or placeholder text
-    if ladcp_available and u is not None and z is not None and v is not None:
+    # Right panel: LADCP data, a placeholder, or (no LADCP configured) nothing
+    if ladcp_path is None:
+        ax_ladcp.set_visible(False)
+    elif ladcp_available and u is not None and z is not None and v is not None:
         ax_ladcp.plot(u, z, color=_LADCP_U_COLOR, label="U (E+)")
         ax_ladcp.plot(v, z, color=_LADCP_V_COLOR, label="V (N+)")
         ax_ladcp.axvline(0, color="0.5", lw=pen("thinner"), ls="--")
