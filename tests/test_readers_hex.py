@@ -45,7 +45,9 @@ INTERVAL = 1 / 24
 def _full(name: str) -> Path:
     path = FULL / name
     if not path.exists():
-        pytest.skip(f"full-length hex fixture {name} not in {FULL} (git-ignored, local only)")
+        pytest.skip(
+            f"full-length hex fixture {name} not in {FULL} (git-ignored, local only)"
+        )
     return path
 
 
@@ -71,7 +73,10 @@ def test_xmlcon_channel_layout():
         ("frequency", 4),
         ("voltage", 0),
     ]
-    assert [s.comment for s in inst.sensors[3:5]] == ["Temperature, 2", "Conductivity, 2"]
+    assert [s.comment for s in inst.sensors[3:5]] == [
+        "Temperature, 2",
+        "Conductivity, 2",
+    ]
     assert inst.nmea_position_added and not inst.nmea_time_added
 
 
@@ -117,7 +122,9 @@ def test_slice_scans_and_time_axis(slice_ds):
     t = slice_ds["time"].values
     assert t[0] == np.datetime64("2026-07-12T02:40:10")  # the header's NMEA UTC (Time)
     # Built forward from the first scan, so the last scan is exactly (n - 1) intervals later.
-    assert (t[-1] - t[0]) / np.timedelta64(1, "ns") == pytest.approx((N_SLICE - 1) * INTERVAL * 1e9)
+    assert (t[-1] - t[0]) / np.timedelta64(1, "ns") == pytest.approx(
+        (N_SLICE - 1) * INTERVAL * 1e9
+    )
 
 
 def test_slice_conductivity_is_mS_per_cm_without_ctm(slice_ds):
@@ -125,9 +132,13 @@ def test_slice_conductivity_is_mS_per_cm_without_ctm(slice_ds):
     for line in (1, 2):
         c = slice_ds[f"conductivity_{line}"]
         assert c.attrs["units"] == "mS cm-1"
-        assert 33.0 < float(c.min()) and float(c.max()) < 36.5
-        sp = gsw.SP_from_C(c.values, slice_ds[f"ctd_temperature_{line}"].values, slice_ds.pressure.values)
-        assert 34.0 < np.nanmin(sp) and np.nanmax(sp) < 35.2
+        assert float(c.min()) > 33.0 and float(c.max()) < 36.5
+        sp = gsw.SP_from_C(
+            c.values,
+            slice_ds[f"ctd_temperature_{line}"].values,
+            slice_ds.pressure.values,
+        )
+        assert np.nanmin(sp) > 34.0 and np.nanmax(sp) < 35.2
 
 
 def test_slice_calibration_attrs(slice_ds):
@@ -142,8 +153,16 @@ def test_slice_calibration_attrs(slice_ds):
 def test_slice_voltage_channels_kept_raw(slice_ds):
     for n in (0, 1, 3, 4, 5, 6, 7):
         assert slice_ds[f"volt{n}_raw"].attrs["units"] == "V"
-    assert "oxygen_raw_1" in slice_ds and "volt2_raw" not in slice_ds  # SBE 43 on volt 2
-    for name in ("ctd_fluor", "ctd_turbidity", "ctd_altimeter", "transmissometer", "sbe_oxygen_1"):
+    assert (
+        "oxygen_raw_1" in slice_ds and "volt2_raw" not in slice_ds
+    )  # SBE 43 on volt 2
+    for name in (
+        "ctd_fluor",
+        "ctd_turbidity",
+        "ctd_altimeter",
+        "transmissometer",
+        "sbe_oxygen_1",
+    ):
         assert name in slice_ds
 
 
@@ -156,7 +175,10 @@ def test_slice_against_sea_bird_cnv_mixed_layer(slice_ds):
     with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as cnv:
         cp = cnv.pressure.values
         down = np.arange(int(np.argmax(cp)) + 1)
-        ref = {v: cnv[v].values for v in ("ctd_temperature_1", "conductivity_1", "conductivity_2")}
+        ref = {
+            v: cnv[v].values
+            for v in ("ctd_temperature_1", "conductivity_1", "conductivity_2")
+        }
     p = slice_ds.pressure.values
     turn = int(np.argmax(p))
     diffs: dict[str, list[float]] = {v: [] for v in ref}
@@ -168,15 +190,21 @@ def test_slice_against_sea_bird_cnv_mixed_layer(slice_ds):
         for v in ref:
             if v.startswith("conductivity") and abs(dtdz[k]) >= 0.01:
                 continue
-            diffs[v].append(ref[v][i] - float(slice_ds[v].values[: turn + 1][sel].mean()))
+            diffs[v].append(
+                ref[v][i] - float(slice_ds[v].values[: turn + 1][sel].mean())
+            )
     assert abs(np.median(diffs["ctd_temperature_1"])) < 0.001
     assert abs(np.median(diffs["conductivity_1"])) < 0.002
-    assert abs(np.median(diffs["conductivity_2"])) < 0.005  # includes the 0.99993682 slope (~-0.0022)
+    assert (
+        abs(np.median(diffs["conductivity_2"])) < 0.005
+    )  # includes the 0.99993682 slope (~-0.0022)
 
 
 def test_layout_mismatch_is_refused(tmp_path):
     text = (SLICE / "MIXSED2_011.hex").read_bytes()
-    bad = text.replace(b"Number of Bytes Per Scan = 37", b"Number of Bytes Per Scan = 36")
+    bad = text.replace(
+        b"Number of Bytes Per Scan = 37", b"Number of Bytes Per Scan = 36"
+    )
     (tmp_path / "MIXSED2_011.hex").write_bytes(bad)
     with pytest.raises(ValueError, match="bytes per scan"):
         read_hex(tmp_path / "MIXSED2_011.hex", SLICE / "MIXSED2_011.XMLCON")
@@ -301,3 +329,15 @@ def test_full_cast_000_other_xmlcon_version():
     assert ds["volt4_raw"].attrs["sbe_sensor_element"] == "AltimeterSensor"
     assert ds["volt5_raw"].attrs["sbe_sensor_element"] == "WET_LabsCStar"
     assert ds["conductivity_1"].attrs["sensor_serial_number"] == "3345"
+
+
+def test_cast_page_skips_stability_at_native_rate(slice_ds):
+    """N² and Turner angle are not drawn from unbinned 24 Hz scans; a binned cast draws them."""
+    from types import SimpleNamespace
+
+    from ctdcast.reports.cast import _native_rate_reason
+
+    reason = _native_rate_reason(SimpleNamespace(ds=slice_ds), "N² and Turner angle")
+    assert reason is not None and "24 Hz" in reason
+    with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as binned:
+        assert _native_rate_reason(SimpleNamespace(ds=binned), "N²") is None
