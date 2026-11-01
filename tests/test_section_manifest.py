@@ -71,7 +71,7 @@ def test_computed_slot_returns_a_slots_key() -> None:
 
 def _render(tmp_path: Path) -> str:
     """Render the first demo section and return its HTML."""
-    secs = yaml.safe_load(_SECTIONS.read_text())
+    secs = yaml.safe_load(_SECTIONS.read_text(encoding="utf-8"))
     secs = secs.get("sections", secs)
     name, cfg = next(iter(secs.items()))
     out = generate_section_page(
@@ -138,7 +138,7 @@ def test_vmin_override_by_suffixed_name_reaches_both_pages(monkeypatch, tmp_path
 
     override = {"ctd_oxygen_1": 50.0}
 
-    secs = yaml.safe_load(_SECTIONS.read_text())
+    secs = yaml.safe_load(_SECTIONS.read_text(encoding="utf-8"))
     secs = secs.get("sections", secs)
     name, cfg = next(iter(secs.items()))
     generate_section_page(

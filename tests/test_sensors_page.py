@@ -96,7 +96,7 @@ def test_inventory_carries_slope_and_offset(fixture_profiles):
 
 
 def test_sensors_page_renders_preferred_and_calibration(fixture_profiles, tmp_path):
-    html = generate_sensors_page(fixture_profiles, tmp_path / "s.html").read_text()
+    html = generate_sensors_page(fixture_profiles, tmp_path / "s.html").read_text(encoding="utf-8")
     assert 'id="s-preferred"' in html and "not declared" in html
     assert "Amber row: a cast with two T/C pairs" in html
     assert 'style="background:var(--warn-bg)"' in html
@@ -131,7 +131,7 @@ def test_fully_declared_cast_has_no_amber_and_no_caption(all_declared, tmp_path)
     (run,) = read_sensor_tables(profiles)["preferred"]
     assert run["pair"] == "primary" and run["pair_serials"] == "4823 / 3425"
     assert not run["undeclared"]
-    html = generate_sensors_page(profiles, tmp_path / "s.html").read_text()
+    html = generate_sensors_page(profiles, tmp_path / "s.html").read_text(encoding="utf-8")
     preferred = html[html.index('id="s-preferred"') : html.index('id="s-inventory"')]
     assert "Amber row" not in preferred and "--warn-bg" not in preferred
     with xr.open_dataset(stage3, engine="netcdf4") as ds:
@@ -219,7 +219,7 @@ def test_report_inventory_points_to_sensors_page(fixture_profiles, tmp_path):
 
     html = generate_dataset_page(
         fixture_profiles, tmp_path / "inv.html", sensors_href="sbe_sensors.html"
-    ).read_text()
+    ).read_text(encoding="utf-8")
     assert 'id="s-sensors"' in html
     assert 'href="sbe_sensors.html#s-variables"' in html
     assert "sensor_channel_&lt;role&gt;" in html  # the three families are explained
@@ -229,7 +229,7 @@ def test_report_inventory_points_to_sensors_page(fixture_profiles, tmp_path):
 def test_standalone_inventory_keeps_sensor_tables(fixture_profiles, tmp_path):
     from ctdcast.reports.dataset import generate_dataset_page
 
-    html = generate_dataset_page(fixture_profiles, tmp_path / "inv.html").read_text()
+    html = generate_dataset_page(fixture_profiles, tmp_path / "inv.html").read_text(encoding="utf-8")
     for sid in (
         "s-sensors",
         "s-sensor-catalog",
@@ -243,7 +243,7 @@ def test_standalone_inventory_keeps_sensor_tables(fixture_profiles, tmp_path):
 def test_sensors_page_ends_with_the_sensor_variables(fixture_profiles, tmp_path):
     html = generate_sensors_page(
         fixture_profiles, tmp_path / "s.html", inventory_href="profiles_inventory.html"
-    ).read_text()
+    ).read_text(encoding="utf-8")
     assert 'id="s-variables"' in html and 'href="profiles_inventory.html"' in html
     for sid in ("s-sensor-catalog", "s-sensor-linkage", "s-sensor-channel"):
         assert f'id="{sid}"' in html
