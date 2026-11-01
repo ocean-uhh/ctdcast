@@ -72,16 +72,18 @@ profiles carry the sensor catalog and per-profile linkage.</p>
 {% if meta.preferred %}
 {{ heading("s-preferred") }}
 <p class="caption">Which line each cast uses where it carries two: the T/C pair (temperature, conductivity and salinity together) and oxygen, as declared by <code>processing.preferred_pair</code> and <code>processing.preferred_oxygen</code> in the cruise config. Serials are the chosen sensors, temperature / conductivity. An undeclared dual T/C cast has no preferred temperature or salinity; an undeclared dual-oxygen cast shows line 1 in the figures.</p>
+{% if meta.preferred | selectattr("undeclared") | list %}<p class="caption">Amber row: a cast with two T/C pairs or two oxygen sensors and no preferred choice declared for it in the cruise config.</p>{% endif %}
 <table class="nc sortable">
   {{ nc.thead(["Casts", "T/C pair", "T/C serials", "Oxygen", "O₂ serial"]) }}
   <tbody>
     {% for r in meta.preferred %}
+    {% set bg = ' style="background:var(--warn-bg)"' if r.undeclared else "" %}
     <tr>
-      <td class="range" data-sort="{{ r.cast_start }}">{{ r.range }}</td>
-      <td>{{ r.pair }}</td>
-      <td class="mono">{{ r.pair_serials or "—" }}</td>
-      <td>{{ r.oxygen or "—" }}</td>
-      <td class="mono">{{ r.oxygen_serial or "—" }}</td>
+      <td class="range" data-sort="{{ r.cast_start }}"{{ bg | safe }}>{{ r.range }}</td>
+      <td{{ bg | safe }}>{{ r.pair }}</td>
+      <td class="mono"{{ bg | safe }}>{{ r.pair_serials or "—" }}</td>
+      <td{{ bg | safe }}>{{ r.oxygen or "—" }}</td>
+      <td class="mono"{{ bg | safe }}>{{ r.oxygen_serial or "—" }}</td>
     </tr>
     {% endfor %}
   </tbody>

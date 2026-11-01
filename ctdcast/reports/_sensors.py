@@ -76,7 +76,8 @@ def _preferred_runs(
     One row per run of consecutive casts with the same choice and serials.  A dual T/C
     cast shows its declared ``primary``/``secondary`` pair and that pair's serials, or
     ``not declared``; a dual-oxygen cast likewise, except an undeclared one shows line 1,
-    which is what the figures draw.  A single-sensor cast has no choice.  Returns ``[]``
+    which is what the figures draw.  A single-sensor cast has no choice.  Each run carries
+    ``undeclared`` (either group has a choice the config did not make).  Returns ``[]``
     when no cast has a second T/C pair or a second oxygen sensor.
     """
     empty = np.array([""] * len(cast_num))
@@ -134,6 +135,9 @@ def _preferred_runs(
         )
     for r in runs:
         r["range"] = _cast_range(r["cast_start"], r["cast_end"])
+        r["undeclared"] = (
+            r["pair"] == _NOT_DECLARED or r["oxygen"] == _OXYGEN_NOT_DECLARED
+        )
     return runs
 
 

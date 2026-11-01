@@ -60,6 +60,7 @@ def test_undeclared_dual_pair_reads_not_declared(fixture_profiles):
     assert run["range"] == "011–129"
     assert run["pair"] == "not declared" and run["pair_serials"] == ""
     assert run["oxygen"] == "single sensor" and run["oxygen_serial"] == "0707"
+    assert run["undeclared"]
 
 
 def test_inventory_carries_slope_and_offset(fixture_profiles):
@@ -76,6 +77,7 @@ def test_inventory_carries_slope_and_offset(fixture_profiles):
 def test_sensors_page_renders_preferred_and_calibration(fixture_profiles, tmp_path):
     html = generate_sensors_page(fixture_profiles, tmp_path / "s.html").read_text()
     assert 'id="s-preferred"' in html and "not declared" in html
+    assert "Amber row: a cast with two T/C pairs" in html
     assert "<strong>0.99993682</strong>" in html
     assert "Amber row: a calibration was applied" in html
 
