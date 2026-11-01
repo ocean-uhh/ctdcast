@@ -335,6 +335,7 @@ def generate_station_page(
         "generated_at": report_generated_at(generated_at),
         "version": _VERSION,
         "source_str": source_str,
+        "raw_input_str": _raw_input_str(ds),
         "processed_str": processed_str,
         "preferred_str": _preferred_str(ds),
         "report": report,
@@ -646,6 +647,22 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
         "<th>Serial</th><th>Slope</th><th>Offset</th><th>State</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
     )
+
+
+def _raw_input_str(ds: xr.Dataset) -> str:
+    """Return the raw file(s) this cast entered processing from, with their format.
+
+    ``Source`` names the netCDF a page was drawn from, which reads the same for a cast that
+    came in as Sea-Bird CNV and one read from a raw ``.hex``; this says which it was.
+    Empty when the file records neither (e.g. a file from before stage 1 recorded it).
+    """
+    a = ds.attrs
+    if a.get("input_format") == "hex":
+        name = a.get("source_hex") or a.get("raw_filename") or "UNK"
+        xmlcon = f" + {a['source_xmlcon']}" if a.get("source_xmlcon") else ""
+        return f"{name}{xmlcon} (raw SBE 911plus .hex)"
+    cnv = a.get("source_cnv") or a.get("raw_filename")
+    return f"{cnv} (Sea-Bird CNV)" if cnv else ""
 
 
 def _preferred_str(ds: xr.Dataset) -> str:

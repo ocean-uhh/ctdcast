@@ -371,3 +371,17 @@ def test_stage1_without_bottle_log_is_silent(tmp_path):
         next((tmp_path / "ctd").rglob("*.nc")), engine="netcdf4"
     ) as ds:
         assert "time_bottle_log_check" not in ds.attrs
+
+
+def test_cast_page_names_the_raw_input(slice_ds):
+    """The cast header says whether the cast entered as raw .hex or as CNV."""
+    from ctdcast.reports.cast import _raw_input_str
+
+    expected = "MIXSED2_011.hex + MIXSED2_011.XMLCON (raw SBE 911plus .hex)"
+    # read_hex records raw_filename and source_xmlcon; stage 1 adds source_hex
+    assert _raw_input_str(slice_ds) == expected
+    assert (
+        _raw_input_str(slice_ds.assign_attrs(source_hex="MIXSED2_011.hex")) == expected
+    )
+    with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as cnv:
+        assert _raw_input_str(cnv) == "mixsed2_011.cnv (Sea-Bird CNV)"
