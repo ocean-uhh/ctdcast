@@ -460,7 +460,8 @@ VAR_COLORS: dict[str, str] = {
     "sigma0": "#009E73",  # bluish green — Okabe-Ito
     "U": "#D55E00",  # vermillion   — Okabe-Ito
     "V": "#0072B2",  # blue         — Okabe-Ito
-    "ctd_oxygen_1": "#332288",  # indigo       — Paul Tol
+    "ctd_oxygen": "#332288",  # indigo       — Paul Tol
+    "ctd_oxygen_1": "#332288",
     "ctd_fluor": "#117733",  # forest green — Paul Tol
     "ctd_turbidity": "#661100",  # dark red     — Paul Tol
     "N2": "#000000",
@@ -479,8 +480,11 @@ SECTION_PHYSICS_VARS: tuple[str, ...] = (
 )
 
 #: Biogeochemical variables drawn on section, overview, and timeseries pages, in order.
+#: Oxygen is named by its plain (preferred-composite) form: ``resolve_sensor_var`` picks
+#: the composite when the cast declared ``preferred_oxygen``, and falls back to
+#: ``ctd_oxygen_1`` on an undeclared dual-oxygen cast.
 SECTION_BIOGEO_VARS: tuple[str, ...] = (
-    "ctd_oxygen_1",
+    "ctd_oxygen",
     "ctd_fluor",
     "ctd_turbidity",
 )
@@ -600,6 +604,42 @@ def resolve_sensor_var(ds: xr.Dataset, var: str) -> str:
     if not var.endswith(("_1", "_2")) and f"{var}_1" in ds:
         return f"{var}_1"
     return var
+
+
+def color_limit_override(
+    overrides: dict[str, float], var: str, resolved: str
+) -> float | None:
+    """Look up a colour-limit override for a sensor variable under any of its names.
+
+    A cruise config may key an override by the name actually drawn (*resolved*), by
+    the registry name (*var*), or by the other form of *var* — plain ``ctd_oxygen`` and
+    line-1 ``ctd_oxygen_1`` stand for each other, as in :func:`resolve_sensor_var`.  A
+    line-2 name (``ctd_oxygen_2``) has no alternate, so an override set for the plain
+    composite never lands on line 2.  The first non-``None`` hit wins, in that order.
+
+    Parameters
+    ----------
+    overrides : dict of str to float
+        The ``vmin`` or ``vmax`` override mapping.
+    var : str
+        The registry name the page asked for.
+    resolved : str
+        The name present in the dataset (:func:`resolve_sensor_var`).
+
+    Returns
+    -------
+    float or None
+        The override value, or ``None`` when no name carries one.
+    """
+    if var.endswith("_2"):
+        keys: tuple[str, ...] = (resolved, var)
+    else:
+        keys = (resolved, var, var[:-2] if var.endswith("_1") else f"{var}_1")
+    for key in keys:
+        value = overrides.get(key)
+        if value is not None:
+            return value
+    return None
 
 
 # ---------------------------------------------------------------------------

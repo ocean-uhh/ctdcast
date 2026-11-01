@@ -356,6 +356,49 @@ def derive_teos10_profiles(ds: xr.Dataset) -> xr.Dataset:
 # ---------------------------------------------------------------------------
 
 
+def fill_oxygen_composite(ds: xr.Dataset) -> xr.Dataset:
+    """Return *ds* with empty ``ctd_oxygen`` profiles filled from ``ctd_oxygen_1``.
+
+    A compiled profiles file holds the plain ``ctd_oxygen`` composite as soon as any cast
+    has one (a declared ``preferred_oxygen`` cast, or a single-oxygen cast), and it is all
+    NaN for every other cast.  An undeclared dual-oxygen cast has no composite, so drawing
+    ``ctd_oxygen`` would leave it blank.  This fills each profile whose composite holds no
+    finite value from line 1, the line an undeclared cast is drawn with, so every cast is
+    drawn.  For drawing only: the profiles file is not changed.  The filled cast numbers
+    are recorded in the composite's ``filled_from_ctd_oxygen_1`` attribute.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        A profiles dataset (``N_PROF`` × ``pressure``).
+
+    Returns
+    -------
+    xarray.Dataset
+        A new dataset, or *ds* unchanged when it lacks either variable or no profile
+        needs filling.
+    """
+    if "ctd_oxygen" not in ds or "ctd_oxygen_1" not in ds:
+        return ds
+    comp = ds["ctd_oxygen"]
+    line1 = ds["ctd_oxygen_1"]
+    other = [d for d in comp.dims if d != "N_PROF"]
+    empty = (~np.isfinite(comp)).all(dim=other) & np.isfinite(line1).any(dim=other)
+    if not bool(empty.any()):
+        return ds
+    ds = ds.copy()
+    attrs = dict(comp.attrs)
+    ds["ctd_oxygen"] = comp.where(~empty, line1)
+    casts = (
+        sorted({int(c) for c in ds["cast_number"].values[empty.values]})
+        if "cast_number" in ds
+        else []
+    )
+    attrs["filled_from_ctd_oxygen_1"] = " ".join(f"{c:03d}" for c in casts)
+    ds["ctd_oxygen"].attrs = attrs
+    return ds
+
+
 def derive_AOU(ds: xr.Dataset) -> xr.Dataset:
     """Return *ds* with AOU added as 100 - oxygen_saturation (O₂ saturation deficit, % sat).
 

@@ -28,6 +28,7 @@ from __future__ import annotations
 import copy
 import re
 import warnings
+from collections.abc import Hashable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -117,6 +118,27 @@ ROLE_VARIABLE: dict[str, str] = {
 FREQUENCY_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "pressure"})
 
 
+def is_sensor_catalog_var(name: Hashable) -> bool:
+    """Return whether *name* is a sensor-catalog entry (``SENSOR_<TYPE>_<SERIAL>``).
+
+    The catalog entries are the uppercase dimensionless ``SENSOR_*`` scalars.  A
+    ``SENSOR_*_qc`` companion is not an entry, and neither are the lowercase
+    ``sensor_<role>`` linkage or ``sensor_channel_<role>`` variables.
+
+    Parameters
+    ----------
+    name : hashable
+        The variable name, as ``Dataset.variables`` yields it.
+
+    Returns
+    -------
+    bool
+        ``True`` when *name* starts with ``SENSOR_`` and does not end with ``_qc``.
+    """
+    name = str(name)
+    return name.startswith("SENSOR_") and not name.endswith("_qc")
+
+
 def role_base(role: str) -> str:
     """Strip a dual-sensor index from *role* (``temperature_1`` -> ``temperature``).
 
@@ -165,7 +187,7 @@ class SensorRegistry:
             if path is not None
             else Path(__file__).with_name("sbe_sensors.yaml")
         )
-        with p.open() as f:
+        with p.open(encoding="utf-8") as f:
             data: dict[str, Any] = yaml.safe_load(f) or {}
         raw = data.get("sensors") or {}
         # SensorID keys are strings ("55"); coerce any int that slipped through.

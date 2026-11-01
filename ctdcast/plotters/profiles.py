@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 
 import gsw
@@ -18,6 +19,7 @@ from ctdcast.config.parameters import (
     vlabel,
     vunit,
 )
+from ctdcast.config.preferred_sensors import index_of
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.primitives import (
     _SIGMA0_CONTOUR_COLOR,
@@ -52,6 +54,28 @@ from ctdcast.reports._vendored.design_tokens import (
 _LADCP_U_COLOR: str = VAR_COLORS["U"]
 
 _LADCP_V_COLOR: str = VAR_COLORS["V"]
+
+
+def _oxygen_label(attrs: Mapping[str, object]) -> str:
+    """Oxygen-saturation axis label, naming the line a dual-oxygen cast drew.
+
+    A dual cast's ``oxygen_saturation`` carries ``oxygen_line`` (the line drawn) and
+    ``preferred_oxygen`` (the declared word, or ``"undeclared"``).  The label follows the
+    line drawn: ``… · secondary`` when it is the declared one, ``… · line 1, not declared``
+    for an undeclared cast, and ``… · line 1 (secondary not available)`` when the declared
+    line could not be derived.  A single-oxygen cast carries neither and gets the plain
+    label.
+    """
+    base = vlabel("oxygen_saturation")
+    pref = attrs.get("preferred_oxygen")
+    if not pref:
+        return base
+    line = int(attrs.get("oxygen_line", 1))
+    if pref == "undeclared":
+        return f"{base} · line {line}, not declared"
+    if line != index_of(str(pref)):
+        return f"{base} · line {line} ({pref} not available)"
+    return f"{base} · {pref}"
 
 
 def draw_ts_density_fig(
@@ -256,7 +280,7 @@ def draw_ts_diagram_fig(
         shrink=0.9,
         aspect=20,
     )
-    cb.set_label(vlabel("oxygen_saturation"), loc="left")
+    cb.set_label(_oxygen_label(ds_down[_oxsat_var].attrs), loc="left")
 
     ax.set_xlabel(vlabel("absolute_salinity"))
     ax.set_ylabel(vlabel("conservative_temperature"))
@@ -358,7 +382,9 @@ def draw_aux_profiles_fig(
     vars_labels = [
         (
             next((v for v in ("oxygen_saturation", "oxsat_1") if v in ds), None),
-            vlabel("oxygen_saturation"),
+            _oxygen_label(
+                ds["oxygen_saturation"].attrs if "oxygen_saturation" in ds else {}
+            ),
         ),
         (
             next((v for v in ("ctd_fluor", "fluorescence") if v in ds), None),

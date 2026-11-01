@@ -23,7 +23,7 @@ Directory layout
        sections.html           section overview cards
        timeseries.html         cruise-wide time series index
        leaflet.html            interactive map
-       sbe_sensors.html        sensor inventory across casts
+       sbe_sensors.html        sensors by cast and device, and the sensor variables
        profiles_inventory.html netCDF variable + attribute inventory
        casts/
            cast_001.html

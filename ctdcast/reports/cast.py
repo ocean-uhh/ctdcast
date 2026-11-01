@@ -38,7 +38,9 @@ from ctdcast.config.parameters import (
     resolve_sensor_var,
 )
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
+from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.identity import cast_id_from_name, format_cast_id
+from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage2 import find_cast_end, find_soak_end
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.readers.metadata import parse_sensor_info, source_to_canonical
@@ -334,6 +336,7 @@ def generate_station_page(
         "version": _VERSION,
         "source_str": source_str,
         "processed_str": processed_str,
+        "preferred_str": _preferred_str(ds),
         "report": report,
         "section_columns": CAST_SECTION_COLUMNS,
     }
@@ -645,18 +648,51 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
     )
 
 
-def _is_sensor_catalog_var(name: str) -> bool:
-    """Return True for a ``SENSOR_*`` catalog entry, excluding any ``_qc`` companion.
+def _preferred_str(ds: xr.Dataset) -> str:
+    """Return the cast's preferred T/C pair and oxygen for the header, or ``""``.
 
-    QC can stamp a ``{var}_qc`` companion on the dimensionless ``SENSOR_*`` scalars; those
-    are not catalog entries and must not be read as sensors.
+    Only a dual-sensor group has a choice: a declared one reads e.g. ``T/C secondary
+    (s/n 6000 / 3120)``, an undeclared T/C pair ``T/C not declared`` and an undeclared
+    oxygen ``O₂ line 1 shown (not declared)``.  The choice is stamped at stage 3, so a cast
+    built from an earlier stage reads ``not resolved yet (stage N file)`` rather than
+    ``not declared``.  A single-sensor cast returns ``""``.
     """
-    return name.startswith("SENSOR_") and not name.endswith("_qc")
+    roles = {r["role"] for r in read_cast_sensor_catalog(ds)}
+    stage = ds.attrs.get("processing_stage")
+    unresolved = (
+        f"not resolved yet (stage {int(stage)} file)"
+        if stage is not None and int(stage) < 3
+        else None
+    )
+
+    def _serial(attr: str) -> str:
+        name = str(ds.attrs.get(attr, ""))
+        return (
+            str(ds[name].attrs.get("sensor_serial_number", "?")) if name in ds else "?"
+        )
+
+    parts = []
+    if "temperature_2" in roles:
+        word = ds.attrs.get("preferred_pair")
+        parts.append(
+            f"T/C {word} (s/n {_serial('sensor_temperature_preferred')} / "
+            f"{_serial('sensor_conductivity_preferred')})"
+            if word
+            else f"T/C {unresolved or 'not declared'}"
+        )
+    if "oxygen_2" in roles:
+        word = ds.attrs.get("preferred_oxygen")
+        parts.append(
+            f"O₂ {word} (s/n {_serial('sensor_oxygen_preferred')})"
+            if word
+            else f"O₂ {unresolved or 'line 1 shown (not declared)'}"
+        )
+    return ", ".join(parts)
 
 
 def _has_sensor_catalog(ds: xr.Dataset) -> bool:
     """Return True when the cast carries the stage-1 ``SENSOR_*`` sensor catalog."""
-    return any(_is_sensor_catalog_var(str(v)) for v in ds.variables)
+    return any(is_sensor_catalog_var(str(v)) for v in ds.variables)
 
 
 def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
@@ -671,7 +707,7 @@ def _render_sensor_catalog_table(ds: xr.Dataset) -> str:
     still lists, with an empty Variable/Channel.  Rows are ordered by acquisition channel.
     Returns ``""`` for a cast with no catalog, so the caller falls back to the header parse.
     """
-    catalog = [str(v) for v in ds.variables if _is_sensor_catalog_var(str(v))]
+    catalog = [str(v) for v in ds.variables if is_sensor_catalog_var(str(v))]
     if not catalog:
         return ""
     # Invert the per-variable ``sensor=`` links so each catalog entry names its variable(s);

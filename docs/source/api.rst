@@ -97,6 +97,10 @@ Plotting parameters
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.config.sensors
+   :members:
+   :undoc-members:
+
 File-level metadata
 -------------------
 

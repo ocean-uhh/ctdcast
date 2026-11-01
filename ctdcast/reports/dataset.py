@@ -36,7 +36,12 @@ from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored import nc_tables
 
-__all__ = ["data_ranges_markup", "generate_dataset_page", "read_dataset_meta"]
+__all__ = [
+    "data_ranges_markup",
+    "generate_dataset_page",
+    "read_dataset_meta",
+    "sensor_variable_tables",
+]
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)
@@ -292,6 +297,49 @@ def data_ranges_markup(nc_path: Path) -> str | None:
     return _VARIABLES_FRAGMENT.render(groups=groups, source=source)
 
 
+def sensor_variable_tables(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
+    """Return the three sensor-variable tables of *ds* as plain data.
+
+    The ``SENSOR_*`` catalog (one row per device, via the vendored ``sensor_rows``), and the
+    per-profile ``sensor_<role>`` linkage and ``sensor_channel_<role>`` channel variables
+    (via the vendored ``variables_rows`` with an including predicate, so they render with
+    the same Length / Valid / type columns as the science variables).  Shared by the
+    netCDF inventory page and the SBE sensors page, which show the same tables.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        The open dataset.
+
+    Returns
+    -------
+    dict
+        ``sensor_catalog`` (``{"rows", "source"}``), ``sensor_linkage`` and
+        ``sensor_channel`` (each ``{"groups", "source"}``); empty rows/groups when the
+        file carries none.
+    """
+    catalog_rows, catalog_src = nc_tables.sensor_rows(
+        ds, names=sorted(str(n) for n in ds.variables if design.is_sensor(n))
+    )
+    linkage_groups, linkage_src = nc_tables.variables_rows(
+        ds,
+        is_qc=design.is_qc,
+        include=_is_linkage,
+        original_name_attrs=design.ORIGINAL_NAME_ATTRS,
+    )
+    channel_groups, channel_src = nc_tables.variables_rows(
+        ds,
+        is_qc=design.is_qc,
+        include=_is_channel,
+        original_name_attrs=design.ORIGINAL_NAME_ATTRS,
+    )
+    return {
+        "sensor_catalog": {"rows": catalog_rows, "source": catalog_src},
+        "sensor_linkage": {"groups": linkage_groups, "source": linkage_src},
+        "sensor_channel": {"groups": channel_groups, "source": channel_src},
+    }
+
+
 def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
     """Read *nc_path* into a plain-data inventory for the netCDF inventory page.
 
@@ -337,30 +385,13 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
         scalar_rows, scalar_src = nc_tables.scalars_rows(
             ds, exclude=_is_sensor_var, original_name_attrs=design.ORIGINAL_NAME_ATTRS
         )
-        catalog_rows, catalog_src = nc_tables.sensor_rows(ds)
         global_groups, global_src = nc_tables.globals_rows(
             ds, extras=design.ATTR_GROUP_EXTRAS
         )
         summary = nc_tables.summary_counts(
             ds, is_qc=design.is_qc, is_sensor=design.is_sensor, exclude=_is_sensor_var
         )
-        # Linkage and channel are per-profile sensor variables, kept out of the science
-        # tables (decision) but shown in their own sections. Build them through the same
-        # vendored variables_rows builder with an *including* predicate, so they render
-        # through nc.variables_tables with the Length/Valid/Valid %/type columns the
-        # science table has — owned code chooses the rows, the vendored macro owns the cells.
-        linkage_groups, linkage_src = nc_tables.variables_rows(
-            ds,
-            is_qc=design.is_qc,
-            include=_is_linkage,
-            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
-        )
-        channel_groups, channel_src = nc_tables.variables_rows(
-            ds,
-            is_qc=design.is_qc,
-            include=_is_channel,
-            original_name_attrs=design.ORIGINAL_NAME_ATTRS,
-        )
+        sensor_tables = sensor_variable_tables(ds)
         # Source → canonical rename table, reconstructed from each variable's recorded
         # source name; sorted by canonical name.  source_to_canonical already drops
         # identity entries (source == canonical).  Kept alongside the per-row arrow: the
@@ -374,9 +405,7 @@ def read_dataset_meta(nc_path: Path) -> dict[str, Any]:
             "coords": {"rows": coord_rows, "source": coord_src},
             "variables": {"groups": var_groups, "source": var_src},
             "scalars": {"rows": scalar_rows, "source": scalar_src},
-            "sensor_catalog": {"rows": catalog_rows, "source": catalog_src},
-            "sensor_linkage": {"groups": linkage_groups, "source": linkage_src},
-            "sensor_channel": {"groups": channel_groups, "source": channel_src},
+            **sensor_tables,
             "globals": {"groups": global_groups, "source": global_src},
             "coverage": _coverage_computed(ds),
             "coverage_note": _coverage_note(),
@@ -396,6 +425,7 @@ def generate_dataset_page(
     inventory_pills: list[dict[str, str]] | None = None,
     current_href: str = "",
     generated_at: str | None = None,
+    sensors_href: str | None = None,
 ) -> Path:
     """Render the netCDF inventory of *nc_path* to a self-contained HTML *out_path*.
 
@@ -424,6 +454,10 @@ def generate_dataset_page(
     generated_at:
         Page build stamp; ``None`` uses the current UTC time.  Threaded from
         :func:`ctdcast.report` so one build stamps every page identically.
+    sensors_href:
+        The SBE sensors page, when the report has one.  The page's Sensors section then
+        explains the sensor variables and links there instead of repeating the tables;
+        ``None`` (a standalone inspection) shows the tables here.
 
     Returns
     -------
@@ -443,6 +477,7 @@ def generate_dataset_page(
     )
     html = get_template("dataset.html").render(
         meta=meta,
+        sensors_href=sensors_href,
         page_title=title or nc_path.name,
         cruise=cruise,
         css=design.SHARED_CSS,

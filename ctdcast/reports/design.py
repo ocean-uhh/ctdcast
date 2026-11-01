@@ -13,6 +13,7 @@ import warnings
 
 from ctdcast.config import global_attrs as _global_attrs
 from ctdcast.config.parameters import VARIABLES
+from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.config.unit_tables import UNIT_LABEL_OVERRIDES, unit_label
 from ctdcast.reports._vendored.css import _JS_SORT_TABLES, _JS_TOP_LINKS, emit_css
 from ctdcast.reports._vendored.design_tokens import CMAPS as _FAMILY_CMAPS
@@ -117,8 +118,9 @@ def is_qc(name: str, _ds: object = None) -> bool:
 def is_sensor(name: str) -> bool:
     """Return whether *name* is a sensor-catalog variable (``SENSOR_*``).
 
-    The narrow catalog predicate: the uppercase ``SENSOR_*`` variables that carry a
-    physical sensor's provenance.  The lowercase ``sensor_*`` linkage and channel
+    The narrow catalog predicate, :func:`ctdcast.config.sensors.is_sensor_catalog_var`:
+    the uppercase ``SENSOR_*`` variables that carry a physical sensor's provenance,
+    excluding any ``_qc`` companion.  The lowercase ``sensor_*`` linkage and channel
     variables are *not* catalog entries and are excluded from the science-variable
     table by a broader rule in :mod:`ctdcast.reports.dataset`.
 
@@ -130,9 +132,9 @@ def is_sensor(name: str) -> bool:
     Returns
     -------
     bool
-        ``True`` when *name* starts with ``SENSOR_``.
+        ``True`` when *name* is a ``SENSOR_*`` catalog entry.
     """
-    return str(name).startswith("SENSOR_")
+    return is_sensor_catalog_var(name)
 
 
 #: ctdcast's per-quantity colormap overrides on the vendored family defaults — its

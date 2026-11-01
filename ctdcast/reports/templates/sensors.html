@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
+{% import "_nc_tables.html" as nc %}
+{% import "_sensor_vars.html" as sv %}
 
 {% block title %}SBE sensors — {{ cruise }}{% endblock %}
 {% block masthead_title %}SBE sensors{% endblock %}
@@ -8,7 +10,6 @@
 {% block head_extra %}
 <style>
 table.nc td, table.nc th { font-size: var(--fs-nav); }
-.dims-line { font-size: var(--fs-note); color: var(--muted); margin: 0.2rem 0 1rem; }
 td.arrow { color: var(--ocean); text-align: center; }
 td.was { color: var(--muted); }
 .src { font-size: var(--fs-xs); color: var(--muted); }
@@ -16,6 +17,7 @@ td.was { color: var(--muted); }
 .scroll-x { overflow-x: auto; }
 table.config td.range { white-space: nowrap; font-weight: 600; }
 table.config th { white-space: nowrap; }
+td.nowrap { white-space: nowrap; }
 </style>
 {% endblock %}
 
@@ -38,23 +40,28 @@ table.config th { white-space: nowrap; }
 profiles carry the sensor catalog and per-profile linkage.</p>
 {% else %}
 
+{# Section numbers follow the sections actually shown. #}
+{% set sections = [("s-config", "Sensor configuration")] %}
+{% if meta.preferred %}{% set sections = sections + [("s-preferred", "Preferred sensors")] %}{% endif %}
+{% set sections = sections + [("s-inventory", "Sensor inventory")] %}
+{% if meta.has_channel %}{% set sections = sections + [("s-rewiring", "Rewiring")] %}{% endif %}
+{% if sensor_vars %}{% set sections = sections + [("s-variables", "Sensor variables")] %}{% endif %}
+{% macro heading(id) %}{% for sid, title in sections %}{% if sid == id %}<h2 id="{{ sid }}">{{ m.heading_text(loop.index, title) }}</h2>{% endif %}{% endfor %}{% endmacro %}
+
 <div class="jump-nav">
-  <a href="#s-config">{{ m.heading_text(1, "Sensor configuration") }}</a>
-  <a href="#s-inventory">{{ m.heading_text(2, "Sensor inventory") }}</a>
-  {% if meta.has_channel %}<a href="#s-rewiring">{{ m.heading_text(3, "Rewiring") }}</a>{% endif %}
+  {% for sid, title in sections %}<a href="#{{ sid }}">{{ m.heading_text(loop.index, title) }}</a>
+  {% endfor %}
 </div>
 
-<h2 id="s-config">{{ m.heading_text(1, "Sensor configuration") }}</h2>
-<p class="dims-line">Which sensor (by serial number) served each role, over which casts. Each row is a run of casts that shared the same set of sensors; a new row marks a hardware change. Serials resolve to model and calibration in the inventory below.</p>
+{{ heading("s-config") }}
+<p class="caption">Which sensor (by serial number) served each role, over which casts. Each row is a run of casts that shared the same set of sensors; a new row marks a hardware change. Serials resolve to model and calibration in the inventory below.</p>
 <div class="scroll-x">
-<table class="nc config">
-  <thead>
-    <tr><th class="num">Casts</th>{% for r in meta.role_cols %}<th>{{ r.label }}</th>{% endfor %}</tr>
-  </thead>
+<table class="nc config sortable">
+  {{ nc.thead(["Casts"] + meta.role_cols | map(attribute="label") | list) }}
   <tbody>
     {% for b in meta.blocks %}
     <tr>
-      <td class="range">{{ b.range }}</td>
+      <td class="range" data-sort="{{ b.cast_start }}">{{ b.range }}</td>
       {% for r in meta.role_cols %}<td class="mono">{{ b.cells[r.key] or "—" }}</td>{% endfor %}
     </tr>
     {% endfor %}
@@ -62,35 +69,56 @@ profiles carry the sensor catalog and per-profile linkage.</p>
 </table>
 </div>
 
-<h2 id="s-inventory">{{ m.heading_text(2, "Sensor inventory") }}</h2>
-<p class="dims-line">Every distinct physical device used during the cruise, identified by serial number. <span class="src">model_source: <em>header</em> = named in the file; <em>assumed</em> = inferred from the SensorID; <em>operator</em> = supplied in the cruise config.</span></p>
-<table class="nc">
-  <thead>
-    <tr><th>Type</th><th>Model</th><th>Serial</th><th>Calibration</th><th>Maker</th><th>Source</th><th>Role(s)</th></tr>
-  </thead>
+{% if meta.preferred %}
+{{ heading("s-preferred") }}
+<p class="caption">Which line each cast uses where it carries two: the T/C pair (temperature, conductivity and salinity together) and oxygen, as declared by <code>processing.preferred_pair</code> and <code>processing.preferred_oxygen</code> in the cruise config. Serials are the chosen sensors, temperature / conductivity. An undeclared dual T/C cast has no preferred temperature or salinity; an undeclared dual-oxygen cast shows line 1 in the figures. The choice is resolved at stage 3, so a cast compiled from an earlier stage reads <em>not resolved yet</em>.</p>
+{% if meta.preferred | selectattr("undeclared") | list %}<p class="caption">Amber row: a cast with two T/C pairs or two oxygen sensors and no preferred choice declared for it in the cruise config.</p>{% endif %}
+<table class="nc sortable">
+  {{ nc.thead(["Casts", "T/C pair", "T/C serials", "Oxygen", "O₂ serial"]) }}
+  <tbody>
+    {% for r in meta.preferred %}
+    {% set bg = ' style="background:var(--warn-bg)"' if r.undeclared else "" %}
+    <tr>
+      <td class="range" data-sort="{{ r.cast_start }}"{{ bg | safe }}>{{ r.range }}</td>
+      <td{{ bg | safe }}>{{ r.pair }}</td>
+      <td class="mono"{{ bg | safe }}>{{ r.pair_serials or "—" }}</td>
+      <td{{ bg | safe }}>{{ r.oxygen or "—" }}</td>
+      <td class="mono"{{ bg | safe }}>{{ r.oxygen_serial or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{{ heading("s-inventory") }}
+<p class="caption">Every distinct physical device used during the cruise, identified by serial number. Slope and Offset are the datcnv correction in the instrument configuration (temperature, conductivity and pressure sensors only). <span class="src">Source: <em>header</em> = named in the file; <em>assumed</em> = inferred from the SensorID; <em>operator</em> = supplied in the cruise config.</span></p>
+{% if meta.any_calibrated %}<p class="caption">Amber row: a calibration was applied — the sensor's Slope ≠ 1 or Offset ≠ 0 (a drift/span correction); the departing value is in bold.</p>{% endif %}
+<table class="nc sortable">
+  {{ nc.thead(["Type", "Model", "Serial", "Calibration", "Slope", "Offset", "Maker", "Source", "Role(s)"]) }}
   <tbody>
     {% for d in meta.catalog %}
+    {% set bg = ' style="background:var(--warn-bg)"' if (d.slope_nondefault or d.offset_nondefault) else "" %}
     <tr>
-      <td>{{ d.sensor_type }}</td>
-      <td>{{ d.model }}</td>
-      <td class="mono">{{ d.serial }}</td>
-      <td class="mono">{{ d.calibration_date or "—" }}</td>
-      <td>{{ d.maker }}</td>
-      <td class="src">{{ d.model_source }}</td>
-      <td class="roles">{{ d.roles | join(", ") }}</td>
+      <td{{ bg | safe }}>{{ d.sensor_type }}</td>
+      <td{{ bg | safe }}>{{ d.model }}</td>
+      <td class="mono"{{ bg | safe }}>{{ d.serial }}</td>
+      <td class="mono nowrap"{{ bg | safe }}>{{ d.calibration_date or "—" }}</td>
+      <td class="mono"{{ bg | safe }}>{% if d.slope_nondefault %}<strong>{{ d.slope }}</strong>{% else %}{{ d.slope or "—" }}{% endif %}</td>
+      <td class="mono"{{ bg | safe }}>{% if d.offset_nondefault %}<strong>{{ d.offset }}</strong>{% else %}{{ d.offset or "—" }}{% endif %}</td>
+      <td{{ bg | safe }}>{{ d.maker }}</td>
+      <td class="src"{{ bg | safe }}>{{ d.model_source }}</td>
+      <td class="roles"{{ bg | safe }}>{{ d.roles | join(", ") }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 
 {% if meta.has_channel %}
-<h2 id="s-rewiring">{{ m.heading_text(3, "Rewiring") }}</h2>
-<p class="dims-line">Casts where a device stayed the same but moved to a different acquisition channel — a re-cabling, not a hardware change.</p>
+{{ heading("s-rewiring") }}
+<p class="caption">Casts where a device stayed the same but moved to a different acquisition channel — a re-cabling, not a hardware change.</p>
 {% if meta.rewiring %}
-<table class="nc">
-  <thead>
-    <tr><th class="num">Cast</th><th>Role</th><th>Serial</th><th>Moved</th></tr>
-  </thead>
+<table class="nc sortable">
+  {{ nc.thead(["Cast", "Role", "Serial", "Moved"]) }}
   <tbody>
     {% for r in meta.rewiring %}
     <tr>
@@ -103,8 +131,15 @@ profiles carry the sensor catalog and per-profile linkage.</p>
   </tbody>
 </table>
 {% else %}
-<p class="dims-line">No rewiring — every device stayed on its original channel.</p>
+<p class="caption">No rewiring — every device stayed on its original channel.</p>
 {% endif %}
+{% endif %}
+
+{% if sensor_vars %}
+{{ heading("s-variables") }}
+<p class="caption">The variables in <code>{{ meta.filename }}</code> that the tables above are built from{% if inventory_href %}; the rest of the file is in its <a href="{{ inventory_href }}">netCDF inventory</a>{% endif %}.</p>
+{{ sv.explanation() }}
+{{ sv.tables(sensor_vars) }}
 {% endif %}
 
 {% endif %}

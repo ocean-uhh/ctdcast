@@ -1,0 +1,30 @@
+{# The three families of sensor variables in a compiled profiles file: what each carries,
+   and their tables.  Shared by the netCDF inventory page and the SBE sensors page. #}
+{% import "_nc_tables.html" as nc %}
+
+{% macro explanation() %}
+<p class="caption">The file records its sensors in three families of variables:</p>
+<ul class="caption">
+  <li><code>SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;</code> — one dimensionless variable per physical device, e.g. <code>SENSOR_CONDUCTIVITY_3120</code>. It holds no data; its attributes are the device's provenance: model, maker, serial, calibration date, the datcnv slope/offset and the configuration block as recorded.</li>
+  <li><code>sensor_&lt;role&gt;</code> — per profile, the name of the <code>SENSOR_*</code> variable that filled that role, e.g. <code>sensor_conductivity_2</code> = <code>SENSOR_CONDUCTIVITY_3120</code>. A change along the profiles is a sensor swap. Where a preferred pair or oxygen is declared, <code>sensor_&lt;role&gt;_preferred</code> names the device chosen for the plain composite.</li>
+  <li><code>sensor_channel_&lt;role&gt;</code> — per profile, the raw CNV acquisition channel that role's sensor was wired to (−1 where unused). A change with the same device is a re-cabling.</li>
+</ul>
+{% endmacro %}
+
+{% macro tables(t) %}
+{%- set amber_linkage = "Amber Valid %: fewer valid values than samples (a profile missing this sensor role)." %}
+{% if t.sensor_catalog.rows %}
+<h3 id="s-sensor-catalog">Sensor catalog (<code>SENSOR_*</code>)</h3>
+<p class="caption">One row per device; each row's <strong>Attributes</strong> cell expands to its full provenance. No data, so no value range.</p>
+{{ nc.sensor_table(t.sensor_catalog.rows, source=t.sensor_catalog.source) }}
+{% endif %}
+{% if t.sensor_linkage.groups %}
+<h3 id="s-sensor-linkage">Sensor linkage (<code>sensor_&lt;role&gt;</code>)</h3>
+<p class="caption">String-valued, so no numeric range.</p>
+{{ nc.variables_tables(t.sensor_linkage.groups, optional=("units", "minmax"), source=t.sensor_linkage.source, caption=amber_linkage) }}
+{% endif %}
+{% if t.sensor_channel.groups %}
+<h3 id="s-sensor-channel">Sensor channels (<code>sensor_channel_&lt;role&gt;</code>)</h3>
+{{ nc.variables_tables(t.sensor_channel.groups, optional=("units",), source=t.sensor_channel.source, caption=amber_linkage) }}
+{% endif %}
+{% endmacro %}

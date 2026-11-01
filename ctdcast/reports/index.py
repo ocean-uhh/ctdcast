@@ -16,6 +16,7 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
+from ctdcast.analysis.derive import fill_oxygen_composite
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.loader import SectionsConfig, warn_section_yaml_deprecated
@@ -23,6 +24,7 @@ from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
+    color_limit_override,
     resolve_sensor_var,
     vlabel,
     vlabel_html,
@@ -578,6 +580,13 @@ def report(
                     inventory_pills=inventory_datasets,
                     current_href=_href,
                     generated_at=generated_at,
+                    # The profiles inventory points at the sensors page for its sensor
+                    # variables rather than repeating the tables there.
+                    sensors_href=(
+                        "sbe_sensors.html"
+                        if _has_sensors and Path(_src) == Path(profiles_path)
+                        else None
+                    ),
                 )
                 print(f"  [{_href}: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
@@ -603,6 +612,7 @@ def report(
                     inventory_pills=inventory_datasets,
                     current_href="sbe_sensors.html",
                     generated_at=generated_at,
+                    inventory_href=f"{Path(profiles_path).stem}_inventory.html",
                 )
                 print(f"  [sbe_sensors.html: {perf_counter() - _t0:.1f}s]")
             except Exception:  # noqa: BLE001
@@ -824,7 +834,7 @@ def _write_index(
             ds_all = xr.open_dataset(
                 profiles_path, decode_timedelta=False, engine="netcdf4"
             ).load()
-            ds_all = add_teos10_profiles(ds_all)
+            ds_all = add_teos10_profiles(fill_oxygen_composite(ds_all))
             ds_all = add_aou(ds_all)
 
             mask_down = ds_all["cast_type"].values == "down"
@@ -845,20 +855,10 @@ def _write_index(
                 # ``ctd_oxygen_1``), the way the section page does — otherwise the
                 # overview silently drops a variable it holds under the other form.
                 resolved = resolve_sensor_var(ds_sorted, var)
-                # An override may be keyed by the resolved name or by the registry
-                # name (`var`); honour the resolved form first, then fall back to
-                # the registry key, the way the section page does — otherwise an
-                # override set under `ctd_oxygen_1` is dropped on the overview.
-                _vmin = (
-                    vmin.get(resolved)
-                    if vmin.get(resolved) is not None
-                    else vmin.get(var)
-                )
-                _vmax = (
-                    vmax.get(resolved)
-                    if vmax.get(resolved) is not None
-                    else vmax.get(var)
-                )
+                # An override may be keyed by either sensor form; same lookup as the
+                # section page.
+                _vmin = color_limit_override(vmin, var, resolved)
+                _vmax = color_limit_override(vmax, var, resolved)
                 b64 = _make_overview_panel_b64(
                     ds_sorted,
                     resolved,

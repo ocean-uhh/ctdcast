@@ -17,6 +17,7 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
+from ctdcast.analysis.derive import fill_oxygen_composite
 from ctdcast.analysis.geometry import (
     along_track_km,
     distance_from_km,
@@ -27,6 +28,7 @@ from ctdcast.config.parameters import (
     SECTION_BIOGEO_VARS,
     SECTION_PHYSICS_VARS,
     UNKNOWN_CRUISE_ID,
+    color_limit_override,
     resolve_sensor_var,
     vlabel,
 )
@@ -230,7 +232,7 @@ def generate_section_page(
         # are the final x-axis — no need to recompute after.
         x_vals_key = _d[order]
 
-    ds_sec = add_teos10_profiles(ds_sec)
+    ds_sec = add_teos10_profiles(fill_oxygen_composite(ds_sec))
     ds_sec = add_aou(ds_sec)
 
     lats = ds_sec["latitude"].values.tolist()
@@ -500,16 +502,8 @@ def _field_render(
     def _render(c: SectionPageCtx) -> str | Stub | None:
         resolved = resolve_sensor_var(c.ds_sec, var) if optional else var
         key = canonical or var
-        _vmin = (
-            c.vmin.get(resolved)
-            if c.vmin.get(resolved) is not None
-            else c.vmin.get(key)
-        )
-        _vmax = (
-            c.vmax.get(resolved)
-            if c.vmax.get(resolved) is not None
-            else c.vmax.get(key)
-        )
+        _vmin = color_limit_override(c.vmin, key, resolved)
+        _vmax = color_limit_override(c.vmax, key, resolved)
         return as_panel(
             lambda: _make_section_b64(
                 c.ds_sec,

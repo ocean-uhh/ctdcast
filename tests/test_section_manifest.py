@@ -71,7 +71,7 @@ def test_computed_slot_returns_a_slots_key() -> None:
 
 def _render(tmp_path: Path) -> str:
     """Render the first demo section and return its HTML."""
-    secs = yaml.safe_load(_SECTIONS.read_text())
+    secs = yaml.safe_load(_SECTIONS.read_text(encoding="utf-8"))
     secs = secs.get("sections", secs)
     name, cfg = next(iter(secs.items()))
     out = generate_section_page(
@@ -110,13 +110,12 @@ def test_legacy_anchor_spans_emitted_for_rendered_sections(tmp_path: Path) -> No
         assert f'id="{old}"' in html
 
 
-def test_vmin_override_by_registry_name_reaches_both_pages(monkeypatch, tmp_path):
-    """A vmin override keyed by the registry name (``ctd_oxygen_1``) is honoured on
+def test_vmin_override_by_suffixed_name_reaches_both_pages(monkeypatch, tmp_path):
+    """A vmin override keyed by the suffixed form (``ctd_oxygen_1``) is honoured on
     both the section page and the cruise overview.
 
-    The demo is single-oxygen, so the data is stored as plain ``ctd_oxygen`` while
-    ``SECTION_BIOGEO_VARS`` names ``ctd_oxygen_1``; both pages must resolve the
-    sensor var and then fall back to the registry key for the override lookup.
+    The demo is single-oxygen, so the data is stored as plain ``ctd_oxygen``; an
+    override keyed by the suffixed form must still reach both pages.
     """
     import ctdcast.reports.index as index_mod
     import ctdcast.reports.section as section_mod
@@ -139,7 +138,7 @@ def test_vmin_override_by_registry_name_reaches_both_pages(monkeypatch, tmp_path
 
     override = {"ctd_oxygen_1": 50.0}
 
-    secs = yaml.safe_load(_SECTIONS.read_text())
+    secs = yaml.safe_load(_SECTIONS.read_text(encoding="utf-8"))
     secs = secs.get("sections", secs)
     name, cfg = next(iter(secs.items()))
     generate_section_page(

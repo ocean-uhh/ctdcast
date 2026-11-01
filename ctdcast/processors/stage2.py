@@ -25,6 +25,7 @@ import xarray as xr
 
 from ctdcast.config.cnv_header import start_time_clock
 from ctdcast.config.parameters import is_sbe_channel
+from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import (
     PL_RANGES_FLAGGED,
@@ -124,7 +125,7 @@ def apply_stage2(
         # The SENSOR_* catalog entries are dimensionless provenance scalars, not measurements,
         # so they get no time-series _qc companion.  Guarding on ndim == 0 as well catches any
         # other scalar bookkeeping variable that should never carry a QARTOD flag.
-        if var.startswith("SENSOR_") or ds[var].ndim == 0:
+        if is_sensor_catalog_var(var) or ds[var].ndim == 0:
             continue
         qc_name = f"{var}_qc"
         if qc_name not in ds:

@@ -13,6 +13,7 @@ from collections.abc import Iterable
 
 import xarray as xr
 
+from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.identity import format_cast_id
 
 
@@ -40,7 +41,7 @@ def read_cast_sensor_catalog(ds: xr.Dataset) -> list[dict]:
     """
     records: list[dict] = []
     for name in ds.variables:
-        if not str(name).startswith("SENSOR_"):
+        if not is_sensor_catalog_var(name):
             continue
         attrs = dict(ds[name].attrs)
         records.append(

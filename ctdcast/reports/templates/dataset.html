@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% import "_nc_tables.html" as nc %}
+{% import "_sensor_vars.html" as sv %}
 
 {% block title %}{{ page_title }} — netCDF inventory{% endblock %}
 {% block masthead_title %}{{ meta.filename }}{% endblock %}
@@ -27,12 +28,11 @@
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}
 
-{{ nc.summary_line(meta.summary, excluded_label="sensor linkage/channel") }}
+{{ nc.summary_line(meta.summary, excluded_label="sensor linkage/channel (see Sensors)") }}
 
 {# Amber-criterion captions, written once (the macros render each only when its table actually
    has an amber cell — the family "no caption, no highlight" rule). #}
 {%- set amber_units = "Amber Units: a floating-point variable with no units attribute (CF expects one)." %}
-{%- set amber_linkage = "Amber Valid %: fewer valid values than samples (a profile missing this sensor role)." %}
 
 {# Numbered section list, built once so the jump-nav and each heading share one
    "(N) Title" numbering (present sections only). #}
@@ -42,9 +42,8 @@
 {% if meta.scalars.rows %}{% set _ = secs.append(("s-scalars", "Scalars")) %}{% endif %}
 {% if meta.qc_exclusion %}{% set _ = secs.append(("s-qc-drop", "QC exclusions")) %}{% endif %}
 {% if meta.rename_map %}{% set _ = secs.append(("s-rename", "Variable renaming")) %}{% endif %}
-{% if meta.sensor_catalog.rows %}{% set _ = secs.append(("s-sensor-catalog", "Sensor catalog")) %}{% endif %}
-{% if meta.sensor_linkage.groups %}{% set _ = secs.append(("s-sensor-linkage", "Sensor linkage")) %}{% endif %}
-{% if meta.sensor_channel.groups %}{% set _ = secs.append(("s-sensor-channel", "Sensor channels")) %}{% endif %}
+{% set has_sensor_vars = meta.sensor_catalog.rows or meta.sensor_linkage.groups or meta.sensor_channel.groups %}
+{% if has_sensor_vars %}{% set _ = secs.append(("s-sensors", "Sensors")) %}{% endif %}
 {% if meta.globals.groups %}{% set _ = secs.append(("s-global", "Global attributes")) %}{% endif %}
 {% set nums = {} %}
 {% for sid, title in secs %}{% set _ = nums.update({sid: loop.index}) %}{% endfor %}
@@ -71,7 +70,7 @@
 <p class="caption">Samples flagged QARTOD suspect (3) or fail (4) are dropped before pressure binning. The denominator is the count of finite input samples <em>before</em> binning, so the percentage is not distorted by binning's own reduction in point count.</p>
 <p class="caption">A variable's exclusions are not all its own: the whole-cast soak / on-deck trim flags the same pre-descent and post-recovery scans on <em>every</em> variable, so a variable can be excluded here without its own gross-range or spike test having raised anything.</p>
 <table class="sortable">
-  <thead><tr><th tabindex="0">Variable</th><th tabindex="0">Excluded</th><th tabindex="0">Input samples</th><th tabindex="0">% excluded</th></tr></thead>
+  {{ nc.thead(["Variable", "Excluded", "Input samples", "% excluded"]) }}
   <tbody>
     {% for r in meta.qc_exclusion %}
     <tr>
@@ -89,7 +88,7 @@
 <h2 id="s-rename">{{ m.heading_text(nums["s-rename"], "Variable renaming") }}</h2>
 <p class="caption">Source → canonical name, from each variable's <code>original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone. The same rename also shows inline in each variable row's Variable cell.</p>
 <table class="sortable">
-  <thead><tr><th tabindex="0">Source name</th><th data-nosort></th><th tabindex="0">Canonical name</th></tr></thead>
+  {{ nc.thead(["Source name", "", "Canonical name"], nosort=("",)) }}
   <tbody>
     {% for src, canon in meta.rename_map.items() %}
     <tr><td class="rename">{{ src }}</td><td class="rename arrow">→</td><td>{{ canon }}</td></tr>
@@ -98,22 +97,14 @@
 </table>
 {% endif %}
 
-{% if meta.sensor_catalog.rows %}
-<h2 id="s-sensor-catalog">{{ m.heading_text(nums["s-sensor-catalog"], "Sensor catalog") }}</h2>
-<p class="caption">One dimensionless variable per distinct physical sensor; all provenance lives in its <strong>Attributes</strong> (model, serial, calibration date, vocabularies). No data, so no value range.</p>
-{{ nc.sensor_table(meta.sensor_catalog.rows, source=meta.sensor_catalog.source) }}
+{% if has_sensor_vars %}
+<h2 id="s-sensors">{{ m.heading_text(nums["s-sensors"], "Sensors") }}</h2>
+{{ sv.explanation() }}
+{% if sensors_href %}
+<p class="caption">Their tables, with the sensor configuration by cast, the preferred sensors and the device inventory built from them, are on the <a href="{{ sensors_href }}#s-variables">SBE sensors page</a>.</p>
+{% else %}
+{{ sv.tables(meta) }}
 {% endif %}
-
-{% if meta.sensor_linkage.groups %}
-<h2 id="s-sensor-linkage">{{ m.heading_text(nums["s-sensor-linkage"], "Sensor linkage") }}</h2>
-<p class="caption">Per profile, the catalog variable naming the sensor in each role. String-valued, so no numeric range.</p>
-{{ nc.variables_tables(meta.sensor_linkage.groups, optional=("units", "minmax"), source=meta.sensor_linkage.source, caption=amber_linkage) }}
-{% endif %}
-
-{% if meta.sensor_channel.groups %}
-<h2 id="s-sensor-channel">{{ m.heading_text(nums["s-sensor-channel"], "Sensor channels") }}</h2>
-<p class="caption">Per profile, the raw CNV acquisition channel of each role's sensor (integer; -1 where unused).</p>
-{{ nc.variables_tables(meta.sensor_channel.groups, optional=("units",), source=meta.sensor_channel.source, caption=amber_linkage) }}
 {% endif %}
 
 {% if meta.globals.groups %}
