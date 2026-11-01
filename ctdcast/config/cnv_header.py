@@ -124,7 +124,9 @@ class Clocks:
     ``offset_seconds`` is ``nmea_utc - system_utc`` (positive when the system clock is
     slow relative to GPS), or ``None`` if either timestamp is absent or unparseable.
     ``system_dt`` / ``nmea_dt`` are the same two clocks already parsed to ``datetime`` while
-    computing the offset, exposed so callers need not re-parse the verbatim strings.
+    computing the offset, exposed so callers need not re-parse the verbatim strings;
+    ``system_upload_dt`` is ``system_upload`` parsed the same way (the PC clock at the first
+    scan of a ``.hex``).
     """
 
     system_upload: str | None = None
@@ -133,6 +135,7 @@ class Clocks:
     offset_seconds: float | None = None
     system_dt: datetime | None = None
     nmea_dt: datetime | None = None
+    system_upload_dt: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -366,6 +369,7 @@ def parse_star_block(header_text: str) -> Acquisition:
         offset_seconds=offset_seconds,
         system_dt=sys_dt,
         nmea_dt=nmea_dt,
+        system_upload_dt=_parse_sbe_time(system_upload),
     )
     return Acquisition(
         deck_unit=deck_unit,
@@ -385,6 +389,26 @@ def header_from_raw_metadata(raw_metadata: str | None) -> str | None:
     string is not required to match, so a schema bump degrades gracefully rather than
     raising — only a change to the envelope *shape* yields ``None``.
     """
+    return raw_metadata_block(raw_metadata, "header")
+
+
+def raw_metadata_block(raw_metadata: str | None, name: str) -> str | None:
+    """Return one named text block of a stage-1 ``raw_metadata`` envelope, or None.
+
+    Parameters
+    ----------
+    raw_metadata : str or None
+        The ``raw_metadata`` attribute (JSON).
+    name : str
+        The block: ``"header"`` (CNV or ``.hex`` header) or ``"xmlcon"`` (a ``.hex``
+        cast's ``.xmlcon``).
+
+    Returns
+    -------
+    str or None
+        The block's text; ``None`` if the attribute is absent, not JSON, or has no
+        non-empty string under ``blocks.<name>``.
+    """
     if not raw_metadata:
         return None
     try:
@@ -396,8 +420,8 @@ def header_from_raw_metadata(raw_metadata: str | None) -> str | None:
     blocks = envelope.get("blocks")
     if not isinstance(blocks, dict):
         return None
-    header = blocks.get("header")
-    return header if isinstance(header, str) and header else None
+    block = blocks.get(name)
+    return block if isinstance(block, str) and block else None
 
 
 def parse_start_time(header_text: str) -> StartTime:

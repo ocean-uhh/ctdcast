@@ -59,6 +59,9 @@ table.data-ranges { font-size: var(--fs-nav); }
     {% if preferred_str %}
     <div><dt>Preferred</dt><dd>{{ preferred_str }}</dd></div>
     {% endif %}
+    {% if raw_input_str %}
+    <div><dt>Raw input</dt><dd class="mono">{{ raw_input_str }}</dd></div>
+    {% endif %}
     {% if source_str %}
     <div><dt>Source</dt><dd class="mono">{{ source_str }}</dd></div>
     {% endif %}

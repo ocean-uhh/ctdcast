@@ -283,3 +283,11 @@ Readers
 .. automodule:: ctdcast.readers.metadata
    :members:
    :undoc-members:
+
+.. automodule:: ctdcast.readers.hex
+   :members:
+   :undoc-members:
+
+.. automodule:: ctdcast.readers.xmlcon
+   :members:
+   :undoc-members:

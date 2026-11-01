@@ -153,6 +153,8 @@ ATTR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "tracking_id",
             "source_tracking_id",
             "source_cnv",
+            "source_hex",
+            "source_xmlcon",
             "source_mat",
             "processing_stage",
             "history",

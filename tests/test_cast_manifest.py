@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 import xarray as xr
 
 from ctdcast.analysis.derive import derive_teos10 as add_teos10
@@ -167,10 +166,6 @@ def test_slot_width_keeps_each_figures_aspect() -> None:
         assert size(CAST_PANELS[pid].render(ctx)) == size(make()), pid
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="no-LADCP T–S profile is drawn at profile_figsize (7.0 in) in a 5.4 in slot",
-)
 def test_ts_density_without_ladcp_matches_its_slot() -> None:
     from ctdcast.reports._vendored.design_tokens import FIG_DPI, SLOTS
 

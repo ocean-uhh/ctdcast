@@ -171,6 +171,8 @@ def run(args: argparse.Namespace) -> int:
             _process(
                 stage=stages,
                 cnv_dir=_data.get("cnv_dir"),
+                hex_dir=_data.get("hex_dir"),
+                ctd_raw_format=_data.get("ctd_raw_format"),
                 # Roots first; the legacy keys follow and `process` applies the
                 # same precedence as StagePaths.from_config.
                 ctd_root=_data.get("ctd_root"),

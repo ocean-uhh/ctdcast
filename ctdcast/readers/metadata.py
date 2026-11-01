@@ -12,7 +12,11 @@ import re
 
 import xarray as xr
 
-from ctdcast.config.cnv_header import header_from_raw_metadata, parse_sensor_block
+from ctdcast.config.cnv_header import (
+    header_from_raw_metadata,
+    parse_sensor_block,
+    raw_metadata_block,
+)
 from ctdcast.config.sensors import INDEXED_ROLES, ROLE_QUANTITY
 
 #: Per-variable attributes holding the raw source name a reader recorded at read
@@ -190,12 +194,22 @@ def parse_sensor_channels(ds: xr.Dataset) -> list[dict]:
     canonical ``role`` and normalises the ``calibration_date``. ``Free`` (unused) channels
     get ``role = None`` and an empty serial.
 
-    Returns ``[]`` if ``raw_metadata`` or the header sensor block is absent. Each dict has
-    ``channel``, ``element``, ``sensor_id``, ``serial``, ``calibration_date`` (normalised),
-    ``slope``, ``offset`` and ``role`` (canonical role or ``None``).
+    A cast read from a ``.hex`` has no ``<Sensors>`` block in its header; its sensors come
+    from the ``.xmlcon`` carried in ``raw_metadata``, rendered in the same record shape by
+    :func:`ctdcast.readers.xmlcon.sensor_records`.
+
+    Returns ``[]`` if ``raw_metadata`` carries neither a header sensor block nor an
+    ``.xmlcon``. Each dict has ``channel``, ``element``, ``sensor_id``, ``serial``,
+    ``calibration_date`` (normalised), ``slope``, ``offset`` and ``role`` (canonical role or
+    ``None``).
     """
-    header = header_from_raw_metadata(ds.attrs.get("raw_metadata"))
+    raw = ds.attrs.get("raw_metadata")
+    header = header_from_raw_metadata(raw)
     records = parse_sensor_block(header or "")
+    if not records and (xmlcon := raw_metadata_block(raw, "xmlcon")):
+        from ctdcast.readers.xmlcon import parse_xmlcon, sensor_records
+
+        records = sensor_records(parse_xmlcon(xmlcon))
     for r in records:
         comment = r.pop("comment")
         r["role"] = _role_from_comment(comment) if comment else None

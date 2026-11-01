@@ -46,3 +46,7 @@ config.yaml
 
 # Large processing reference PDF — kept locally, not committed
 docs/source/_static/Processing_HowTo.pdf
+
+# Full-length raw SBE .hex casts: used by the local test run, not committed (real data,
+# several MB each). The committed slice lives in tests/fixtures/hex_slice/.
+tests/fixtures/hex/

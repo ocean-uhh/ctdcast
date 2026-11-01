@@ -335,6 +335,7 @@ def generate_station_page(
         "generated_at": report_generated_at(generated_at),
         "version": _VERSION,
         "source_str": source_str,
+        "raw_input_str": _raw_input_str(ds),
         "processed_str": processed_str,
         "preferred_str": _preferred_str(ds),
         "report": report,
@@ -646,6 +647,22 @@ def _render_sensor_calibration_table(cals: list[SensorCalibration]) -> str:
         "<th>Serial</th><th>Slope</th><th>Offset</th><th>State</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
     )
+
+
+def _raw_input_str(ds: xr.Dataset) -> str:
+    """Return the raw file(s) this cast entered processing from, with their format.
+
+    ``Source`` names the netCDF a page was drawn from, which reads the same for a cast that
+    came in as Sea-Bird CNV and one read from a raw ``.hex``; this says which it was.
+    Empty when the file records neither (e.g. a file from before stage 1 recorded it).
+    """
+    a = ds.attrs
+    if a.get("input_format") == "hex":
+        name = a.get("source_hex") or a.get("raw_filename") or "UNK"
+        xmlcon = f" + {a['source_xmlcon']}" if a.get("source_xmlcon") else ""
+        return f"{name}{xmlcon} (raw SBE 911plus .hex)"
+    cnv = a.get("source_cnv") or a.get("raw_filename")
+    return f"{cnv} (Sea-Bird CNV)" if cnv else ""
 
 
 def _preferred_str(ds: xr.Dataset) -> str:
@@ -1095,25 +1112,51 @@ def _has_provenance(c: PageCtx) -> bool:
     return header_from_raw_metadata(c.ds.attrs.get("raw_metadata")) is not None
 
 
+def _native_rate_reason(c: PageCtx, what: str) -> str | None:
+    """Return why *what* is not drawn for a cast at native scan rate, or None.
+
+    A cast read from a ``.hex`` keeps every scan (24 Hz on a 911plus) until it is binned;
+    vertical derivatives of unbinned, unfiltered scans are noise, not structure.  Files
+    without ``sample_interval_seconds`` (pressure-binned CNVs) draw as before.
+    """
+    interval = c.ds.attrs.get("sample_interval_seconds")
+    try:
+        native = interval is not None and float(interval) < 1.0
+    except (TypeError, ValueError):
+        return None
+    if not native:
+        return None
+    hz = 1.0 / float(interval)
+    return (
+        f"not computed on native-rate data ({hz:.0f} Hz, unbinned and unfiltered): {what} "
+        "from individual scans are noise"
+    )
+
+
 def _figure_panel(
     panel_id: str,
     slot: str,
     make: Callable[[PageCtx, float], str | None],
     *,
     when: Callable[[PageCtx], bool] | None = None,
+    skip_reason: Callable[[PageCtx], str | None] | None = None,
     **panel_kw: Any,  # noqa: ANN401  # forwarded verbatim to Panel
 ) -> Panel:
     """Build a figure :class:`Panel` whose PNG is drawn at its slot's width.
 
     The slot is named once: *make* receives ``(ctx, width_in)`` with ``width_in`` taken
     from the slot table, so the figure and the slot it is shown in cannot disagree.
-    When *when* is given and returns False, the panel renders ``None``.
+    When *when* is given and returns False, the panel renders ``None``.  When
+    *skip_reason* returns a reason, the figure is not drawn and the panel shows the amber
+    stub with that reason.
     """
     width_in = _slot_width(slot)
 
     def render(c: PageCtx) -> str | Stub | None:
         if when is not None and not when(c):
             return None
+        if skip_reason is not None and (reason := skip_reason(c)):
+            return Stub(reason)
         return as_panel(lambda: make(c, width_in))
 
     return Panel(id=panel_id, slot=slot, render=render, **panel_kw)
@@ -1163,6 +1206,7 @@ CAST_PANELS: dict[str, Panel] = {
         "stability",
         "twothirds",
         lambda c, w: _make_stability_b64(c.ds, cfg=c.cfg, width_in=w),
+        skip_reason=lambda c: _native_rate_reason(c, "N² and Turner angle"),
     ),
     "ladcp_bottomtrack": _figure_panel(
         "ladcp_bottomtrack",
