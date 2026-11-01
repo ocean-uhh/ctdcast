@@ -17,6 +17,7 @@ from ctdcast.analysis.bathymetry import (
 )
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
+from ctdcast.analysis.derive import fill_oxygen_composite
 from ctdcast.analysis.geometry import (
     along_track_km,
     distance_from_km,
@@ -231,7 +232,7 @@ def generate_section_page(
         # are the final x-axis — no need to recompute after.
         x_vals_key = _d[order]
 
-    ds_sec = add_teos10_profiles(ds_sec)
+    ds_sec = add_teos10_profiles(fill_oxygen_composite(ds_sec))
     ds_sec = add_aou(ds_sec)
 
     lats = ds_sec["latitude"].values.tolist()

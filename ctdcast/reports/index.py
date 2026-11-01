@@ -16,6 +16,7 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
 from ctdcast.analysis.derive import derive_AOU as add_aou
 from ctdcast.analysis.derive import derive_teos10_profiles as add_teos10_profiles
+from ctdcast.analysis.derive import fill_oxygen_composite
 from ctdcast.analysis.geometry import distance_from_km
 from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.loader import SectionsConfig, warn_section_yaml_deprecated
@@ -833,7 +834,7 @@ def _write_index(
             ds_all = xr.open_dataset(
                 profiles_path, decode_timedelta=False, engine="netcdf4"
             ).load()
-            ds_all = add_teos10_profiles(ds_all)
+            ds_all = add_teos10_profiles(fill_oxygen_composite(ds_all))
             ds_all = add_aou(ds_all)
 
             mask_down = ds_all["cast_type"].values == "down"

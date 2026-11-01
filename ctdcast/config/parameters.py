@@ -612,9 +612,10 @@ def color_limit_override(
     """Look up a colour-limit override for a sensor variable under any of its names.
 
     A cruise config may key an override by the name actually drawn (*resolved*), by
-    the registry name (*var*), or by the other single/dual form of *var* (plain
-    ``ctd_oxygen`` or suffixed ``ctd_oxygen_1``).  The first non-``None`` hit wins,
-    in that order.
+    the registry name (*var*), or by the other form of *var* — plain ``ctd_oxygen`` and
+    line-1 ``ctd_oxygen_1`` stand for each other, as in :func:`resolve_sensor_var`.  A
+    line-2 name (``ctd_oxygen_2``) has no alternate, so an override set for the plain
+    composite never lands on line 2.  The first non-``None`` hit wins, in that order.
 
     Parameters
     ----------
@@ -630,8 +631,11 @@ def color_limit_override(
     float or None
         The override value, or ``None`` when no name carries one.
     """
-    alternate = var[:-2] if var.endswith(("_1", "_2")) else f"{var}_1"
-    for key in (resolved, var, alternate):
+    if var.endswith("_2"):
+        keys: tuple[str, ...] = (resolved, var)
+    else:
+        keys = (resolved, var, var[:-2] if var.endswith("_1") else f"{var}_1")
+    for key in keys:
         value = overrides.get(key)
         if value is not None:
             return value

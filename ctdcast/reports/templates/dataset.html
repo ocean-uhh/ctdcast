@@ -28,12 +28,11 @@
 <p class="warn">Could not read {{ meta.filename }}: {{ meta.error }}</p>
 {% else %}
 
-{{ nc.summary_line(meta.summary, excluded_label="sensor linkage/channel (under Sensors)") }}
+{{ nc.summary_line(meta.summary, excluded_label="sensor linkage/channel (see Sensors)") }}
 
 {# Amber-criterion captions, written once (the macros render each only when its table actually
    has an amber cell — the family "no caption, no highlight" rule). #}
 {%- set amber_units = "Amber Units: a floating-point variable with no units attribute (CF expects one)." %}
-{%- set amber_linkage = "Amber Valid %: fewer valid values than samples (a profile missing this sensor role)." %}
 
 {# Numbered section list, built once so the jump-nav and each heading share one
    "(N) Title" numbering (present sections only). #}

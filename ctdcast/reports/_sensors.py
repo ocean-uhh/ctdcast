@@ -1,13 +1,13 @@
-"""Tier-2: the "SBE sensors" page — sensor inventory and change log.
+"""Tier-2: the "SBE sensors" page — which sensor did what, on which casts.
 
 Reads the sensor catalog and per-profile linkage that
 :func:`ctdcast.processors.profiles.build_profiles` writes into ``profiles.nc``
 (the dimensionless ``SENSOR_<TYPE>_<SERIAL>`` variables and the
-``sensor_<role>`` / ``sensor_channel_<role>`` variables) and renders three
-things: the catalog of distinct devices used, the hardware-change log (which
-sensor changed on which cast), and the rewiring log (same device moved to a
-different acquisition channel).  One self-contained HTML page, generated beside
-the netCDF inventory pages.
+``sensor_<role>`` / ``sensor_channel_<role>`` variables) and renders, in order: the
+sensor configuration by run of casts, the preferred T/C pair and oxygen per run (where a
+cast carries two), the device inventory with its datcnv slope/offset, the rewiring log
+(same device moved to a different acquisition channel), and the sensor-variable tables
+themselves.  One self-contained HTML page, generated beside the netCDF inventory pages.
 
 :func:`read_sensor_tables` extracts the tables as plain data;
 :func:`generate_sensors_page` renders them to HTML.
@@ -62,6 +62,7 @@ def _cast_range(start: int, end: int) -> str:
 _SINGLE = "single sensor"
 _NOT_DECLARED = "not declared"
 _OXYGEN_NOT_DECLARED = "line 1 shown (not declared)"
+_NO_CATALOG = "no sensor catalog"
 
 
 def _preferred_runs(
@@ -76,8 +77,11 @@ def _preferred_runs(
     One row per run of consecutive casts with the same choice and serials.  A dual T/C
     cast shows its declared ``primary``/``secondary`` pair and that pair's serials, or
     ``not declared``; a dual-oxygen cast likewise, except an undeclared one shows line 1,
-    which is what the figures draw.  A single-sensor cast has no choice.  Each run carries
-    ``undeclared`` (either group has a choice the config did not make).  Returns ``[]``
+    which is what the figures draw.  A single-sensor cast has no choice.  A cast compiled
+    from a stage-1 or stage-2 file (``source_stage``) has not had its choice resolved yet
+    and reads ``not resolved yet (stage N)``; a cast with no sensor catalog reads
+    ``no sensor catalog``.  Each run carries ``undeclared`` (either group has a choice the
+    config did not make; an unresolved or catalog-less cast is not counted).  Returns ``[]``
     when no cast has a second T/C pair or a second oxygen sensor.
     """
     empty = np.array([""] * len(cast_num))
@@ -99,24 +103,38 @@ def _preferred_runs(
     if not any(t2[i] or o2[i] for i in downs):
         return []
 
+    stage = (
+        ds["source_stage"].values
+        if "source_stage" in ds.variables
+        else np.zeros(len(cast_num), dtype=int)
+    )
     runs: list[dict[str, Any]] = []
     prev: tuple[str, ...] | None = None
     for i in downs:
-        if not t2[i]:
+        unresolved = (
+            f"not resolved yet (stage {int(stage[i])})"
+            if int(stage[i]) in (1, 2)
+            else None
+        )
+        if not any(dev[i] for dev in dev_by_role.values()):
+            pair, pair_serials, oxygen, oxygen_serial = _NO_CATALOG, "", "", ""
+        elif not t2[i]:
             pair, pair_serials = _SINGLE, f"{serial_of(t1[i])} / {serial_of(c1[i])}"
         elif pair_word[i]:
             pair = str(pair_word[i])
             pair_serials = f"{serial_of(t_pref[i])} / {serial_of(c_pref[i])}"
         else:
-            pair, pair_serials = _NOT_DECLARED, ""
-        if not o1[i]:
+            pair, pair_serials = unresolved or _NOT_DECLARED, ""
+        if pair == _NO_CATALOG:
+            pass
+        elif not o1[i]:
             oxygen, oxygen_serial = "", ""
         elif not o2[i]:
             oxygen, oxygen_serial = _SINGLE, serial_of(o1[i])
         elif oxy_word[i]:
             oxygen, oxygen_serial = str(oxy_word[i]), serial_of(o_pref[i])
         else:
-            oxygen, oxygen_serial = _OXYGEN_NOT_DECLARED, serial_of(o1[i])
+            oxygen, oxygen_serial = unresolved or _OXYGEN_NOT_DECLARED, serial_of(o1[i])
         row = (pair, pair_serials, oxygen, oxygen_serial)
         cast = int(cast_num[i])
         if row == prev:
@@ -142,13 +160,26 @@ def _preferred_runs(
 
 
 def read_sensor_tables(profiles_path: Path) -> dict[str, Any]:
-    """Read the sensor catalog and change/rewiring logs from *profiles_path*.
+    """Read the sensor tables of *profiles_path* as plain data.
 
-    Returns a plain-data dict with ``filename``, ``n_casts``, ``n_devices``,
-    ``catalog`` (one row per distinct device), ``changes`` (hardware swaps in
-    cast order) and ``rewiring`` (same device, moved channel).  On a read error
-    returns ``{"filename": ..., "error": ...}``; on a file that predates the
-    sensor catalog returns empty tables with ``has_catalog=False``.
+    Parameters
+    ----------
+    profiles_path : pathlib.Path
+        A compiled ``profiles.nc``.
+
+    Returns
+    -------
+    dict
+        ``filename``, ``has_catalog``, ``has_channel``, ``n_casts``, ``n_devices``,
+        ``n_changes``, ``any_calibrated`` (some device has slope ≠ 1 or offset ≠ 0),
+        ``role_cols`` and ``blocks`` (the configuration table), ``preferred`` (the
+        preferred-sensor runs, ``[]`` when no cast carries two sensors), ``catalog``
+        (one row per device, with ``slope``/``offset`` as recorded and
+        ``slope_nondefault``/``offset_nondefault``), ``changes`` (hardware swaps in cast
+        order), ``rewiring`` (same device, moved channel) and ``sensor_vars`` (the
+        sensor-variable tables, :func:`ctdcast.reports.dataset.sensor_variable_tables`).
+        On a read error ``{"filename", "error"}``; on a file that predates the sensor
+        catalog, empty tables with ``has_catalog=False``.
     """
     try:
         ds = xr.open_dataset(profiles_path, engine="netcdf4", decode_timedelta=False)
@@ -308,6 +339,7 @@ def read_sensor_tables(profiles_path: Path) -> dict[str, Any]:
             "catalog": catalog,
             "changes": changes,
             "rewiring": rewiring,
+            "sensor_vars": sensor_variable_tables(ds),
         }
 
 
@@ -325,24 +357,38 @@ def generate_sensors_page(
 ) -> Path:
     """Render the SBE sensors page for *profiles_path* to *out_path*.
 
-    Reads the sensor catalog and change log with :func:`read_sensor_tables` and
-    writes a self-contained HTML file.  Returns the written *out_path*.
-    ``inventory_pills`` (``{"label", "href"}`` entries) render a cross-navigation
-    pill bar to the other compiled-file inventory pages; ``current_href`` marks
-    this page's own pill as the non-link active one.  ``generated_at`` pins the page
-    build stamp (``None`` uses the current UTC time), threaded from
-    :func:`ctdcast.report` so one build stamps every page identically.
-    The page ends with the file's sensor-variable tables (``SENSOR_*``, ``sensor_<role>``,
-    ``sensor_channel_<role>``); ``inventory_href`` links them back to the file's netCDF
-    inventory page, which points here instead of repeating them.
+    Parameters
+    ----------
+    profiles_path : pathlib.Path
+        A compiled ``profiles.nc``.
+    out_path : pathlib.Path
+        The HTML file to write; parent directories are created.
+    cruise : str, optional
+        Cruise identifier for the title and footer.
+    nav_prefix : str, optional
+        Relative path to the report root for the page-nav links.
+    show_nav : bool, default True
+        Render the report page-nav.
+    inventory_pills : list of dict, optional
+        ``{"label", "href"}`` entries for the compiled-file inventory pages, rendered as a
+        cross-navigation pill bar.
+    current_href : str, default ``"sbe_sensors.html"``
+        This page's own pill, rendered as the non-link active one.
+    generated_at : str, optional
+        Page build stamp; ``None`` uses the current UTC time.  Threaded from
+        :func:`ctdcast.report` so one build stamps every page identically.
+    inventory_href : str, optional
+        The file's netCDF inventory page.  The page ends with the sensor-variable tables
+        (``SENSOR_*``, ``sensor_<role>``, ``sensor_channel_<role>``), and this links them
+        back to the inventory, which points here instead of repeating them.
+
+    Returns
+    -------
+    pathlib.Path
+        The written *out_path*.
     """
     meta = read_sensor_tables(profiles_path)
-    sensor_vars = None
-    if not meta.get("error") and meta.get("has_catalog"):
-        with xr.open_dataset(
-            profiles_path, engine="netcdf4", decode_timedelta=False
-        ) as ds:
-            sensor_vars = sensor_variable_tables(ds)
+    sensor_vars = meta.get("sensor_vars") if meta.get("has_catalog") else None
     nav = (
         nav_for(
             None,
