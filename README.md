@@ -20,8 +20,9 @@ with no external requests.
 pip install ctdcast
 ```
 
-Reading raw `.cnv` files needs `seasenselib` (`pip install seasenselib`). Python 3.11–3.14 is
-supported. See the [installation notes](https://ocean-uhh.github.io/ctdcast/quickstart.html)
+Reading raw `.cnv` files needs `seasenselib` (`pip install seasenselib`); land coastlines on
+the interactive maps need the optional `maps` extra (`pip install "ctdcast[maps]"`). Python
+3.11–3.14 is supported. See the [installation notes](https://ocean-uhh.github.io/ctdcast/quickstart.html)
 for isolated-environment and from-source options.
 
 ## Quick start

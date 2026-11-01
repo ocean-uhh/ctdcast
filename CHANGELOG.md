@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-11-01
+
 ### Added
 
 - **Interactive cast map on `casts.html`** — the cruise map is now the live Leaflet map (the vendored `track_map` layer): one marker per cast and one polyline per section, each hover-linked to its table row (rows carry `data-track-id`), with click-through to the station/section page. The static cruise-map PNG stays as the print / no-JavaScript fallback. Land coastline needs the optional `[maps]` extra (`pip install ctdcast[maps]`, cartopy); without it the map draws tracks over the lat/lon graticule and the build warns. The GEBCO bathymetry map (`leaflet.html`) is unchanged and still linked, until bathymetry moves into the shared map layer.
