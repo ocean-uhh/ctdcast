@@ -36,7 +36,12 @@ from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import nav_for
 from ctdcast.reports._vendored import nc_tables
 
-__all__ = ["data_ranges_markup", "generate_dataset_page", "read_dataset_meta"]
+__all__ = [
+    "data_ranges_markup",
+    "generate_dataset_page",
+    "read_dataset_meta",
+    "sensor_variable_tables",
+]
 
 
 def _fmt_val(x: Any) -> str:  # noqa: ANN401  # scalar min/max of caller-decided type (None/float/numpy scalar/str)
@@ -313,7 +318,9 @@ def sensor_variable_tables(ds: xr.Dataset) -> dict[str, dict[str, Any]]:
         ``sensor_channel`` (each ``{"groups", "source"}``); empty rows/groups when the
         file carries none.
     """
-    catalog_rows, catalog_src = nc_tables.sensor_rows(ds)
+    catalog_rows, catalog_src = nc_tables.sensor_rows(
+        ds, names=sorted(str(n) for n in ds.variables if design.is_sensor(n))
+    )
     linkage_groups, linkage_src = nc_tables.variables_rows(
         ds,
         is_qc=design.is_qc,

@@ -28,6 +28,7 @@ from __future__ import annotations
 import copy
 import re
 import warnings
+from collections.abc import Hashable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -117,7 +118,7 @@ ROLE_VARIABLE: dict[str, str] = {
 FREQUENCY_ROLES: frozenset[str] = frozenset({"temperature", "conductivity", "pressure"})
 
 
-def is_sensor_catalog_var(name: str) -> bool:
+def is_sensor_catalog_var(name: Hashable) -> bool:
     """Return whether *name* is a sensor-catalog entry (``SENSOR_<TYPE>_<SERIAL>``).
 
     The catalog entries are the uppercase dimensionless ``SENSOR_*`` scalars.  A
@@ -126,8 +127,8 @@ def is_sensor_catalog_var(name: str) -> bool:
 
     Parameters
     ----------
-    name : str
-        The variable name.
+    name : hashable
+        The variable name, as ``Dataset.variables`` yields it.
 
     Returns
     -------

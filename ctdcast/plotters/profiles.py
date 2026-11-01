@@ -19,6 +19,7 @@ from ctdcast.config.parameters import (
     vlabel,
     vunit,
 )
+from ctdcast.config.preferred_sensors import index_of
 from ctdcast.config.report_config import DEFAULT_REPORT_CONFIG, ReportConfig
 from ctdcast.plotters.primitives import (
     _SIGMA0_CONTOUR_COLOR,
@@ -58,17 +59,23 @@ _LADCP_V_COLOR: str = VAR_COLORS["V"]
 def _oxygen_label(attrs: Mapping[str, object]) -> str:
     """Oxygen-saturation axis label, naming the line a dual-oxygen cast drew.
 
-    A dual cast's composite carries ``oxygen_line`` and ``preferred_oxygen``: a declared
-    choice reads ``… · secondary``, an undeclared one ``… · line 1, not declared``.  A
-    single-oxygen cast carries neither and gets the plain label.
+    A dual cast's ``oxygen_saturation`` carries ``oxygen_line`` (the line drawn) and
+    ``preferred_oxygen`` (the declared word, or ``"undeclared"``).  The label follows the
+    line drawn: ``… · secondary`` when it is the declared one, ``… · line 1, not declared``
+    for an undeclared cast, and ``… · line 1 (secondary not available)`` when the declared
+    line could not be derived.  A single-oxygen cast carries neither and gets the plain
+    label.
     """
     base = vlabel("oxygen_saturation")
     pref = attrs.get("preferred_oxygen")
+    if not pref:
+        return base
+    line = int(attrs.get("oxygen_line", 1))
     if pref == "undeclared":
-        return f"{base} · line {attrs.get('oxygen_line', 1)}, not declared"
-    if pref:
-        return f"{base} · {pref}"
-    return base
+        return f"{base} · line {line}, not declared"
+    if line != index_of(str(pref)):
+        return f"{base} · line {line} ({pref} not available)"
+    return f"{base} · {pref}"
 
 
 def draw_ts_density_fig(

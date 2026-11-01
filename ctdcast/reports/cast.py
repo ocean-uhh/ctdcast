@@ -653,9 +653,17 @@ def _preferred_str(ds: xr.Dataset) -> str:
 
     Only a dual-sensor group has a choice: a declared one reads e.g. ``T/C secondary
     (s/n 6000 / 3120)``, an undeclared T/C pair ``T/C not declared`` and an undeclared
-    oxygen ``O₂ line 1 shown (not declared)``.  A single-sensor cast returns ``""``.
+    oxygen ``O₂ line 1 shown (not declared)``.  The choice is stamped at stage 3, so a cast
+    built from an earlier stage reads ``not resolved yet (stage N file)`` rather than
+    ``not declared``.  A single-sensor cast returns ``""``.
     """
     roles = {r["role"] for r in read_cast_sensor_catalog(ds)}
+    stage = ds.attrs.get("processing_stage")
+    unresolved = (
+        f"not resolved yet (stage {int(stage)} file)"
+        if stage is not None and int(stage) < 3
+        else None
+    )
 
     def _serial(attr: str) -> str:
         name = str(ds.attrs.get(attr, ""))
@@ -670,14 +678,14 @@ def _preferred_str(ds: xr.Dataset) -> str:
             f"T/C {word} (s/n {_serial('sensor_temperature_preferred')} / "
             f"{_serial('sensor_conductivity_preferred')})"
             if word
-            else "T/C not declared"
+            else f"T/C {unresolved or 'not declared'}"
         )
     if "oxygen_2" in roles:
         word = ds.attrs.get("preferred_oxygen")
         parts.append(
             f"O₂ {word} (s/n {_serial('sensor_oxygen_preferred')})"
             if word
-            else "O₂ line 1 shown (not declared)"
+            else f"O₂ {unresolved or 'line 1 shown (not declared)'}"
         )
     return ", ".join(parts)
 

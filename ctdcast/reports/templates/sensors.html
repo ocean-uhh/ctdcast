@@ -71,7 +71,7 @@ profiles carry the sensor catalog and per-profile linkage.</p>
 
 {% if meta.preferred %}
 {{ heading("s-preferred") }}
-<p class="caption">Which line each cast uses where it carries two: the T/C pair (temperature, conductivity and salinity together) and oxygen, as declared by <code>processing.preferred_pair</code> and <code>processing.preferred_oxygen</code> in the cruise config. Serials are the chosen sensors, temperature / conductivity. An undeclared dual T/C cast has no preferred temperature or salinity; an undeclared dual-oxygen cast shows line 1 in the figures.</p>
+<p class="caption">Which line each cast uses where it carries two: the T/C pair (temperature, conductivity and salinity together) and oxygen, as declared by <code>processing.preferred_pair</code> and <code>processing.preferred_oxygen</code> in the cruise config. Serials are the chosen sensors, temperature / conductivity. An undeclared dual T/C cast has no preferred temperature or salinity; an undeclared dual-oxygen cast shows line 1 in the figures. The choice is resolved at stage 3, so a cast compiled from an earlier stage reads <em>not resolved yet</em>.</p>
 {% if meta.preferred | selectattr("undeclared") | list %}<p class="caption">Amber row: a cast with two T/C pairs or two oxygen sensors and no preferred choice declared for it in the cruise config.</p>{% endif %}
 <table class="nc sortable">
   {{ nc.thead(["Casts", "T/C pair", "T/C serials", "Oxygen", "O₂ serial"]) }}

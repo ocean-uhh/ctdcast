@@ -1,28 +1,29 @@
-"""The SBE sensors page: preferred-sensor table, calibration drift figure, cast-page line.
+"""The SBE sensors page: preferred-sensor table, calibration columns, cast-page line.
 
-Two real data sets: the mixsed2 fixtures (dual T/C, single oxygen, no declaration) and
-the msm_142 cast 056 CNV (dual T/C and dual oxygen), run through stages 1–3 with
-``preferred_oxygen`` declared.
+Real data only: the mixsed2 fixtures (dual T/C, single oxygen, no declaration) and the
+msm_142 cast 056 CNV (dual T/C and dual oxygen), run through stages 1–3 under different
+``preferred_pair`` / ``preferred_oxygen`` declarations.
 """
 
 from __future__ import annotations
 
-import re
 import shutil
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pytest
 import xarray as xr
 from conftest import FIXTURES_NC
 
+from ctdcast.analysis.derive import fill_oxygen_composite
+from ctdcast.config.parameters import color_limit_override, resolve_sensor_var
 from ctdcast.plotters.profiles import _oxygen_label
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.reports._sensors import generate_sensors_page, read_sensor_tables
 from ctdcast.reports.cast import _preferred_str
 
 _OXY_CNV = Path(__file__).parent / "fixtures" / "oxy" / "msm_142_1_056_1sec.cnv"
-_TEMPLATES = Path(__file__).parents[1] / "ctdcast" / "reports" / "templates"
 
 
 @pytest.fixture(scope="module")
@@ -32,12 +33,10 @@ def fixture_profiles(tmp_path_factory) -> Path:
     return out
 
 
-@pytest.fixture(scope="module")
-def dual_oxygen(tmp_path_factory) -> tuple[Path, Path]:
-    """Cast 056 through stages 1–3 and profiles, ``preferred_oxygen: secondary``."""
+def _run_cast_056(root: Path, cruise_cfg: dict) -> tuple[Path, Path]:
+    """Cast 056 through stages 1–3 and profiles under *cruise_cfg*; (stage3, profiles)."""
     import ctdcast
 
-    root = tmp_path_factory.mktemp("oxy")
     (root / "cnv").mkdir()
     shutil.copy(_OXY_CNV, root / "cnv")
     with warnings.catch_warnings():
@@ -47,10 +46,32 @@ def dual_oxygen(tmp_path_factory) -> tuple[Path, Path]:
             cnv_dir=root / "cnv",
             ctd_root=root / "ctd",
             force=True,
-            cruise_cfg={"preferred_oxygen": {"default": "secondary"}},
+            cruise_cfg=cruise_cfg,
         )
-    stage3 = next((root / "ctd" / "stage3").glob("*.nc"))
-    return stage3, root / "ctd" / "profiles.nc"
+    return next((root / "ctd" / "stage3").glob("*.nc")), root / "ctd" / "profiles.nc"
+
+
+@pytest.fixture(scope="module")
+def oxygen_declared(tmp_path_factory) -> tuple[Path, Path]:
+    return _run_cast_056(
+        tmp_path_factory.mktemp("oxy"), {"preferred_oxygen": {"default": "secondary"}}
+    )
+
+
+@pytest.fixture(scope="module")
+def all_undeclared(tmp_path_factory) -> tuple[Path, Path]:
+    return _run_cast_056(tmp_path_factory.mktemp("undecl"), {})
+
+
+@pytest.fixture(scope="module")
+def all_declared(tmp_path_factory) -> tuple[Path, Path]:
+    return _run_cast_056(
+        tmp_path_factory.mktemp("decl"),
+        {
+            "preferred_pair": {"default": "primary"},
+            "preferred_oxygen": {"default": "secondary"},
+        },
+    )
 
 
 def test_undeclared_dual_pair_reads_not_declared(fixture_profiles):
@@ -78,13 +99,14 @@ def test_sensors_page_renders_preferred_and_calibration(fixture_profiles, tmp_pa
     html = generate_sensors_page(fixture_profiles, tmp_path / "s.html").read_text()
     assert 'id="s-preferred"' in html and "not declared" in html
     assert "Amber row: a cast with two T/C pairs" in html
+    assert 'style="background:var(--warn-bg)"' in html
     assert "<strong>0.99993682</strong>" in html
     assert "Amber row: a calibration was applied" in html
 
 
 @pytest.mark.slow
-def test_declared_dual_oxygen_shows_on_both_pages(dual_oxygen, tmp_path):
-    stage3, profiles = dual_oxygen
+def test_declared_dual_oxygen_shows_on_both_pages(oxygen_declared):
+    stage3, profiles = oxygen_declared
     (run,) = read_sensor_tables(profiles)["preferred"]
     assert run["oxygen"] == "secondary" and run["oxygen_serial"] == "1451"
     assert run["pair"] == "not declared"
@@ -92,13 +114,82 @@ def test_declared_dual_oxygen_shows_on_both_pages(dual_oxygen, tmp_path):
         assert _preferred_str(ds) == "T/C not declared, O₂ secondary (s/n 1451)"
 
 
-def test_single_sensor_cast_has_no_preferred_line():
+@pytest.mark.slow
+def test_undeclared_dual_oxygen_shows_line_1(all_undeclared):
+    stage3, profiles = all_undeclared
+    (run,) = read_sensor_tables(profiles)["preferred"]
+    assert run["oxygen"] == "line 1 shown (not declared)"
+    assert run["oxygen_serial"] == "2415"  # the line-1 sensor
+    assert run["undeclared"]
+    with xr.open_dataset(stage3, engine="netcdf4") as ds:
+        assert _preferred_str(ds) == "T/C not declared, O₂ line 1 shown (not declared)"
+
+
+@pytest.mark.slow
+def test_fully_declared_cast_has_no_amber_and_no_caption(all_declared, tmp_path):
+    stage3, profiles = all_declared
+    (run,) = read_sensor_tables(profiles)["preferred"]
+    assert run["pair"] == "primary" and run["pair_serials"] == "4823 / 3425"
+    assert not run["undeclared"]
+    html = generate_sensors_page(profiles, tmp_path / "s.html").read_text()
+    preferred = html[html.index('id="s-preferred"') : html.index('id="s-inventory"')]
+    assert "Amber row" not in preferred and "--warn-bg" not in preferred
+    with xr.open_dataset(stage3, engine="netcdf4") as ds:
+        assert _preferred_str(ds) == (
+            "T/C primary (s/n 4823 / 3425), O₂ secondary (s/n 1451)"
+        )
+
+
+@pytest.mark.slow
+def test_mixed_cruise_draws_every_cast_and_splits_runs(all_undeclared, tmp_path):
+    """Single-oxygen casts carry a plain ``ctd_oxygen``; an undeclared dual cast does not.
+
+    Compiled together, ``profiles.nc`` holds ``ctd_oxygen`` (blank for cast 056) and the
+    pages draw that name, so the fill must put line 1 into cast 056's profiles.
+    """
+    stage3, _ = all_undeclared
+    nc = tmp_path / "nc"
+    nc.mkdir()
+    for f in FIXTURES_NC.glob("*.nc"):
+        shutil.copy(f, nc)
+    shutil.copy(stage3, nc / "mixsed2_056.nc")
+    out = tmp_path / "profiles.nc"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        build_profiles(nc, out, force=True)
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        ds = ds.load()
+    assert resolve_sensor_var(ds, "ctd_oxygen") == "ctd_oxygen"
+    k56 = int(np.flatnonzero(ds["cast_number"].values == 56)[0])
+    k11 = int(np.flatnonzero(ds["cast_number"].values == 11)[0])
+    assert not np.isfinite(ds["ctd_oxygen"][k56]).any()
+    filled = fill_oxygen_composite(ds)
+    np.testing.assert_array_equal(
+        filled["ctd_oxygen"][k56].values, ds["ctd_oxygen_1"][k56].values
+    )
+    np.testing.assert_array_equal(
+        filled["ctd_oxygen"][k11].values, ds["ctd_oxygen"][k11].values
+    )
+    assert filled["ctd_oxygen"].attrs["filled_from_ctd_oxygen_1"] == "056"
+
+    runs = read_sensor_tables(out)["preferred"]
+    assert [r["range"] for r in runs] == ["011–012", "056", "128–129"]
+    assert runs[1]["oxygen"] == "line 1 shown (not declared)"
+
+
+def test_fill_leaves_a_dataset_without_line_1_alone(fixture_profiles):
+    with xr.open_dataset(fixture_profiles, engine="netcdf4") as ds:
+        assert fill_oxygen_composite(ds) is ds
+
+
+def test_stage1_cast_reads_not_resolved_yet():
     with xr.open_dataset(FIXTURES_NC / "mixsed2_011.nc", engine="netcdf4") as ds:
-        # Dual T/C, single oxygen, undeclared: only the pair has a choice to report.
-        assert _preferred_str(ds) == "T/C not declared"
+        # Dual T/C, single oxygen; a stage-1 file, so the choice is not stamped yet.
+        assert int(ds.attrs["processing_stage"]) == 1
+        assert _preferred_str(ds) == "T/C not resolved yet (stage 1 file)"
 
 
-def test_oxygen_label_names_the_line():
+def test_oxygen_label_follows_the_line_drawn():
     plain = _oxygen_label({})
     assert _oxygen_label({"preferred_oxygen": "secondary", "oxygen_line": 2}) == (
         f"{plain} · secondary"
@@ -106,23 +197,21 @@ def test_oxygen_label_names_the_line():
     assert _oxygen_label({"preferred_oxygen": "undeclared", "oxygen_line": 1}) == (
         f"{plain} · line 1, not declared"
     )
-
-
-#: Owned templates still writing their own ``<th>``, with the reason each is exempt.
-_TH_EXEMPT = {
-    # Column classes (``num``) and a ``title`` tooltip that the vendored ``thead`` macro
-    # cannot express yet.
-    "casts.html",
-}
-
-
-def test_owned_templates_use_the_vendored_thead():
-    offenders = sorted(
-        p.name
-        for p in _TEMPLATES.glob("*.html")
-        if p.name not in _TH_EXEMPT and re.search(r"<th[\s>]", p.read_text())
+    # Declared secondary that could not be derived: the figure fell back to line 1.
+    assert _oxygen_label({"preferred_oxygen": "secondary", "oxygen_line": 1}) == (
+        f"{plain} · line 1 (secondary not available)"
     )
-    assert offenders == []
+
+
+def test_color_limit_override_never_puts_a_composite_override_on_line_2():
+    assert (
+        color_limit_override({"ctd_oxygen": 40.0}, "ctd_oxygen_2", "ctd_oxygen_2")
+        is None
+    )
+    assert (
+        color_limit_override({"ctd_oxygen_2": 45.0}, "ctd_oxygen_2", "ctd_oxygen_2")
+        == 45.0
+    )
 
 
 def test_report_inventory_points_to_sensors_page(fixture_profiles, tmp_path):
