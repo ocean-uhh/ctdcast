@@ -448,8 +448,8 @@ def _duplicate_top_level_keys(path: Path) -> dict[str, int]:
     """
     counts: dict[str, int] = {}
     try:
-        text = path.read_text()
-    except OSError:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
         return {}
     for line in text.splitlines():
         # A top-level key starts in column 0 and is not a comment or list item.

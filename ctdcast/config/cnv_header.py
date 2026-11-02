@@ -47,6 +47,47 @@ def _canonical_var(channel: str, rename_map: dict[str, str] | None = None) -> st
     return CNV_ALIASES.get(key, channel.strip())
 
 
+# The SBE Data Processing step fields that name channels, read in one place each.  Every
+# reader of a step's channels (the conformance ticks, the advisories, the stacked-advance
+# check, the step parser) goes through these three.
+
+
+def _adv_items(params: dict[str, str]) -> list[tuple[str, str]]:
+    """Return Align CTD's ``adv`` field as ``(channel, seconds)`` pairs, in header order.
+
+    ``adv = c0mS/cm 0.073, sbeox0V 3.000`` gives ``[("c0mS/cm", "0.073"), ("sbeox0V",
+    "3.000")]``.  The seconds stay text (a caller decides what a non-number means); an item
+    with no seconds gives ``(item, "")``.
+    """
+    out: list[tuple[str, str]] = []
+    for item in (part.strip() for part in params.get("adv", "").split(",")):
+        if not item:
+            continue
+        name, _, seconds = item.rpartition(" ")
+        out.append((name.strip(), seconds) if name.strip() else (item, ""))
+    return out
+
+
+def _filter_groups(params: dict[str, str]) -> list[tuple[str, list[str], str]]:
+    """Return Filter's two groups as ``(A or B, channels, time constant)``, A first, empty ones left out."""
+    out: list[tuple[str, list[str], str]] = []
+    for ab in ("A", "B"):
+        chans = params.get(f"low_pass_{ab}_vars", "").split()
+        if chans:
+            out.append((ab, chans, params.get(f"low_pass_tc_{ab}", "")))
+    return out
+
+
+def _wfilter_actions(params: dict[str, str]) -> list[tuple[str, str, str]]:
+    """Return Window Filter's ``action <channel> = <type>, <width>`` lines as ``(channel, type, width)``."""
+    out: list[tuple[str, str, str]] = []
+    for key, value in params.items():
+        if key.startswith("action "):
+            kind, _, width = (part.strip() for part in value.partition(","))
+            out.append((key[len("action ") :].strip(), kind, width))
+    return out
+
+
 # One compiled pattern per recognised '*'-line shape. The '*' block is NOT
 # ``key = value`` -- advance lines have no '=' at all -- so match by shape, never
 # split on '='.
@@ -1183,14 +1224,7 @@ def _filter_ticks(
     """
     ref, source = _CONFORMANCE_REFS["filter_pressure_tc"]
     ticks: list[ConformanceTick] = []
-    for vars_key, tc_key in (
-        ("low_pass_A_vars", "low_pass_tc_A"),
-        ("low_pass_B_vars", "low_pass_tc_B"),
-    ):
-        chans = step.params.get(vars_key, "").split()
-        if not chans:
-            continue
-        tc = step.params.get(tc_key, "")
+    for _ab, chans, tc in _filter_groups(step.params):
         variables = ", ".join(_canonical_var(c, rename_map) for c in chans)
         detail = f"filtered at {tc} s"
         if any(_channel_kind(c) == "pressure" for c in chans) and _is_numeric(tc):
@@ -1361,9 +1395,8 @@ def stacked_advances(header_text: str) -> list[StackedAdvance]:
     for step in parse_processing_chain(header_text or "").steps:
         if step.module.casefold() != "alignctd":
             continue
-        for item in (p.strip() for p in step.params.get("adv", "").split(",")):
-            name, _, seconds = item.rpartition(" ")
-            m = _RE_CONDUCTIVITY_CHANNEL.match(name.strip())
+        for name, seconds in _adv_items(step.params):
+            m = _RE_CONDUCTIVITY_CHANNEL.match(name)
             if m is None:
                 continue
             role = "primary" if m.group(1) == "0" else "secondary"
@@ -1373,7 +1406,7 @@ def stacked_advances(header_text: str) -> list[StackedAdvance]:
             except ValueError:
                 continue
             if hw and sw:
-                found.append(StackedAdvance(name.strip(), hw, sw))
+                found.append(StackedAdvance(name, hw, sw))
     return found
 
 
@@ -1386,8 +1419,8 @@ def _alignctd_ticks(
     """One tick per Align CTD channel: ✗ where it stacks on the deck unit's advance, else a dash."""
     by_channel = {s.channel: s for s in stacked}
     ticks: list[ConformanceTick] = []
-    for item in (p.strip() for p in step.params.get("adv", "").split(",") if p.strip()):
-        name = item.rpartition(" ")[0].strip() or item
+    for name, seconds in _adv_items(step.params):
+        item = f"{name} {seconds}".strip()
         var = _canonical_var(name, rename_map)
         s = by_channel.get(name)
         if s is None:
@@ -1459,15 +1492,11 @@ def _all_channels(chain: ProcessingChain) -> set[str]:
     """Every data-channel name mentioned across the chain's var/action/adv fields."""
     channels: set[str] = set()
     for step in chain.steps:
-        for vars_key in ("low_pass_A_vars", "low_pass_B_vars", "vars"):
-            channels.update(step.params.get(vars_key, "").split())
-        for param, value in step.params.items():
-            if param.startswith("action "):
-                channels.add(param[len("action ") :].strip())
-            if param == "adv":
-                channels.update(
-                    pair.split()[0] for pair in value.split(",") if pair.split()
-                )
+        for _ab, chans, _tc in _filter_groups(step.params):
+            channels.update(chans)
+        channels.update(step.params.get("vars", "").split())
+        channels.update(ch for ch, _kind, _width in _wfilter_actions(step.params))
+        channels.update(name for name, _seconds in _adv_items(step.params))
     return channels
 
 
@@ -1476,10 +1505,8 @@ def _oxygen_aligned(chain: ProcessingChain) -> bool:
     for step in chain.steps:
         if step.module != "alignctd":
             continue
-        for pair in step.params.get("adv", "").split(","):
-            tokens = pair.split()
-            if tokens and _channel_kind(tokens[0]) == "oxygen":
-                return True
+        if any(_channel_kind(name) == "oxygen" for name, _ in _adv_items(step.params)):
+            return True
     return False
 
 
@@ -1488,22 +1515,22 @@ def _smoothed_tc_kinds(chain: ProcessingChain) -> set[str]:
     kinds: set[str] = set()
     for step in chain.steps:
         if step.module == "filter":
-            for vars_key in ("low_pass_A_vars", "low_pass_B_vars"):
-                for ch in step.params.get(vars_key, "").split():
-                    kind = _channel_kind(ch)
-                    if kind in ("temperature", "conductivity"):
-                        kinds.add(kind)
-        if step.module == "wfilter":
-            for param, value in step.params.items():
-                if not param.startswith("action "):
-                    continue
-                window = value.split(",")[0].strip().lower()
-                kind = _channel_kind(param[len("action ") :].strip())
-                if window in _WFILTER_SMOOTHERS and kind in (
-                    "temperature",
-                    "conductivity",
-                ):
-                    kinds.add(kind)
+            channels = [
+                ch for _ab, chans, _tc in _filter_groups(step.params) for ch in chans
+            ]
+        elif step.module == "wfilter":
+            channels = [
+                ch
+                for ch, window, _width in _wfilter_actions(step.params)
+                if window.lower() in _WFILTER_SMOOTHERS
+            ]
+        else:
+            continue
+        kinds.update(
+            k
+            for k in map(_channel_kind, channels)
+            if k in ("temperature", "conductivity")
+        )
     return kinds
 
 
@@ -1570,16 +1597,11 @@ def _step_channels(
     m = step.module
     if m == "wfilter":
         return ", ".join(
-            _canonical_var(param[len("action ") :].strip(), rename_map)
-            for param in step.params
-            if param.startswith("action ")
+            _canonical_var(ch, rename_map) for ch, _, _ in _wfilter_actions(step.params)
         )
     if m == "alignctd":
-        adv = step.params.get("adv", "")
         return ", ".join(
-            _canonical_var(pair.split()[0], rename_map)
-            for pair in adv.split(",")
-            if pair.split()
+            _canonical_var(name, rename_map) for name, _ in _adv_items(step.params)
         )
     if m == "Derive":
         for value in step.params.values():
@@ -1657,14 +1679,13 @@ def applied_sbe_corrections(header_text: str) -> dict[str, object]:
     for step in chain.steps:
         if step.module.casefold() != "alignctd":
             continue
-        adv = step.params.get("adv", "")
-        if not adv.strip():
+        items = _adv_items(step.params)
+        if not items:
             # alignctd ran but its advances were not recorded: any channel may be aligned.
             unparsed.append("(no adv recorded)")
             continue
-        for item in (part.strip() for part in adv.split(",") if part.strip()):
-            name, _, seconds = item.rpartition(" ")
-            name = name.strip()
+        for name, seconds in items:
+            item = f"{name} {seconds}".strip()
             for pattern, base in _ALIGN_CHANNEL_PATTERNS:
                 if (m := pattern.match(name)) is not None:
                     try:

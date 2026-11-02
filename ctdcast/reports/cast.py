@@ -341,6 +341,7 @@ def generate_station_page(
         "version": _VERSION,
         "source_str": source_str,
         "raw_input_str": _raw_input_str(ds),
+        "sample_rate_str": _sample_rate_str(ds),
         "processed_str": processed_str,
         "preferred_str": _preferred_str(ds),
         "report": report,
@@ -668,6 +669,31 @@ def _raw_input_str(ds: xr.Dataset) -> str:
         return f"{name}{xmlcon} (raw SBE 911plus .hex)"
     cnv = a.get("source_cnv") or a.get("raw_filename")
     return f"{cnv} (Sea-Bird CNV)" if cnv else ""
+
+
+def _sample_rate_str(ds: xr.Dataset) -> str:
+    """Return the cast's sample rate for the header, or ``""`` when the file records none.
+
+    A ``.hex`` cast is at the instrument's own rate (``24 Hz (native, unbinned)`` for a
+    911plus).  A CNV cast reads its ``# interval`` line: a rate when the interval is under a
+    second, otherwise the interval itself (``1 s interval``, ``1 dbar bins``), since Sea-Bird
+    writes the same line after a time or pressure Bin Average.
+    """
+    a = ds.attrs
+    kind = a.get("sample_interval_kind")
+    seconds = a.get("sample_interval_seconds")
+    if a.get("input_format") == "hex":
+        if seconds is None or float(seconds) <= 0:
+            return ""
+        return f"{1.0 / float(seconds):.3g} Hz (native, unbinned)"
+    if kind == "decibars" and a.get("sample_interval_dbar") is not None:
+        return f"{float(a['sample_interval_dbar']):g} dbar bins (CNV)"
+    if seconds is None or float(seconds) <= 0:
+        return ""
+    seconds = float(seconds)
+    if seconds < 1.0:
+        return f"{1.0 / seconds:.3g} Hz (CNV, {seconds:g} s interval)"
+    return f"{seconds:g} s interval (CNV)"
 
 
 def _preferred_str(ds: xr.Dataset) -> str:

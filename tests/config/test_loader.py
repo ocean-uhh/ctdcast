@@ -68,7 +68,7 @@ cruise_info:
   ship: "Maria S. Merian"
 """
     p = tmp_path / "ctd_sections.yaml"
-    p.write_text(yaml_content)
+    p.write_text(yaml_content, encoding="utf-8")
     cfg = SectionsConfig.from_yaml(p)
     assert list(cfg.sections.keys()) == ["KO"]
     assert cfg.sections["KO"]["description"] == "Kögur Outer"

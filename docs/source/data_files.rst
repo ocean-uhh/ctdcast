@@ -112,7 +112,7 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``sbe_oxygen_1`` / ``sbe_oxygen_2``
      - ``.hex`` casts only: quick-look SBE 43 oxygen in µmol kg⁻¹, converted at read time by ctdcast with Sea-Bird's ``seabirdscientific`` toolkit (uncorrected T/S, no tau or hysteresis correction). Dropped at stage 2 with the other ``sbe_`` channels.
    * - ``pump_status``, ``bottom_contact_status``, ``bottle_confirm_status``, ``modem_status``, ``data_integrity``
-     - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter.
+     - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter. Neither these nor the ``volt{N}_raw`` channels get a ``_qc`` flag at stage 2: they are not measurements a flag could describe. ``oxygen_raw_N`` does, as stage 3 derives oxygen from it.
 
 A cast read from ``.hex`` is at the native scan rate (24 Hz on a 911plus), with no
 Sea-Bird processing applied; its conductivity, temperature and pressure carry the

@@ -162,3 +162,15 @@ def test_section_figsize_deep_short_is_narrower_than_shallow_wide():
     (deep_w, _), _ = section_figsize_and_slot(2336, 103.6)
     assert wide_w == SLOTS["full"][1]
     assert deep_w < wide_w
+
+
+def test_ts_diagram_without_oxygen_is_drawn_plain(ds_011):
+    from ctdcast.plotters.profiles import draw_ts_diagram_fig
+
+    no_o2 = ds_011.drop_vars(
+        [v for v in ds_011.data_vars if "oxygen" in v or v.startswith("oxsat")]
+    )
+    fig = draw_ts_diagram_fig(no_o2)
+    assert fig is not None
+    assert len(fig.axes) == 1  # no colour bar
+    assert _is_valid(_make_ts_diagram_b64(no_o2))

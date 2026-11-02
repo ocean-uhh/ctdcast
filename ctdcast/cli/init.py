@@ -1692,7 +1692,7 @@ def _build_config_text(
 
 def _write_file(path: Path, text: str) -> None:
     """Write *text* to *path*."""
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
 
 
 # Keep old name as alias so existing callers are not broken.

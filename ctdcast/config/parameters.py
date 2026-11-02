@@ -59,6 +59,42 @@ def is_sbe_channel(name: str) -> bool:
     return str(name).startswith(SBE_PREFIX)
 
 
+# Per-scan status words the deck unit adds (on/off bits and a counter), not measurements.
+STATUS_CHANNELS: frozenset[str] = frozenset(
+    {
+        "pump_status",
+        "bottom_contact_status",
+        "bottle_confirm_status",
+        "modem_status",
+        "data_integrity",
+    }
+)
+
+_RAW_VOLTAGE = re.compile(r"^volt\d+_raw$")
+
+
+def is_unflagged_channel(name: str) -> bool:
+    """Return whether *name* is a channel that carries no QARTOD flag.
+
+    Status words (:data:`STATUS_CHANNELS`) are bits and counters, and a raw voltage
+    ``volt<N>_raw`` with no sensor conversion is kept for the record, not used; neither
+    is a measurement a ``_qc`` flag could describe.  An SBE 43 voltage
+    (``oxygen_raw_<N>``) is not in this set: stage 3 derives oxygen from it.
+
+    Parameters
+    ----------
+    name : str
+        Variable name.
+
+    Returns
+    -------
+    bool
+        True for a status word or an unconverted raw voltage.
+    """
+    name = str(name)
+    return name in STATUS_CHANNELS or bool(_RAW_VOLTAGE.match(name))
+
+
 # Slot widths, section aspect constants, and other presentation tokens now live
 # in the vendored, package-neutral ``reports/_vendored/design_tokens.py``.
 # This file holds only scientific/variable metadata.

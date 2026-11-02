@@ -193,14 +193,15 @@ def draw_ts_diagram_fig(
     cfg: ReportConfig = DEFAULT_REPORT_CONFIG,
     width_in: float = _W_THIRD,
 ) -> plt.Figure | None:
-    """Return a T–S diagram Figure coloured by oxygen saturation.
+    """Return a T–S diagram Figure coloured by oxygen saturation, or plain without oxygen.
 
     Parameters
     ----------
     ds : xarray.Dataset
         Per-cast dataset with ``pressure`` and the T/S channels; CT, SA and σ₀
-        are derived here (TEOS-10) and the downcast is selected.
-        Needs ``oxygen_saturation`` (or the old ``oxsat_1``).
+        are derived here (TEOS-10) and the downcast is selected.  With
+        ``oxygen_saturation`` (or the old ``oxsat_1``) the points are coloured by it;
+        without, they are drawn in one colour and the figure has no colour bar.
     cfg : ReportConfig
         Report configuration; ``clean_spines`` sets the despine.
     width_in : float, default ``W_THIRD``
@@ -209,7 +210,7 @@ def draw_ts_diagram_fig(
     Returns
     -------
     matplotlib.figure.Figure or None
-        The figure, or None when there is no oxygen saturation or fewer than five valid points.
+        The figure, or None when there are fewer than five valid points.
     """
     ds_teos = add_teos10(ds)
     ds_down, _ = split_cast(ds_teos)
@@ -219,7 +220,16 @@ def draw_ts_diagram_fig(
         (v for v in ("oxygen_saturation", "oxsat_1") if v in ds_down), None
     )
     if _oxsat_var is None:
-        return None
+        mask = np.isfinite(sa) & np.isfinite(ct)
+        if mask.sum() < 5:
+            return None
+        fig, ax = plt.subplots(figsize=(width_in, width_in * 3.8 / _W_THIRD))
+        ax.scatter(sa[mask], ct[mask], color="0.2", s=6, alpha=0.8)
+        _sigma0_backdrop(ax)
+        ax.set_xlabel(vlabel("absolute_salinity"))
+        ax.set_ylabel(vlabel("conservative_temperature"))
+        hide_outer_spines(ax, clean=cfg.clean_spines)
+        return fig
     o2 = ds_down[_oxsat_var].values
 
     mask = np.isfinite(sa) & np.isfinite(ct) & np.isfinite(o2)

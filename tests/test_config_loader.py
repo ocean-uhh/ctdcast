@@ -70,3 +70,17 @@ def test_command_line_reports_a_config_error(tmp_path, monkeypatch, capsys):
         main()
     assert exit_.value.code == 1
     assert "Config error:" in capsys.readouterr().err
+
+
+def test_config_is_utf8_whatever_the_platform(tmp_path):
+    """A config with non-ASCII text reads and writes as UTF-8, not the locale's encoding."""
+    from ctdcast.cli.init import _write_file
+    from ctdcast.config.loader import load_config
+
+    text = 'cruise_info:\n  chief_scientist: "Jürgen Kögur — Ålesund"\n'
+    path = tmp_path / "config.yaml"
+    _write_file(path, text)
+    assert path.read_bytes() == text.encode("utf-8")
+    assert (
+        load_config(path)["cruise_info"]["chief_scientist"] == "Jürgen Kögur — Ålesund"
+    )

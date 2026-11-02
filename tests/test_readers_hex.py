@@ -420,3 +420,20 @@ def test_cast_page_names_the_raw_input(slice_ds):
     )
     with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as cnv:
         assert _raw_input_str(cnv) == "mixsed2_011.cnv (Sea-Bird CNV)"
+
+
+def test_cast_page_names_the_sample_rate(slice_ds):
+    """The cast header gives the rate: native for a .hex, the CNV's interval otherwise."""
+    from ctdcast.reports.cast import _sample_rate_str
+
+    assert _sample_rate_str(slice_ds) == "24 Hz (native, unbinned)"
+    cnv = xr.Dataset(attrs={"input_format": "cnv"})
+    assert _sample_rate_str(cnv) == ""
+    scan = {"sample_interval_kind": "seconds", "sample_interval_seconds": 0.0416667}
+    assert (
+        _sample_rate_str(cnv.assign_attrs(scan)) == "24 Hz (CNV, 0.0416667 s interval)"
+    )
+    sec = {"sample_interval_kind": "seconds", "sample_interval_seconds": 1.0}
+    assert _sample_rate_str(cnv.assign_attrs(sec)) == "1 s interval (CNV)"
+    dbar = {"sample_interval_kind": "decibars", "sample_interval_dbar": 1.0}
+    assert _sample_rate_str(cnv.assign_attrs(dbar)) == "1 dbar bins (CNV)"

@@ -20,7 +20,10 @@ from pathlib import Path
 from typing import Any
 
 from ctdcast.config.cnv_header import (
+    _adv_items,
     _canonical_var,
+    _filter_groups,
+    _wfilter_actions,
     parse_processing_chain,
     stacked_advances,
 )
@@ -77,13 +80,8 @@ def _wildedit(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
 def _wfilter(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
     """One ``window_filter`` step per distinct (type, width), in first-seen order."""
     groups: dict[tuple[str, str], list[str]] = {}
-    for key, value in p.items():
-        if not key.startswith("action "):
-            continue
-        kind, _, width = (s.strip() for s in value.partition(","))
-        groups.setdefault((kind, width), []).append(
-            _canonical_var(key[len("action ") :], rn)
-        )
+    for channel, kind, width in _wfilter_actions(p):
+        groups.setdefault((kind, width), []).append(_canonical_var(channel, rn))
     out = []
     for (kind, width), variables in groups.items():
         step: dict[str, Any] = {"type": kind, "variables": variables}
@@ -98,9 +96,8 @@ def _wfilter(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
 def _filter(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
     """Sea-Bird's Filter A and B as two ``filter`` steps (A first, as Sea-Bird runs them)."""
     out = []
-    for ab in ("A", "B"):
-        variables = p.get(f"low_pass_{ab}_vars", "").split()
-        if variables and f"low_pass_tc_{ab}" in p:
+    for ab, variables, _tc in _filter_groups(p):
+        if f"low_pass_tc_{ab}" in p:
             out.append(
                 {
                     "filter": {
@@ -114,10 +111,9 @@ def _filter(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
 
 def _alignctd(p: dict[str, str], rn: dict[str, str] | None) -> list[dict]:
     step = {}
-    for pair in p.get("adv", "").split(","):
-        bits = pair.split()
-        if len(bits) >= 2:
-            step[_canonical_var(bits[0], rn)] = _num(bits[1])
+    for name, seconds in _adv_items(p):
+        if seconds:
+            step[_canonical_var(name, rn)] = _num(seconds)
     return [{"alignctd": step}] if step else []
 
 
