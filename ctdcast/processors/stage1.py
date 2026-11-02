@@ -373,15 +373,19 @@ def _sensor_variable(role: str, ds: xr.Dataset) -> str | None:
     return var
 
 
-def _raw_channel_variable(ds: xr.Dataset, channel: int) -> str | None:
-    """Return the raw-voltage variable recorded from ``.xmlcon`` *channel* (1-based), or None."""
-    for name, da in ds.data_vars.items():
-        if (
-            da.attrs.get("units") == "V"
-            and da.attrs.get("sbe_xmlcon_index") == channel - 1
-        ):
-            return str(name)
-    return None
+def _channel_variable(ds: xr.Dataset, channel: int) -> str | None:
+    """Return the variable the ``.hex`` reader made from ``.xmlcon`` *channel* (1-based), or None.
+
+    A converted variable wins over the channel's raw voltage.  Only a ``.hex`` cast tags its
+    variables with ``sbe_xmlcon_index``; on a CNV cast this always returns None.
+    """
+    hits = [
+        str(name)
+        for name, da in ds.data_vars.items()
+        if da.attrs.get("sbe_xmlcon_index") == channel - 1
+    ]
+    converted = [h for h in hits if ds[h].attrs.get("units") != "V"]
+    return (converted or hits or [None])[0]
 
 
 def _build_cast_sensor_catalog(
@@ -438,19 +442,21 @@ def _build_cast_sensor_catalog(
             serial_to_names.setdefault(canon, set()).add(name)
         var = _sensor_variable(role, ds)
         if var is None or var not in ds:
-            # No converted variable: link the channel's raw voltage, if the reader kept one
-            # (a .hex cast keeps every voltage channel, tagged with its .xmlcon index).
-            raw = _raw_channel_variable(ds, int(rec["channel"]))
-            if raw is not None:
-                ds[raw].attrs["sensor"] = name
-                continue
+            # No variable under the role's name: link what the .hex reader made from this
+            # .xmlcon channel (converted if it could, else the raw voltage).
+            by_channel = _channel_variable(ds, int(rec["channel"]))
+            if by_channel is not None:
+                var = by_channel
         if var is not None and var in ds:
             ds[var].attrs["sensor"] = name
             # This variable maps to a sensor in the <Sensors> block, which is the evidence
             # that its values were converted from instrument units (datcnv did it upstream;
             # table 3 describes the procedure, not who ran it).  Co-located with the link so
             # the claim and its evidence cannot drift, and no channel needs a hardcoded name.
-            add_processing_level(ds[var].attrs, PL_CONVERTED)
+            # A raw voltage (a .hex cast's oxygen_raw_N, volt<N>_raw) is linked but not
+            # converted, so it makes no such claim.
+            if ds[var].attrs.get("units") != "V":
+                add_processing_level(ds[var].attrs, PL_CONVERTED)
         elif var is not None:
             # A role ctdcast knows how to store, whose variable is absent: the reader dropped
             # a channel it could have kept.  (A role with no converted variable at all — e.g.

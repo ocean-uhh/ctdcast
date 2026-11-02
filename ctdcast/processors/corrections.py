@@ -65,7 +65,11 @@ from ctdcast.config.cnv_header import (
     raw_metadata_block,
 )
 from ctdcast.identity import expand_cast_numbers
-from ctdcast.processors.history import append_history
+from ctdcast.processors.history import (
+    PL_CONVERTED,
+    add_processing_level,
+    append_history,
+)
 from ctdcast.processors.qc import QARTOD_MISSING
 
 #: Native scan interval by instrument, as :func:`ctdcast.config.cnv_header.detect_instrument`
@@ -969,13 +973,17 @@ def derive_oxygen(
             "derived_from": f"{raw}, {temp}, {sal}, pressure",
             "sensor_serial_number": sensors[n - 1].serial or "UNK",
         }
+        if "sensor" in ds[raw].attrs:  # the voltage's link to its SENSOR_OXYGEN_* entry
+            attrs["sensor"] = ds[raw].attrs["sensor"]
+        add_processing_level(attrs, PL_CONVERTED)
         ds[name] = (ds[raw].dims, o2, attrs)
         if f"{raw}_qc" in ds:
             # The voltage's flags (stage-2 soak/deck, alignment edges) carry to the oxygen.
+            # Its long_name names the voltage; dropped so the writer names this variable.
             ds[f"{name}_qc"] = (
                 ds[raw].dims,
                 ds[f"{raw}_qc"].values.copy(),
-                dict(ds[f"{raw}_qc"].attrs),
+                {k: v for k, v in ds[f"{raw}_qc"].attrs.items() if k != "long_name"},
             )
         written.append(name)
         append_history(

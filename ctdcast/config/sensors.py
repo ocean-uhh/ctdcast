@@ -98,8 +98,10 @@ ROLE_QUANTITY: dict[str, str] = {
 #: Role base -> the canonical data-variable base it measures.  Roles are the header's
 #: vocabulary (a device's job); variables are ctdcast's (a stored quantity), so the two
 #: legitimately differ -- ``fluorometer`` is the instrument, ``ctd_fluor`` the fluorescence.
-#: A role absent here has no converted variable (pH, SPAR/PAR, a user polynomial today): it
-#: still gets a catalog entry, linked to its raw voltage when the cast carries one (``.hex``).  The single source of truth for the
+#: A role absent here (transmissometer, pH, SPAR/PAR, a user polynomial today) still gets a
+#: catalog entry.  On a ``.hex`` cast it links by ``.xmlcon`` channel instead: to the converted
+#: variable the reader made from that channel (``transmissometer``), else its raw voltage.  A CNV
+#: cast has no channel tags, so such a role stays unlinked, silently.  The single source of truth for the
 #: sensor->variable join; nothing else re-derives a variable name from a role.
 ROLE_VARIABLE: dict[str, str] = {
     "temperature": "ctd_temperature",
@@ -109,7 +111,6 @@ ROLE_VARIABLE: dict[str, str] = {
     "fluorometer": "ctd_fluor",
     "turbidity": "ctd_turbidity",
     "altimeter": "ctd_altimeter",
-    "transmissometer": "transmissometer",
 }
 
 #: Role base -> the raw-signal variable base to link when the role's measured variable is

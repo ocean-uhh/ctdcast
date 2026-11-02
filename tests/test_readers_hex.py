@@ -263,9 +263,24 @@ def test_stage1_hex_backend(tmp_path):
         }
         catalog = {str(v) for v in ds.data_vars if str(v).startswith("SENSOR_")}
         assert catalog == linked
-        assert (
-            "processing_level" not in ds["volt3_raw"].attrs
-        )  # raw volts, not converted
+        # Raw volts are linked but not converted; a converted channel says so.
+        assert "processing_level" not in ds["volt3_raw"].attrs
+        assert "processing_level" not in ds["oxygen_raw_1"].attrs
+        assert "converted" in ds["transmissometer"].attrs["processing_level"]
+
+
+def test_cnv_cast_with_unexported_sensors_is_silent(tmp_path):
+    """A CNV's <Sensors> lists a C-Star with no column: no 'reader dropped a channel' warning."""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    shutil.copy(FIX / "cnv" / "mixsed2_004.cnv", raw)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        stage1(raw, tmp_path / "ctd")
+    assert not [w for w in caught if "reader dropped a channel" in str(w.message)]
+    out = next((tmp_path / "ctd").rglob("*.nc"))
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        assert "SENSOR_TRANSMISSOMETER_2033" in ds and "transmissometer" not in ds
 
 
 def test_find_xmlcon_ignores_case(tmp_path):

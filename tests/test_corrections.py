@@ -819,3 +819,23 @@ def test_cast_page_skips_preferred_composites(slice2):
         "conductivity_1",
         "conductivity_2",
     ]
+
+
+def test_written_oxygen_metadata_describes_the_oxygen(tmp_path):
+    """Through the writer: its own QC label, the conversion level, the SBE 43 catalog link."""
+    from ctdcast.processors.stage3 import run as stage3_run
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    for name in ("MIXSED2_011.hex", "MIXSED2_011.XMLCON"):
+        shutil.copy(FIX / "hex_slice" / name, raw / name)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stage1(raw, tmp_path / "ctd", backend="hex", pattern="*.[hH][eE][xX]")
+        stage2_run(tmp_path / "ctd")
+        stage3_run(tmp_path / "ctd", cruise_cfg=CTM)
+    out = next((tmp_path / "ctd" / "stage3").glob("*.nc"))
+    with xr.open_dataset(out, engine="netcdf4") as ds:
+        assert ds.ctd_oxygen_qc.attrs["long_name"] == "Quality flag for ctd_oxygen"
+        assert "converted" in ds.ctd_oxygen.attrs["processing_level"]
+        assert ds.ctd_oxygen.attrs["sensor"] == "SENSOR_OXYGEN_0707"
