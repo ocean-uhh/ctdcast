@@ -511,6 +511,7 @@ def draw_blocks_fig(
     for b0 in starts:
         for s in summarise(fits, casts=slice(b0, b0 + size)):
             rows[s.line].append((b0 + (min(size, n - b0) - 1) / 2, s))
+    cruise = {s.line: s for s in summarise(fits)}
     fig, (a0, a1, a2) = plt.subplots(
         3, 1, figsize=(width_in, width_in * 0.8), sharex=True
     )
@@ -530,6 +531,12 @@ def draw_blocks_fig(
         a0.plot(xs, [p[1].residual + base for p in pts], label=name, **kw)
         a1.plot(xs, [p[1].alpha_at_tau for p in pts], **kw)
         a2.plot(xs, [p[1].tau_at_alpha for p in pts], **kw)
+        # The cruise recommended advance for this line, as a reference across the blocks.
+        rec = cruise.get(line)
+        if rec is not None and np.isfinite(rec.residual):
+            a0.axhline(rec.residual + base, color="0.6", ls=ls, lw=pen("thin"))
+    a0.set_title("Align CT")
+    a1.set_title("Cell thermal mass")
     a0.set_ylabel("advance (s)")
     a0.legend(loc="best")
     a1.axhline(F.DEFAULT_ALPHA_SBE, color="0.6", ls=":", lw=pen("thinner"))
