@@ -17,7 +17,8 @@ Usage
     python scripts/coverage_floors.py [--coverage coverage.json]
 
 Floors are seeded at each module's measured coverage, rounded down, so a module
-can hold or rise but never regress.  When you improve one, bump its number --
+can hold or rise but never regress.  No floor is above 99%: a 100% floor fails on
+the first defensive branch, which is churn rather than protection.  When you improve one, bump its number --
 that maintenance is the cost of per-module guarding, which is why the list stays
 short rather than pinning every module.
 
@@ -52,6 +53,10 @@ except ModuleNotFoundError:  # pragma: no cover - 3.10 fallback
 
 #: A module this far above its floor is worth ratcheting up; reported, never failed.
 BUMP_SUGGESTION_MARGIN = 2.0
+
+#: The highest floor allowed.  A 100% floor fails on the first defensive branch or
+#: platform-specific line, which is churn rather than protection.
+MAX_FLOOR = 99.0
 
 
 def load_floors(pyproject: Path) -> dict[str, float]:
@@ -123,6 +128,14 @@ def main(argv: list[str] | None = None) -> int:
     if not floors:
         print("ERROR: [tool.coverage_floors] is empty or absent", file=sys.stderr)
         return 1
+    too_high = sorted(m for m, f in floors.items() if f > MAX_FLOOR)
+    if too_high:
+        print(
+            f"ERROR: floors above {MAX_FLOOR:.0f}% in [tool.coverage_floors]: "
+            f"{', '.join(too_high)}. Set them to {MAX_FLOOR:.0f} at most.",
+            file=sys.stderr,
+        )
+        return 1
 
     seen = measured(args.coverage)
     failures: list[str] = []
@@ -150,8 +163,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         if not ok:
             failures.append(f"{module}: {pct:.2f}% is below its floor of {floor:.0f}%")
-        elif pct >= floor + BUMP_SUGGESTION_MARGIN:
-            bumps.append(f"{module}: {pct:.2f}% — floor could rise to {int(pct)}")
+        elif pct >= floor + BUMP_SUGGESTION_MARGIN and floor < MAX_FLOOR:
+            bumps.append(
+                f"{module}: {pct:.2f}% — floor could rise to {min(int(pct), int(MAX_FLOOR))}"
+            )
 
     if bumps:
         print("\nRatchet candidates (informational, not failures):")
