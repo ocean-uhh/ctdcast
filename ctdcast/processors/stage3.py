@@ -1,11 +1,10 @@
 """Stage 3 — QC, calibration, and derived-variable orchestrator.
 
-Stage3 is iterative: re-run it as calibration improves.  Each run applies
-gross-range QC, then any conductivity calibration present in the cruise
-config, then re-derives salinity from the calibrated conductivity.
-
-Sea-Bird processing-chain calibration (hex-level, frequency coefficients) is
-Phase 5 scope; this module covers only the post-conversion treatment.
+Stage3 is iterative: re-run it as calibration improves.  Each run applies the
+native-rate corrections (alignment, cell thermal mass) configured for the cruise,
+any conductivity calibration, re-derives salinity, derives SBE 43 oxygen from the
+voltage where a cast carries it, and then runs gross-range and spike QC on the
+corrected values.
 """
 
 from __future__ import annotations
@@ -28,6 +27,12 @@ from ctdcast.config.preferred_sensors import (
 )
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
+from ctdcast.processors.corrections import (
+    apply_corrections,
+    derive_oxygen,
+    flag_missing,
+    validate_config,
+)
 from ctdcast.processors.history import (
     PL_CALIBRATED,
     add_processing_level,
@@ -47,29 +52,37 @@ from ctdcast.writers.netcdf import write as _write_nc
 def stage3(
     ds: xr.Dataset,
     cruise_cfg: dict | None = None,
+    *,
+    cast_number: int | None = None,
+    cast_label: str = "?",
 ) -> xr.Dataset:
-    """Apply QC and calibration to a per-cast Dataset.
+    """Apply corrections, calibration, derived variables and QC to a per-cast Dataset.
 
     Applies the following in order:
 
-    1. Two-tier gross-range QC (``qc.apply_gross_range``) and the QARTOD spike
-       test (``qc.apply_spike_test``), using the package defaults merged with any
-       overrides from ``cruise_cfg["qc"]["gross_range"]`` and
-       ``cruise_cfg["qc"]["spike"]`` (each with ``suspect``/``fail`` sub-dicts).
+    1. Native-rate corrections (:func:`ctdcast.processors.corrections.apply_corrections`):
+       alignment (``cruise_cfg["alignctd"]``) and cell thermal mass (``cruise_cfg["celltm"]``).
+       Skipped, with a warning and a ``history`` note, for a cast that is binned or that
+       Sea-Bird already corrected; a cast with neither block configured is untouched.
     2. Conductivity calibration slope, if ``cruise_cfg["calibration"]["conductivity_slope"]``
-       is present.  Multiplies ``conductivity_1`` (and ``conductivity_2`` if
-       present) by the slope and records it in the variable's attributes.
-    3. Re-derives ``salinity_1`` (and ``salinity_2``) from the calibrated
-       conductivity using ``derive_salinity()`` — only when a conductivity
-       calibration was applied.
+       is present.
+    3. Re-derives practical salinity whenever step 1 or 2 changed conductivity.
+    4. Derives ``ctd_oxygen`` from the SBE 43 voltage on a cast that carries ``oxygen_raw_<N>``
+       and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`).
+    5. Two-tier gross-range QC and the QARTOD spike test, on the corrected values, using the
+       package defaults merged with ``cruise_cfg["qc"]["gross_range"]`` / ``["spike"]``.
 
     Parameters
     ----------
     ds:
         Per-cast Dataset (dim=time), already through stage1 and stage2.
     cruise_cfg:
-        Optional dict with sub-keys ``qc`` and ``calibration``.  Pass
-        ``cfg.get("processing")`` or the full cruise config dict.
+        Optional dict with sub-keys ``alignctd``, ``celltm``, ``oxygen``, ``qc`` and
+        ``calibration``.  Pass ``cfg.get("processing")`` or the full cruise config dict.
+    cast_number:
+        The cast's number, for per-cast-range correction values.
+    cast_label:
+        How the cast is named in warnings (e.g. ``"011"``).
 
     Returns
     -------
@@ -78,17 +91,29 @@ def stage3(
     """
     cfg = cruise_cfg or {}
 
-    # Step 1: gross-range + spike QC
-    ds = qc.apply_gross_range(ds, cfg.get("qc", {}).get("gross_range") or None)
-    ds = qc.apply_spike_test(ds, cfg.get("qc", {}).get("spike") or None)
+    # Step 1: alignment and cell thermal mass, at the native scan rate.
+    ds, record = apply_corrections(ds, cfg, cast_number, cast_label=cast_label)
 
     # Step 2: conductivity calibration
     slope_raw = cfg.get("calibration", {}).get("conductivity_slope")
     if slope_raw is not None:
         slope = float(slope_raw)
         ds = _apply_conductivity_slope(ds, slope)
-        # Step 3: re-derive salinity from calibrated conductivity
+
+    # Step 3: re-derive salinity whenever conductivity changed.
+    conductivity_changed = slope_raw is not None or any(
+        v.startswith("conductivity") for v in record.changed
+    )
+    if conductivity_changed:
         ds = derive_salinity(ds)
+        for var, mask in record.edge_masks.items():
+            if var.startswith("conductivity"):
+                line = var[-1]
+                for sal in (f"ctd_salinity_{line}", "ctd_salinity"):
+                    if sal in ds:
+                        flag_missing(ds, sal, mask)
+                        break
+    if slope_raw is not None:
         # Salinity now embodies the calibration (value-changing procedure propagates to the
         # variable derived from the changed input) — but keeps no conversion value, since it
         # was computed, never instrument data.
@@ -101,8 +126,19 @@ def stage3(
             "salinity re-derived from calibrated conductivity",
             stage="stage3",
         )
+    elif conductivity_changed:
+        append_history(
+            ds.attrs,
+            "salinity re-derived from corrected conductivity",
+            stage="stage3",
+        )
 
-    return ds
+    # Step 4: oxygen from the SBE 43 voltage (hex casts; a CNV's own oxygen is left alone).
+    ds, _oxygen = derive_oxygen(ds, cfg, cast_label=cast_label)
+
+    # Step 5: gross-range + spike QC, judging the corrected values.
+    ds = qc.apply_gross_range(ds, cfg.get("qc", {}).get("gross_range") or None)
+    return qc.apply_spike_test(ds, cfg.get("qc", {}).get("spike") or None)
 
 
 def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
@@ -337,6 +373,8 @@ def run(
     # (naming the cast) when nothing in the config backs the claim.
     declare_delayed = str((cruise_info or {}).get("data_mode", "")).upper() == "D"
 
+    # A malformed correction block fails once, here, not as one error per cast.
+    validate_config(cruise_cfg)
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
     for cast_id in sorted(groups):
@@ -366,7 +404,12 @@ def run(
         ds = None
         try:
             ds = xr.open_dataset(input_path, engine="netcdf4").load()
-            ds_out = stage3(ds, cruise_cfg=cruise_cfg)
+            ds_out = stage3(
+                ds,
+                cruise_cfg=cruise_cfg,
+                cast_number=cast_id[0],
+                cast_label=format_cast_id(*cast_id),
+            )
             # Lineage: record the stage-2 file's id before the writer stamps ds_out's own
             # fresh tracking_id (empty on a legacy stage-2 file that predates the id).
             _src_id = ds.attrs.get("tracking_id", "")

@@ -28,6 +28,8 @@ from ctdcast.processors.history import (
 #: masks on it, and the vocabulary that gives it meaning share one definition.
 QARTOD_SUSPECT = np.int8(3)
 QARTOD_FAIL = np.int8(4)
+#: QARTOD 9 "missing": no measurement exists at that point (e.g. shifted past a cast's end).
+QARTOD_MISSING = np.int8(9)
 
 # QC threshold defaults.  Every test has two tiers: SUSPECT (flag 3,
 # oceanographically implausible) and FAIL (flag 4, instrument malfunction).

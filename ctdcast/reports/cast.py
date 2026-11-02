@@ -934,6 +934,82 @@ def _corrections_table_html(
     )
 
 
+def _ctdcast_correction_rows(ds: xr.Dataset) -> list[tuple[str, str, str, str]]:
+    """Rows ``(step, variable, parameters, method)`` for ctdcast's own stage-3 corrections.
+
+    Read from the variables' attributes, in the order stage 3 applies them: alignment, cell
+    thermal mass, conductivity slope, then SBE 43 oxygen from the voltage.
+    """
+    rows: list[tuple[str, str, str, str]] = []
+    # A preferred-sensor composite copies its source channel's attrs; listing it would show
+    # each correction twice.
+    names = [
+        str(v)
+        for v in ds.data_vars
+        if not str(ds[v].attrs.get("comment", "")).startswith("preferred ")
+    ]
+    for v in names:
+        a = ds[v].attrs
+        if "alignment_offset_seconds" in a:
+            params = f"{float(a['alignment_offset_seconds']):+.3f} s"
+            if "alignment_deck_unit_advance_seconds" in a:
+                params += f" (on top of the deck unit's {float(a['alignment_deck_unit_advance_seconds']):+.3f} s)"
+            rows.append(("alignctd", v, params, str(a.get("alignment_method", ""))))
+    for v in names:
+        a = ds[v].attrs
+        if "cell_thermal_mass_alpha" in a:
+            params = (
+                f"alpha {float(a['cell_thermal_mass_alpha']):g}, tau {float(a['cell_thermal_mass_tau_seconds']):g} s, "
+                f"with {a.get('cell_thermal_mass_temperature', '?')}"
+            )
+            rows.append(
+                ("celltm", v, params, str(a.get("cell_thermal_mass_method", "")))
+            )
+    for v in names:
+        a = ds[v].attrs
+        if "calibration_slope" in a:
+            rows.append(
+                (
+                    "conductivity slope",
+                    v,
+                    f"× {a['calibration_slope']}",
+                    "ctdcast stage 3",
+                )
+            )
+    for v in names:
+        a = ds[v].attrs
+        if a.get("oxygen_tau_correction"):
+            params = (
+                f"from {a.get('derived_from', '?')}; tau correction "
+                f"(window {a.get('oxygen_tau_window_seconds', '?')} s), hysteresis correction"
+            )
+            rows.append(
+                ("SBE 43 oxygen", v, params, str(a.get("conversion_method", "")))
+            )
+    return rows
+
+
+def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
+    """Return the table of corrections ctdcast applied at stage 3, or "" when there are none."""
+    rows = _ctdcast_correction_rows(ds)
+    if not rows:
+        return ""
+    body = "".join(
+        f"<tr><td class='num'>{i}</td><td class='mono'>{escape(step)}</td>"
+        f"<td class='mono'>{escape(var)}</td><td>{escape(params)}</td>"
+        f"<td class='mono'>{escape(method)}</td></tr>"
+        for i, (step, var, params, method) in enumerate(rows, 1)
+    )
+    return (
+        f"<h3{tight}>Corrections applied by ctdcast</h3>"
+        "<p class='caption'>Applied at stage 3 after the steps above, in the order of the # "
+        "column; each is recorded on the variable it changed.</p>"
+        "<table class='nc' style='margin-top:0'><thead><tr><th>#</th><th>Step</th>"
+        "<th>Variable</th><th>Parameters</th><th>Method</th></tr></thead>"
+        f"<tbody>{body}</tbody></table>"
+    )
+
+
 def _render_provenance_table(
     records: list[Correction],
     advisories: list[str] | None = None,
@@ -941,6 +1017,7 @@ def _render_provenance_table(
     conformance: list[str] | None = None,
     instrument_note: str | None = None,
     sensor_xref: str = "",
+    ctdcast_html: str = "",
 ) -> str | None:
     """Return the SBE upstream-provenance tables, or None when the cast carries no ledger.
 
@@ -964,7 +1041,7 @@ def _render_provenance_table(
     # The time coordinate moved to the (C) netCDF data ranges appendix (above the ranges table),
     # so it reads before the variables; this panel keeps the correction / advisory / conformance
     # parts.  See _render_time_coordinate.
-    if not records and not advisories and not conformance:
+    if not records and not advisories and not conformance and not ctdcast_html:
         return None
 
     # A tight heading-to-table gap reads better than the default h3 margin here.
@@ -994,15 +1071,15 @@ def _render_provenance_table(
     xref_html = f"<p class='caption'>{escape(sensor_xref)}</p>" if sensor_xref else ""
 
     note = (
-        "<p class='caption'>Recovered from the raw Sea-Bird header on the cast file; the "
-        "full verbatim blocks are kept in the <code>sbe_acquisition</code> and "
-        "<code>sbe_processing</code> attributes.</p>"
+        "<p class='caption'>The steps before ctdcast are recovered from the raw Sea-Bird "
+        "header on the cast file; the full verbatim blocks are kept in the "
+        "<code>sbe_acquisition</code> and <code>sbe_processing</code> attributes.</p>"
     )
     # Wrap in one block (`.prov-panel` is a full-width flex item) so the panel's headings
     # and tables stack instead of tiling across the section's `.fig-row`.
     return (
         "<div class='prov-panel'>"
-        f"{corr_html}{advisory_html}{conformance_html}{xref_html}{note}"
+        f"{corr_html}{ctdcast_html}{advisory_html}{conformance_html}{xref_html}{note}"
         "</div>"
     )
 
@@ -1038,6 +1115,7 @@ def _render_provenance_panel(c: PageCtx) -> str | None:
         conformance=conformance_advisories(header),
         instrument_note=instrument_note,
         sensor_xref=sensor_xref,
+        ctdcast_html=_ctdcast_corrections_html(c.ds, " style='margin-bottom:0.25rem'"),
     )
     if table is not None:
         return table

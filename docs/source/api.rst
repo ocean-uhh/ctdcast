@@ -271,6 +271,10 @@ Cast processing
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.processors.corrections
+   :members:
+   :undoc-members:
+
 ----
 
 Readers

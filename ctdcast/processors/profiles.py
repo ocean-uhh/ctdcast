@@ -57,6 +57,33 @@ def _is_griddable(ds: xr.Dataset, name: str) -> bool:
     )
 
 
+#: Stage-3 correction parameters (numeric) on a variable's attrs.  Compiled as the variable's
+#: attribute when every cast agrees, else as a per-profile ``<var>_<attr>(N_PROF)`` variable, so a
+#: parameter that changed between casts is never reported as the first cast's value.
+_CORRECTION_PARAMS: tuple[str, ...] = (
+    "alignment_offset_seconds",
+    "alignment_deck_unit_advance_seconds",
+    "cell_thermal_mass_alpha",
+    "cell_thermal_mass_tau_seconds",
+    "oxygen_tau_window_seconds",
+)
+#: Stage-3 correction method strings: compiled when the casts agree, else marked mixed.
+_CORRECTION_METHODS: tuple[str, ...] = (
+    "alignment_method",
+    "alignment_config",
+    "cell_thermal_mass_method",
+    "cell_thermal_mass_config",
+    "cell_thermal_mass_temperature",
+    "conversion_method",
+    "oxygen_tau_correction",
+    "oxygen_hysteresis_correction",
+    "oxygen_hysteresis_method",
+    "derived_from",
+)
+#: Placeholder in the per-cast correction lists for a cast that does not carry the variable at
+#: all; unlike ``None`` (variable present, no such correction) it is left out of the comparison.
+_ABSENT = object()
+
 #: The compiled ``processing_level`` for a variable whose casts do not agree.  An explicit
 #: value, never an omission or a union of the casts' sentences: the per-profile treatment is
 #: reachable through ``source_stage`` / ``source_data_mode`` / ``source_tracking_id``.
@@ -204,6 +231,48 @@ def _build_sensor_catalog(
             },
         )
     return catalog_vars, linkage_vars
+
+
+def _compile_correction_attrs(
+    ds_out: xr.Dataset, correction_values: dict[str, dict[str, list]], n_casts: int
+) -> None:
+    """Carry stage-3 correction parameters onto the compiled variables, in place.
+
+    A parameter every cast carries with one value becomes the variable's attribute.  One that
+    differs between casts (or is missing on some that carry the variable) becomes ``<var>_<param>(N_PROF)``, NaN where
+    the cast had no such correction, and the variable's attribute names that variable.  Method
+    strings are kept when the casts agree, else marked as mixed.
+    """
+    for var, by_attr in correction_values.items():
+        if var not in ds_out:
+            continue
+        for attr, values in by_attr.items():
+            present = [v for v in values if v is not _ABSENT]
+            if all(v is None for v in present):
+                continue
+            distinct = {str(v) for v in present}
+            if attr in _CORRECTION_METHODS:
+                ds_out[var].attrs[attr] = (
+                    str(present[0]) if len(distinct) == 1 else "mixed across casts"
+                )
+                continue
+            if len(distinct) == 1:
+                ds_out[var].attrs[attr] = float(present[0])
+                continue
+            per_profile = np.full(2 * n_casts, np.nan)
+            for rank, value in enumerate(values):
+                if value is not None and value is not _ABSENT:
+                    per_profile[2 * rank : 2 * rank + 2] = float(value)
+            name = f"{var}_{attr}"
+            ds_out[name] = (
+                ["N_PROF"],
+                per_profile,
+                {
+                    "long_name": f"{attr.replace('_', ' ')} applied to {var}, per profile",
+                    "comment": "NaN where the cast had no such correction or no such variable",
+                },
+            )
+            ds_out[var].attrs[attr] = f"varies by cast; see {name}"
 
 
 def _build_preferred_vars(per_cast_attrs: list[dict], n_profiles: int) -> dict:
@@ -566,6 +635,14 @@ def build_profiles(
     # had it. Per-cast detail stays reachable via source_stage / source_data_mode /
     # source_tracking_id.
     var_processing_levels: dict[str, set[str]] = {v: set() for v in var_names}
+    # Per-cast stage-3 correction parameters, {var: {attr: [value per cast rank]}}.
+    correction_values: dict[str, dict[str, list]] = {
+        v: {
+            a: [_ABSENT] * len(cast_list)
+            for a in _CORRECTION_PARAMS + _CORRECTION_METHODS
+        }
+        for v in var_names
+    }
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
@@ -586,6 +663,8 @@ def build_profiles(
                 var_processing_levels[_v].add(
                     str(ds[_v].attrs.get("processing_level", ""))
                 )
+                for _a in _CORRECTION_PARAMS + _CORRECTION_METHODS:
+                    correction_values[_v][_a][rank] = ds[_v].attrs.get(_a)
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
                 _is_bad = (ds[_qc] == QARTOD_SUSPECT) | (ds[_qc] == QARTOD_FAIL)
@@ -1049,6 +1128,8 @@ def build_profiles(
         ds_out[_v].attrs["processing_level"] = (
             next(iter(_pls)) if len(_pls) == 1 else _MIXED_PROCESSING_LEVEL
         )
+
+    _compile_correction_attrs(ds_out, correction_values, len(cast_list))
 
     # Route through the CF writer so the binned science variables and the
     # latitude/longitude/pressure coordinates receive their VARIABLES metadata
