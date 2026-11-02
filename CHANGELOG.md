@@ -36,6 +36,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Config files are read strictly** (`config.loader.load_config` / `load_yaml`, used by every command and for the sensor, platform and institution tables): a key repeated in one block (two `data_processing:` blocks, or two steps written as one list item) is an error naming the key, both lines and what to change, where YAML would silently keep only the second. A YAML syntax error names its line. Commands print `Config error: …` and exit 1 instead of a traceback.
+- `profiles.nc` leaves out only values flagged fail (4) or missing (9) before binning, as a product's Bin Average does; suspect (3) values are kept (they were left out).
 - **Config layout split by what each block does** (`config.layout.processing_view`): `preferred_sensor: {tc, oxygen}`, `clock`, `qc` and `fit` at the top level, and `data_processing:` (`slope_offset`, `oxygen`, `steps`) for what stage 3 applies; `processing:` keeps `trim` and `profiles_dbar`. Preferred-sensor ranges take `value:`, as every other range does. `ctdcast fit` and `ctdcast clock` print blocks in the new layout; `ctdcast init` writes it, with the SBE Data Processing manual's 911plus steps commented out.
 - Stage 1, CNV input: an SBE 43 voltage takes its suffix from the SBE column (`sbeox0V` is `oxygen_raw_1`), not seasenselib's column order, so the CNV and `.hex` paths name it the same.
 - **Vendored report tables (all family packages at re-vendor): column headers are centered, and the units sub-row now carries the header's accent background** rather than muted grey text on white, so it reads as a second header row.

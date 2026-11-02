@@ -67,4 +67,11 @@ def main() -> None:
     _list.build_parser(subparsers)
 
     args = parser.parse_args()
-    sys.exit(args.func(args))
+    from ctdcast.config.loader import ConfigError
+
+    try:
+        sys.exit(args.func(args))
+    except ConfigError as exc:
+        # A config that cannot be used as written: say where and why, without a traceback.
+        print(f"Config error: {exc}", file=sys.stderr)
+        sys.exit(1)

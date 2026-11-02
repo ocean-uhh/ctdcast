@@ -436,9 +436,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
     ``profiles_nc`` overrides it -- and does not modify the config file.  All
     detection parameters come from CLI flags.
     """
-    import yaml
-
-    from ctdcast.config.loader import groupings_path
+    from ctdcast.config.loader import groupings_path, load_config
     from ctdcast.processors import StagePaths
 
     config_path = Path(args.dest)
@@ -448,8 +446,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
         print(f"ERROR: config file not found: {config_path}", file=sys.stderr)
         return 1
 
-    with config_path.open() as fh:
-        cfg = yaml.safe_load(fh) or {}
+    cfg = load_config(config_path)
 
     data_cfg: dict = cfg.get("data") or {}
     profiles_path = StagePaths.from_config(data_cfg).profiles_path
@@ -930,9 +927,9 @@ def _run_interactive(args: argparse.Namespace) -> int:
     _ex: dict[str, str] = {}
     if initial.exists():
         try:
-            import yaml as _yaml
+            from ctdcast.config.loader import load_config as _load_config
 
-            _cfg = _yaml.safe_load(initial.read_text()) or {}
+            _cfg = _load_config(initial)
             _d = _cfg.get("data", {}) or {}
             if not _d.get("groupings_yaml") and _d.get("section_yaml"):
                 from ctdcast.config.loader import warn_section_yaml_deprecated

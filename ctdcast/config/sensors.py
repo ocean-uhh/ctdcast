@@ -33,8 +33,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 #: Sensor attribute fields a resolved sensor carries, in write order (names
 #: follow OG1 conventions for interoperability).
 SENSOR_ATTR_FIELDS: tuple[str, ...] = (
@@ -196,8 +194,9 @@ class SensorRegistry:
             if path is not None
             else Path(__file__).with_name("sbe_sensors.yaml")
         )
-        with p.open(encoding="utf-8") as f:
-            data: dict[str, Any] = yaml.safe_load(f) or {}
+        from ctdcast.config.loader import load_yaml
+
+        data: dict[str, Any] = load_yaml(p) or {}
         raw = data.get("sensors") or {}
         # SensorID keys are strings ("55"); coerce any int that slipped through.
         table = {str(k): dict(v) for k, v in raw.items()}

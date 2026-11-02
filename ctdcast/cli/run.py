@@ -142,15 +142,14 @@ def run(args: argparse.Namespace) -> int:
     # Run the pipeline stages across every configured source (CTD + LADCP): a
     # stage ingests/compiles both when both are configured, so there is no
     # separate LADCP step here.
-    import yaml
 
+    from ctdcast.config.loader import load_config
     from ctdcast.config.parameters import CAST_TAG_WIDTH
     from ctdcast.config.sensors import SensorOverrides
     from ctdcast.processors import process as _process
     from ctdcast.processors import stages_for
 
-    with cfg_path.open() as _f:
-        _cfg = yaml.safe_load(_f) or {}
+    _cfg = load_config(cfg_path)
     _data = _cfg.get("data") or {}
     try:
         _processing = processing_view(_cfg)

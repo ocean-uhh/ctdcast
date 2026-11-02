@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ctdcast.config.loader import load_config
+
 _CHOICES = ("institutions", "platforms", "roles")
 
 
@@ -101,10 +103,8 @@ def _load_cruise_info(config: Path | None) -> dict[str, Any] | None:
     if not config.exists():
         print(f"Config file not found: {config}", file=sys.stderr)
         return None
-    import yaml
 
-    with config.open() as fh:
-        cfg = yaml.safe_load(fh) or {}
+    cfg = load_config(config)
     return cfg.get("cruise_info") or {}
 
 

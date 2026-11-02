@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from ctdcast.config.layout import processing_view
+from ctdcast.config.loader import load_config
 
 
 def build_parser(
@@ -59,8 +60,6 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast fit``."""
-    import yaml
-
     from ctdcast.config.parameters import CAST_TAG_WIDTH
     from ctdcast.processors.fit import (
         FITS_FILENAME,
@@ -76,8 +75,7 @@ def run(args: argparse.Namespace) -> int:
     if not cfg_path.exists():
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
-    with cfg_path.open(encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
+    cfg = load_config(cfg_path)
     data = cfg.get("data") or {}
     root_raw = data.get("ctd_root") or data.get("nc_dir")
     if not root_raw or not Path(root_raw).is_dir():

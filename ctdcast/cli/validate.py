@@ -10,7 +10,12 @@ import yaml
 
 from ctdcast.config.global_attrs import cruise_name
 from ctdcast.config.layout import processing_view
-from ctdcast.config.loader import SectionsConfig, groupings_path
+from ctdcast.config.loader import (
+    ConfigError,
+    SectionsConfig,
+    groupings_path,
+    load_config,
+)
 from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.config.preferred_sensors import GROUPS
 from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
@@ -84,10 +89,9 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        with cfg_path.open() as f:
-            cfg = yaml.safe_load(f)
-    except yaml.YAMLError as exc:
-        print(f"ERROR: config YAML parse error: {exc}", file=sys.stderr)
+        cfg = load_config(cfg_path)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     # PyYAML resolves a repeated mapping key to the LAST occurrence and says

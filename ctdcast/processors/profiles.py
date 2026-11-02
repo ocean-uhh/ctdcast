@@ -25,7 +25,7 @@ from ctdcast.config.parameters import VARIABLES, is_sbe_channel
 from ctdcast.config.preferred_sensors import GROUPS, validate_preferred
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
-from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
+from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_MISSING
 from ctdcast.processors.sensor_catalog import (
     catalog_by_cast_number,
     read_cast_sensor_catalog,
@@ -463,9 +463,9 @@ def build_profiles(
     The ``altimeter`` channel (when present in the input files) is binned onto
     the 1-dbar grid as a standard 2-D variable.
 
-    Samples carrying a QARTOD suspect (3) or fail (4) flag on their ``{var}_qc``
-    companion are NaN-masked before binning, so flagged data does not enter the bin
-    means.  Each science variable records how many finite input samples it carried
+    Samples carrying a QARTOD fail (4) or missing (9) flag on their ``{var}_qc``
+    companion are NaN-masked before binning, so failed data does not enter the bin
+    means; a suspect (3) sample is kept, as in a product's Bin Average.  Each science variable records how many finite input samples it carried
     (``qc_input_samples``) and how many were excluded (``qc_excluded_samples``).
 
     Parameters
@@ -622,7 +622,7 @@ def build_profiles(
     per_cast_attrs: list[dict[str, str]] = []
 
     # Pass 2: split and bin each cast
-    qc_excluded = False  # did any input carry suspect/fail records to exclude?
+    qc_excluded = False  # did any input carry fail/missing records to exclude?
     # Per-variable tally of pre-binning samples excluded and the finite-sample
     # denominator they were drawn from, reported at the top of the inventory page.
     # The denominator is the count of finite input samples (not binned points), so
@@ -650,13 +650,14 @@ def build_profiles(
         cast_catalogs.append(cast_catalog)
         if not cast_catalog:
             catalog_less.append(path.name)
-        # Honour QARTOD flags 3 (suspect) and 4 (fail) from stage 2 (soak/deck) AND
-        # stage 3 (gross-range and spike): NaN the flagged samples so they do not
-        # enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so the
+        # Honour QARTOD flags 4 (fail) and 9 (missing) from stage 2 (soak/deck) AND
+        # stage 3 (edits, gross-range, spike): NaN the flagged samples so they do not
+        # enter the bin means.  A suspect (3) sample is kept, as in a product's Bin
+        # Average.  pressure is in _SKIP_VARS and carries no _qc, so the
         # binning coordinate is untouched; stage-1-only files have no _qc and are
         # unaffected — qc_excluded stays False and the history line does not claim
-        # an exclusion that never happened.  Suspect/fail flags are only raised on
-        # finite samples, so the excluded count is a subset of the finite count.
+        # an exclusion that never happened.  Only finite samples are counted as excluded,
+        # so the excluded count is a subset of the finite count.
         for _v in var_names:
             if _v in ds:
                 qc_input_counts[_v] += int(np.isfinite(ds[_v].values).sum())
@@ -667,8 +668,8 @@ def build_profiles(
                     correction_values[_v][_a][rank] = ds[_v].attrs.get(_a)
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
-                _is_bad = (ds[_qc] == QARTOD_SUSPECT) | (ds[_qc] == QARTOD_FAIL)
-                _n_bad = int(_is_bad.values.sum())
+                _is_bad = (ds[_qc] == QARTOD_FAIL) | (ds[_qc] == QARTOD_MISSING)
+                _n_bad = int((_is_bad & np.isfinite(ds[_v])).values.sum())
                 if _n_bad:
                     qc_excluded = True
                     qc_dropped_counts[_v] += _n_bad
@@ -1065,8 +1066,8 @@ def build_profiles(
     )
     if qc_excluded:
         _note += (
-            "; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records "
-            "(soak/deck and gross-range/spike) before binning"
+            "; excluded QARTOD flag 4 (fail) and 9 (missing) records "
+            "(soak/deck, edits, gross-range/spike) before binning; suspect (3) kept"
         )
     append_history(attrs, _note, stage="profiles")
 

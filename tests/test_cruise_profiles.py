@@ -296,8 +296,8 @@ class TestBuildProfilesCruise:
         assert {str(s) for s in ds["cast_suffix"].values} == {"", "b"}
         ds.close()
 
-    def test_excludes_qartod_suspect_and_fail_records(self, tmp_path):
-        """build_profiles NaN-masks flag-3 (suspect) and flag-4 (fail) before binning."""
+    def test_excludes_qartod_fail_records_and_keeps_suspect(self, tmp_path):
+        """build_profiles NaN-masks flag-4 (fail) before binning and keeps flag-3 (suspect)."""
         import numpy as np
 
         from ctdcast.processors.profiles import build_profiles
@@ -312,13 +312,13 @@ class TestBuildProfilesCruise:
             v for v in ds.data_vars if v.endswith("_1") and not v.endswith("_qc")
         )
         # Flag the shallowest sixth as fail (4) and the next sixth as suspect (3):
-        # both tiers must drop out of the product.
+        # fail drops out of the product, suspect stays.
         order = np.argsort(ds["pressure"].values)
         sixth = max(1, n // 6)
         qc = np.ones(n, dtype=np.int8)
         qc[order[:sixth]] = 4
         qc[order[sixth : 2 * sixth]] = 3
-        n_bad = int(((qc == 3) | (qc == 4)).sum())
+        n_bad = int((qc == 4).sum())
 
         # Baseline: a stage-1 file with no _qc — nothing is excluded.
         root_base = tmp_path / "base"
@@ -347,21 +347,18 @@ class TestBuildProfilesCruise:
             # The exclusion is claimed in history only for the file where it
             # actually happened, not the stage-1-only baseline.
             assert (
-                "excluded QARTOD flag 3 (suspect) and flag 4 (fail)"
+                "excluded QARTOD flag 4 (fail) and 9 (missing)"
                 not in (d0.attrs["history"])
             )
             assert (
-                "excluded QARTOD flag 3 (suspect) and flag 4 (fail)"
-                in (d1.attrs["history"])
+                "excluded QARTOD flag 4 (fail) and 9 (missing)" in (d1.attrs["history"])
             )
             # The per-variable exclusion counts are recorded on the flagged file's
             # variable and match the flagged-sample count; the baseline records zero.
             assert int(d1[var].attrs["qc_excluded_samples"]) == n_bad
             assert int(d0[var].attrs["qc_excluded_samples"]) == 0
             assert int(d1[var].attrs["qc_input_samples"]) > 0
-        assert n1 < n0, (
-            f"suspect/fail masking did not reduce finite {var} ({n1} vs {n0})"
-        )
+        assert n1 < n0, f"fail masking did not reduce finite {var} ({n1} vs {n0})"
 
     def test_binning_recorded_in_history_not_a_standalone_attr(self, tmp_path):
         """The binning prose lives in `history`; the scalar spacing stays an attr."""
