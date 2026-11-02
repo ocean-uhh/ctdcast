@@ -62,6 +62,9 @@ _RE_SEASAVE = re.compile(r"^\*\s*Software Version Seasave\s+(.+?)\s*$")
 _RE_START_TIME = re.compile(r"^#\s*start_time\s*=\s*(.+?)\s*$")
 # The provenance bracket is optional -- a start_time without one still yields its value.
 _RE_START_BRACKET = re.compile(r"\[(.+?)\]")
+_RE_INTERVAL = re.compile(
+    r"^#\s*interval\s*=\s*(\w+)\s*:\s*([-+0-9.eE]+)", re.MULTILINE
+)
 # A '#' processing-module line (``# datcnv_date = ...``), used only to detect a chain
 # that the bad_flag gate failed to capture. group(1) is the module token.
 _RE_HASH_MODULE = re.compile(r"^#\s*(\w+)_\w[^=]*=")
@@ -990,6 +993,94 @@ def _is_numeric(value: str) -> bool:
     return _as_float(value) is not None
 
 
+def celltm_reference_tick(
+    key: str, label: str, alpha: float, tau: float, variables: str = ""
+) -> ConformanceTick:
+    """Compare one cell thermal mass ``(alpha, tau)`` pair with SBE's documented reference.
+
+    The same reference and tolerances as the Sea-Bird ``celltm`` rows, so a correction made in
+    ctdcast stage 3 is judged exactly as one made by SBE Data Processing.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    alpha, tau : float
+        The applied amplitude and time constant (s).
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A match (✓) or differ (✗) tick citing SBE manual p.92.
+    """
+    a_ref, source = _CONFORMANCE_REFS["celltm_alpha"]
+    t_ref, _ = _CONFORMANCE_REFS["celltm_tau"]
+    match = abs(alpha - a_ref) <= 0.005 and abs(tau - t_ref) <= 0.5
+    return ConformanceTick(
+        key=key,
+        label=label,
+        state=CONFORMANCE_MATCH if match else CONFORMANCE_DIFFER,
+        reference=f"(α,τ)=({a_ref:g},{t_ref:g})",
+        source=source,
+        detail=f"alpha={alpha:g} tau={tau:g}",
+        variables=variables,
+    )
+
+
+def conductivity_advance_reference_tick(
+    key: str, label: str, total_seconds: float, variables: str = ""
+) -> ConformanceTick:
+    """Compare a conductivity channel's *total* advance (deck unit + software) with SBE's 0.073 s.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    total_seconds : float
+        The deck unit's advance plus any software alignment, in seconds.
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A match (✓) or differ (✗) tick citing SBE manual p.85, with the same tolerance as the
+        deck-unit rows.
+    """
+    ref, source = _CONFORMANCE_REFS["deck_conductivity_advance"]
+    return ConformanceTick(
+        key=key,
+        label=label,
+        state=CONFORMANCE_MATCH
+        if abs(total_seconds - ref) <= 0.0005
+        else CONFORMANCE_DIFFER,
+        reference=f"{ref:.3f} s",
+        source=source,
+        detail=f"total advance {total_seconds:.3f} s",
+        variables=variables,
+    )
+
+
+def no_reference_tick(key: str, label: str, variables: str = "") -> ConformanceTick:
+    """Return a dash tick (no documented reference) for a display row.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A :data:`CONFORMANCE_NO_REFERENCE` tick.
+    """
+    return _no_ref_tick(key, label, "", variables)
+
+
 def _no_ref_tick(
     key: str, label: str, detail: str = "", variables: str = ""
 ) -> ConformanceTick:
@@ -1365,6 +1456,88 @@ def _correction_flat(rec: Correction) -> str:
     return f"{head}: {rec.parameters}" if rec.parameters else head
 
 
+def parse_sample_interval(header_text: str) -> tuple[str | None, float | None]:
+    """Return the CNV ``# interval`` line as ``(kind, value)``, or ``(None, None)``.
+
+    ``kind`` is the word Sea-Bird writes, lower-cased: ``"seconds"`` for scan-rate or
+    time-averaged data (``seconds: 0.0416667`` at 24 Hz, ``seconds: 1`` after a 1 s average),
+    ``"decibars"`` for pressure-binned data.  A ``.hex`` header has no such line.
+
+    Parameters
+    ----------
+    header_text : str
+        The verbatim CNV header.
+
+    Returns
+    -------
+    tuple of (str or None, float or None)
+        The interval's kind and its value in that kind's unit.
+    """
+    match = _RE_INTERVAL.search(header_text or "")
+    if match is None:
+        return None, None
+    return match.group(1).casefold(), float(match.group(2))
+
+
+#: Sea-Bird ``alignctd`` channel-name prefixes -> the ctdcast variable base they shift.
+_ALIGN_CHANNEL_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^c(\d)(?:s/m|ms/cm|us/cm)$", re.IGNORECASE), "conductivity"),
+    (re.compile(r"^(?:sbeox|sbox)(\d)", re.IGNORECASE), "oxygen"),
+    (re.compile(r"^t(\d)(?:90|68)", re.IGNORECASE), "temperature"),
+)
+
+
+def applied_sbe_corrections(header_text: str) -> dict[str, object]:
+    """Return what Sea-Bird already did to the data that ctdcast's stage 3 might also do.
+
+    Parameters
+    ----------
+    header_text : str
+        The verbatim CNV or ``.hex`` header.
+
+    Returns
+    -------
+    dict
+        ``"modules"``: the set of SBE Data Processing modules in the chain, lower-cased
+        (``{"datcnv", "celltm", "binavg", …}``); ``"aligned"``: ``{variable: seconds}`` for each
+        channel an ``alignctd`` step advanced, named ``conductivity_1``, ``oxygen_2``,
+        ``temperature_1`` …; ``"align_unparsed"``: ``alignctd`` channels ctdcast could not name
+        (a caller should treat these as "every channel may be aligned"); ``"deck_advance"``: the
+        deck unit's hardware advances (``{"primary conductivity": 0.073, …}``), which are in the
+        raw data and are not a software alignment.
+    """
+    chain = parse_processing_chain(header_text or "")
+    modules = {step.module.casefold() for step in chain.steps}
+    aligned: dict[str, float] = {}
+    unparsed: list[str] = []
+    for step in chain.steps:
+        if step.module.casefold() != "alignctd":
+            continue
+        adv = step.params.get("adv", "")
+        if not adv.strip():
+            # alignctd ran but its advances were not recorded: any channel may be aligned.
+            unparsed.append("(no adv recorded)")
+            continue
+        for item in (part.strip() for part in adv.split(",") if part.strip()):
+            name, _, seconds = item.rpartition(" ")
+            name = name.strip()
+            for pattern, base in _ALIGN_CHANNEL_PATTERNS:
+                if (m := pattern.match(name)) is not None:
+                    try:
+                        aligned[f"{base}_{int(m.group(1)) + 1}"] = float(seconds)
+                    except ValueError:
+                        unparsed.append(item)
+                    break
+            else:
+                unparsed.append(item)
+    return {
+        "modules": modules,
+        "aligned": aligned,
+        "align_unparsed": unparsed,
+        "deck_advance": dict(parse_star_block(header_text or "").deck_unit.advance),
+    }
+
+
 def build_correction_ledger(header_text: str) -> dict[str, str | float]:
     """Build the stage-1 correction ledger from an SBE header.
 
@@ -1414,5 +1587,12 @@ def build_correction_ledger(header_text: str) -> dict[str, str | float]:
         ledger["time_coordinate_source"] = start.source
     if acq.clocks.offset_seconds is not None:
         ledger["time_clock_offset_seconds"] = acq.clocks.offset_seconds
+    kind, value = parse_sample_interval(header_text)
+    if kind is not None and value is not None:
+        ledger["sample_interval_kind"] = kind
+        if kind == "seconds":
+            ledger["sample_interval_seconds"] = value
+        elif kind == "decibars":
+            ledger["sample_interval_dbar"] = value
 
     return ledger

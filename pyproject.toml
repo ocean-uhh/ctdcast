@@ -177,6 +177,8 @@ include = ["ctdcast*"]
 # git-ignored, so CI never sees them): hex 92.4, xmlcon 92.3.
 "ctdcast/readers/hex.py"             = 92
 "ctdcast/readers/xmlcon.py"          = 92
+# New in proc/stage3-align-ctm, measured on the committed slice and CNV fixtures only: 92.2.
+"ctdcast/processors/corrections.py"  = 92
 # Pure functions over header text, no I/O, measured 100% (93 stmts, 0 missing). 100 is
 # the seed, not an aspiration -- the deck-unit advance it recovers is the load-bearing
 # finding of the upstream-provenance work, so no branch may go untested.

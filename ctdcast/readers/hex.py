@@ -630,6 +630,7 @@ def read_hex(
             "input_format": "hex",
             "source_xmlcon": xmlcon_path.name,
             "sample_interval_seconds": interval,
+            "sample_interval_kind": "seconds",
             "time_coordinate_source": anchor.source,
             "time_anchor_note": anchor.note,
             "seabirdscientific_version": importlib.metadata.version(

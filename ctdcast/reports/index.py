@@ -283,7 +283,20 @@ def report(
             "pages here are compiled from the gridded profiles."
         )
     else:
-        print(f"No cast .nc files found in {nc_dir}")
+        # `report` only draws pages; say what would have made the files it looked for.
+        where = Path(nc_dir)
+        state = (
+            "the folder does not exist"
+            if not where.is_dir()
+            else "it holds no stage1/, stage2/ or stage3/ cast files and no profiles.nc"
+        )
+        print(
+            f"No processed casts to report from {where}: {state}.\n"
+            "  `ctdcast report` draws pages from processed files; it does not read raw "
+            "CNV or .hex.\n"
+            "  Process first with `ctdcast run <config>` (process, then report), or "
+            "`ctdcast process <config> --stage 1 2 3 profiles`."
+        )
         return None
     if not all_meta:
         print(f"No casts found for {nc_dir}")

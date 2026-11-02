@@ -173,6 +173,23 @@ back to a built-in default.
    * - ``calibration.conductivity_slope``
      - Multiplicative conductivity calibration applied at stage 3; salinity is
        re-derived from the calibrated conductivity.
+   * - ``alignctd.<channel>``
+     - Stage-3 alignment: seconds to advance a channel relative to pressure, as Sea-Bird's
+       Align CTD does, applied with ``seabirdscientific``.  Channels: ``conductivity``,
+       ``oxygen`` (every line), or ``conductivity_1/2``, ``oxygen_1/2`` (one line; wins over
+       the family key).  Each takes a ``default`` and/or ``ranges``
+       (``- {casts: [[first, last]], value: 0.021}``).  Conductivity values are a residual on
+       top of the deck unit's hardware advance, which is already in the raw data; oxygen acts
+       on the SBE 43 voltage (``oxygen_raw_<N>``), never on a converted oxygen.  Values shifted
+       past either end of a cast become NaN, flagged 9 (missing); no scan is removed.
+   * - ``celltm.default`` / ``celltm.ranges`` / ``celltm.conductivity_<N>``
+     - Stage-3 cell thermal mass correction of conductivity: ``{alpha: 0.03, tau: 7.0}``
+       (Sea-Bird's alpha and tau = 1/beta in seconds), with the temperature of the same line.
+       A per-line key wins over the block's own ``default`` / ``ranges``.
+   * - ``oxygen.tau_window_seconds``
+     - Window (s) for the SBE 43 tau correction's dV/dt when stage 3 derives ``ctd_oxygen``
+       from the voltage (``.hex`` casts).  Default ``2``.
+
    * - ``preferred_pair.default`` / ``preferred_pair.ranges``
      - On a dual-sensor cast, which temperature/conductivity pair (and the salinity derived
        from it) is the better one: ``primary`` (the ``_1`` channel) or ``secondary`` (``_2``).
@@ -196,6 +213,13 @@ back to a built-in default.
        ``ctdcast clock``** — paste it in as-is rather than hand-computing the sign.
        Applied only where the coordinate is on the System clock (a cruise already on
        GPS is refused); a ``drift`` verdict has no applier.
+
+Alignment, cell thermal mass and the oxygen derivation act scan by scan, so they run only
+on a cast at its instrument's native scan rate (24 Hz on a 911plus) that Sea-Bird has not
+already corrected the same way.  Any other cast skips them with a warning and a
+``history`` note, and still gets the slope, salinity and QC.  Stage 3 runs: alignment,
+cell thermal mass, conductivity slope, salinity, oxygen, then gross-range and spike QC on
+the corrected values.
 
 .. code-block:: yaml
 

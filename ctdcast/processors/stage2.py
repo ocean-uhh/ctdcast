@@ -613,7 +613,10 @@ def run(
         If *root* does not exist or is not a directory.
     """
     if not root.is_dir():
-        raise FileNotFoundError(f"stage root not found: {root}")
+        raise FileNotFoundError(
+            f"stage root not found: {root}. Stage 1 creates it from the raw input, so run "
+            "--stage 1 first and check that the config's data: block sets cnv_dir or hex_dir."
+        )
 
     stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
     # Cruise-scope clock resolution once: which cast numbers get which offset, with each segment's
