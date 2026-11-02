@@ -180,7 +180,9 @@ def test_bare_value_resolves_like_default():
     ) == (-0.01, "alignctd.conductivity default")
     # celltm: a bare {alpha, tau} mapping is the default, same as {default: {alpha, tau}}.
     assert resolve_cell_thermal_mass(
-        {"celltm": {"conductivity_1": {"alpha": 0.03, "tau": 7.0}}}, "conductivity_1", 11
+        {"celltm": {"conductivity_1": {"alpha": 0.03, "tau": 7.0}}},
+        "conductivity_1",
+        11,
     ) == (0.03, 7.0, "celltm.conductivity_1 default")
     # The bare default and the {default:, ranges:} form coexist: the range wins inside its casts,
     # the bare default outside.
