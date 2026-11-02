@@ -80,7 +80,8 @@ def test_config_is_utf8_whatever_the_platform(tmp_path):
     text = 'cruise_info:\n  chief_scientist: "Jürgen Kögur — Ålesund"\n'
     path = tmp_path / "config.yaml"
     _write_file(path, text)
-    assert path.read_bytes() == text.encode("utf-8")
+    # Decoding as UTF-8 fails on a locale encoding (cp1252); newlines may be \r\n on Windows.
+    assert path.read_bytes().decode("utf-8").replace("\r\n", "\n") == text
     assert (
         load_config(path)["cruise_info"]["chief_scientist"] == "Jürgen Kögur — Ålesund"
     )
