@@ -7,7 +7,7 @@ from that file.  Nothing here changes a stage file: the values reach stage 3 onl
 config.
 
 Two passes: alignment first, over every cast; then cell thermal mass on conductivity advanced by
-the cruise's fitted alignment for that line, because a misaligned line fits the wrong ``(alpha,
+the cruise's fitted (downcast) alignment for that line, because a misaligned line fits the wrong ``(alpha,
 tau)``.
 """
 
@@ -52,6 +52,11 @@ class FitSettings:
         Top of the cell thermal mass window (dbar).
     gradient : float
         Thermocline threshold for the alignment cost (°C per dbar).
+    align_pmin : float
+        Alignment cost: scans shallower than this (dbar) are left out.
+    min_speed : float
+        Alignment cost: scans moving along the leg slower than this (dbar/s) are left out; 0 keeps
+        every scan.
     gap_seconds : float
         Down/up weighting time scale (s).
     block : int
@@ -62,6 +67,8 @@ class FitSettings:
 
     ctm_pmin: float = F.DEFAULT_CTM_PMIN
     gradient: float = F.DEFAULT_GRADIENT
+    align_pmin: float = F.DEFAULT_ALIGN_PMIN
+    min_speed: float = F.DEFAULT_MIN_SPEED
     gap_seconds: float = F.DEFAULT_GAP_SCALE
     block: int = DEFAULT_BLOCK
     residuals: np.ndarray = field(default_factory=lambda: F.DEFAULT_RESIDUALS.copy())
@@ -85,12 +92,20 @@ class FitSettings:
         Raises
         ------
         ValueError
-            On an unknown key or a value that is not a positive number.
+            On an unknown key, a value that is not a positive number, or a ``min_speed`` outside
+            0–0.5 dbar/s.
         """
         block = (processing or {}).get("fit") or {}
         if not isinstance(block, dict):
             raise ValueError(f"fit: expected a mapping, got {block!r}")
-        known = {"ctm_pmin", "gradient", "gap_seconds", "block"}
+        known = {
+            "ctm_pmin",
+            "gradient",
+            "align_pmin",
+            "min_speed",
+            "gap_seconds",
+            "block",
+        }
         unknown = set(block) - known
         if unknown:
             raise ValueError(
@@ -99,6 +114,17 @@ class FitSettings:
         out = cls()
         for key in known & set(block):
             value = block[key]
+            if key == "min_speed":
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not 0 <= value <= F.MAX_MIN_SPEED
+                ):
+                    raise ValueError(
+                        f"fit.min_speed: expected 0–{F.MAX_MIN_SPEED} dbar/s, got {value!r}"
+                    )
+                out.min_speed = float(value)
+                continue
             if (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
@@ -158,6 +184,7 @@ class _CastRecord:
     label: str
     pmax: float = np.nan
     delta_t: tuple[float, float] = (np.nan, np.nan)
+    speed: tuple[float, float] = (np.nan, np.nan)
     skipped: str = ""
     casts: dict[int, F.Cast] = field(default_factory=dict)
     align: dict[int, np.ndarray] = field(default_factory=dict)
@@ -167,19 +194,9 @@ class _CastRecord:
 def _cruise_alignment(
     records: list[_CastRecord], line: int, residuals: np.ndarray
 ) -> float | None:
-    """Return the residual advance at the minimum of the line's cruise-average alignment cost."""
-    j0 = int(np.argmin(np.abs(residuals)))
-    costs = []
-    for r in records:
-        a = r.align.get(line)
-        if a is None:
-            continue
-        total = np.where(np.isfinite(a).any(axis=0), np.nansum(a, axis=0), np.nan)
-        n = F.normalise(total, (j0,)) if F.has_interior_minimum(total) else None
-        if n is not None:
-            costs.append(n)
-    fit = F.cruise_surface(costs)
-    return None if fit is None else float(residuals[fit.index[0]])
+    """Return the residual advance at the minimum of the line's cruise downcast curve."""
+    fit = F.median_curve([r.align[line][0] for r in records if line in r.align])
+    return None if fit is None else float(residuals[fit.index])
 
 
 #: Conductivity line names used in the progress lines.
@@ -187,10 +204,10 @@ _LINE_NAME = {1: "primary", 2: "secondary"}
 
 
 def _align_line(rec: _CastRecord, residuals: np.ndarray) -> str:
-    """One alignment progress line: per line, the residual advance at the down+up minimum.
+    """One alignment progress line: per line, the residual advance at the downcast minimum.
 
-    ``no minimum`` when the summed cost still falls at an end of the search, ``skipped: <reason>``
-    for a skipped cast, ``no thermocline`` when no line scored a cost.
+    ``–`` for a line whose downcast cost has no well, ``skipped: <reason>`` for a skipped cast,
+    ``no thermocline`` when no line scored a cost.
     """
     head = f"  alignment: cast {rec.label}"
     if rec.skipped:
@@ -202,14 +219,9 @@ def _align_line(rec: _CastRecord, residuals: np.ndarray) -> str:
         a = rec.align.get(line)
         if a is None:
             continue
-        total = np.where(np.isfinite(a).any(axis=0), np.nansum(a, axis=0), np.nan)
-        best = (
-            float(residuals[int(np.nanargmin(total))])
-            if F.has_interior_minimum(total)
-            else None
-        )
-        best_s = "no minimum" if best is None else f"{best:+.3f} s"
-        parts.append(f"{_LINE_NAME[line]} {best_s}")
+        down = a[0]
+        val = f"{residuals[int(np.nanargmin(down))]:+.4f}" if F.has_well(down) else "–"
+        parts.append(f"{_LINE_NAME[line]} down {val} s")
     return " ".join(parts)
 
 
@@ -283,6 +295,7 @@ def fit_cruise(
         raise FileNotFoundError(f"no stage-2 files under {root}")
     records: list[_CastRecord] = []
     deck: dict[int, float] = {}
+    scan_interval: float | None = None
     for cid in ids:
         rec = _CastRecord(format_cast_id(*cid))
         records.append(rec)
@@ -293,6 +306,7 @@ def fit_cruise(
             if interval is None:
                 rec.skipped = reason or "not at the native scan rate"
                 continue
+            scan_interval = scan_interval or interval
             ds = ds.load()
             if not deck:
                 header = header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
@@ -316,9 +330,14 @@ def fit_cruise(
         rec.delta_t = F.window_delta_t(first, settings.ctm_pmin)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
+            rec.speed = F.median_speeds(first, settings.align_pmin)
             for line, cast in rec.casts.items():
                 a = F.alignment_cost(
-                    cast, settings.residuals, gradient=settings.gradient
+                    cast,
+                    settings.residuals,
+                    gradient=settings.gradient,
+                    pmin=settings.align_pmin,
+                    min_speed=settings.min_speed,
                 )
                 if a is not None:
                     rec.align[line] = a
@@ -353,7 +372,7 @@ def fit_cruise(
         rec.casts.clear()
         if progress:
             print(_ctm_line(rec, settings))
-    return _to_dataset(records, settings, align_used, deck)
+    return _to_dataset(records, settings, align_used, deck, scan_interval)
 
 
 def _to_dataset(
@@ -361,6 +380,7 @@ def _to_dataset(
     settings: FitSettings,
     align_used: dict[int, float],
     deck: dict[int, float],
+    scan_interval: float | None = None,
 ) -> xr.Dataset:
     n, nl = len(records), len(_LINES)
     nr, na, nt = len(settings.residuals), len(settings.alpha), len(settings.tau)
@@ -386,6 +406,14 @@ def _to_dataset(
                 {
                     "units": "degree_Celsius",
                     "long_name": "|T(bottom) - T(ctm_pmin)| across the cell thermal mass window",
+                },
+            ),
+            "speed": (
+                ("cast", "leg"),
+                np.array([r.speed for r in records], np.float32),
+                {
+                    "units": "dbar s-1",
+                    "long_name": "median speed along the leg below alignment_pmin (lowering, hauling)",
                 },
             ),
             "skipped": (
@@ -424,7 +452,7 @@ def _to_dataset(
                 ),
                 {
                     "units": "s",
-                    "long_name": "residual advance applied before the cell thermal mass fit",
+                    "long_name": "residual advance applied before the cell thermal mass fit (downcast fit)",
                 },
             ),
         },
@@ -456,8 +484,15 @@ def _to_dataset(
             "date_created": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "ctm_pmin_dbar": settings.ctm_pmin,
             "alignment_gradient_degC_per_dbar": settings.gradient,
+            "alignment_pmin_dbar": settings.align_pmin,
+            "alignment_min_speed_dbar_per_s": settings.min_speed,
+            "alignment_highpass": f"salinity minus its 1-s running mean, Tukey window (taper {F.TUKEY_ALPHA})",
+            "alignment_speed_filter_seconds": F.PRESSURE_FILTER_SECONDS,
             "ctm_gap_seconds": settings.gap_seconds,
             "block": settings.block,
+            "scan_interval_s": np.nan
+            if scan_interval is None
+            else float(scan_interval),
             "method": "see ctdcast.analysis.fits",
         },
     )
@@ -472,9 +507,14 @@ class LineSummary:
     line : int
         1 (primary) or 2 (secondary).
     residual : float
-        Cruise residual advance (s) on top of the data's.
+        Cruise residual advance (s) on top of the data's: the minimum of the downcast's median
+        curve, the value suggested.
     alignment_n : int
-        Casts in the alignment average.
+        Casts in the downcast curve.
+    residual_up : float
+        The same for the upcast, shown beside it.
+    alignment_n_up : int
+        Casts in the upcast curve.
     alpha, tau : float
         Cruise two-parameter minimum.
     alpha_at_tau, tau_at_alpha : float
@@ -488,6 +528,8 @@ class LineSummary:
     line: int
     residual: float
     alignment_n: int
+    residual_up: float
+    alignment_n_up: int
     alpha: float
     tau: float
     alpha_at_tau: float
@@ -518,18 +560,11 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
     res = fits["residual"].values.astype(np.float64)
     al = fits["alpha"].values.astype(np.float64)
     ta = fits["tau"].values.astype(np.float64)
-    j0 = int(np.argmin(np.abs(res)))
     out = []
     for li, line in enumerate(fits["line"].values):
-        acosts = []
-        for a in sub["alignment_cost"].values[:, li]:
-            total = np.where(
-                np.isfinite(a).any(axis=0), np.nansum(a, axis=0), np.nan
-            ).astype(np.float64)
-            n = F.normalise(total, (j0,)) if F.has_interior_minimum(total) else None
-            if n is not None:
-                acosts.append(n)
-        afit = F.cruise_surface(acosts)
+        acost = sub["alignment_cost"].values[:, li].astype(np.float64)
+        afit = F.median_curve(list(acost[:, 0]))
+        ufit = F.median_curve(list(acost[:, 1]))
         costs, weights = [], []
         for m, dt in zip(
             sub["ctm_cost"].values[:, li], sub["delta_t"].values, strict=True
@@ -553,8 +588,10 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
         out.append(
             LineSummary(
                 line=int(line),
-                residual=np.nan if afit is None else float(res[afit.index[0]]),
+                residual=np.nan if afit is None else float(res[afit.index]),
                 alignment_n=0 if afit is None else afit.n_casts,
+                residual_up=np.nan if ufit is None else float(res[ufit.index]),
+                alignment_n_up=0 if ufit is None else ufit.n_casts,
                 alpha=np.nan if cfit is None else float(al[cfit.index[0]]),
                 tau=np.nan if cfit is None else float(ta[cfit.index[1]]),
                 alpha_at_tau=a1,
@@ -583,11 +620,16 @@ def suggested_yaml(summaries: list[LineSummary], deck_advance: float | None) -> 
         Sea-Bird's default compares.
     """
     align = [
-        f"    conductivity_{s.line}: {{default: {s.residual:+.3f}}}  # n={s.alignment_n}"
+        f"    conductivity_{s.line}: {{default: {s.residual:+.4f}}}  # downcast, n={s.alignment_n}"
         + (
             ""
             if deck_advance is None
-            else f", total {deck_advance + s.residual:.3f} s with the deck unit's {deck_advance:.3f}"
+            else f", total {deck_advance + s.residual:.4f} s with the deck unit's {deck_advance:.3f}"
+        )
+        + (
+            ""
+            if not np.isfinite(s.residual_up)
+            else f"; upcast residual {s.residual_up:+.4f}"
         )
         for s in summaries
         if np.isfinite(s.residual)

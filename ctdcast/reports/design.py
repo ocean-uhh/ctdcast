@@ -15,7 +15,12 @@ from ctdcast.config import global_attrs as _global_attrs
 from ctdcast.config.parameters import VARIABLES
 from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.config.unit_tables import UNIT_LABEL_OVERRIDES, unit_label
-from ctdcast.reports._vendored.css import _JS_SORT_TABLES, _JS_TOP_LINKS, emit_css
+from ctdcast.reports._vendored.css import (
+    _JS_COPY_SNIPPET,
+    _JS_SORT_TABLES,
+    _JS_TOP_LINKS,
+    emit_css,
+)
 from ctdcast.reports._vendored.design_tokens import CMAPS as _FAMILY_CMAPS
 from ctdcast.reports._vendored.design_tokens import (
     QUANTITY_BY_STANDARD_NAME,
@@ -224,6 +229,7 @@ __all__ = [
     "TABLE_WIDTHS",
     "UNIT_LABEL_OVERRIDES",
     "VAR_CMAPS",
+    "_JS_COPY_SNIPPET",
     "_JS_SORT_TABLES",
     "_JS_TOP_LINKS",
     "cmap_for",

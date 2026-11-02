@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
+{% import "_nc_tables.html" as nc %}
+{% import "_snippet.html" as snip %}
 
 {% block title %}{{ page_title }}{% endblock %}
 {% block masthead_title %}T/S corrections{% endblock %}
@@ -7,7 +9,6 @@
 
 {% block head_extra %}
 <style>
-pre.yaml { background: var(--bg-soft, #f5f7fa); padding: 0.6rem 0.8rem; white-space: pre-wrap; font-size: var(--fs-xs); }
 td.num { text-align: right; }
 </style>
 {% endblock %}
@@ -25,11 +26,11 @@ td.num { text-align: right; }
 {% set sections = [("s-summary", "Suggested values"), ("s-align", "Conductivity alignment"), ("s-ctm", "Cell thermal mass"), ("s-blocks", "Over the cruise")] %}
 {% if skipped %}{% set sections = sections + [("s-skipped", "Casts not fitted")] %}{% endif %}
 {% macro heading(id) %}{% for sid, title in sections %}{% if sid == id %}<h2 id="{{ sid }}">{{ m.heading_text(loop.index, title) }}</h2>{% endif %}{% endfor %}{% endmacro %}
-{% macro fig(key, caption) %}{% if figs[key] %}
-<figure class="slot-full">
+{% macro fig(key, caption, slot="full") %}{% if figs[key] %}
+<figure class="slot-{{ slot }}">
   <figcaption>{{ caption }}</figcaption>
   <img src="data:image/png;base64,{{ figs[key] }}" alt="{{ caption }}">
-  {{ m.dbg(figs[key], "full") }}
+  {{ m.dbg(figs[key], slot) }}
   {% if show_source %}{% set _src = source_of(figs[key]) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
 </figure>
 {% else %}<p class="caption">Nothing to show: no cast could be fitted for this figure.</p>{% endif %}{% endmacro %}
@@ -41,23 +42,39 @@ td.num { text-align: right; }
 </div>
 
 {{ heading("s-summary") }}
-<p class="caption">What the fits suggest for <code>processing.alignctd</code> and <code>processing.celltm</code>. Advance is the total, the deck unit's plus the fitted residual. The cruise cell thermal mass is the minimum of the averaged cost; because α and τ trade off along a valley, the one-parameter fits (one held at Sea-Bird's {{ sbe_alpha }} or {{ sbe_tau }} s) are the steadier numbers. "Sea-Bird ×" is the cost at Sea-Bird's ({{ sbe_alpha }}, {{ sbe_tau }} s) as a multiple of the minimum: within 1.{{ "%02d" % valley_pct }} is inside the valley.</p>
+<p class="caption">What the fits suggest for <code>processing.alignctd</code> and <code>processing.celltm</code>, from the cruise's casts. Alignment and cell thermal mass are two separate checks, one table each; <code>CT</code> is the conductivity/temperature line (primary or secondary), and <code>casts</code> is the number of casts in that average.</p>
+
+<p class="caption"><strong>Conductivity alignment.</strong> Advance is the total — the deck unit's plus the fitted residual — at the minimum of the median curve across casts; the downcast (bold) is the value suggested, the upcast is shown beside it.</p>
 <table class="nc">
-  <thead><tr><th>Line</th><th>Advance, cruise (s)</th><th>Advance, median per cast (s)</th><th>n</th><th>CTM (α, τ s)</th><th>α at τ = {{ sbe_tau }} s</th><th>τ at α = {{ sbe_alpha }} (s)</th><th>Sea-Bird ×</th><th>n</th></tr></thead>
+  {{ nc.thead(["CT", "Advance, downcast", "Advance, upcast", "casts"], units=["", "s", "s", ""]) }}
   <tbody>
-  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num">{{ r.advance }}</td><td class="num">{{ r.advance_median }}</td><td class="num">{{ r.align_n }}</td><td class="num">{{ r.ctm }}</td><td class="num">{{ r.alpha_at_tau }}</td><td class="num">{{ r.tau_at_alpha }}</td><td class="num">{{ r.sbe }}</td><td class="num">{{ r.ctm_n }}</td></tr>
+  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num"><strong>{{ r.advance }}</strong></td><td class="num">{{ r.advance_up }}</td><td class="num">{{ r.align_n }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<p class="caption"><strong>Cell thermal mass.</strong> The cruise value is the minimum of the averaged cost; because α and τ trade off along a valley, the one-parameter fits (one held at Sea-Bird's {{ sbe_alpha }} or {{ sbe_tau }} s) are the steadier numbers. "Sea-Bird ×" is the cost at Sea-Bird's ({{ sbe_alpha }}, {{ sbe_tau }} s) as a multiple of the minimum: within 1.{{ "%02d" % valley_pct }} is inside the valley.</p>
+<table class="nc">
+  {{ nc.thead(["CT", "CTM (α, τ)", "α at τ = " ~ sbe_tau ~ " s", "τ at α = " ~ sbe_alpha, "Sea-Bird ×", "casts"], units=["", "(–, s)", "", "s", "", ""]) }}
+  <tbody>
+  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num">{{ r.ctm }}</td><td class="num">{{ r.alpha_at_tau }}</td><td class="num">{{ r.tau_at_alpha }}</td><td class="num">{{ r.sbe }}</td><td class="num">{{ r.ctm_n }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
 {% if yaml %}<p class="caption">Paste into the config, then re-run stage 3 with <code>--force</code>. Residual advances are on top of the deck unit's, which is already in the data.</p>
-<pre class="yaml">{{ yaml }}</pre>{% endif %}
+{{ snip.yaml_snippet("align-ctm-config", yaml) }}{% endif %}
 
 {{ heading("s-align") }}
-{{ fig("alignment", "Total conductivity advance at each cast's minimum salinity-spike cost in the thermocline (|dT/dp| > " ~ gradient ~ " °C/dbar), down and up costs summed. Casts whose cost is still falling at an end of the search have no estimate and are ticked along the top. Circles primary, triangles secondary; solid and dashed lines at their medians; grey line the deck unit's advance.") }}
+<p class="caption">Cost: the mean square of practical salinity minus its 1-s running mean (Tukey window), in the thermocline (|dT/dp| &gt; {{ gradient }} °C/dbar), below {{ align_pmin | round(0) | int }} dbar, on scans moving along the leg faster than {{ min_speed }} dbar/s (pressure low-passed at 0.15 s, as SBE Data Processing's Filter). Median lowering speed {{ speed_down }} dbar/s, hauling {{ speed_up }} dbar/s.</p>
+<blockquote class="caption">“The best diagnostic of proper alignment is the elimination of salinity spikes that coincide with very sharp temperature steps. To determine the best alignment, plot 10 meters of temperature and salinity data at a depth that contains a very sharp temperature step. For the downcast, when temperature and salinity decrease with increasing pressure: A negative salinity spike at the conductivity step means that conductivity leads temperature (conductivity sensor sees step before temperature sensor does). Advance conductivity relative to temperature a negative number of seconds. Conversely, if the salinity spike is positive, advance conductivity relative to temperature a positive number of seconds. […] The best alignment of conductivity with respect to temperature is obtained when the salinity spikes are minimized. Some experimentation with different advances is required to find the best alignment.” — Sea-Bird Scientific, <em>SBE Data Processing</em> manual, rev. 7.26.8, p. 84.</blockquote>
+{{ fig("wells", "Cruise salinity-spike cost against total advance, downcast blue and upcast vermillion: each cast's cost divided by its own minimum, the median across casts drawn and the middle half of casts shaded; dashed lines at the minima. The downcast's minimum (bold in the legend) is the value suggested. Grey line: the deck unit's advance. Top axis in scans.") }}
+{{ fig("alignment", "Total conductivity advance at each cast's minimum downcast salinity-spike cost. Casts whose cost is still falling at an end of the search, or never rises to twice its minimum (no well: a faulty line), have no estimate and are ticked along the top. Circles primary, triangles secondary; solid and dashed lines at their medians; grey line the deck unit's advance.") }}
+{{ fig("align_hist", "Distribution of each cast's total conductivity advance, primary and secondary, with the median drawn.", slot="half") }}
 
 {{ heading("s-ctm") }}
 {{ fig("ctm_casts", "Top: |ΔT| between the bottom and the top of the CTM window (" ~ (pmin | round(0) | int) ~ " dbar), downcast blue, upcast vermillion — a cast with little |ΔT| has no gradient to learn from. Middle: maximum pressure; grey bars are the windows fitted. Bottom: one-parameter fits per cast, α with τ = " ~ sbe_tau ~ " s (black, left) and τ with α = " ~ sbe_alpha ~ " (purple, right); filled where the cast's |ΔT| is above the cruise median, open below; circles primary, triangles secondary; dotted lines Sea-Bird's values.") }}
 {{ fig("ctm_surface", "Cruise cost: each cast's down/up salinity mismatch divided by its value with no correction, averaged with |ΔT| as weight. Contours labelled as multiples of the minimum; shaded within " ~ valley_pct ~ "% of it; dot the minimum, cross Sea-Bird's (" ~ sbe_alpha ~ ", " ~ sbe_tau ~ " s).") }}
+{{ fig("ctm_hist", "Counts of the per-cast one-parameter fits — α at τ = " ~ sbe_tau ~ " s and τ at α = " ~ sbe_alpha ~ " — by line; dark where the cast's |ΔT| is above the cruise median, light below; dotted at Sea-Bird's value.", slot="half") }}
 
 {{ heading("s-blocks") }}
 {{ fig("blocks", "The same fits for blocks of " ~ block ~ " consecutive casts, at each block's centre: total advance, α with τ = " ~ sbe_tau ~ " s, and τ with α = " ~ sbe_alpha ~ ". A trend suggests drift (a pump wearing); a step, a hardware change — a per-cast range in the config.") }}
@@ -65,7 +82,7 @@ td.num { text-align: right; }
 {% if skipped %}
 {{ heading("s-skipped") }}
 <table class="nc">
-  <thead><tr><th>Cast</th><th>Why</th></tr></thead>
+  {{ nc.thead(["Cast", "Why"]) }}
   <tbody>{% for c, r in skipped %}<tr><td>{{ c }}</td><td>{{ r }}</td></tr>{% endfor %}</tbody>
 </table>
 {% endif %}

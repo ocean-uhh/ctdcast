@@ -65,6 +65,57 @@ def test_alignment_cost_has_a_minimum_inside_the_search(cast):
     assert total[-1] > total.min() * 1.5
 
 
+def test_sbe_lowpass_has_no_phase_shift():
+    x = np.r_[np.zeros(200), np.ones(200)]
+    y = F.sbe_lowpass(x, 0.15, 1 / 24)
+    assert np.allclose(F.sbe_lowpass(np.full(50, 3.0), 0.15, 1 / 24), 3.0)
+    # forward-backward: the step is smoothed symmetrically about its centre
+    assert y[199] == pytest.approx(1 - y[200], abs=1e-6)
+
+
+def test_median_speeds_on_the_slice(cast):
+    down, up = F.median_speeds(cast)
+    assert 0.2 < down < 2.0  # lowering, dbar/s
+    # the slice ends near the bottom: a few heaving scans at most
+    assert np.isnan(up) or up < down
+
+
+def test_alignment_cost_selection_keywords(cast):
+    base = F.alignment_cost(cast)
+    loose = F.alignment_cost(cast, min_speed=0.0, pmin=0.0)
+    sharp = F.alignment_cost(cast, sharpest=0.5)
+    # the selections change the scans scored, not the shape
+    assert loose.shape == base.shape == sharp.shape
+    assert not np.allclose(loose[0], base[0])
+    assert F.has_interior_minimum(sharp[0])
+    # nothing left below the bottom of the slice
+    deep = F.alignment_cost(cast, pmin=500.0)
+    assert deep is None or not np.isfinite(deep).any()
+    with pytest.raises(ValueError, match="min_speed"):
+        F.alignment_cost(cast, min_speed=0.6)
+    with pytest.raises(ValueError, match="sharpest"):
+        F.alignment_cost(cast, sharpest=0.0)
+
+
+def test_has_well_rejects_a_cost_with_no_well():
+    r = np.linspace(-1, 1, 41)
+    assert F.has_well(1 + 4 * r**2)
+    assert not F.has_well(
+        1 + 0.3 * np.abs(np.sin(20 * r)) + 0.01 * r**2
+    )  # wobbles, no well
+    assert not F.has_well(1 - r)  # minimum at the edge
+
+
+def test_median_curve_uses_the_median_and_skips_edge_minima():
+    r = np.linspace(-1, 1, 21)
+    casts = [1 + (r - 0.1) ** 2, 1 + (r - 0.1) ** 2, 1 + 50 * (r + 0.3) ** 2, 1 - r]
+    c = F.median_curve(casts)
+    assert c.n_casts == 3  # the last falls to the edge
+    assert r[c.index] == pytest.approx(0.1)  # the steep cast does not drag the median
+    assert np.all(c.lower <= c.median) and np.all(c.median <= c.upper)
+    assert F.median_curve([1 - r]) is None
+
+
 def test_ctm_cost_needs_both_legs_below_the_window(cast):
     # The slice is a downcast from 7 to 98 dbar: nothing below 200 dbar, and no upcast at all.
     assert F.ctm_cost(cast) is None
@@ -139,11 +190,18 @@ def test_one_parameter_fits_hold_the_other_at_the_default():
         ({"fit": {"ctm_pmin": -1}}, "positive number"),
         ({"fit": {"window": 2}}, "unknown key"),
         ({"fit": {"block": True}}, "positive number"),
+        ({"fit": {"min_speed": 0.6}}, "0–0.5"),
+        ({"fit": {"min_speed": True}}, "0–0.5"),
     ],
 )
 def test_fit_settings_reject_bad_config(block, match):
     with pytest.raises(ValueError, match=match):
         FitSettings.from_config(block)
+
+
+def test_fit_settings_accept_min_speed_zero():
+    s = FitSettings.from_config({"fit": {"min_speed": 0, "align_pmin": 50}})
+    assert (s.min_speed, s.align_pmin) == (0.0, 50.0)
 
 
 def test_fit_cruise_writes_costs_and_summary(root):
@@ -152,9 +210,15 @@ def test_fit_cruise_writes_costs_and_summary(root):
     assert fits["alignment_cost"].shape == (1, 2, 2, F.DEFAULT_RESIDUALS.size)
     assert not np.isfinite(fits["ctm_cost"].values).any()  # the slice has no upcast
     assert fits.attrs["ctm_pmin_dbar"] == 200.0
+    assert fits.attrs["alignment_pmin_dbar"] == F.DEFAULT_ALIGN_PMIN
+    assert fits.attrs["alignment_min_speed_dbar_per_s"] == F.DEFAULT_MIN_SPEED
+    assert fits.attrs["scan_interval_s"] == pytest.approx(1 / 24)
+    down, up = fits["speed"].values[0]
+    assert 0.2 < down < 2.0 and (np.isnan(up) or up < down)
     (s1, s2) = summarise(fits)
     assert (s1.line, s2.line) == (1, 2)
     assert np.isfinite(s1.residual) and np.isnan(s1.alpha)
+    assert np.isnan(s1.residual_up)  # the suggestion is the downcast's
     text = suggested_yaml([s1, s2], 0.073)
     assert "conductivity_1: {default:" in text and "deck unit's 0.073" in text
     assert "celltm" not in text  # nothing to suggest without an upcast
@@ -224,3 +288,25 @@ def test_corrections_page_renders(root, tmp_path):
     assert "Conductivity alignment" in html and "data:image/png;base64," in html
     assert "conductivity_1: {default:" in html  # the suggested YAML
     assert "Nothing to show" in html  # the slice has no upcast, so no CTM figures
+    assert "The best diagnostic of proper alignment" in html and "p. 84" in html
+    assert "Median lowering speed" in html
+
+
+def test_alignment_figures_draw(root):
+    from ctdcast.plotters.corrections import (
+        draw_alignment_legs_fig,
+        draw_alignment_wells_fig,
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fits = fit_cruise(root, FitSettings(), progress=False)
+    fig = draw_alignment_wells_fig(fits, width_in=9.0)
+    labels = [
+        t for ax in fig.axes for lg in [ax.get_legend()] if lg for t in lg.get_texts()
+    ]
+    assert any(
+        t.get_text().startswith("downcast") and t.get_fontweight() == "bold"
+        for t in labels
+    )
+    assert draw_alignment_legs_fig(fits) is None  # no upcast in the slice

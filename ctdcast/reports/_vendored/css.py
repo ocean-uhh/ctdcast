@@ -275,7 +275,7 @@ table {{
   font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
 }}
 th {{
-  background: var(--package-accent); color: #fff; text-align: left;
+  background: var(--package-accent); color: #fff; text-align: center;
   font-weight: 600; padding: 0.4rem 0.65rem;
 }}
 th.num {{ text-align: right; }}
@@ -299,9 +299,31 @@ td.mono {{ font-family: var(--font-mono); font-size: var(--fs-xs); }}
 .cell-wrap {{ overflow-wrap: anywhere; max-width: 28rem; }}
 .cell-bad {{ color: var(--warn); font-variant-numeric: tabular-nums; }}
 tr.units th {{
-  background: transparent; color: var(--muted); font-weight: 400;
+  background: var(--package-accent); color: #fff; font-weight: 400;
   font-size: var(--fs-xs); padding-top: 0;
 }}
+/* Copyable YAML snippet boxes (templates/_snippet.html): one box, or a current/suggested pair
+   that stacks at phone width.  A <pre> (not <textarea>) so it never clips and prints. */
+.snippet-pair {{ display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0 1.2rem; }}
+.snippet-box {{ flex: 1 1 22rem; min-width: 0; }}
+.snippet-single .snippet-box {{ flex-basis: 100%; }}
+.snippet-title {{
+  display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  font-size: var(--fs-xs); color: var(--muted); margin-bottom: 0.2rem;
+}}
+.snippet-copy {{
+  font: inherit; font-size: var(--fs-xs); cursor: pointer; color: var(--text);
+  border: 1px solid var(--rule); background: var(--bg-soft);
+  border-radius: 4px; padding: 0.1rem 0.5rem;
+}}
+.snippet-copy:hover {{ background: var(--bg-sunken); }}
+pre.snippet {{
+  background: var(--bg-soft); padding: 0.6rem 0.8rem; margin: 0;
+  white-space: pre; overflow-x: auto; cursor: text; height: auto;
+  font-family: var(--font-mono); font-size: var(--fs-xs); border-left: 3px solid var(--rule);
+}}
+.snippet-current pre.snippet {{ border-left-color: var(--muted); }}
+.snippet-suggested pre.snippet {{ border-left-color: var(--package-accent); }}
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
@@ -421,6 +443,35 @@ document.querySelectorAll('h2').forEach(h => {
   const a = document.createElement('a');
   a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
   h.appendChild(a);
+});
+</script>
+"""
+
+#: Copy buttons for the vendored ``yaml_snippet`` boxes.  Inline and dependency-free so it works
+#: offline (the family offline-at-view-time rule); ``navigator.clipboard`` with an ``execCommand``
+#: fallback for ``file://`` pages at sea.  A button carries ``data-copy`` = the id of its ``<pre>``;
+#: the button reads "Copied" for two seconds.
+_JS_COPY_SNIPPET: str = """\
+<script>
+document.querySelectorAll('button[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var pre = document.getElementById(btn.getAttribute('data-copy'));
+    if (!pre) { return; }
+    var label = btn.textContent;
+    function done() {
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.textContent = label; }, 2000);
+    }
+    function fallback() {
+      var sel = window.getSelection(), r = document.createRange();
+      r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      sel.removeAllRanges();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pre.textContent).then(done, fallback);
+    } else { fallback(); }
+  });
 });
 </script>
 """

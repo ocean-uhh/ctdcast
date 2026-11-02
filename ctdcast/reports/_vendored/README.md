@@ -2,7 +2,8 @@
 
 The files in this directory are the shared report presentation layer — the
 design tokens, the figure encoder, the CSS generator, the page model, the
-matplotlib style, the shared templates, the Leaflet map building blocks
+matplotlib style, the shared templates (including `templates/_snippet.html`, the
+copyable `yaml_snippet` box with its copy button), the Leaflet map building blocks
 (`leaflet.py`, `templates/_map.html`, and the bundled Leaflet library under
 `leaflet/`), and the units layer (`units_tables.py`, the canonical spellings and
 their aliases; `units.py`, the `resolve_units` / `merge_tables` / `format_units`

@@ -7,8 +7,10 @@ stage 3 applies; they never change data.
 - **Alignment** (:func:`alignment_cost`): the mean square of high-passed practical salinity in the
   thermocline, as a function of the conductivity advance on top of what the data already carry
   (the deck unit's).  A misalignment makes salinity spike where temperature changes fast; too
-  much advance reverses the spikes, so the cost has a minimum.  Down and up are scored separately
-  and should agree.
+  much advance reverses the spikes, so the cost has a minimum.  Down and up are scored separately;
+  the downcast is the one to fit (the upcast passes through the rosette's wake), the upcast is
+  shown beside it.  Scans near the surface and scans where the package is barely moving along the
+  leg (ship heave) are left out.
 - **Cell thermal mass** (:func:`ctm_cost`): the down–up difference of practical salinity in
   temperature bins below a window top (default 200 dbar), each bin weighted towards the time the
   two legs passed it, as a function of ``(alpha, tau)``.  Each grid point is scored through
@@ -16,7 +18,8 @@ stage 3 applies; they never change data.
 
 Over a cruise (:func:`cruise_surface`), each cast's cost is divided by its value with no
 correction and the casts are averaged: the cruise optimum is the minimum of that average, not the
-average of per-cast optima.  ``alpha`` and ``tau`` trade off along a valley, so
+average of per-cast optima.  For alignment (:func:`median_curve`) each cast's cost is divided by
+its own minimum and the cruise curve is the median across casts.  ``alpha`` and ``tau`` trade off along a valley, so
 :func:`one_parameter_fits` also fits one with the other held at Sea-Bird's default, the stable
 quantity for comparing casts and blocks of casts.
 
@@ -28,16 +31,19 @@ cruise aggregation are not from ctdproc.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 import gsw
 import numpy as np
 from scipy.ndimage import median_filter
+from scipy.signal import lfilter
+from scipy.signal.windows import tukey
 from seabirdscientific import processing as sbs_processing
 
 #: Residual conductivity advance searched by :func:`alignment_cost`, seconds on top of the data's.
-DEFAULT_RESIDUALS = np.round(np.arange(-0.10, 0.15 + 1e-9, 0.005), 4)
+DEFAULT_RESIDUALS = np.round(np.arange(-0.10, 0.15 + 1e-9, 0.0025), 4)
 #: Cell thermal mass grid searched by :func:`ctm_cost`, around Sea-Bird's (0.03, 7 s).
 DEFAULT_ALPHA = np.round(np.arange(0.0, 0.08 + 1e-9, 0.0025), 4)
 DEFAULT_TAU = np.round(np.arange(1.0, 16.0 + 1e-9, 0.5), 2)
@@ -46,6 +52,17 @@ DEFAULT_ALPHA_SBE = 0.03
 DEFAULT_TAU_SBE = 7.0
 #: Thermocline threshold for the alignment cost: |dT/dp| in °C per dbar, on 2-dbar bins.
 DEFAULT_GRADIENT = 0.02
+#: Alignment cost: scans shallower than this (dbar) are left out.
+DEFAULT_ALIGN_PMIN = 20.0
+#: Alignment cost: scans moving along the leg slower than this (dbar/s) are left out (heave).
+DEFAULT_MIN_SPEED = 0.25
+#: Largest *min_speed* accepted: above it a slow winch would leave too few scans.
+MAX_MIN_SPEED = 0.5
+#: Time constant (s) of the low-pass applied to pressure before the speed is taken: SBE Data
+#: Processing's Filter default for pressure (SBE manual p.20).
+PRESSURE_FILTER_SECONDS = 0.15
+#: Tukey taper of the 1-s high-pass window in the alignment cost.
+TUKEY_ALPHA = 0.5
 #: Top of the cell thermal mass window (dbar): the near-surface water changes between legs.
 DEFAULT_CTM_PMIN = 200.0
 #: Time scale (s) of the down/up weighting: weight = 1 / (gap + this).
@@ -54,6 +71,9 @@ DEFAULT_GAP_SCALE = 300.0
 DEFAULT_TEMPERATURE_BINS = 40
 #: A cast's down/up difference within this fraction of the cruise minimum is "in the valley".
 VALLEY_FRACTION = 0.05
+#: An alignment cost counts only if it rises to this multiple of its minimum within the search:
+#: a dead or noisy line gives a cost that wobbles scan by scan with no well.
+WELL_DEPTH = 2.0
 
 
 @dataclass(frozen=True)
@@ -184,19 +204,100 @@ def window_delta_t(cast: Cast, pmin: float = DEFAULT_CTM_PMIN) -> tuple[float, f
     return out[0], out[1]
 
 
+def sbe_lowpass(x: np.ndarray, time_constant: float, interval: float) -> np.ndarray:
+    """Low-pass *x* the way SBE Data Processing's Filter does.
+
+    A single-pole filter with the given time constant, run forward and then backward so the
+    result has no phase shift (SBE manual p.101).
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The series, without NaN (fill gaps first).
+    time_constant : float
+        Filter time constant (s).
+    interval : float
+        Time between scans (s).
+
+    Returns
+    -------
+    numpy.ndarray
+        The filtered series, same length.
+    """
+    k = 2.0 * time_constant / interval
+    b, a = [1.0 / (1.0 + k)] * 2, [1.0, (1.0 - k) / (1.0 + k)]
+    x = np.asarray(x, dtype=np.float64)
+    y = lfilter(b, a, x - x[0]) + x[0]
+    return (lfilter(b, a, y[::-1] - y[-1]) + y[-1])[::-1]
+
+
+def leg_speed(cast: Cast) -> np.ndarray:
+    """Return the package's speed along its leg (dbar/s), positive when moving the leg's way.
+
+    Positive descending on the downcast and ascending on the upcast; heave shows as speeds near
+    zero or negative.  Pressure is low-passed with :func:`sbe_lowpass` at
+    :data:`PRESSURE_FILTER_SECONDS` first.
+
+    Parameters
+    ----------
+    cast : Cast
+        The cast.
+
+    Returns
+    -------
+    numpy.ndarray
+        One value per scan.
+    """
+    p = sbe_lowpass(_fill(cast.pressure), PRESSURE_FILTER_SECONDS, cast.interval)
+    sign = np.where(np.arange(p.size) <= cast.turnaround, 1.0, -1.0)
+    return np.gradient(p) / cast.interval * sign
+
+
+def median_speeds(cast: Cast, pmin: float = DEFAULT_ALIGN_PMIN) -> tuple[float, float]:
+    """Return the median lowering and hauling speeds (dbar/s) below *pmin*.
+
+    Only scans moving the leg's way are counted, so a stop at a bottle does not pull the median
+    down.  The figure to set *min_speed* against.
+
+    Parameters
+    ----------
+    cast : Cast
+        The cast.
+    pmin : float, optional
+        Scans shallower than this (dbar) are not counted.
+
+    Returns
+    -------
+    tuple of float
+        ``(down, up)``; NaN for a leg with no such scans.
+    """
+    w = leg_speed(cast)
+    k = cast.turnaround
+    deep = np.isfinite(cast.pressure) & (cast.pressure > pmin) & (w > 0)
+    out = []
+    for sl in (slice(0, k + 1), slice(k, None)):
+        v = w[sl][deep[sl]]
+        out.append(float(np.median(v)) if v.size else np.nan)
+    return out[0], out[1]
+
+
 def alignment_cost(
     cast: Cast,
     residuals: np.ndarray = DEFAULT_RESIDUALS,
     *,
     gradient: float = DEFAULT_GRADIENT,
+    pmin: float = DEFAULT_ALIGN_PMIN,
+    min_speed: float = DEFAULT_MIN_SPEED,
+    sharpest: float | None = None,
 ) -> np.ndarray | None:
     """Return the salinity spike cost of each residual advance, downcast and upcast.
 
     For each advance, conductivity is advanced with seabirdscientific's ``align_ctd``, practical
-    salinity is derived, and the cost is the mean square of salinity minus its 1-s running mean,
-    over scans in 2-dbar bins whose downcast |dT/dp| exceeds *gradient*.  Every advance is scored
-    on the same scans (those usable for all of them), so shifting data off the ends of the record
-    cannot change the cost.
+    salinity is derived, and the cost is the mean square of salinity minus its 1-s running mean
+    (a Tukey window, taper :data:`TUKEY_ALPHA`), over scans in 2-dbar bins whose downcast |dT/dp|
+    exceeds *gradient*, deeper than *pmin*, and moving along the leg faster than *min_speed*.
+    Every advance is scored on the same scans (those usable for all of them), so shifting data off
+    the ends of the record cannot change the cost.
 
     Parameters
     ----------
@@ -206,13 +307,33 @@ def alignment_cost(
         Advances (s) to try, on top of whatever the data already carry.
     gradient : float, optional
         Thermocline threshold, °C per dbar.
+    pmin : float, optional
+        Scans shallower than this (dbar) are left out.
+    min_speed : float, optional
+        Scans moving along the leg slower than this (dbar/s, see :func:`leg_speed`) are left out:
+        ship heave stops or reverses the package, and the water around the sensors is then not
+        the water the pump drew in.  0 keeps every scan; at most :data:`MAX_MIN_SPEED`.
+    sharpest : float, optional
+        Keep only this fraction (0–1) of the remaining scans per leg, those with the largest
+        |dT/dt|.  Off by default: on the OdB cruise it lost casts and changed nothing.
 
     Returns
     -------
     numpy.ndarray or None
         Shape ``(2, len(residuals))``: row 0 the downcast, row 1 the upcast; NaN where a leg has
         under 200 thermocline scans.  None when the cast has no thermocline at all.
+
+    Raises
+    ------
+    ValueError
+        If *min_speed* is outside 0–:data:`MAX_MIN_SPEED` or *sharpest* outside (0, 1].
     """
+    if not 0.0 <= min_speed <= MAX_MIN_SPEED:
+        raise ValueError(
+            f"min_speed: expected 0–{MAX_MIN_SPEED} dbar/s, got {min_speed!r}"
+        )
+    if sharpest is not None and not 0.0 < sharpest <= 1.0:
+        raise ValueError(f"sharpest: expected a fraction in (0, 1], got {sharpest!r}")
     p, T = cast.pressure, cast.temperature
     k = cast.turnaround
     edges = np.arange(0.0, cast.pmax + 4.0, 2.0)
@@ -227,10 +348,21 @@ def alignment_cost(
     ok_b = (b >= 0) & (b < steep.size)
     in_tc[ok_b] = steep[b[ok_b]]
     usable = in_tc & np.isfinite(p) & np.isfinite(T) & np.isfinite(cast.conductivity)
+    with np.errstate(invalid="ignore"):
+        usable &= p > pmin
+        if min_speed > 0:
+            usable &= leg_speed(cast) > min_speed
+    if sharpest is not None:
+        dtdt = np.abs(np.gradient(_fill(T)))
+        for sl in (slice(0, k + 1), slice(k, None)):
+            v = dtdt[sl][usable[sl]]
+            if v.size:
+                usable[sl] &= dtdt[sl] >= np.quantile(v, 1.0 - sharpest)
     c = _fill(cast.conductivity)
     p_f = _fill(p)
     n_avg = max(3, round(1.0 / cast.interval))
-    kernel = np.ones(n_avg) / n_avg
+    kernel = tukey(n_avg, TUKEY_ALPHA)
+    kernel /= kernel.sum()
     hps = []
     for r in residuals:
         ca = sbs_processing.align_ctd(
@@ -247,9 +379,11 @@ def alignment_cost(
     # Every advance is scored on the same scans: a scan pushed off either end by any advance in
     # the search is dropped for all of them, so the cost cannot fall just because bad scans at an
     # end of the record leave it as the advance grows.  The 1-s running mean is unreliable within
-    # a second of a NaN, so that margin goes too.
-    common = usable & np.isfinite(hp).all(axis=0)
-    common &= np.convolve((~common).astype(float), kernel, mode="same") == 0
+    # a second of a NaN, so that margin goes too — around the NaN only, not around scans the
+    # selection left out, or a scattered selection would erode to nothing.
+    finite = np.isfinite(hp).all(axis=0) & np.isfinite(p) & np.isfinite(T)
+    finite &= np.convolve((~finite).astype(float), np.ones(n_avg), mode="same") == 0
+    common = usable & finite
     out = np.full((2, len(residuals)), np.nan)
     for leg, sl in enumerate((slice(0, k + 1), slice(k, None))):
         m = common[sl]
@@ -371,6 +505,31 @@ def has_interior_minimum(cost: np.ndarray) -> bool:
     return 0 < j < cost.size - 1
 
 
+def has_well(cost: np.ndarray, depth: float = WELL_DEPTH) -> bool:
+    """Return whether a 1-D alignment cost has a minimum inside the search and a real well.
+
+    Besides :func:`has_interior_minimum`, the cost must rise to *depth* times its minimum
+    somewhere in the search.  On the OdB cruise every working line rose at least 2.4-fold; the
+    few that did not (a line with a fault) oscillated scan by scan with no single minimum.
+
+    Parameters
+    ----------
+    cost : numpy.ndarray
+        One leg's alignment cost over the searched advances.
+    depth : float, optional
+        Required ratio of the maximum to the minimum.
+
+    Returns
+    -------
+    bool
+        True when the cost has both.
+    """
+    if not has_interior_minimum(cost):
+        return False
+    lo = float(np.nanmin(cost))
+    return lo > 0 and float(np.nanmax(cost)) >= depth * lo
+
+
 def normalise(cost: np.ndarray, reference: tuple[int, ...]) -> np.ndarray | None:
     """Divide *cost* by its value at *reference* (no correction), or None if that is not usable.
 
@@ -450,6 +609,57 @@ def cruise_surface(
     return CruiseFit(
         surface, tuple(int(i) for i in index), valley, int((wts > 0).sum())
     )
+
+
+@dataclass(frozen=True)
+class MedianCurve:
+    """The median across casts of 1-D costs, each divided by its own minimum.
+
+    Attributes
+    ----------
+    median : numpy.ndarray
+        The median curve (1 at a cast's own minimum).
+    lower, upper : numpy.ndarray
+        The 25th and 75th percentiles.
+    index : int
+        Index of the median curve's minimum.
+    n_casts : int
+        How many casts went in.
+    """
+
+    median: np.ndarray
+    lower: np.ndarray
+    upper: np.ndarray
+    index: int
+    n_casts: int
+
+
+def median_curve(costs: Sequence[np.ndarray]) -> MedianCurve | None:
+    """Return the cruise alignment curve: the median of the casts' costs over their own minima.
+
+    Casts without a minimum inside the search and a real well (:func:`has_well`) are left out.  The
+    median, not the mean: a few casts rise steeply away from their minimum and would pull a mean
+    outside the middle half of casts.
+
+    Parameters
+    ----------
+    costs : sequence of numpy.ndarray
+        One leg's alignment cost per cast, all the same length.
+
+    Returns
+    -------
+    MedianCurve or None
+        None when no cast has an interior minimum.
+    """
+    curves = [c / np.nanmin(c) for c in costs if has_well(c)]
+    if not curves:
+        return None
+    stack = np.stack(curves)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        med = np.nanmedian(stack, axis=0)
+        lo, hi = np.nanpercentile(stack, [25, 75], axis=0)
+    return MedianCurve(med, lo, hi, int(np.nanargmin(med)), len(curves))
 
 
 def one_parameter_fits(

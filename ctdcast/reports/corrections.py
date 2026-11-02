@@ -1,8 +1,9 @@
 """The corrections page for temperature and salinity: alignment and cell thermal mass fits.
 
 Drawn from the ``fits.nc`` file ``ctdcast fit`` writes under the CTD root: a summary table and the
-suggested ``processing:`` block, then the figures — per-cast alignment, the cell thermal mass
-casts and cost surface, and the fits for blocks of consecutive casts.
+suggested ``processing:`` block, then the figures — the cruise alignment wells and the per-cast
+alignment, the cell thermal mass casts and cost surface, and the fits for blocks of consecutive
+casts.
 """
 
 from __future__ import annotations
@@ -16,17 +17,19 @@ from ctdcast._version import __version__ as _VERSION
 from ctdcast.analysis import fits as F
 from ctdcast.plotters.corrections import (
     draw_alignment_fig,
+    draw_alignment_hist_fig,
+    draw_alignment_wells_fig,
     draw_blocks_fig,
     draw_ctm_casts_fig,
+    draw_ctm_param_hist_fig,
     draw_ctm_surface_fig,
-    per_cast_alignment,
 )
 from ctdcast.processors.fit import LineSummary, suggested_yaml, summarise
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import render_b64
 from ctdcast.reports._format import report_generated_at
 from ctdcast.reports._navs import CORRECTIONS_TS_HREF, nav_for
-from ctdcast.reports._vendored.design_tokens import W_FULL
+from ctdcast.reports._vendored.design_tokens import W_FULL, W_HALF
 from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 
 _NAMES = {1: "primary", 2: "secondary"}
@@ -43,7 +46,6 @@ def _summary_rows(
     rows = []
     for s in summaries:
         base = float(deck[s.line - 1]) if np.isfinite(deck[s.line - 1]) else 0.0
-        per_cast = per_cast_alignment(fits, s.line - 1) + base
 
         def _f(v: float, fmt: str) -> str:
             return "–" if not np.isfinite(v) else format(v, fmt)
@@ -51,13 +53,8 @@ def _summary_rows(
         rows.append(
             {
                 "line": _NAMES[s.line],
-                "advance": _f(s.residual + base, ".3f"),
-                "advance_median": _f(
-                    float(np.nanmedian(per_cast))
-                    if np.isfinite(per_cast).any()
-                    else np.nan,
-                    ".3f",
-                ),
+                "advance": _f(s.residual + base, ".4f"),
+                "advance_up": _f(s.residual_up + base, ".4f"),
                 "align_n": str(s.alignment_n),
                 "ctm": "–" if not np.isfinite(s.alpha) else f"({s.alpha:g}, {s.tau:g})",
                 "alpha_at_tau": _f(s.alpha_at_tau, "g"),
@@ -108,15 +105,18 @@ def generate_corrections_page(
         name: render_b64(
             draw,
             fits,
-            width_in=W_FULL,
+            width_in=w,
             optional=True,
             source=f"corrections.py:{draw.__name__}",
         )
-        for name, draw in (
-            ("alignment", draw_alignment_fig),
-            ("ctm_casts", draw_ctm_casts_fig),
-            ("ctm_surface", draw_ctm_surface_fig),
-            ("blocks", draw_blocks_fig),
+        for name, draw, w in (
+            ("wells", draw_alignment_wells_fig, W_FULL),
+            ("alignment", draw_alignment_fig, W_FULL),
+            ("align_hist", draw_alignment_hist_fig, W_HALF),
+            ("ctm_casts", draw_ctm_casts_fig, W_FULL),
+            ("ctm_surface", draw_ctm_surface_fig, W_FULL),
+            ("ctm_hist", draw_ctm_param_hist_fig, W_HALF),
+            ("blocks", draw_blocks_fig, W_FULL),
         )
     }
     skipped = [
@@ -124,6 +124,14 @@ def generate_corrections_page(
         for c, r in zip(fits["cast_id"].values, fits["skipped"].values, strict=True)
         if r
     ]
+    speed = fits["speed"].values if "speed" in fits else np.full((1, 2), np.nan)
+    with np.errstate(invalid="ignore"):
+        speeds = [
+            "–"
+            if not np.isfinite(speed[:, leg]).any()
+            else f"{np.nanmedian(speed[:, leg]):.2f}"
+            for leg in (0, 1)
+        ]
     nav = nav_for(
         None,
         prefix=nav_prefix,
@@ -149,6 +157,12 @@ def generate_corrections_page(
             fits.attrs.get("alignment_gradient_degC_per_dbar", F.DEFAULT_GRADIENT)
         ),
         block=int(fits.attrs.get("block", 10)),
+        align_pmin=float(fits.attrs.get("alignment_pmin_dbar", F.DEFAULT_ALIGN_PMIN)),
+        min_speed=float(
+            fits.attrs.get("alignment_min_speed_dbar_per_s", F.DEFAULT_MIN_SPEED)
+        ),
+        speed_down=speeds[0],
+        speed_up=speeds[1],
         fit_created=str(fits.attrs.get("date_created", "")),
         rows=_summary_rows(fits, summaries),
         yaml=suggested_yaml(summaries, float(deck) if np.isfinite(deck) else None)

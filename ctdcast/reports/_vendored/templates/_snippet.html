@@ -1,0 +1,22 @@
+{# Copyable YAML snippet box, vendored byte-identical across packages (F36).
+
+   yaml_snippet(id, text, title=…, current=None, current_title=…) renders one box, or a
+   current/suggested pair side by side (stacking at phone width via .snippet-pair).  Each box has a
+   title row with a Copy button (wired by the vendored _JS_COPY_SNIPPET, injected once per page) and
+   the text in a <pre class="snippet"> — not a <textarea>, so it never clips and prints.  Clicking the
+   <pre> selects all, so copy works without JavaScript.  `text` / `current` are autoescaped: pass
+   plain YAML.  `id` must be unique on the page; the current box uses `<id>-current`. #}
+{% macro yaml_snippet(id, text, title="Suggested — copy into the config", current=None, current_title="Current") -%}
+<div class="snippet-pair{% if current is none %} snippet-single{% endif %}">
+  {%- if current is not none %}
+  <div class="snippet-box snippet-current">
+    <div class="snippet-title"><span>{{ current_title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}-current">Copy</button></div>
+    <pre class="snippet" id="{{ id }}-current" tabindex="0">{{ current }}</pre>
+  </div>
+  {%- endif %}
+  <div class="snippet-box snippet-suggested">
+    <div class="snippet-title"><span>{{ title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}">Copy</button></div>
+    <pre class="snippet" id="{{ id }}" tabindex="0">{{ text }}</pre>
+  </div>
+</div>
+{%- endmacro %}
