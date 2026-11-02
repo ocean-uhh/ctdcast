@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block masthead_title %}T/S corrections{% endblock %}
+{% block masthead_type %}alignment &amp; cell thermal mass fits{% endblock %}
+
+{% block head_extra %}
+<style>
+pre.yaml { background: var(--bg-soft, #f5f7fa); padding: 0.6rem 0.8rem; white-space: pre-wrap; font-size: var(--fs-xs); }
+td.num { text-align: right; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    {% if cruise %}<div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>{% endif %}
+    <div><dt>Source</dt><dd>{{ source }}</dd></div>
+    <div><dt>Casts</dt><dd>{{ n_casts }}{% if n_skipped %} ({{ n_skipped }} not fitted){% endif %}</dd></div>
+    <div><dt>CTM window</dt><dd>below {{ pmin | round(0) | int }} dbar</dd></div>
+    <div><dt>Fitted</dt><dd>{{ fit_created }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% set sections = [("s-summary", "Suggested values"), ("s-align", "Conductivity alignment"), ("s-ctm", "Cell thermal mass"), ("s-blocks", "Over the cruise")] %}
+{% if skipped %}{% set sections = sections + [("s-skipped", "Casts not fitted")] %}{% endif %}
+{% macro heading(id) %}{% for sid, title in sections %}{% if sid == id %}<h2 id="{{ sid }}">{{ m.heading_text(loop.index, title) }}</h2>{% endif %}{% endfor %}{% endmacro %}
+{% macro fig(key, caption) %}{% if figs[key] %}
+<figure class="slot-full">
+  <figcaption>{{ caption }}</figcaption>
+  <img src="data:image/png;base64,{{ figs[key] }}" alt="{{ caption }}">
+  {{ m.dbg(figs[key], "full") }}
+  {% if show_source %}{% set _src = source_of(figs[key]) %}{% if _src %}<div class="fig-source">source: {{ _src }}</div>{% endif %}{% endif %}
+</figure>
+{% else %}<p class="caption">Nothing to show: no cast could be fitted for this figure.</p>{% endif %}{% endmacro %}
+
+{% block content %}
+<div class="jump-nav">
+  {% for sid, title in sections %}<a href="#{{ sid }}">{{ m.heading_text(loop.index, title) }}</a>
+  {% endfor %}
+</div>
+
+{{ heading("s-summary") }}
+<p class="caption">What the fits suggest for <code>processing.alignctd</code> and <code>processing.celltm</code>. Advance is the total, the deck unit's plus the fitted residual. The cruise cell thermal mass is the minimum of the averaged cost; because α and τ trade off along a valley, the one-parameter fits (one held at Sea-Bird's {{ sbe_alpha }} or {{ sbe_tau }} s) are the steadier numbers. "Sea-Bird ×" is the cost at Sea-Bird's ({{ sbe_alpha }}, {{ sbe_tau }} s) as a multiple of the minimum: within 1.{{ "%02d" % valley_pct }} is inside the valley.</p>
+<table class="nc">
+  <thead><tr><th>Line</th><th>Advance, cruise (s)</th><th>Advance, median per cast (s)</th><th>n</th><th>CTM (α, τ s)</th><th>α at τ = {{ sbe_tau }} s</th><th>τ at α = {{ sbe_alpha }} (s)</th><th>Sea-Bird ×</th><th>n</th></tr></thead>
+  <tbody>
+  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num">{{ r.advance }}</td><td class="num">{{ r.advance_median }}</td><td class="num">{{ r.align_n }}</td><td class="num">{{ r.ctm }}</td><td class="num">{{ r.alpha_at_tau }}</td><td class="num">{{ r.tau_at_alpha }}</td><td class="num">{{ r.sbe }}</td><td class="num">{{ r.ctm_n }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if yaml %}<p class="caption">Paste into the config, then re-run stage 3 with <code>--force</code>. Residual advances are on top of the deck unit's, which is already in the data.</p>
+<pre class="yaml">{{ yaml }}</pre>{% endif %}
+
+{{ heading("s-align") }}
+{{ fig("alignment", "Total conductivity advance at each cast's minimum salinity-spike cost in the thermocline (|dT/dp| > " ~ gradient ~ " °C/dbar), down and up costs summed. Casts whose cost is still falling at an end of the search have no estimate and are ticked along the top. Circles primary, triangles secondary; solid and dashed lines at their medians; grey line the deck unit's advance.") }}
+
+{{ heading("s-ctm") }}
+{{ fig("ctm_casts", "Top: |ΔT| between the bottom and the top of the CTM window (" ~ (pmin | round(0) | int) ~ " dbar), downcast blue, upcast vermillion — a cast with little |ΔT| has no gradient to learn from. Middle: maximum pressure; grey bars are the windows fitted. Bottom: one-parameter fits per cast, α with τ = " ~ sbe_tau ~ " s (black, left) and τ with α = " ~ sbe_alpha ~ " (purple, right); filled where the cast's |ΔT| is above the cruise median, open below; circles primary, triangles secondary; dotted lines Sea-Bird's values.") }}
+{{ fig("ctm_surface", "Cruise cost: each cast's down/up salinity mismatch divided by its value with no correction, averaged with |ΔT| as weight. Contours labelled as multiples of the minimum; shaded within " ~ valley_pct ~ "% of it; dot the minimum, cross Sea-Bird's (" ~ sbe_alpha ~ ", " ~ sbe_tau ~ " s).") }}
+
+{{ heading("s-blocks") }}
+{{ fig("blocks", "The same fits for blocks of " ~ block ~ " consecutive casts, at each block's centre: total advance, α with τ = " ~ sbe_tau ~ " s, and τ with α = " ~ sbe_alpha ~ ". A trend suggests drift (a pump wearing); a step, a hardware change — a per-cast range in the config.") }}
+
+{% if skipped %}
+{{ heading("s-skipped") }}
+<table class="nc">
+  <thead><tr><th>Cast</th><th>Why</th></tr></thead>
+  <tbody>{% for c, r in skipped %}<tr><td>{{ c }}</td><td>{{ r }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+{% endblock %}

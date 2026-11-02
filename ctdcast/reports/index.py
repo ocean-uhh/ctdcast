@@ -36,12 +36,18 @@ from ctdcast.identity import (
     expand_cast_numbers,
     format_cast_id,
 )
+from ctdcast.processors.fit import FITS_FILENAME
 from ctdcast.processors.stage_layout import select_best_available
 from ctdcast.readers.ladcp import find_ladcp_file
 from ctdcast.reports import _figdebug
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import report_generated_at
-from ctdcast.reports._navs import inventory_pills, inventory_sources, nav_for
+from ctdcast.reports._navs import (
+    CORRECTIONS_TS_HREF,
+    inventory_pills,
+    inventory_sources,
+    nav_for,
+)
 from ctdcast.reports._plots import (
     RenderedPanel,
     _make_all_sections_map_b64,
@@ -233,7 +239,14 @@ def report(
     # built once here so every page — not just the inventory pages — can render
     # the strip beneath its masthead.  Derived from the compiled paths, so it is
     # available before the first page is written.
-    inventory_datasets = inventory_pills(profiles_path, ladcp_profiles_path)
+    # ``ctdcast fit`` writes fits.nc beside profiles.nc (both at the top of the CTD root); when
+    # it exists the masthead gains a Corrections: row and corrections_ts.html is drawn from it.
+    fits_path = (
+        Path(profiles_path).parent / FITS_FILENAME
+        if profiles_path is not None
+        else None
+    )
+    inventory_datasets = inventory_pills(profiles_path, ladcp_profiles_path, fits_path)
 
     # Load sections YAML once. SectionsConfig returns empty defaults when absent.
     _sections_cfg = (
@@ -632,6 +645,26 @@ def report(
                 import traceback
 
                 print("  sbe_sensors.html: FAILED")
+                _failed += 1
+                traceback.print_exc()
+
+        if fits_path is not None and fits_path.exists():
+            _t0 = perf_counter()
+            try:
+                from ctdcast.reports.corrections import generate_corrections_page
+
+                generate_corrections_page(
+                    fits_path,
+                    out_dir / CORRECTIONS_TS_HREF,
+                    cruise=cruise,
+                    inventory_pills=inventory_datasets,
+                    generated_at=generated_at,
+                )
+                print(f"  [{CORRECTIONS_TS_HREF}: {perf_counter() - _t0:.1f}s]")
+            except Exception:  # noqa: BLE001
+                import traceback
+
+                print(f"  {CORRECTIONS_TS_HREF}: FAILED")
                 _failed += 1
                 traceback.print_exc()
 
