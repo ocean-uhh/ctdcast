@@ -14,6 +14,7 @@ import xarray as xr
 from ctdcast.analysis import fits as F
 from ctdcast.processors.fit import (
     FitSettings,
+    LineSummary,
     cast_arrays,
     fit_cruise,
     suggested_yaml,
@@ -223,6 +224,32 @@ def test_fit_cruise_writes_costs_and_summary(root):
     assert "conductivity_1:" in text  # bare value, no {default:} wrapper, no comments
     assert "default" not in text and "#" not in text
     assert "celltm" not in text  # nothing to suggest without an upcast
+
+
+def test_suggested_yaml_round_trips_through_the_resolvers():
+    import yaml
+
+    from ctdcast.processors.corrections import (
+        resolve_alignment,
+        resolve_cell_thermal_mass,
+    )
+
+    s = LineSummary(
+        line=1,
+        residual=-0.0125,
+        alignment_n=5,
+        residual_up=np.nan,
+        alignment_n_up=0,
+        alpha_rec=0.0275,
+        tau_rec=6.5,
+        alpha_at_tau=0.028,
+        tau_at_alpha=6.0,
+        ctm_n=5,
+    )
+    cfg = yaml.safe_load(suggested_yaml([s]))["processing"]
+    assert resolve_alignment(cfg, "conductivity_1", 11)[0] == -0.0125
+    alpha, tau, _ = resolve_cell_thermal_mass(cfg, "conductivity_1", 11)
+    assert (alpha, tau) == (0.0275, 6.5)
 
 
 def test_binned_cast_is_skipped_with_the_reason(tmp_path):

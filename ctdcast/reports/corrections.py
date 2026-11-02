@@ -35,6 +35,27 @@ from ctdcast.reports.design import _JS_TOP_LINKS, SHARED_CSS
 _NAMES = {1: "primary", 2: "secondary"}
 
 
+def _not_fitted_reason(fits: xr.Dataset, i: int) -> str:
+    """Return the sentence for cast *i* naming the corrections Sea-Bird already applied.
+
+    Built here, at display time, from the per-cast/per-line ``sbe_aligned`` and per-cast
+    ``sbe_celltm`` booleans ``fits.nc`` stores — the one place the prose is composed.  ``""``
+    when Sea-Bird applied neither, so the cast is not listed as not-fitted on that account.
+    """
+    reasons = []
+    if "sbe_aligned" in fits:
+        lines = [int(v) for v in fits["line"].values]
+        aligned = fits["sbe_aligned"].values
+        names = [_NAMES[lines[li]] for li in range(len(lines)) if aligned[i, li]]
+        if names:
+            reasons.append(
+                "Sea-Bird aligned " + ", ".join(f"{n} conductivity" for n in names)
+            )
+    if "sbe_celltm" in fits and bool(fits["sbe_celltm"].values[i]):
+        reasons.append("Sea-Bird celltm applied")
+    return "; ".join(reasons)
+
+
 def _summary_rows(
     fits: xr.Dataset, summaries: list[LineSummary]
 ) -> list[dict[str, str]]:
@@ -116,18 +137,24 @@ def generate_corrections_page(
             ("ctm_casts", draw_ctm_casts_fig, W_FULL),
             ("ctm_surface", draw_ctm_surface_fig, W_FULL),
             ("ctm_hist", draw_ctm_param_hist_fig, W_HALF),
-            ("blocks", draw_blocks_fig, W_FULL),
         )
     }
-    not_fitted = (
-        fits["not_fitted"].values if "not_fitted" in fits else [""] * fits.sizes["cast"]
+    # The whole-cruise summary is computed once (above) and handed to the blocks figure, which
+    # draws it as the reference advance rather than recomputing it.
+    figs["blocks"] = render_b64(
+        draw_blocks_fig,
+        fits,
+        cruise=summaries,
+        width_in=W_FULL,
+        optional=True,
+        source="corrections.py:draw_blocks_fig",
     )
     skipped = [
-        (str(c), str(r or nf))
-        for c, r, nf in zip(
-            fits["cast_id"].values, fits["skipped"].values, not_fitted, strict=True
+        (str(c), reason)
+        for i, (c, r) in enumerate(
+            zip(fits["cast_id"].values, fits["skipped"].values, strict=True)
         )
-        if r or nf
+        if (reason := str(r) or _not_fitted_reason(fits, i))
     ]
     speed = fits["speed"].values if "speed" in fits else np.full((1, 2), np.nan)
     with np.errstate(invalid="ignore"):

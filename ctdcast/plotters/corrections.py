@@ -13,7 +13,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis import fits as F
-from ctdcast.processors.fit import summarise
+from ctdcast.processors.fit import LineSummary, summarise
 from ctdcast.reports._vendored.design_tokens import W_FULL as _W_FULL
 from ctdcast.reports._vendored.design_tokens import W_HALF as _W_HALF
 from ctdcast.reports._vendored.design_tokens import pen
@@ -34,10 +34,12 @@ def _xticks(ax: plt.Axes, labels: list[str]) -> None:
 
 
 def _config_boundaries(fits: xr.Dataset) -> list[float]:
-    """Return x positions (``i - 0.5``) where the sensor configuration changed between casts.
+    """Return x positions (``i - 0.5``) where the T/C hardware changed between casts.
 
-    A boundary sits between cast ``i-1`` and cast ``i`` whenever their ``sensor_config``
-    fingerprints differ and both are non-empty (a catalog-less cast is not a boundary).
+    A boundary sits between cast ``i-1`` and cast ``i`` wherever their ``sensor_config`` key
+    (the T/C-pair segment serials ``fit`` stored from
+    :func:`ctdcast.config.preferred_sensors.segment_key`) differs — the same rule
+    :func:`ctdcast.config.preferred_sensors.derive_segments` uses to break segments.
 
     Parameters
     ----------
@@ -52,11 +54,30 @@ def _config_boundaries(fits: xr.Dataset) -> list[float]:
     if "sensor_config" not in fits:
         return []
     cfg = [str(c) for c in fits["sensor_config"].values]
-    return [
-        i - 0.5
-        for i in range(1, len(cfg))
-        if cfg[i] and cfg[i - 1] and cfg[i] != cfg[i - 1]
-    ]
+    return [i - 0.5 for i in range(1, len(cfg)) if cfg[i] != cfg[i - 1]]
+
+
+def _strong_delta_t(fits: xr.Dataset) -> np.ndarray:
+    """Return a per-cast mask: |ΔT| across the window above the cruise median (over down/up).
+
+    The one cut :func:`draw_ctm_casts_fig` draws as filled vs open markers and
+    :func:`draw_ctm_param_hist_fig` as dark vs light bars, so the two always agree.
+
+    Parameters
+    ----------
+    fits : xarray.Dataset
+        The ``fits.nc`` dataset.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        True where the cast's |ΔT| is above the cruise median; all False when none is finite.
+    """
+    dt = fits["delta_t"].values.astype(np.float64)
+    mag = np.nanmax(np.where(np.isfinite(dt), dt, -np.inf), axis=1)
+    if not np.isfinite(mag).any():
+        return np.zeros(len(mag), bool)
+    return mag > np.nanmedian(mag[np.isfinite(mag)])
 
 
 def _mark_config_changes(ax: plt.Axes, fits: xr.Dataset, *, label: bool = True) -> None:
@@ -417,15 +438,10 @@ def draw_ctm_casts_fig(
     fitted = np.isfinite(fits["ctm_cost"].values).any(axis=(1, 2, 3))
     a1.plot(x, pmax, "k.")
     for i in np.flatnonzero(fitted):
-        a1.plot([i, i], [pmin, pmax[i]], color="0.6", lw=2)
+        a1.plot([i, i], [pmin, pmax[i]], color="0.6", lw=pen("thickest"))
     a1.invert_yaxis()
     a1.set_ylabel("max pressure (dbar)")
-    mag = np.nanmax(np.where(np.isfinite(dt), dt, -np.inf), axis=1)
-    strong = (
-        mag > np.nanmedian(mag[np.isfinite(mag)])
-        if np.isfinite(mag).any()
-        else np.zeros(len(x), bool)
-    )
+    strong = _strong_delta_t(fits)
     a2b = a2.twinx()
     for li, line in enumerate(fits["line"].values):
         marker, _ls, _name = LINE_STYLE[int(line)]
@@ -534,7 +550,10 @@ def draw_ctm_surface_fig(
 
 
 def draw_blocks_fig(
-    fits: xr.Dataset, *, width_in: float = _W_FULL
+    fits: xr.Dataset,
+    *,
+    cruise: list[LineSummary] | None = None,
+    width_in: float = _W_FULL,
 ) -> plt.Figure | None:
     """Return the fits for blocks of consecutive casts: advance, alpha at 7 s, tau at 0.03.
 
@@ -542,6 +561,9 @@ def draw_blocks_fig(
     ----------
     fits : xarray.Dataset
         The ``fits.nc`` dataset; its ``block`` attribute sets the casts per block.
+    cruise : list of LineSummary, optional
+        The whole-cruise summaries (:func:`ctdcast.processors.fit.summarise`), drawn as the
+        reference advance per line; computed here when the caller does not pass them.
     width_in : float, default ``W_FULL``
         Figure width in inches; the height follows at a fixed aspect.
 
@@ -565,7 +587,9 @@ def draw_blocks_fig(
     for b0 in starts:
         for s in summarise(fits, casts=slice(b0, b0 + size)):
             rows[s.line].append((b0 + (min(size, n - b0) - 1) / 2, s))
-    cruise = {s.line: s for s in summarise(fits)}
+    cruise_by_line = {
+        s.line: s for s in (summarise(fits) if cruise is None else cruise)
+    }
     fig, (a0, a1, a2) = plt.subplots(
         3, 1, figsize=(width_in, width_in * 0.8), sharex=True
     )
@@ -586,7 +610,7 @@ def draw_blocks_fig(
         a1.plot(xs, [p[1].alpha_at_tau for p in pts], **kw)
         a2.plot(xs, [p[1].tau_at_alpha for p in pts], **kw)
         # The cruise recommended advance for this line, as a reference across the blocks.
-        rec = cruise.get(line)
+        rec = cruise_by_line.get(line)
         if rec is not None and np.isfinite(rec.residual):
             a0.axhline(rec.residual + base, color="0.6", ls=ls, lw=pen("thin"))
     _mark_config_changes(a0, fits)
@@ -629,13 +653,7 @@ def draw_ctm_param_hist_fig(
     """
     if not np.isfinite(fits["ctm_cost"].values).any():
         return None
-    dt = fits["delta_t"].values.astype(np.float64)
-    mag = np.nanmax(np.where(np.isfinite(dt), dt, -np.inf), axis=1)
-    strong = (
-        mag > np.nanmedian(mag[np.isfinite(mag)])
-        if np.isfinite(mag).any()
-        else np.zeros(len(mag), bool)
-    )
+    strong = _strong_delta_t(fits)
     al = fits["alpha"].values.astype(np.float64)
     ta = fits["tau"].values.astype(np.float64)
     lines = [int(v) for v in fits["line"].values]

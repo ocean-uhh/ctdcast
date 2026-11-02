@@ -315,12 +315,27 @@ def has_choice(group: SensorGroup, records: list[dict]) -> bool:
     return has_use(group, records, "primary") and has_use(group, records, "secondary")
 
 
-def _segment_key(group: SensorGroup, records: list[dict]) -> tuple[str | None, ...]:
+def segment_key(group: SensorGroup, records: list[dict]) -> tuple[str | None, ...]:
     """Return the catalog-name tuple identifying a cast's hardware for *group*.
 
     One entry per ``group.segment_roles`` member, in order: the ``SENSOR_*`` catalog
     variable name for that indexed role, or ``None`` when the cast has no such sensor.
-    Two casts with equal keys share a hardware configuration.
+    Two casts with equal keys share a hardware configuration; a change between consecutive
+    casts is a hardware boundary, used both here (:func:`derive_segments`) and by
+    ``ctdcast fit`` to mark hardware changes on the corrections figures.
+
+    Parameters
+    ----------
+    group : SensorGroup
+        The group whose indexed roles define the key.
+    records : list of dict
+        The cast's ``SENSOR_*`` catalog records (from
+        ``processors.sensor_catalog.read_cast_sensor_catalog``).
+
+    Returns
+    -------
+    tuple of (str or None)
+        One catalog name (or ``None``) per ``group.segment_roles`` member, in order.
     """
     names = _names_by_role(records)
     return tuple(names.get(role) for role in group.segment_roles)
@@ -331,7 +346,7 @@ def derive_segments(
 ) -> list[tuple[int, int, tuple[str | None, ...], frozenset[int]]]:
     """Derive runs of consecutive casts sharing one hardware configuration.
 
-    A boundary is any cast where the :func:`_segment_key` (the catalog names of the
+    A boundary is any cast where the :func:`segment_key` (the catalog names of the
     group's :attr:`~SensorGroup.segment_roles`) changes — never a hardcoded cast count.
 
     Parameters
@@ -351,7 +366,7 @@ def derive_segments(
     """
     runs: list[tuple[tuple[str | None, ...], list[int]]] = []
     for cast in sorted(catalog_by_cast):
-        key = _segment_key(group, catalog_by_cast[cast])
+        key = segment_key(group, catalog_by_cast[cast])
         if runs and runs[-1][0] == key:
             runs[-1][1].append(cast)
         else:

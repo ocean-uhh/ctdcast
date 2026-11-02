@@ -174,17 +174,26 @@ def native_interval(ds: xr.Dataset) -> tuple[float | None, str | None]:
 
 
 def _decl_value(
-    decl: object, cast_number: int | None, where: str
+    decl: object, cast_number: int | None, where: str, *, value_is_mapping: bool = False
 ) -> tuple[Any, str] | None:
     """Value a declaration gives *cast_number*, with its source, or None.
 
     A declaration is either a **bare value** — the value for every cast (a number for ``alignctd``,
     an ``{alpha, tau}`` mapping for ``celltm``) — or a mapping with ``default`` and/or ``ranges`` for
     per-cast-range exceptions.
+
+    *value_is_mapping* says whether a bare value is itself a mapping (``celltm``'s ``{alpha, tau}``).
+    When it is not (``alignctd``'s number), a mapping can only be a declaration, so one that lacks
+    ``default``/``ranges`` is a mis-spelled declaration and its keys are reported by name — not
+    passed on as a value that later fails with a less helpful "expected a number".
     """
-    if not isinstance(decl, dict) or not ({"default", "ranges"} & set(decl)):
-        # A bare value: the default for every cast.  (An {alpha, tau} mapping has no default/ranges
-        # key, so it is read here and validated downstream.)
+    is_declaration = isinstance(decl, dict) and bool({"default", "ranges"} & set(decl))
+    if not is_declaration:
+        if isinstance(decl, dict) and not value_is_mapping:
+            raise ValueError(
+                f"{where}: unknown key(s) {sorted(decl)}; use default and/or ranges"
+            )
+        # A bare value: the default for every cast (a number, or an {alpha, tau} mapping).
         return decl, "default"
     unknown = set(decl) - {"default", "ranges"}
     if unknown:
@@ -297,14 +306,14 @@ def resolve_cell_thermal_mass(
     hit = None
     for key, where in candidates:
         if key in block:
-            hit = _decl_value(block[key], cast_number, where)
+            hit = _decl_value(block[key], cast_number, where, value_is_mapping=True)
             if hit is not None:
                 where_hit = where
                 break
     if hit is None:
         top = {k: v for k, v in block.items() if k in ("default", "ranges")}
         if top:
-            hit = _decl_value(top, cast_number, "celltm")
+            hit = _decl_value(top, cast_number, "celltm", value_is_mapping=True)
             where_hit = "celltm"
     if hit is None:
         return None

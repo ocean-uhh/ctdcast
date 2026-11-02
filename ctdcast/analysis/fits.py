@@ -360,7 +360,10 @@ def alignment_cost(
                 usable[sl] &= dtdt[sl] >= np.quantile(v, 1.0 - sharpest)
     c = _fill(cast.conductivity)
     p_f = _fill(p)
+    # Odd length, so np.convolve(..., mode="same") is centred: the 1-s running mean and the
+    # NaN margin below both stay symmetric around each scan (an even window shifts them by one).
     n_avg = max(3, round(1.0 / cast.interval))
+    n_avg += 1 - n_avg % 2
     kernel = tukey(n_avg, TUKEY_ALPHA)
     kernel /= kernel.sum()
     hps = []

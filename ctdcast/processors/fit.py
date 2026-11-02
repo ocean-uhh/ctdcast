@@ -20,11 +20,13 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+import yaml
 from seabirdscientific import processing as sbs_processing
 
 from ctdcast._version import __version__
 from ctdcast.analysis import fits as F
 from ctdcast.config.cnv_header import applied_sbe_corrections, header_from_raw_metadata
+from ctdcast.config.preferred_sensors import PREFERRED_PAIR, segment_key
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.corrections import native_interval
 from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
@@ -195,27 +197,32 @@ class _CastRecord:
     skipped: str = ""
     sbe_aligned: frozenset[int] = field(default_factory=frozenset)
     sbe_celltm: bool = False
-    not_fitted: str = ""
     casts: dict[int, F.Cast] = field(default_factory=dict)
     align: dict[int, np.ndarray] = field(default_factory=dict)
     ctm: dict[int, np.ndarray] = field(default_factory=dict)
 
 
-def _cruise_alignment(
-    records: list[_CastRecord], line: int, residuals: np.ndarray
-) -> float | None:
-    """Return the residual advance at the minimum of the line's cruise downcast curve.
+def cruise_advance(costs: list[np.ndarray], residuals: np.ndarray) -> float | None:
+    """Return the residual advance at the minimum of a line's cruise downcast curve.
 
-    Costs are rounded through float32 (as ``fits.nc`` stores them) so the advance the CTM fit uses
-    here matches the one :func:`summarise` reads back from ``ctm_alignment``.
+    The one function both the fit pass and :func:`summarise` use, so the advance the cell
+    thermal mass fit runs on and the advance the report suggests cannot diverge.  Each cost is
+    evaluated at the float32 precision ``fits.nc`` stores, so the result is the same whether the
+    costs come straight from the fit (float64) or are read back from the file (float32).
+
+    Parameters
+    ----------
+    costs : list of numpy.ndarray
+        One downcast alignment cost per cast (the ``leg = 0`` row of ``alignment_cost``).
+    residuals : numpy.ndarray
+        The residual-advance grid the costs were scored on.
+
+    Returns
+    -------
+    float or None
+        The advance (s) at the cruise minimum, or None when no cast has a well.
     """
-    fit = F.median_curve(
-        [
-            r.align[line][0].astype(np.float32).astype(np.float64)
-            for r in records
-            if line in r.align
-        ]
-    )
+    fit = F.median_curve([c.astype(np.float32).astype(np.float64) for c in costs])
     return None if fit is None else float(residuals[fit.index])
 
 
@@ -328,10 +335,12 @@ def fit_cruise(
         with xr.open_dataset(
             groups[cid][2], engine="netcdf4", decode_timedelta=False
         ) as ds:
-            # The cast's sensor-configuration fingerprint (SENSOR_* catalog names): a change
-            # between consecutive casts marks a hardware swap, drawn on the figures.
+            # The cast's T/C hardware key (the preferred-pair segment serials): a change between
+            # consecutive casts marks a hardware swap, drawn on the figures.  The same key
+            # config.preferred_sensors.derive_segments breaks segments on, so the two agree.
             rec.config = "|".join(
-                sorted(r["name"] for r in read_cast_sensor_catalog(ds))
+                "" if name is None else name
+                for name in segment_key(PREFERRED_PAIR, read_cast_sensor_catalog(ds))
             )
             interval, reason = native_interval(ds)
             if interval is None:
@@ -362,18 +371,6 @@ def fit_cruise(
                 or f"temperature_{line}" in aligned_vars
             )
             rec.sbe_celltm = "celltm" in applied["modules"]
-            reasons = []
-            if rec.sbe_aligned:
-                reasons.append(
-                    "Sea-Bird aligned "
-                    + ", ".join(
-                        f"{_LINE_NAME[line]} conductivity"
-                        for line in sorted(rec.sbe_aligned)
-                    )
-                )
-            if rec.sbe_celltm:
-                reasons.append("Sea-Bird celltm applied")
-            rec.not_fitted = "; ".join(reasons)
             for line, _c, _t in _LINES:
                 cast = cast_arrays(ds, line, interval)
                 if cast is None:
@@ -405,7 +402,10 @@ def fit_cruise(
 
     align_used: dict[int, float] = {}
     for line, _c, _t in _LINES:
-        r = _cruise_alignment(records, line, settings.residuals)
+        r = cruise_advance(
+            [rec.align[line][0] for rec in records if line in rec.align],
+            settings.residuals,
+        )
         if r is not None:
             align_used[line] = r
 
@@ -487,18 +487,31 @@ def _to_dataset(
                 ("cast",),
                 np.array([r.skipped for r in records], dtype=object),
             ),
-            "not_fitted": (
-                ("cast",),
-                np.array([r.not_fitted for r in records], dtype=object),
+            "sbe_aligned": (
+                ("cast", "line"),
+                np.array(
+                    [
+                        [line in r.sbe_aligned for line, _c, _t in _LINES]
+                        for r in records
+                    ],
+                    bool,
+                ),
                 {
-                    "long_name": "a correction Sea-Bird already applied, so the finder did not fit it"
+                    "long_name": "Sea-Bird already aligned this conductivity line, so the finder did not fit alignment"
+                },
+            ),
+            "sbe_celltm": (
+                ("cast",),
+                np.array([r.sbe_celltm for r in records], bool),
+                {
+                    "long_name": "Sea-Bird's cell thermal mass ran, so the finder did not fit it"
                 },
             ),
             "sensor_config": (
                 ("cast",),
                 np.array([r.config for r in records], dtype=object),
                 {
-                    "long_name": "sensor catalog fingerprint (SENSOR_* names); a change marks a hardware swap"
+                    "long_name": "T/C hardware key (preferred-pair segment serials); a change marks a hardware swap"
                 },
             ),
             "alignment_cost": (
@@ -667,18 +680,13 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
             if cfit is None
             else F.snap_to_default(cfit.surface, al, ta, tolerance=tol)
         )
-        # Whole cruise: reuse the advance the CTM fit was actually run on (``ctm_alignment``), so
-        # the fitted-on and the suggested value cannot diverge on a near-tie. Blocks compute their own.
-        ctm_align = fits["ctm_alignment"].values if "ctm_alignment" in fits else None
-        residual = (
-            float(ctm_align[li])
-            if casts is None and ctm_align is not None and np.isfinite(ctm_align[li])
-            else (np.nan if afit is None else float(res[afit.index]))
-        )
+        # The suggested advance, via the same cruise_advance the fit ran on the data it stored, so
+        # the fitted-on and the suggested value cannot diverge.  Blocks compute their own the same way.
+        advance = cruise_advance(list(acost[:, 0]), res)
         out.append(
             LineSummary(
                 line=int(line),
-                residual=residual,
+                residual=np.nan if advance is None else advance,
                 alignment_n=0 if afit is None else afit.n_casts,
                 residual_up=np.nan if ufit is None else float(res[ufit.index]),
                 alignment_n_up=0 if ufit is None else ufit.n_casts,
@@ -695,8 +703,10 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
 def suggested_yaml(summaries: list[LineSummary]) -> str:
     """Return a paste-ready ``processing:`` snippet from the cruise summaries.
 
-    Plain YAML, no comments: per-line ``alignctd`` (the downcast residual) and ``celltm`` (the
-    recommended alpha/tau).
+    Built as a dict and serialised with :func:`yaml.safe_dump`, so the snippet parses back to the
+    same values the resolvers read: per-line ``alignctd`` (the downcast residual) and ``celltm``
+    (the recommended alpha/tau).  Values are rounded to the grids' resolution (advance and alpha
+    to 4 dp, tau to 2 dp).
 
     Parameters
     ----------
@@ -706,21 +716,28 @@ def suggested_yaml(summaries: list[LineSummary]) -> str:
     Returns
     -------
     str
-        The YAML text.
+        The YAML text; ``""`` when nothing was fitted.
     """
-    align = [
-        f"    conductivity_{s.line}: {s.residual:+.4f}"
+    align = {
+        f"conductivity_{s.line}": round(float(s.residual), 4)
         for s in summaries
         if np.isfinite(s.residual)
-    ]
-    ctm = [
-        f"    conductivity_{s.line}: {{alpha: {s.alpha_rec:g}, tau: {s.tau_rec:g}}}"
+    }
+    ctm = {
+        f"conductivity_{s.line}": {
+            "alpha": round(float(s.alpha_rec), 4),
+            "tau": round(float(s.tau_rec), 2),
+        }
         for s in summaries
         if np.isfinite(s.alpha_rec)
-    ]
-    lines = ["processing:"]
+    }
+    block: dict[str, dict] = {}
     if align:
-        lines += ["  alignctd:", *align]
+        block["alignctd"] = align
     if ctm:
-        lines += ["  celltm:", *ctm]
-    return "\n".join(lines)
+        block["celltm"] = ctm
+    if not block:
+        return ""
+    return yaml.safe_dump(
+        {"processing": block}, sort_keys=False, default_flow_style=False
+    )
