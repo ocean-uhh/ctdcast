@@ -303,7 +303,8 @@ tr.units th {{
   font-size: var(--fs-xs); padding-top: 0;
 }}
 /* Copyable YAML snippet boxes (templates/_snippet.html): one box, or a current/suggested pair
-   that stacks at phone width.  A <pre> (not <textarea>) so it never clips and prints. */
+   that stacks at phone width.  A read-only <textarea> with a full border and a drag handle
+   (resize: vertical); its rows come from the line count, so it opens without clipping. */
 .snippet-pair {{ display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0 1.2rem; }}
 .snippet-box {{ flex: 1 1 22rem; min-width: 0; }}
 .snippet-single .snippet-box {{ flex-basis: 100%; }}
@@ -317,13 +318,15 @@ tr.units th {{
   border-radius: 4px; padding: 0.1rem 0.5rem;
 }}
 .snippet-copy:hover {{ background: var(--seafoam); }}
-pre.snippet {{
+textarea.snippet {{
+  width: 100%; box-sizing: border-box; height: auto; min-height: 2.4em;
   background: var(--bg-sunken); padding: 0.6rem 0.8rem; margin: 0;
-  white-space: pre; overflow-x: auto; cursor: text; height: auto;
-  font-family: var(--font-mono); font-size: var(--fs-xs); border-left: 3px solid var(--rule);
+  white-space: pre; overflow-x: auto; resize: vertical;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  border: 1px solid var(--rule); border-radius: 4px;
 }}
-.snippet-current pre.snippet {{ border-left-color: var(--muted); }}
-.snippet-suggested pre.snippet {{ border-left-color: var(--package-accent); }}
+.snippet-current textarea.snippet {{ border-color: var(--muted); }}
+.snippet-suggested textarea.snippet {{ border-color: var(--package-accent); }}
 .attr-disclosure summary {{ cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }}
 .attr-disclosure table {{ margin: 0.3rem 0; width: auto; }}
 .attr-disclosure th {{ background: transparent; color: var(--text); font-weight: 600; }}
@@ -449,34 +452,28 @@ document.querySelectorAll('h2').forEach(h => {
 
 #: Copy buttons for the vendored ``yaml_snippet`` boxes.  Inline and dependency-free so it works
 #: offline (the family offline-at-view-time rule); ``navigator.clipboard`` with an ``execCommand``
-#: fallback for ``file://`` pages at sea.  A button carries ``data-copy`` = the id of its ``<pre>``;
-#: the button reads "Copied" for two seconds.
+#: fallback for ``file://`` pages at sea.  A button carries ``data-copy`` = the id of its
+#: ``<textarea>``; the button reads "copied" for two seconds only when the copy actually succeeded.
 _JS_COPY_SNIPPET: str = """\
 <script>
-document.querySelectorAll('pre.snippet').forEach(function (pre) {
-  pre.addEventListener('click', function () {
-    var sel = window.getSelection(), r = document.createRange();
-    r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
-  });
-});
 document.querySelectorAll('button[data-copy]').forEach(function (btn) {
   btn.addEventListener('click', function () {
-    var pre = document.getElementById(btn.getAttribute('data-copy'));
-    if (!pre) { return; }
+    var box = document.getElementById(btn.getAttribute('data-copy'));
+    if (!box) { return; }
     var label = btn.textContent;
     function done() {
-      btn.textContent = 'Copied';
+      btn.textContent = 'copied';
       setTimeout(function () { btn.textContent = label; }, 2000);
     }
     function fallback() {
-      var sel = window.getSelection(), r = document.createRange(), ok = false;
-      r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
+      box.focus(); box.select();
+      var ok = false;
       try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-      sel.removeAllRanges();
       if (ok) { done(); }
     }
+    box.focus(); box.select();
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(pre.textContent).then(done, fallback);
+      navigator.clipboard.writeText(box.value).then(done, fallback);
     } else { fallback(); }
   });
 });

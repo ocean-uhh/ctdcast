@@ -1,23 +1,23 @@
-{# Copyable YAML snippet box, vendored byte-identical across packages (F36).
+{# Copyable YAML snippet box, vendored byte-identical across packages.
 
    yaml_snippet(id, text, title=…, current=None, current_title=…) renders one box, or a
    current/suggested pair side by side (stacking at phone width via .snippet-pair).  Each box has a
-   title row with a Copy button (wired by the vendored _JS_COPY_SNIPPET, injected once per page) and
-   the text in a <pre class="snippet"> — not a <textarea>, so it never clips and prints.  Clicking the
-   box selects all its text (wired by _JS_COPY_SNIPPET), so you can copy with the keyboard if the Copy
-   button fails.  `text` / `current` are autoescaped: pass plain YAML.  `id` must be unique on the page;
-   the current box uses `<id>-current`. #}
+   title row with a copy button (wired by the vendored _JS_COPY_SNIPPET, injected once per page) and
+   the text in a read-only <textarea>: a full border and a drag handle (resize: vertical), its rows
+   set from the line count so it does not clip, horizontal scroll (wrap="off") for long lines.
+   `text` / `current` are autoescaped: pass plain YAML.  `id` must be unique on the page; the current
+   box uses `<id>-current`. #}
 {% macro yaml_snippet(id, text, title="Suggested — copy into the config", current=None, current_title="Current") -%}
 <div class="snippet-pair{% if current is none %} snippet-single{% endif %}">
   {%- if current is not none %}
   <div class="snippet-box snippet-current">
-    <div class="snippet-title"><span>{{ current_title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}-current">Copy</button></div>
-    <pre class="snippet" id="{{ id }}-current" tabindex="0">{{ current }}</pre>
+    <div class="snippet-title"><span>{{ current_title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}-current">copy</button></div>
+    <textarea class="snippet" id="{{ id }}-current" readonly wrap="off" rows="{{ current.count("\n") + 1 }}">{{ current }}</textarea>
   </div>
   {%- endif %}
   <div class="snippet-box snippet-suggested">
-    <div class="snippet-title"><span>{{ title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}">Copy</button></div>
-    <pre class="snippet" id="{{ id }}" tabindex="0">{{ text }}</pre>
+    <div class="snippet-title"><span>{{ title }}</span><button type="button" class="snippet-copy" data-copy="{{ id }}">copy</button></div>
+    <textarea class="snippet" id="{{ id }}" readonly wrap="off" rows="{{ text.count("\n") + 1 }}">{{ text }}</textarea>
   </div>
 </div>
 {%- endmacro %}
