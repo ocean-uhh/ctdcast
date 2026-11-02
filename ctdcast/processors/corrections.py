@@ -50,6 +50,7 @@ offset sit beside the steps::
 
 from __future__ import annotations
 
+import functools
 import importlib.metadata
 import math
 import warnings
@@ -101,6 +102,7 @@ _DECK_CHANNEL = {
 }
 
 
+@functools.cache
 def _version() -> str:
     return importlib.metadata.version("seabirdscientific")
 
@@ -333,58 +335,6 @@ def resolve_cell_thermal_mass(
     return alpha, tau, f"{where_hit} {hit[1]}"
 
 
-#: Steps ``data_processing.steps`` may list.  Those not yet applied are skipped with a warning.
-KNOWN_STEPS = (
-    "wildedit",
-    "alignctd",
-    "celltm",
-    "window_filter",
-    "filter",
-    "loopedit",
-    "split",
-    "binavg",
-)
-#: Steps stage 3 applies today.
-APPLIED_STEPS = ("wildedit", "alignctd", "celltm")
-
-
-def iter_steps(data_processing: dict | None) -> list[tuple[str, dict]]:
-    """Return ``data_processing.steps`` as ``(name, parameters)`` pairs, in order.
-
-    Parameters
-    ----------
-    data_processing : dict or None
-        The ``data_processing:`` config block.
-
-    Returns
-    -------
-    list of (str, dict)
-        One pair per entry; a step may appear more than once.
-
-    Raises
-    ------
-    ValueError
-        When an entry is not a one-key mapping or names an unknown step.
-    """
-    steps = (data_processing or {}).get("steps") or []
-    if not isinstance(steps, list):
-        raise ValueError(f"data_processing.steps: expected a list, got {steps!r}")
-    out = []
-    for i, entry in enumerate(steps):
-        if not isinstance(entry, dict) or len(entry) != 1:
-            raise ValueError(
-                f"data_processing.steps[{i}]: expected one step name with its parameters, "
-                f"got {entry!r}"
-            )
-        ((name, params),) = entry.items()
-        if name not in KNOWN_STEPS:
-            raise ValueError(
-                f"data_processing.steps[{i}]: unknown step {name!r}; use one of {list(KNOWN_STEPS)}"
-            )
-        out.append((name, params if params is not None else {}))
-    return out
-
-
 def resolve_slope_offset(
     block: dict | None, var: str, cast_number: int | None
 ) -> tuple[float, float, str] | None:
@@ -478,57 +428,6 @@ def resolve_oxygen_window(cfg: dict | None) -> float:
             f"got {window!r}"
         )
     return window
-
-
-def validate_config(data_processing: dict | None) -> None:
-    """Check the ``data_processing:`` block before any cast is processed.
-
-    Resolves every step's values for the default and for every cast named in a range, so a typo
-    or a non-numeric value fails once, up front, rather than on each cast.
-
-    Parameters
-    ----------
-    data_processing : dict or None
-        The ``data_processing:`` config block.
-
-    Raises
-    ------
-    ValueError
-        On the first malformed entry, naming it.
-    """
-    from ctdcast.processors.editing import resolve_wild_edit
-
-    dp = data_processing or {}
-    steps = iter_steps(dp)
-    casts: set[int | None] = {None}
-
-    def _collect(decl: object) -> None:
-        if isinstance(decl, dict):
-            for rng in decl.get("ranges") or []:
-                if isinstance(rng, dict) and "casts" in rng:
-                    casts.update(expand_cast_numbers(rng["casts"]))
-
-    for name, params in steps:
-        if name in ("alignctd", "celltm") and isinstance(params, dict):
-            _collect(params)
-            for decl in params.values():
-                _collect(decl)
-    for decl in (dp.get("slope_offset") or {}).values():
-        _collect(decl)
-    for name, params in steps:
-        if name == "wildedit":
-            resolve_wild_edit({"wildedit": params or {"variables": None}})
-    for cast in sorted(casts, key=lambda c: -1 if c is None else c):
-        for name, params in steps:
-            if name == "alignctd":
-                for var in _ALIGN_TARGETS:
-                    resolve_alignment({name: params}, var, cast)
-            elif name == "celltm":
-                for var in ("conductivity_1", "conductivity_2"):
-                    resolve_cell_thermal_mass({name: params}, var, cast)
-        for var in ("conductivity_1", "conductivity_2"):
-            resolve_slope_offset(dp.get("slope_offset"), var, cast)
-    resolve_oxygen_window(dp)
 
 
 # --- appliers ------------------------------------------------------------------------------

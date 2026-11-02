@@ -321,6 +321,9 @@ Cast processing
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.processors.steps
+   :members:
+
 .. automodule:: ctdcast.processors.editing
    :members:
 

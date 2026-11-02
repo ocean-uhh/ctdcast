@@ -28,14 +28,10 @@ from ctdcast.config.preferred_sensors import (
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
 from ctdcast.processors.corrections import (
-    apply_corrections,
     derive_oxygen,
     flag_missing,
-    iter_steps,
     resolve_slope_offset,
-    validate_config,
 )
-from ctdcast.processors.editing import apply_wild_edit
 from ctdcast.processors.history import (
     PL_CALIBRATED,
     add_processing_level,
@@ -48,6 +44,12 @@ from ctdcast.processors.stage_layout import (
     matches_tags,
     parse_stage,
     stage_path,
+)
+from ctdcast.processors.steps import (
+    STEPS,
+    StepContext,
+    iter_steps,
+    validate_data_processing,
 )
 from ctdcast.writers.netcdf import write as _write_nc
 
@@ -67,9 +69,11 @@ def stage3(
        Sea-Bird applies them when it converts the raw counts.
     2. ``data_processing.steps``, in the order listed: ``wildedit``
        (:func:`ctdcast.processors.editing.apply_wild_edit`), ``alignctd`` and ``celltm``
-       (:func:`ctdcast.processors.corrections.apply_corrections`).  A step ctdcast does not
-       apply yet (``filter``, ``window_filter``, ``loopedit``, ``split``, ``binavg``) is skipped,
-       with a warning and a ``history`` note.
+       (:func:`ctdcast.processors.corrections.apply_corrections`), from
+       :data:`ctdcast.processors.steps.STEPS`.  A step ctdcast does not apply yet is skipped
+       (``run`` refuses it unless ``data_processing.allow_unapplied``), with a warning and a
+       ``history`` note.  The order they ran in is written to the ``data_processing_steps``
+       attribute.
     3. Re-derives practical salinity whenever a step changed conductivity.
     4. Derives ``ctd_oxygen`` from the SBE 43 voltage on a cast that carries ``oxygen_raw_<N>``
        and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`), with the
@@ -100,31 +104,30 @@ def stage3(
     # Step 1: per-sensor slope and offset, before anything else (Sea-Bird applies them at datcnv).
     ds, calibrated = _apply_slope_offset(ds, dp.get("slope_offset"), cast_number)
 
-    # Step 2: the listed steps, in order.
-    changed: set[str] = set(calibrated)
-    edge_masks: dict = {}
-    not_applied: list[str] = []
+    # Step 2: the listed steps, in order (validated by run(), before any cast).
+    ctx = StepContext(cast_number=cast_number, cast_label=cast_label)
+    ctx.changed.update(calibrated)
+    if calibrated:
+        ctx.applied.append("slope_offset")
     for name, params in iter_steps(dp):
-        if name == "wildedit":
-            ds, _marks = apply_wild_edit(ds, {name: params}, cast_label=cast_label)
-        elif name in ("alignctd", "celltm"):
-            ds, record = apply_corrections(
-                ds, {name: params}, cast_number, cast_label=cast_label
-            )
-            changed.update(record.changed)
-            edge_masks.update(record.edge_masks)
-        else:
+        step = STEPS[name]
+        if step.apply is None:
             # Recorded where it falls in the order, so history reads as the steps ran.
-            not_applied.append(name)
+            ctx.applied.append(f"{name} (not applied)")
             append_history(
                 ds.attrs, f"{name}: not yet applied by ctdcast, skipped", stage="stage3"
             )
-    if not_applied:
-        names = ", ".join(dict.fromkeys(not_applied))
+            continue
+        ds = step.apply(ds, params, ctx)
+        ctx.applied.append(name)
+    skipped = [a.split(" ")[0] for a in ctx.applied if a.endswith("(not applied)")]
+    if skipped:
         warnings.warn(
-            f"data_processing step(s) not yet applied by ctdcast, skipped: {names}",
+            "data_processing step(s) not yet applied by ctdcast, skipped: "
+            + ", ".join(dict.fromkeys(skipped)),
             stacklevel=2,
         )
+    changed, edge_masks = ctx.changed, ctx.edge_masks
 
     # Step 3: re-derive salinity whenever conductivity changed.
     if any(v.startswith("conductivity") for v in changed):
@@ -152,6 +155,9 @@ def stage3(
 
     # Step 4: oxygen from the SBE 43 voltage (hex casts; a CNV's own oxygen is left alone).
     ds, _oxygen = derive_oxygen(ds, dp, cast_label=cast_label)
+    if ctx.applied:
+        # The order the steps ran in, for the file and for the cast page's corrections table.
+        ds.attrs["data_processing_steps"] = "; ".join(ctx.applied)
 
     # Step 5: gross-range + spike QC, judging the corrected values.
     ds = qc.apply_gross_range(ds, (cfg.get("qc") or {}).get("gross_range") or None)
@@ -401,7 +407,7 @@ def run(
     declare_delayed = str((cruise_info or {}).get("data_mode", "")).upper() == "D"
 
     # A malformed correction block fails once, here, not as one error per cast.
-    validate_config((cruise_cfg or {}).get("data_processing"))
+    validate_data_processing((cruise_cfg or {}).get("data_processing"))
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
     for cast_id in sorted(groups):

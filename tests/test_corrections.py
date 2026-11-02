@@ -32,11 +32,11 @@ from ctdcast.processors.corrections import (
     sbe43_dvdt,
     sbe43_hysteresis,
     sbe43_oxygen,
-    validate_config as _validate_config,
 )
 from ctdcast.processors.stage1 import stage1
 from ctdcast.processors.stage2 import run as stage2_run
 from ctdcast.processors.stage3 import run as _stage3_run
+from ctdcast.processors.steps import validate_data_processing as _validate_config
 from ctdcast.processors.stage3 import stage3 as _stage3
 
 FIX = Path(__file__).parent / "fixtures"

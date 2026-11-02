@@ -953,8 +953,9 @@ def _ctdcast_correction_rows(
 ) -> list[tuple[Correction, ConformanceTick]]:
     """Rows for ctdcast's own stage-3 corrections, in the shape of the Sea-Bird table's rows.
 
-    Read from the variables' attributes and put in the order stage 3 applied them, which is the
-    order of their lines in ``history`` (the configured steps can come in any order).  Each row
+    Read from the variables' attributes and put in the order stage 3 applied them, which it
+    records in the file's ``data_processing_steps`` attribute (the configured steps can come in
+    any order); without it, the rows keep the order they are read in.  Each row
     carries a conformance tick against the same SBE references as the rows above it: cell
     thermal mass against (0.03, 7), alignment by the channel's total advance (deck unit +
     ctdcast) against 0.073 s; the slope, Wild Edit and the oxygen conversion have no reference
@@ -969,7 +970,11 @@ def _ctdcast_correction_rows(
         if not str(ds[v].attrs.get("comment", "")).startswith("preferred ")
     ]
 
-    history = str(ds.attrs.get("history", ""))
+    ran = [
+        part.strip()
+        for part in str(ds.attrs.get("data_processing_steps", "")).split(";")
+        if part.strip()
+    ]
     order: list[int] = []
 
     def add(
@@ -978,7 +983,6 @@ def _ctdcast_correction_rows(
         method: str,
         params: str,
         tick_of: Callable[[str], ConformanceTick],
-        marker: str = "",
     ) -> None:
         key = f"ctdcast_{len(rows) + 1}"
         rows.append(
@@ -987,8 +991,8 @@ def _ctdcast_correction_rows(
                 tick_of(key),
             )
         )
-        at = history.find(marker) if marker else -1
-        order.append(at if at >= 0 else len(history))
+        # The SBE 43 oxygen is derived after every step; anything not in the record keeps its place.
+        order.append(ran.index(label) if label in ran else len(ran) + len(order))
 
     for v in names:
         a = ds[v].attrs
@@ -1002,7 +1006,6 @@ def _ctdcast_correction_rows(
                 "",
                 params,
                 lambda k, v=v: no_reference_tick(k, "slope_offset", v),
-                f"slope_offset: {v}",
             )
     edited = [v for v in names if "wild_edit" in ds[v].attrs]
     if edited:
@@ -1020,7 +1023,6 @@ def _ctdcast_correction_rows(
             str(a.get("wild_edit_method", "")),
             f"{a['wild_edit']}; values marked (QARTOD 4, kept): {marked}",
             lambda k, vs=edited_names: no_reference_tick(k, "wildedit", vs),
-            "wildedit:",
         )
 
     for v in names:
@@ -1044,7 +1046,6 @@ def _ctdcast_correction_rows(
                 str(a.get("alignment_method", "")),
                 params,
                 tick_of,
-                f"alignctd: {v}",
             )
     for v in names:
         a = ds[v].attrs
@@ -1059,7 +1060,6 @@ def _ctdcast_correction_rows(
                 lambda k, v=v, al=alpha, ta=tau: celltm_reference_tick(
                     k, "celltm", al, ta, v
                 ),
-                f"celltm: {v}",
             )
     for v in names:
         a = ds[v].attrs

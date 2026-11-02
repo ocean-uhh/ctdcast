@@ -44,7 +44,7 @@ import xarray as xr
 from seabirdscientific import processing as sbs_processing
 
 from ctdcast.config.cnv_header import applied_sbe_corrections, header_from_raw_metadata
-from ctdcast.processors.corrections import _version
+from ctdcast.processors.corrections import _number, _version
 from ctdcast.processors.history import append_history
 from ctdcast.processors.qc import QARTOD_FAIL, _ensure_qc, _raise_flag
 
@@ -131,13 +131,19 @@ def resolve_wild_edit(cfg: dict | None) -> WildEdit | None:
     if unknown:
         raise ValueError(f"wildedit: unknown key(s) {sorted(unknown)}")
     merged = {**WILD_EDIT_DEFAULTS, **block}
-    try:
-        p1, p2, md = (
-            float(merged[k]) for k in ("pass1_nstd", "pass2_nstd", "mindelta")
+    p1, p2, md = (
+        _number(merged[k], f"wildedit.{k}")
+        for k in ("pass1_nstd", "pass2_nstd", "mindelta")
+    )
+    spb = merged["scans_per_block"]
+    if isinstance(spb, bool) or not isinstance(spb, int):
+        raise ValueError(
+            f"wildedit.scans_per_block: expected a whole number, got {spb!r}"
         )
-        spb = int(merged["scans_per_block"])
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"wildedit: {exc}") from exc
+    if not isinstance(merged["exclude_flagged"], bool):
+        raise ValueError(
+            f"wildedit.exclude_flagged: expected true or false, got {merged['exclude_flagged']!r}"
+        )
     if spb < 2 or p1 <= 0 or p2 <= 0 or md < 0:
         raise ValueError(
             "wildedit: scans_per_block must be at least 2, pass1_nstd and pass2_nstd positive, "
@@ -148,7 +154,7 @@ def resolve_wild_edit(cfg: dict | None) -> WildEdit | None:
         raise ValueError(
             f"wildedit.variables: expected a list of names, got {variables!r}"
         )
-    return WildEdit(p1, p2, md, spb, bool(merged["exclude_flagged"]), tuple(variables))
+    return WildEdit(p1, p2, md, spb, merged["exclude_flagged"], tuple(variables))
 
 
 def wild_edit_mask(
@@ -231,6 +237,22 @@ def apply_wild_edit(
         warnings.warn(f"cast {cast_label}: {message}", stacklevel=2)
         append_history(ds.attrs, message, stage="stage3")
         return ds, {}
+    # exclude_flagged leaves out scans an earlier Loop Edit marked; say how many there were, so
+    # the record never claims an exclusion that did not happen.
+    n_excluded = (
+        int(np.asarray(excluded, dtype=bool).sum())
+        if excluded is not None and params.exclude_flagged
+        else 0
+    )
+    if params.exclude_flagged:
+        exclusion = (
+            f"{n_excluded} scan(s) marked by an earlier Loop Edit left out of the statistics"
+            if excluded is not None
+            else "no earlier Loop Edit, so no scans left out of the statistics"
+        )
+    else:
+        exclusion = "no scans left out of the statistics"
+    method = f"seabirdscientific {_version()} processing.wild_edit"
     marks: dict[str, np.ndarray] = {}
     absent = []
     for var in params.variables:
@@ -244,13 +266,12 @@ def apply_wild_edit(
         ds[qc_name] = (ds[qc_name].dims, qc, ds[qc_name].attrs)
         attrs = dict(ds[var].attrs)
         attrs["wild_edit"] = params.describe()
-        attrs["wild_edit_method"] = (
-            f"seabirdscientific {_version()} processing.wild_edit"
-        )
+        attrs["wild_edit_method"] = method
+        attrs["wild_edit_excluded"] = exclusion
         attrs["wild_edit_marked"] = int(mask.sum())
         ds[var].attrs = attrs
         marks[var] = mask
-    note = f"wildedit: {params.describe()}; marked " + (
+    note = f"wildedit: {params.describe()} ({exclusion}); marked " + (
         ", ".join(f"{v} {int(m.sum())}" for v, m in marks.items()) or "nothing"
     )
     if absent:

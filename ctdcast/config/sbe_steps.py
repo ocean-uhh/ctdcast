@@ -125,8 +125,13 @@ def _celltm(p: dict[str, str], _rn: dict[str, str] | None) -> list[dict]:
     """``alpha``/``tau`` are ``primary, secondary`` pairs; a single value applies to the primary."""
     alphas = [a.strip() for a in p.get("alpha", "").split(",") if a.strip()]
     taus = [t.strip() for t in p.get("tau", "").split(",") if t.strip()]
+    if len(alphas) != len(taus):
+        raise ValueError(
+            f"celltm: the header lists {len(alphas)} alpha value(s) and {len(taus)} tau value(s); "
+            "expected one pair per conductivity sensor"
+        )
     step = {}
-    for i, (a, t) in enumerate(zip(alphas, taus, strict=False)):
+    for i, (a, t) in enumerate(zip(alphas, taus, strict=True)):
         step[f"conductivity_{i + 1}"] = {"alpha": _num(a), "tau": _num(t)}
     return [{"celltm": step}] if step else []
 

@@ -166,10 +166,11 @@ display:
 # Filter on pressure, Align CTD, Cell Thermal Mass, Loop Edit); `ctdcast inspect
 # <file>.cnv` prints the block that reproduces a cruise's own CNVs, and
 # `ctdcast fit` suggests the alignctd and celltm values.  Filter and Loop Edit
-# are read but not yet applied.
+# are not applied yet: stage 3 refuses them unless allow_unapplied is true.
 # data_processing:
 #   slope_offset:              # per conductivity sensor, from bottle salinities
 #     conductivity_1: {slope: 1.0, offset: 0.0}
+#   allow_unapplied: true      # run, skipping filter and loopedit, until they are applied
 #   steps:
 #     - wildedit: {pass1_nstd: 2.0, pass2_nstd: 20.0, scans_per_block: 100}
 #     - filter: {time_constant: 0.15, variables: [pressure]}

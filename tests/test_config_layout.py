@@ -5,11 +5,9 @@ import pytest
 import yaml
 
 from ctdcast.config.layout import processing_view
-from ctdcast.processors.corrections import (
-    iter_steps,
-    resolve_slope_offset,
-    validate_config,
-)
+from ctdcast.processors.corrections import resolve_slope_offset
+from ctdcast.processors.steps import iter_steps
+from ctdcast.processors.steps import validate_data_processing as validate_config
 
 NEW = {
     "preferred_sensor": {
@@ -167,9 +165,10 @@ def test_inspect_block_and_init_template_validate():
     from ctdcast.config.sbe_steps import header_text_of, processing_yaml
 
     fix = Path(__file__).parent / "fixtures" / "cnv" / "mixsed2_004.cnv"
-    validate_config(
-        yaml.safe_load(processing_yaml(header_text_of(fix)))["data_processing"]
-    )
+    block_dp = yaml.safe_load(processing_yaml(header_text_of(fix)))["data_processing"]
+    with pytest.raises(ValueError, match="does not apply yet"):
+        validate_config(block_dp)
+    validate_config({**block_dp, "allow_unapplied": True})
     # The init template's data_processing block, uncommented, is valid.
     lines = _CONFIG_TEMPLATE.splitlines()
     start = lines.index("# data_processing:")
@@ -180,3 +179,65 @@ def test_inspect_block_and_init_template_validate():
         block.append(line[2:] if line.startswith("# ") else line[1:])
     validate_config(yaml.safe_load("\n".join(block))["data_processing"])
     processing_view(yaml.safe_load(_CONFIG_TEMPLATE.split("_SECTIONS")[0]))
+
+
+def test_unapplied_steps_refused_unless_allowed_and_recorded(tmp_path):
+    dp = {
+        "steps": [
+            {"wildedit": {}},
+            {"filter": {"time_constant": 0.03}},
+            {"celltm": {"conductivity": {"alpha": 0.03, "tau": 7}}},
+        ]
+    }
+    with pytest.raises(
+        ValueError, match="lists filter, which stage 3 does not apply yet"
+    ):
+        validate_config(dp)
+    validate_config({**dp, "allow_unapplied": True})
+    with pytest.raises(ValueError, match="unknown key"):
+        validate_config({**dp, "allow_unaplied": True})
+
+
+def test_step_registry_is_the_one_list():
+    from ctdcast.config.sbe_steps import _TRANSLATORS
+    from ctdcast.processors.steps import STEPS
+
+    # Every step `ctdcast inspect` can write is one stage 3 knows.
+    translated = {
+        "wildedit",
+        "window_filter",
+        "filter",
+        "alignctd",
+        "celltm",
+        "loopedit",
+        "binavg",
+        "split",
+    }
+    assert translated <= set(STEPS)
+    assert {"wfilter"} <= set(_TRANSLATORS)
+    assert {n for n, s in STEPS.items() if s.apply} == {
+        "wildedit",
+        "alignctd",
+        "celltm",
+    }
+
+
+def test_celltm_header_with_mismatched_lists_is_refused():
+    from ctdcast.config.sbe_steps import _celltm
+
+    with pytest.raises(ValueError, match="2 alpha value"):
+        _celltm({"alpha": "0.03, 0.04", "tau": "7.0"}, None)
+
+
+@pytest.mark.parametrize(
+    ("params", "match"),
+    [
+        ({"pass1_nstd": True}, "expected a number"),
+        ({"pass2_nstd": float("inf")}, "finite"),
+        ({"scans_per_block": 100.0}, "whole number"),
+        ({"exclude_flagged": "yes"}, "true or false"),
+    ],
+)
+def test_wildedit_numbers_checked_like_every_other_step(params, match):
+    with pytest.raises(ValueError, match=match):
+        validate_config({"steps": [{"wildedit": params}]})

@@ -191,6 +191,9 @@ block that reproduces a cruise's own Sea-Bird processing; ``ctdcast fit`` sugges
    * - ``steps``
      - The processing steps, run in the order listed; a step may appear more than once.  Each entry
        is one step name with its parameters.  A step is applied only if it is listed.
+   * - ``allow_unapplied``
+     - ``true`` to run when ``steps`` lists a step stage 3 does not apply yet (it is skipped).
+       Default ``false``: such a config is refused.
 
 The steps, as Sea-Bird names its modules:
 
@@ -223,8 +226,11 @@ The steps, as Sea-Bird names its modules:
        ``conductivity`` or ``conductivity_<N>``, each a bare ``{alpha, tau}`` or a
        ``{default:, ranges:}`` mapping.
    * - ``window_filter``, ``filter``, ``loopedit``, ``split``, ``binavg``
-     - Read and validated, not yet applied: stage 3 skips them with a warning and a ``history``
-       note.
+     - Read and checked, not yet applied.  Stage 3 refuses a config that lists one, because the
+       steps after it would run on data it was meant to change first; set
+       ``data_processing.allow_unapplied: true`` to run anyway, skipping it.  The skip is named in
+       a warning, in ``history``, and in the stage-3 file's ``data_processing_steps`` attribute
+       (the order the steps ran in).
 
 Alignment, cell thermal mass, Wild Edit and the oxygen derivation act scan by scan, so they run only
 on a cast at its instrument's native scan rate (24 Hz on a 911plus) that Sea-Bird has not already

@@ -187,3 +187,19 @@ def test_cast_page_lists_wild_edit_in_applied_order_with_the_note(hex_stage2):
     html = _ctdcast_corrections_html(out, "")
     assert "appears to differ from SBE Data Processing" in html
     assert "values marked (QARTOD 4, kept)" in html
+
+
+def test_file_records_the_order_and_what_exclusion_happened(hex_stage2):
+    cfg = {
+        "data_processing": {
+            "steps": [
+                {"filter": {"time_constant": 0.15}},
+                {"wildedit": {"variables": ["pressure"]}},
+            ]
+        }
+    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = stage3(hex_stage2, cfg, cast_number=11)
+    assert out.attrs["data_processing_steps"] == "filter (not applied); wildedit"
+    assert out.pressure.attrs["wild_edit_excluded"].startswith("no earlier Loop Edit")
