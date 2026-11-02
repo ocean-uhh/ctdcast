@@ -395,6 +395,42 @@ clock, and its sign is emitted as a comment so it is copied, never hand-computed
 
 ----
 
+ctdcast fit
+-------------
+
+Suggest conductivity-alignment and cell-thermal-mass parameters for a cruise.  ``fit`` reads every
+native-rate stage-2 cast, scores each conductivity line's salinity-spike cost (alignment) and
+down/up salinity-mismatch cost (cell thermal mass), writes the per-cast cost surfaces to
+``<ctd_root>/fits.nc``, and prints a paste-ready ``processing:`` block with the recommended
+``alignctd`` and ``celltm`` values.  It writes no stage file — the values reach stage 3 only when
+you paste them into the config.  ``ctdcast report`` draws the *T/S corrections* page from
+``fits.nc``.
+
+.. code-block:: text
+
+   ctdcast fit <config> [options]
+
+   positional arguments:
+     config               Path to config.yaml (the CTD root is read from data.ctd_root, or data.nc_dir)
+
+   options:
+     --only N [N ...]     Fit only these cast number(s)
+     --dry-run            List the casts that would be fitted, write nothing
+
+The recommended ``(alpha, tau)`` is the grid point within ``processing.fit.ctm_tolerance`` (default
+2%) of the cost minimum closest to Sea-Bird's default (0.03, 7 s); any value within the tolerance is
+equivalent.  A cast at a non-native scan rate, or one Sea-Bird already aligned or ran cell thermal
+mass on, is reported as not fitted and left out.  Tune the finder (cost windows, tolerance, block
+size) with the ``processing.fit`` block (see :ref:`config_yaml`).
+
+**Examples**::
+
+   ctdcast fit config.yaml                         # print the suggested processing: block
+   ctdcast fit config.yaml --only 11 12            # just two casts
+   ctdcast fit config.yaml --dry-run               # list what would be fitted
+
+----
+
 ctdcast list
 --------------
 

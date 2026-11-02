@@ -76,6 +76,15 @@ LADCP
    :members:
    :undoc-members:
 
+Corrections (alignment and cell thermal mass)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The figures on the *T/S corrections* page, drawn from the ``fits.nc`` file ``ctdcast fit`` writes.
+
+.. automodule:: ctdcast.plotters.corrections
+   :members:
+   :undoc-members:
+
 Layer-1 primitives
 ------------------
 
@@ -185,6 +194,10 @@ Page generators
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.reports.corrections
+   :members:
+   :undoc-members:
+
 ----
 
 Interactive map
@@ -238,6 +251,13 @@ Analysis helpers
    :members:
    :undoc-members:
 
+:mod:`~ctdcast.analysis.fits` holds the alignment and cell-thermal-mass cost functions and the
+cruise aggregation behind ``ctdcast fit`` — pure numpy over a cast's arrays, writing no files.
+
+.. automodule:: ctdcast.analysis.fits
+   :members:
+   :undoc-members:
+
 ----
 
 Cast processing
@@ -272,6 +292,14 @@ Cast processing
    :undoc-members:
 
 .. automodule:: ctdcast.processors.corrections
+   :members:
+   :undoc-members:
+
+:mod:`~ctdcast.processors.fit` is ``ctdcast fit``: it scores every native-rate stage-2 cast with
+:mod:`~ctdcast.analysis.fits`, writes the cost surfaces to ``fits.nc``, and turns them into the
+cruise summary and the suggested ``processing:`` block.
+
+.. automodule:: ctdcast.processors.fit
    :members:
    :undoc-members:
 
