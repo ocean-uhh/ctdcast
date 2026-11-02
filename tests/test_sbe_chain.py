@@ -92,3 +92,35 @@ def test_rename_map_wins():
     text = header_text_of(FIX / "cnv" / "mixsed2_004.cnv")
     we = chain_steps(text, {"prdm": "my_pressure"})["steps"][0]["wildedit"]
     assert we["variables"][0] == "my_pressure"
+
+
+def test_yaml_style_one_step_per_line():
+    text = chain_yaml(header_text_of(FIX / "cnv" / "mixsed2_004.cnv"))
+    assert "  - wildedit:\n" in text
+    assert "conductivity_1: {alpha: 0.03, tau: 7.0}" in text
+    assert "variables: [pressure]" in text
+
+
+def test_inspect_cnv_prints_block_and_writes_page(tmp_path, capsys):
+    from ctdcast.cli import inspect as cli_inspect
+
+    out = tmp_path / "chain.html"
+    args = cli_inspect.build_parser().parse_args(
+        [str(FIX / "cnv" / "mixsed2_004.cnv"), "-o", str(out)]
+    )
+    assert cli_inspect.run(args) == 0
+    assert "data_processing:" in capsys.readouterr().out
+    html = out.read_text()
+    assert "sbe-chain-config" in html and "wildedit" in html
+    assert 'src="http' not in html
+
+
+def test_inspect_cnv_without_out_writes_nothing(tmp_path, capsys):
+    import shutil
+
+    from ctdcast.cli import inspect as cli_inspect
+
+    cnv = shutil.copy(FIX / "cnv" / "mixsed2_004.cnv", tmp_path / "x.cnv")
+    args = cli_inspect.build_parser().parse_args([str(cnv)])
+    assert cli_inspect.run(args) == 0
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["x.cnv"]

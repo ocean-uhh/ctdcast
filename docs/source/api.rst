@@ -208,6 +208,9 @@ Page generators
    :members:
    :undoc-members:
 
+.. automodule:: ctdcast.reports.sbe_chain
+   :members:
+
 .. automodule:: ctdcast.reports.corrections
    :members:
    :undoc-members:

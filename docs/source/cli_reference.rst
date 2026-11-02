@@ -78,6 +78,16 @@ looks at one file and writes one page.
    ctdcast inspect /data/ctd_nc/profiles.nc -o profiles_inventory.html
    ctdcast inspect /data/ctd_nc/profiles.nc --title "MSM142 compiled product"
 
+**A Sea-Bird CNV.**  Given a ``.cnv``, ``inspect`` reads the SBE Data Processing chain from
+its header instead and prints the equivalent ``data_processing:`` block: the modules in the
+order they ran, each with its parameters and ctdcast's variable names, ready to paste into
+``config.yaml``.  Modules that are not ctdcast steps (``datcnv``, ``Derive``) are listed as
+comments.  Nothing is written beside the CNV; with ``-o``, the block is also written as a page
+with a copy button, followed by each module's fields as the header records them::
+
+   ctdcast inspect /data/cnv_24Hz/mixsed2_017.cnv
+   ctdcast inspect /data/cnv_24Hz/mixsed2_017.cnv -o mixsed2_017_chain.html
+
 ----
 
 ctdcast init

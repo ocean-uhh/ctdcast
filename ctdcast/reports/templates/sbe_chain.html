@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_nc_tables.html" as nc %}
+{% import "_snippet.html" as snip %}
+
+{% block title %}{{ page_title }} — SBE processing{% endblock %}
+{% block masthead_title %}{{ filename }}{% endblock %}
+{% block masthead_type %}SBE Data Processing chain{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    <div><dt>File</dt><dd>{{ filename }}</dd></div>
+    <div><dt>Modules</dt><dd>{% for s in steps %}{{ s.module }}{% if not loop.last %} → {% endif %}{% endfor %}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block content %}
+<h2 id="s-config">{{ m.heading_text(1, "As ctdcast config") }}</h2>
+<p class="caption">The chain as <code>data_processing:</code> steps, in the order the modules ran, with ctdcast's variable names. A channel ctdcast has no name for keeps its Sea-Bird name. Modules that are not ctdcast steps are listed as comments at the top.</p>
+{{ snip.yaml_snippet("sbe-chain-config", yaml, title="data_processing — copy into the config") }}
+
+<h2 id="s-header">{{ m.heading_text(2, "As the header records it") }}</h2>
+<p class="caption">Each module's fields as written in the CNV header, without its date and input file.</p>
+<table class="nc">
+  {{ nc.thead(["Module", "Field", "Value"]) }}
+  <tbody>
+  {% for s in steps %}{% for k, v in s.params %}<tr>{% if loop.first %}<td rowspan="{{ s.params | length }}"><strong>{{ s.module }}</strong></td>{% endif %}<td><code>{{ k }}</code></td><td>{{ v }}</td></tr>
+  {% else %}<tr><td><strong>{{ s.module }}</strong></td><td colspan="2">—</td></tr>{% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

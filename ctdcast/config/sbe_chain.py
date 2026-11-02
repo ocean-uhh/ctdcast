@@ -244,11 +244,29 @@ def chain_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> st
     """
     import yaml
 
+    class _Dumper(yaml.SafeDumper):
+        pass
+
+    def _list(dumper: yaml.SafeDumper, data: list) -> yaml.Node:
+        # A list of names on one line; the list of steps stays one step per line.
+        flat = not any(isinstance(v, dict | list) for v in data)
+        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=flat)
+
+    def _dict(dumper: yaml.SafeDumper, data: dict) -> yaml.Node:
+        # A small mapping of plain values ({alpha: 0.03, tau: 7.0}) reads best on one line.
+        small = len(data) <= 3 and not any(
+            isinstance(v, dict | list) for v in data.values()
+        )
+        return dumper.represent_mapping("tag:yaml.org,2002:map", data, flow_style=small)
+
+    _Dumper.add_representer(list, _list)
+    _Dumper.add_representer(dict, _dict)
+
     result = chain_steps(header_text, rename_map)
-    body = yaml.safe_dump(
+    body = yaml.dump(
         {"data_processing": {"steps": result["steps"]}},
+        Dumper=_Dumper,
         sort_keys=False,
-        default_flow_style=None,
         width=100,
     )
     notes = [f"# not a step: {s['module']} ({s['reason']})" for s in result["skipped"]]
