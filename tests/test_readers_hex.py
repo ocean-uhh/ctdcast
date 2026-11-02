@@ -253,6 +253,19 @@ def test_stage1_hex_backend(tmp_path):
         assert ds["oxygen_raw_1"].attrs["sensor"] == "SENSOR_OXYGEN_0707"
         assert ds["conductivity_2"].attrs["sensor"] == "SENSOR_CONDUCTIVITY_3120"
         assert "ctd_salinity_1" in ds and "ctd_salinity_2" in ds
+        # Every catalogued sensor links to a variable: a converted one where the reader makes
+        # it, else the channel's raw voltage (pH and the UVP6 are not converted).
+        assert ds["transmissometer"].attrs["sensor"] == "SENSOR_TRANSMISSOMETER_2033"
+        assert ds["volt3_raw"].attrs["sensor"] == "SENSOR_PH_339"
+        assert ds["volt0_raw"].attrs["sensor"] == "SENSOR_USER_POLYNOMIAL_UVP6"
+        linked = {
+            str(ds[v].attrs["sensor"]) for v in ds.data_vars if "sensor" in ds[v].attrs
+        }
+        catalog = {str(v) for v in ds.data_vars if str(v).startswith("SENSOR_")}
+        assert catalog == linked
+        assert (
+            "processing_level" not in ds["volt3_raw"].attrs
+        )  # raw volts, not converted
 
 
 def test_find_xmlcon_ignores_case(tmp_path):
@@ -335,10 +348,17 @@ def test_cast_page_skips_stability_at_native_rate(slice_ds):
     """N² and Turner angle are not drawn from unbinned 24 Hz scans; a binned cast draws them."""
     from types import SimpleNamespace
 
-    from ctdcast.reports.cast import _native_rate_reason
+    from ctdcast.reports.cast import CAST_PANELS, _native_rate_reason
 
     reason = _native_rate_reason(SimpleNamespace(ds=slice_ds), "N² and Turner angle")
-    assert reason is not None and "24 Hz" in reason
+    assert reason == (
+        "applicable but not computed: on native-rate data (24 Hz, unbinned and unfiltered): "
+        "N² and Turner angle from individual scans are noisy"
+    )
+    # Shown verbatim, as a precondition, not with the failed-render prefix.
+    assert (
+        CAST_PANELS["stability"].unavailable_if(SimpleNamespace(ds=slice_ds)) == reason
+    )
     with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as binned:
         assert _native_rate_reason(SimpleNamespace(ds=binned), "N²") is None
 

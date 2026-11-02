@@ -993,6 +993,94 @@ def _is_numeric(value: str) -> bool:
     return _as_float(value) is not None
 
 
+def celltm_reference_tick(
+    key: str, label: str, alpha: float, tau: float, variables: str = ""
+) -> ConformanceTick:
+    """Compare one cell thermal mass ``(alpha, tau)`` pair with SBE's documented reference.
+
+    The same reference and tolerances as the Sea-Bird ``celltm`` rows, so a correction made in
+    ctdcast stage 3 is judged exactly as one made by SBE Data Processing.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    alpha, tau : float
+        The applied amplitude and time constant (s).
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A match (✓) or differ (✗) tick citing SBE manual p.92.
+    """
+    a_ref, source = _CONFORMANCE_REFS["celltm_alpha"]
+    t_ref, _ = _CONFORMANCE_REFS["celltm_tau"]
+    match = abs(alpha - a_ref) <= 0.005 and abs(tau - t_ref) <= 0.5
+    return ConformanceTick(
+        key=key,
+        label=label,
+        state=CONFORMANCE_MATCH if match else CONFORMANCE_DIFFER,
+        reference=f"(α,τ)=({a_ref:g},{t_ref:g})",
+        source=source,
+        detail=f"alpha={alpha:g} tau={tau:g}",
+        variables=variables,
+    )
+
+
+def conductivity_advance_reference_tick(
+    key: str, label: str, total_seconds: float, variables: str = ""
+) -> ConformanceTick:
+    """Compare a conductivity channel's *total* advance (deck unit + software) with SBE's 0.073 s.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    total_seconds : float
+        The deck unit's advance plus any software alignment, in seconds.
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A match (✓) or differ (✗) tick citing SBE manual p.85, with the same tolerance as the
+        deck-unit rows.
+    """
+    ref, source = _CONFORMANCE_REFS["deck_conductivity_advance"]
+    return ConformanceTick(
+        key=key,
+        label=label,
+        state=CONFORMANCE_MATCH
+        if abs(total_seconds - ref) <= 0.0005
+        else CONFORMANCE_DIFFER,
+        reference=f"{ref:.3f} s",
+        source=source,
+        detail=f"total advance {total_seconds:.3f} s",
+        variables=variables,
+    )
+
+
+def no_reference_tick(key: str, label: str, variables: str = "") -> ConformanceTick:
+    """Return a dash tick (no documented reference) for a display row.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    variables : str, optional
+        The variable the step modified, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A :data:`CONFORMANCE_NO_REFERENCE` tick.
+    """
+    return _no_ref_tick(key, label, "", variables)
+
+
 def _no_ref_tick(
     key: str, label: str, detail: str = "", variables: str = ""
 ) -> ConformanceTick:

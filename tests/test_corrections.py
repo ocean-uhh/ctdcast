@@ -402,13 +402,40 @@ def test_cast_page_lists_ctdcast_corrections(slice2):
         ds = stage3(
             slice2, {**CTM, "alignctd": {"oxygen": {"default": 1.0}}}, cast_number=11
         )
-    steps = [(step, var) for step, var, _p, _m in _ctdcast_correction_rows(ds)]
-    assert steps == [
+    rows = _ctdcast_correction_rows(ds)
+    assert [(r.label, t.variables) for r, t in rows] == [
         ("alignctd", "oxygen_raw_1"),
         ("celltm", "conductivity_1"),
         ("celltm", "conductivity_2"),
         ("SBE 43 oxygen", "ctd_oxygen"),
     ]
+    # Same columns and references as the Sea-Bird table: OdB's celltm matches SBE's (0.03, 7);
+    # oxygen has no reference; versions come from the file.
+    states = [t.state for _r, t in rows]
+    assert states == ["no_reference", "match", "match", "no_reference"]
+    assert rows[1][0].version.startswith("ctdcast ") and "seabirdscientific 3.1" in (
+        rows[1][0].version
+    )
+    assert rows[1][1].source == "SBE manual p.92 (TC duct, 3000-rpm pump)"
+
+
+def test_cast_page_conductivity_alignment_judged_by_total_advance(slice2):
+    from ctdcast.reports.cast import _ctdcast_correction_rows
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ds0 = stage3(
+            slice2, {"alignctd": {"conductivity": {"default": 0.0}}}, cast_number=11
+        )
+        ds1 = stage3(
+            slice2, {"alignctd": {"conductivity": {"default": 0.02}}}, cast_number=11
+        )
+    (r0, t0), _ = _ctdcast_correction_rows(ds0)[:2]
+    (_r1, t1), _ = _ctdcast_correction_rows(ds1)[:2]
+    assert (
+        t0.state == "match" and "deck unit's +0.073 s" in r0.parameters
+    )  # 0.073 total
+    assert t1.state == "differ"  # 0.093 total
 
 
 # --- what Sea-Bird already did, from real headers ---------------------------------------------
@@ -788,7 +815,7 @@ def test_cast_page_skips_preferred_composites(slice2):
     ds["conductivity"] = ds.conductivity_1.copy()
     ds["conductivity"].attrs["comment"] = "preferred primary channel; copied from x"
     rows = _ctdcast_correction_rows(ds)
-    assert [r[1] for r in rows if r[0] == "celltm"] == [
+    assert [t.variables for r, t in rows if r.label == "celltm"] == [
         "conductivity_1",
         "conductivity_2",
     ]

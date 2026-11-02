@@ -373,6 +373,17 @@ def _sensor_variable(role: str, ds: xr.Dataset) -> str | None:
     return var
 
 
+def _raw_channel_variable(ds: xr.Dataset, channel: int) -> str | None:
+    """Return the raw-voltage variable recorded from ``.xmlcon`` *channel* (1-based), or None."""
+    for name, da in ds.data_vars.items():
+        if (
+            da.attrs.get("units") == "V"
+            and da.attrs.get("sbe_xmlcon_index") == channel - 1
+        ):
+            return str(name)
+    return None
+
+
 def _build_cast_sensor_catalog(
     ds: xr.Dataset, overrides: SensorOverrides
 ) -> xr.Dataset:
@@ -426,6 +437,13 @@ def _build_cast_sensor_catalog(
             catalog[name] = attrs
             serial_to_names.setdefault(canon, set()).add(name)
         var = _sensor_variable(role, ds)
+        if var is None or var not in ds:
+            # No converted variable: link the channel's raw voltage, if the reader kept one
+            # (a .hex cast keeps every voltage channel, tagged with its .xmlcon index).
+            raw = _raw_channel_variable(ds, int(rec["channel"]))
+            if raw is not None:
+                ds[raw].attrs["sensor"] = name
+                continue
         if var is not None and var in ds:
             ds[var].attrs["sensor"] = name
             # This variable maps to a sensor in the <Sensors> block, which is the evidence
@@ -435,8 +453,8 @@ def _build_cast_sensor_catalog(
             add_processing_level(ds[var].attrs, PL_CONVERTED)
         elif var is not None:
             # A role ctdcast knows how to store, whose variable is absent: the reader dropped
-            # a channel it could have kept.  (A role with no stored variable at all — e.g. a
-            # transmissometer — returns None above and is silent by design.)
+            # a channel it could have kept.  (A role with no converted variable at all — e.g.
+            # pH on a CNV cast, which keeps no raw voltage — returns None above and is silent.)
             warnings.warn(
                 f"sensor role {role!r} maps to variable {var!r}, which is not in the cast "
                 "— the reader dropped a channel it can store.",

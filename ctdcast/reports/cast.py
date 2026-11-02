@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,12 +23,15 @@ from ctdcast.config.cnv_header import (
     Correction,
     SensorCalibration,
     cal_value_nondefault,
+    celltm_reference_tick,
+    conductivity_advance_reference_tick,
     conformance_advisories,
     conformance_supported,
     conformance_ticks,
     correction_records,
     detect_instrument,
     header_from_raw_metadata,
+    no_reference_tick,
     provenance_advisories,
     sensor_calibrations,
 )
@@ -934,13 +938,28 @@ def _corrections_table_html(
     )
 
 
-def _ctdcast_correction_rows(ds: xr.Dataset) -> list[tuple[str, str, str, str]]:
-    """Rows ``(step, variable, parameters, method)`` for ctdcast's own stage-3 corrections.
+def _ctdcast_versions(ds: xr.Dataset, method: str) -> str:
+    """Return ``"ctdcast X, seabirdscientific Y"`` for a stage-3 step, from the file alone."""
+    found = re.search(r"ctdcast (\S+) stage3:", str(ds.attrs.get("history", "")))
+    parts = [f"ctdcast {found.group(1)}"] if found else []
+    sbs = re.search(r"seabirdscientific (\S+)", method)
+    if sbs:
+        parts.append(f"seabirdscientific {sbs.group(1)}")
+    return ", ".join(parts)
+
+
+def _ctdcast_correction_rows(
+    ds: xr.Dataset,
+) -> list[tuple[Correction, ConformanceTick]]:
+    """Rows for ctdcast's own stage-3 corrections, in the shape of the Sea-Bird table's rows.
 
     Read from the variables' attributes, in the order stage 3 applies them: alignment, cell
-    thermal mass, conductivity slope, then SBE 43 oxygen from the voltage.
+    thermal mass, conductivity slope, then SBE 43 oxygen from the voltage.  Each row carries a
+    conformance tick against the same SBE references as the rows above it: cell thermal mass
+    against (0.03, 7), alignment by the channel's total advance (deck unit + ctdcast) against
+    0.073 s; the slope and the oxygen conversion have no reference and show a dash.
     """
-    rows: list[tuple[str, str, str, str]] = []
+    rows: list[tuple[Correction, ConformanceTick]] = []
     # A preferred-sensor composite copies its source channel's attrs; listing it would show
     # each correction twice.
     names = [
@@ -948,65 +967,104 @@ def _ctdcast_correction_rows(ds: xr.Dataset) -> list[tuple[str, str, str, str]]:
         for v in ds.data_vars
         if not str(ds[v].attrs.get("comment", "")).startswith("preferred ")
     ]
+
+    def add(
+        label: str,
+        producer: str,
+        method: str,
+        params: str,
+        tick_of: Callable[[str], ConformanceTick],
+    ) -> None:
+        key = f"ctdcast_{len(rows) + 1}"
+        rows.append(
+            (
+                Correction(label, key, producer, _ctdcast_versions(ds, method), params),
+                tick_of(key),
+            )
+        )
+
     for v in names:
         a = ds[v].attrs
         if "alignment_offset_seconds" in a:
-            params = f"{float(a['alignment_offset_seconds']):+.3f} s"
-            if "alignment_deck_unit_advance_seconds" in a:
-                params += f" (on top of the deck unit's {float(a['alignment_deck_unit_advance_seconds']):+.3f} s)"
-            rows.append(("alignctd", v, params, str(a.get("alignment_method", ""))))
+            offset = float(a["alignment_offset_seconds"])
+            params = f"advance {offset:+.3f} s"
+            deck = a.get("alignment_deck_unit_advance_seconds")
+            if deck is not None:
+                params += f" (deck unit's {float(deck):+.3f} s already in the data)"
+            if v.startswith("conductivity") and deck is not None:
+                total = offset + float(deck)
+                tick_of = lambda k, v=v, t=total: conductivity_advance_reference_tick(  # noqa: E731
+                    k, "alignctd", t, v
+                )
+            else:
+                tick_of = lambda k, v=v: no_reference_tick(k, "alignctd", v)  # noqa: E731
+            add(
+                "alignctd",
+                "ctdcast stage 3 (seabirdscientific align_ctd)",
+                str(a.get("alignment_method", "")),
+                params,
+                tick_of,
+            )
     for v in names:
         a = ds[v].attrs
         if "cell_thermal_mass_alpha" in a:
-            params = (
-                f"alpha {float(a['cell_thermal_mass_alpha']):g}, tau {float(a['cell_thermal_mass_tau_seconds']):g} s, "
-                f"with {a.get('cell_thermal_mass_temperature', '?')}"
-            )
-            rows.append(
-                ("celltm", v, params, str(a.get("cell_thermal_mass_method", "")))
+            alpha = float(a["cell_thermal_mass_alpha"])
+            tau = float(a["cell_thermal_mass_tau_seconds"])
+            add(
+                "celltm",
+                "ctdcast stage 3 (seabirdscientific cell_thermal_mass)",
+                str(a.get("cell_thermal_mass_method", "")),
+                f"alpha={alpha:g} tau={tau:g} s, with {a.get('cell_thermal_mass_temperature', '?')}",
+                lambda k, v=v, al=alpha, ta=tau: celltm_reference_tick(
+                    k, "celltm", al, ta, v
+                ),
             )
     for v in names:
         a = ds[v].attrs
         if "calibration_slope" in a:
-            rows.append(
-                (
-                    "conductivity slope",
-                    v,
-                    f"× {a['calibration_slope']}",
-                    "ctdcast stage 3",
-                )
+            add(
+                "conductivity slope",
+                "ctdcast stage 3",
+                "",
+                f"× {a['calibration_slope']}",
+                lambda k, v=v: no_reference_tick(k, "conductivity slope", v),
             )
     for v in names:
         a = ds[v].attrs
         if a.get("oxygen_tau_correction"):
-            params = (
-                f"from {a.get('derived_from', '?')}; tau correction "
-                f"(window {a.get('oxygen_tau_window_seconds', '?')} s), hysteresis correction"
-            )
-            rows.append(
-                ("SBE 43 oxygen", v, params, str(a.get("conversion_method", "")))
+            add(
+                "SBE 43 oxygen",
+                "ctdcast stage 3 (tau, Application Note 64-3 hysteresis; "
+                "seabirdscientific convert_sbe43_oxygen)",
+                str(a.get("conversion_method", "")),
+                f"tau window {a.get('oxygen_tau_window_seconds', '?')} s; "
+                f"from {a.get('derived_from', '?')}",
+                lambda k, v=v: no_reference_tick(k, "SBE 43 oxygen", v),
             )
     return rows
 
 
 def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
-    """Return the table of corrections ctdcast applied at stage 3, or "" when there are none."""
+    """Return the table of corrections ctdcast applied at stage 3, or "" when there are none.
+
+    Same columns, row renderer and references as the Sea-Bird table above it.
+    """
     rows = _ctdcast_correction_rows(ds)
     if not rows:
         return ""
-    body = "".join(
-        f"<tr><td class='num'>{i}</td><td class='mono'>{escape(step)}</td>"
-        f"<td class='mono'>{escape(var)}</td><td>{escape(params)}</td>"
-        f"<td class='mono'>{escape(method)}</td></tr>"
-        for i, (step, var, params, method) in enumerate(rows, 1)
+    records = [r for r, _ in rows]
+    ticks = [t for _, t in rows]
+    head = (
+        "<th>#</th><th>Step</th><th>Producer</th><th>Version</th><th>Parameters</th>"
+        "<th>Variables</th><th>Matches reference</th>"
     )
     return (
         f"<h3{tight}>Corrections applied by ctdcast</h3>"
         "<p class='caption'>Applied at stage 3 after the steps above, in the order of the # "
         "column; each is recorded on the variable it changed.</p>"
-        "<table class='nc' style='margin-top:0'><thead><tr><th>#</th><th>Step</th>"
-        "<th>Variable</th><th>Parameters</th><th>Method</th></tr></thead>"
-        f"<tbody>{body}</tbody></table>"
+        f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
+        f"<tbody>{_corrections_rows_with_ticks(records, ticks)}</tbody></table>"
+        f"{_references_caption(ticks)}"
     )
 
 
@@ -1206,8 +1264,8 @@ def _native_rate_reason(c: PageCtx, what: str) -> str | None:
         return None
     hz = 1.0 / float(interval)
     return (
-        f"not computed on native-rate data ({hz:.0f} Hz, unbinned and unfiltered): {what} "
-        "from individual scans are noise"
+        f"applicable but not computed: on native-rate data ({hz:.0f} Hz, unbinned and "
+        f"unfiltered): {what} from individual scans are noisy"
     )
 
 
@@ -1226,17 +1284,22 @@ def _figure_panel(
     from the slot table, so the figure and the slot it is shown in cannot disagree.
     When *when* is given and returns False, the panel renders ``None``.  When
     *skip_reason* returns a reason, the figure is not drawn and the panel shows the amber
-    stub with that reason.
+    note with that reason verbatim (a deliberate skip, not a failure, so it does not take the
+    generic "applicable but unavailable" prefix a failed render gets).
     """
     width_in = _slot_width(slot)
 
     def render(c: PageCtx) -> str | Stub | None:
         if when is not None and not when(c):
             return None
-        if skip_reason is not None and (reason := skip_reason(c)):
-            return Stub(reason)
         return as_panel(lambda: make(c, width_in))
 
+    if skip_reason is not None:
+
+        def unavailable_if(c: PageCtx) -> str | None:
+            return skip_reason(c) if when is None or when(c) else None
+
+        panel_kw["unavailable_if"] = unavailable_if
     return Panel(id=panel_id, slot=slot, render=render, **panel_kw)
 
 
