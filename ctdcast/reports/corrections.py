@@ -119,10 +119,15 @@ def generate_corrections_page(
             ("blocks", draw_blocks_fig, W_FULL),
         )
     }
+    not_fitted = (
+        fits["not_fitted"].values if "not_fitted" in fits else [""] * fits.sizes["cast"]
+    )
     skipped = [
-        (str(c), str(r))
-        for c, r in zip(fits["cast_id"].values, fits["skipped"].values, strict=True)
-        if r
+        (str(c), str(r or nf))
+        for c, r, nf in zip(
+            fits["cast_id"].values, fits["skipped"].values, not_fitted, strict=True
+        )
+        if r or nf
     ]
     speed = fits["speed"].values if "speed" in fits else np.full((1, 2), np.nan)
     with np.errstate(invalid="ignore"):

@@ -1,10 +1,10 @@
 """``ctdcast fit``: fit alignment and cell thermal mass over a cruise and record the results.
 
 Reads every stage-2 cast at its native scan rate, scores each conductivity line with the cost
-functions in :mod:`ctdcast.analysis.fits`, and writes them, with the cruise averages and the
-blocks of consecutive casts, to ``<ctd_root>/fits.nc``.  The report draws the corrections page
-from that file.  Nothing here changes a stage file: the values reach stage 3 only through the
-config.
+functions in :mod:`ctdcast.analysis.fits`, and writes the **per-cast** cost surfaces to
+``<ctd_root>/fits.nc``.  The cruise and per-block averages are not stored — :func:`summarise`
+computes them from the per-cast costs at report time.  The report draws the corrections page from
+that file.  Nothing here changes a stage file: the values reach stage 3 only through the config.
 
 Two passes: alignment first, over every cast; then cell thermal mass on conductivity advanced by
 the cruise's fitted (downcast) alignment for that line, because a misaligned line fits the wrong ``(alpha,
@@ -193,6 +193,9 @@ class _CastRecord:
     speed: tuple[float, float] = (np.nan, np.nan)
     config: str = ""
     skipped: str = ""
+    sbe_aligned: frozenset[int] = field(default_factory=frozenset)
+    sbe_celltm: bool = False
+    not_fitted: str = ""
     casts: dict[int, F.Cast] = field(default_factory=dict)
     align: dict[int, np.ndarray] = field(default_factory=dict)
     ctm: dict[int, np.ndarray] = field(default_factory=dict)
@@ -201,8 +204,18 @@ class _CastRecord:
 def _cruise_alignment(
     records: list[_CastRecord], line: int, residuals: np.ndarray
 ) -> float | None:
-    """Return the residual advance at the minimum of the line's cruise downcast curve."""
-    fit = F.median_curve([r.align[line][0] for r in records if line in r.align])
+    """Return the residual advance at the minimum of the line's cruise downcast curve.
+
+    Costs are rounded through float32 (as ``fits.nc`` stores them) so the advance the CTM fit uses
+    here matches the one :func:`summarise` reads back from ``ctm_alignment``.
+    """
+    fit = F.median_curve(
+        [
+            r.align[line][0].astype(np.float32).astype(np.float64)
+            for r in records
+            if line in r.align
+        ]
+    )
     return None if fit is None else float(residuals[fit.index])
 
 
@@ -213,16 +226,20 @@ _LINE_NAME = {1: "primary", 2: "secondary"}
 def _align_line(rec: _CastRecord, residuals: np.ndarray) -> str:
     """One alignment progress line: per line, the residual advance at the downcast minimum.
 
-    ``–`` for a line whose downcast cost has no well, ``skipped: <reason>`` for a skipped cast,
-    ``no thermocline`` when no line scored a cost.
+    ``–`` for a line whose downcast cost has no well, ``<line> Sea-Bird aligned`` for a line
+    Sea-Bird already aligned, ``skipped: <reason>`` for a skipped cast, ``no thermocline`` when no
+    line scored a cost.
     """
     head = f"  alignment: cast {rec.label}"
     if rec.skipped:
         return f"{head} skipped: {rec.skipped}"
-    if not rec.align:
+    if not rec.align and not rec.sbe_aligned:
         return f"{head} no thermocline"
     parts = [head]
     for line, _c, _t in _LINES:
+        if line in rec.sbe_aligned:
+            parts.append(f"{_LINE_NAME[line]} Sea-Bird aligned")
+            continue
         a = rec.align.get(line)
         if a is None:
             continue
@@ -235,17 +252,19 @@ def _align_line(rec: _CastRecord, residuals: np.ndarray) -> str:
 def _ctm_line(rec: _CastRecord, settings: FitSettings) -> str:
     """One cell-thermal-mass progress line: |ΔT| down/up, then each line's one-parameter fits.
 
-    ``not fitted (window below <ctm_pmin> dbar, both legs needed)`` when no line scored a cost.
+    ``Sea-Bird celltm applied`` when Sea-Bird already ran it; ``not fitted (window below
+    <ctm_pmin> dbar, both legs needed)`` when no line scored a cost.
     """
+    head = f"  cell thermal mass: cast {rec.label}"
+    if rec.sbe_celltm:
+        return f"{head} Sea-Bird celltm applied"
     if not rec.ctm:
         return (
-            f"  cell thermal mass: cast {rec.label} not fitted "
+            f"{head} not fitted "
             f"(window below {settings.ctm_pmin:g} dbar, both legs needed)"
         )
     down, up = rec.delta_t
-    parts = [
-        f"  cell thermal mass: cast {rec.label} |ΔT| down/up {down:.2f} {up:.2f} °C"
-    ]
+    parts = [f"{head} |ΔT| down/up {down:.2f} {up:.2f} °C"]
     for line, _c, _t in _LINES:
         m = rec.ctm.get(line)
         if m is None:
@@ -320,15 +339,40 @@ def fit_cruise(
                 continue
             scan_interval = scan_interval or interval
             ds = ds.load()
+            # Read every cast's header (not just the first) and apply the stage-3 refusals: do not
+            # fit alignment for a line Sea-Bird already aligned, nor cell thermal mass if its celltm
+            # ran, so the finder never fits a correction on top of one already applied.
+            header = header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
+            applied = applied_sbe_corrections(header)
             if not deck:
-                header = header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
-                adv = applied_sbe_corrections(header)["deck_advance"]
+                adv = applied["deck_advance"]
                 for line, name in (
                     (1, "primary conductivity"),
                     (2, "secondary conductivity"),
                 ):
                     if name in adv:
                         deck[line] = float(adv[name])
+            aligned_vars = applied["aligned"]
+            any_align = bool(applied["align_unparsed"])
+            rec.sbe_aligned = frozenset(
+                line
+                for line in (1, 2)
+                if any_align
+                or f"conductivity_{line}" in aligned_vars
+                or f"temperature_{line}" in aligned_vars
+            )
+            rec.sbe_celltm = "celltm" in applied["modules"]
+            reasons = []
+            if rec.sbe_aligned:
+                reasons.append(
+                    "Sea-Bird aligned "
+                    + ", ".join(
+                        f"conductivity_{line}" for line in sorted(rec.sbe_aligned)
+                    )
+                )
+            if rec.sbe_celltm:
+                reasons.append("Sea-Bird celltm applied")
+            rec.not_fitted = "; ".join(reasons)
             for line, _c, _t in _LINES:
                 cast = cast_arrays(ds, line, interval)
                 if cast is None:
@@ -344,6 +388,8 @@ def fit_cruise(
             warnings.simplefilter("ignore", RuntimeWarning)
             rec.speed = F.median_speeds(first, settings.align_pmin)
             for line, cast in rec.casts.items():
+                if line in rec.sbe_aligned:
+                    continue
                 a = F.alignment_cost(
                     cast,
                     settings.residuals,
@@ -366,12 +412,20 @@ def fit_cruise(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             for line, cast in rec.casts.items():
+                if rec.sbe_celltm:
+                    continue
                 c = cast.conductivity
                 r = align_used.get(line, 0.0)
                 if r != 0.0:
-                    c = sbs_processing.align_ctd(
-                        F._fill(c), r, cast.interval, flag_value=np.nan
+                    c = np.array(
+                        sbs_processing.align_ctd(
+                            F._fill(c), r, cast.interval, flag_value=np.nan
+                        ),
+                        dtype=float,
                     )
+                    # Put the original gaps back: aligning fills them first, so without this the
+                    # CTM gap check would depend on whether an alignment was applied.
+                    c[np.isnan(cast.conductivity)] = np.nan
                 m = F.ctm_cost(
                     F.Cast(cast.pressure, cast.temperature, c, cast.interval),
                     settings.alpha,
@@ -431,6 +485,13 @@ def _to_dataset(
             "skipped": (
                 ("cast",),
                 np.array([r.skipped for r in records], dtype=object),
+            ),
+            "not_fitted": (
+                ("cast",),
+                np.array([r.not_fitted for r in records], dtype=object),
+                {
+                    "long_name": "a correction Sea-Bird already applied, so the finder did not fit it"
+                },
             ),
             "sensor_config": (
                 ("cast",),
@@ -605,10 +666,18 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
             if cfit is None
             else F.snap_to_default(cfit.surface, al, ta, tolerance=tol)
         )
+        # Whole cruise: reuse the advance the CTM fit was actually run on (``ctm_alignment``), so
+        # the fitted-on and the suggested value cannot diverge on a near-tie. Blocks compute their own.
+        ctm_align = fits["ctm_alignment"].values if "ctm_alignment" in fits else None
+        residual = (
+            float(ctm_align[li])
+            if casts is None and ctm_align is not None and np.isfinite(ctm_align[li])
+            else (np.nan if afit is None else float(res[afit.index]))
+        )
         out.append(
             LineSummary(
                 line=int(line),
-                residual=np.nan if afit is None else float(res[afit.index]),
+                residual=residual,
                 alignment_n=0 if afit is None else afit.n_casts,
                 residual_up=np.nan if ufit is None else float(res[ufit.index]),
                 alignment_n_up=0 if ufit is None else ufit.n_casts,

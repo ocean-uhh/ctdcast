@@ -584,7 +584,7 @@ def normalise(cost: np.ndarray, reference: tuple[int, ...]) -> np.ndarray | None
     Parameters
     ----------
     cost : numpy.ndarray
-        A cost array from :func:`alignment_cost` (summed over legs) or :func:`ctm_cost`.
+        A one-leg alignment cost or a ``(alpha, tau)`` cell-thermal-mass cost surface.
     reference : tuple of int
         The index of the no-correction value.
 

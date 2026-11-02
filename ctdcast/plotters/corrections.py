@@ -22,6 +22,7 @@ DOWN = "#0072B2"
 UP = "#D55E00"
 TAU_COLOUR = "#CC79A7"
 CONFIG_CHANGE = "#009E73"  # Okabe–Ito bluish green — a sensor-configuration change
+SELECTED = "#56B4E9"  # Okabe–Ito sky blue — the recommended (selected) value
 LINE_STYLE = {1: ("o", "-", "primary"), 2: ("^", "--", "secondary")}
 
 
@@ -405,7 +406,7 @@ def draw_ctm_casts_fig(
     fig, (a0, a1, a2) = plt.subplots(
         3,
         1,
-        figsize=(width_in, width_in * 0.95),
+        figsize=(width_in, width_in * 0.665),
         sharex=True,
         gridspec_kw={"height_ratios": [2, 2, 3]},
     )
@@ -463,8 +464,9 @@ def draw_ctm_surface_fig(
     """Return the cruise cell thermal mass cost surface per line, as labelled line contours.
 
     The surface is the |ΔT|-weighted mean of each cast's cost divided by its cost with no
-    correction; contours are labelled as multiples of the minimum, the region within 5% of the
-    minimum is shaded, and Sea-Bird's (0.03, 7 s) is marked with a cross.
+    correction; contours are labelled as multiples of the minimum, the region within the tolerance
+    (``ctm_tolerance``, default 2%) of the minimum is shaded, and three points are marked: the
+    global minimum (dot), Sea-Bird's (0.03, 7 s) (cross) and the recommended value (square).
 
     Parameters
     ----------
@@ -480,6 +482,7 @@ def draw_ctm_surface_fig(
     """
     al = fits["alpha"].values.astype(np.float64)
     ta = fits["tau"].values.astype(np.float64)
+    tol = float(fits.attrs.get("ctm_tolerance", 0.02))
     panels = []
     for li, line in enumerate(fits["line"].values):
         costs, weights = [], []
@@ -502,20 +505,30 @@ def draw_ctm_surface_fig(
         s, (i, j) = fit.surface, fit.index
         smin = s[i, j]
         levels = smin * np.array([1.02, 1.05, 1.1, 1.2, 1.4, 1.7, 2.0, 3.0, 5.0])
-        ax.contourf(
-            ta, al, s, levels=[0.0, smin * (1 + F.VALLEY_FRACTION)], colors=["#fde3c8"]
-        )
+        a_rec, t_rec = F.snap_to_default(s, al, ta, tolerance=tol)
+        ax.contourf(ta, al, s, levels=[0.0, smin * (1 + tol)], colors=["#fde3c8"])
         cs = ax.contour(
             ta, al, s, levels=levels, colors="0.45", linewidths=pen("thinner")
         )
         ax.clabel(cs, fmt=lambda v, m=smin: f"{v / m:.2f}")
-        ax.plot(ta[j], al[i], "o", color=UP)
-        ax.plot(F.DEFAULT_TAU_SBE, F.DEFAULT_ALPHA_SBE, "x", color="k", mew=2)
+        ax.plot(ta[j], al[i], "o", color=UP, label="global minimum")
+        ax.plot(
+            t_rec, a_rec, "s", color=SELECTED, mec="k", mew=0.5, label="recommended"
+        )
+        ax.plot(
+            F.DEFAULT_TAU_SBE,
+            F.DEFAULT_ALPHA_SBE,
+            "x",
+            color="k",
+            mew=2,
+            label="Sea-Bird (0.03, 7 s)",
+        )
         ax.set_title(
             f"{LINE_STYLE[line][2]}: minimum ({al[i]:g}, {ta[j]:g} s), n = {fit.n_casts}"
         )
         ax.set_xlabel("τ (s)")
     axs[0][0].set_ylabel("α")
+    axs[0][0].legend(loc="upper right")
     fig.tight_layout()
     return fig
 
@@ -646,9 +659,11 @@ def draw_ctm_param_hist_fig(
                 bins=edges,
                 stacked=True,
                 color=["0.3", "0.8"],
-                label=["|ΔT| ≥ median", "< median"],
+                label=["|ΔT| > median", "≤ median"],
             )
-            ax.axvline(default, color=UP, ls=":", lw=pen("thinner"))
+            ax.axvline(
+                default, color=UP, ls="--", lw=pen("thin"), label="Sea-Bird default"
+            )
             ax.set_xlabel(label)
             if col == 0:
                 ax.set_ylabel(f"{LINE_STYLE[line][2]}\ncasts")
