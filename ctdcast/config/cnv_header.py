@@ -1069,6 +1069,41 @@ def conductivity_advance_reference_tick(
     )
 
 
+def pressure_filter_reference_tick(
+    key: str, label: str, time_constant: float, variables: str = ""
+) -> ConformanceTick:
+    """Compare a low-pass time constant applied to pressure with SBE's documented 0.15 s.
+
+    The same reference and tolerance as the Sea-Bird ``filter`` rows.
+
+    Parameters
+    ----------
+    key, label : str
+        The row's key and display label.
+    time_constant : float
+        The applied time constant (s).
+    variables : str, optional
+        The variables the filter changed, for the display column.
+
+    Returns
+    -------
+    ConformanceTick
+        A match (✓) or differ (✗) tick citing SBE manual p.100.
+    """
+    ref, source = _CONFORMANCE_REFS["filter_pressure_tc"]
+    return ConformanceTick(
+        key=key,
+        label=label,
+        state=CONFORMANCE_MATCH
+        if _conf_close(str(time_constant), ref, 0.02)
+        else CONFORMANCE_DIFFER,
+        reference=f"pressure {ref:g} s",
+        source=source,
+        detail=f"filtered at {time_constant:g} s",
+        variables=variables,
+    )
+
+
 def no_reference_tick(key: str, label: str, variables: str = "") -> ConformanceTick:
     """Return a dash tick (no documented reference) for a display row.
 

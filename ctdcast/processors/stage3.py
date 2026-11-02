@@ -37,6 +37,7 @@ from ctdcast.processors.history import (
     add_processing_level,
     append_history,
 )
+from ctdcast.processors.products import make_product
 from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import (
     group_by_cast,
@@ -68,13 +69,15 @@ def stage3(
     1. The per-sensor conductivity slope and offset (``data_processing.slope_offset``), as
        Sea-Bird applies them when it converts the raw counts.
     2. ``data_processing.steps``, in the order listed: ``wildedit``
-       (:func:`ctdcast.processors.editing.apply_wild_edit`), ``alignctd`` and ``celltm``
+       and ``loopedit`` (:mod:`ctdcast.processors.editing`), ``filter`` and ``window_filter``
+       (:mod:`ctdcast.processors.filtering`), ``alignctd`` and ``celltm``
        (:func:`ctdcast.processors.corrections.apply_corrections`), from
        :data:`ctdcast.processors.steps.STEPS`.  A step ctdcast does not apply yet is skipped
        (``run`` refuses it unless ``data_processing.allow_unapplied``), with a warning and a
        ``history`` note.  The order they ran in is written to the ``data_processing_steps``
        attribute.
-    3. Re-derives practical salinity whenever a step changed conductivity.
+    3. Re-derives practical salinity whenever a step changed conductivity, temperature or
+       pressure.
     4. Derives ``ctd_oxygen`` from the SBE 43 voltage on a cast that carries ``oxygen_raw_<N>``
        and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`), with the
        window in ``data_processing.oxygen``.
@@ -129,8 +132,11 @@ def stage3(
         )
     changed, edge_masks = ctx.changed, ctx.edge_masks
 
-    # Step 3: re-derive salinity whenever conductivity changed.
-    if any(v.startswith("conductivity") for v in changed):
+    # Step 3: re-derive salinity whenever conductivity, temperature or pressure changed.
+    if any(
+        v.startswith(("conductivity", "ctd_temperature")) or v == "pressure"
+        for v in changed
+    ):
         ds = derive_salinity(ds)
         for var, mask in edge_masks.items():
             if var.startswith("conductivity"):
@@ -162,6 +168,46 @@ def stage3(
     # Step 5: gross-range + spike QC, judging the corrected values.
     ds = qc.apply_gross_range(ds, (cfg.get("qc") or {}).get("gross_range") or None)
     return qc.apply_spike_test(ds, (cfg.get("qc") or {}).get("spike") or None)
+
+
+def product_path(root: Path, stem: str, name: str) -> Path:
+    """Return where a cast's product is written: ``<root>/products/<name>/<stem>_<name>.nc``.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        The CTD stage root (``ctd_root``).
+    stem : str
+        The cast's file stem (``MIXSED2_050``).
+    name : str
+        The product's name.
+
+    Returns
+    -------
+    pathlib.Path
+        The product file's path.
+    """
+    return root / "products" / name / f"{stem}_{name}.nc"
+
+
+def _write_products(
+    ds: xr.Dataset, root: Path, stem: str, products: list[dict], cast_id: tuple
+) -> None:
+    """Make and write each configured product of one cast; a failure names the product only."""
+    label = format_cast_id(*cast_id)
+    for product in products:
+        path = product_path(root, stem, product["name"])
+        try:
+            out = make_product(ds, product, cast_number=cast_id[0], cast_label=label)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _write_nc(out, path)
+            print(f"  ok: {path.parent.name}/{path.name}")
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"  FAILED product {product['name']} of cast {label}  "
+                f"({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
 
 
 def _apply_slope_offset(
@@ -408,6 +454,7 @@ def run(
 
     # A malformed correction block fails once, here, not as one error per cast.
     validate_data_processing((cruise_cfg or {}).get("data_processing"))
+    products = ((cruise_cfg or {}).get("data_processing") or {}).get("products") or []
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
     for cast_id in sorted(groups):
@@ -481,6 +528,7 @@ def run(
             _write_nc(ds_out, target)
             print(f"  ok: {target.name}")
             n += 1
+            _write_products(ds_out, root, stem, products, cast_id)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",

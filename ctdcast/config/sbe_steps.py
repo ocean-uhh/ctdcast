@@ -216,8 +216,10 @@ def processing_steps(
     Returns
     -------
     dict
-        ``{"steps": [{module: parameters}, ...], "skipped": [{"module": ..., "reason": ...}, ...]}``
-        in run order.  An SBE module ctdcast has no translation for is listed in ``skipped`` with
+        ``{"steps": [...], "products": [{"name": ..., "steps": [...]}, ...], "skipped": [...]}``:
+        the steps in run order up to the file's first Split or Bin Average, the rest as a product
+        (two, one per leg, after a Split), and the modules that are not steps, each
+        ``{"module": ..., "reason": ...}``.  An SBE module ctdcast has no translation for is listed in ``skipped`` with
         the reason ``"not translated"``.
     """
     steps: list[dict] = []
@@ -233,7 +235,40 @@ def processing_steps(
                     "reason": SKIPPED_MODULES.get(name, "not translated"),
                 }
             )
-    return {"steps": steps, "skipped": skipped}
+    trunk, products = _as_products(steps)
+    return {"steps": trunk, "products": products, "skipped": skipped}
+
+
+_BIN_SUFFIX = {"decibars": "dbar", "seconds": "sec", "scans": "scans"}
+
+
+def _as_products(steps: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Split the steps where the file stops keeping every scan, at its first Split or Bin Average.
+
+    What comes before is the stage-3 file's steps; the rest becomes a product.  A Split becomes two
+    products, one per leg, since Sea-Bird's Split writes both and one header cannot say which this
+    file is.
+    """
+    names = [next(iter(s)) for s in steps]
+    cut = next((i for i, n in enumerate(names) if n in ("split", "binavg")), None)
+    if cut is None:
+        return steps, []
+    trunk, tail = steps[:cut], steps[cut:]
+    binavg = next((s["binavg"] for s in tail if "binavg" in s), None)
+    base = (
+        f"{binavg.get('size', '')}{_BIN_SUFFIX.get(binavg.get('bin'), '')}"
+        if binavg
+        else "split"
+    )
+    rest = [s for s in tail if "split" not in s]
+    if any("split" in s for s in tail):
+        products = [
+            {"name": f"{base}_{leg}", "steps": [{"split": leg}, *rest]}
+            for leg in ("down", "up")
+        ]
+    else:
+        products = [{"name": base, "steps": rest}]
+    return trunk, products
 
 
 def processing_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> str:
@@ -272,8 +307,11 @@ def processing_yaml(header_text: str, rename_map: dict[str, str] | None = None) 
     _Dumper.add_representer(dict, _dict)
 
     result = processing_steps(header_text, rename_map)
+    block: dict[str, Any] = {"steps": result["steps"]}
+    if result["products"]:
+        block["products"] = result["products"]
     body = yaml.dump(
-        {"data_processing": {"steps": result["steps"]}},
+        {"data_processing": block},
         Dumper=_Dumper,
         sort_keys=False,
         width=100,

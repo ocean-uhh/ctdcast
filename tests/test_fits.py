@@ -267,9 +267,7 @@ def test_cli_writes_fits_nc_and_prints_yaml(root, tmp_path, capsys):
     from ctdcast.cli.fit import run
 
     cfg = tmp_path / "config.yaml"
-    cfg.write_text(
-        f"data:\n  ctd_root: {root}\nfit:\n  ctm_pmin: 20\n"
-    )
+    cfg.write_text(f"data:\n  ctd_root: {root}\nfit:\n  ctm_pmin: 20\n")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         assert run(SimpleNamespace(config=cfg, only=None, dry_run=False)) == 0

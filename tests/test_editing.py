@@ -1,10 +1,8 @@
-import shutil
 import warnings
 from pathlib import Path
 
 import numpy as np
 import pytest
-import xarray as xr
 from seabirdscientific import processing as sp
 
 from ctdcast.processors.editing import (
@@ -15,26 +13,6 @@ from ctdcast.processors.editing import (
 from ctdcast.processors.stage3 import stage3
 
 FIX = Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture(scope="module")
-def hex_stage2(tmp_path_factory):
-    """The committed OdB .hex slice, through stages 1 and 2."""
-    from ctdcast.processors.stage1 import stage1
-    from ctdcast.processors.stage2 import run as stage2_run
-
-    tmp = tmp_path_factory.mktemp("we")
-    raw = tmp / "raw"
-    raw.mkdir()
-    for name in ("MIXSED2_011.hex", "MIXSED2_011.XMLCON"):
-        shutil.copy(FIX / "hex_slice" / name, raw / name)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        stage1(raw, tmp / "ctd", backend="hex", pattern="*.[hH][eE][xX]")
-        stage2_run(tmp / "ctd")
-    path = next((tmp / "ctd" / "stage2").glob("*.nc"))
-    with xr.open_dataset(path, engine="netcdf4") as ds:
-        return ds.load()
 
 
 def test_resolve_defaults_and_errors():
@@ -122,25 +100,34 @@ def test_skipped_when_sea_bird_already_wild_edited():
     assert marks == {}
 
 
-def test_stage3_runs_steps_in_order_and_skips_what_it_cannot_apply_yet(hex_stage2):
+def test_stage3_runs_steps_in_order_and_skips_what_it_cannot_apply_yet(
+    hex_stage2, monkeypatch
+):
+    from ctdcast.processors import steps as S
+
+    # Every step is applied today; stand one in as not yet applied to exercise the skip.
+    monkeypatch.setitem(
+        S.STEPS, "loopedit", S.Step("loopedit", None, lambda p, c: None)
+    )
     cfg = {
         "data_processing": {
             "steps": [
                 {"wildedit": {"pass2_nstd": 3.0, "scans_per_block": 50}},
                 {"filter": {"time_constant": 0.15, "variables": ["pressure"]}},
+                {"loopedit": {}},
                 {"celltm": {"conductivity": {"alpha": 0.03, "tau": 7.0}}},
-                {"loopedit": {"min_velocity": 0.25}},
             ]
         }
     }
     with pytest.warns(
-        UserWarning, match="not yet applied by ctdcast, skipped: filter, loopedit"
+        UserWarning, match="not yet applied by ctdcast, skipped: loopedit"
     ):
         out = stage3(hex_stage2, cfg, cast_number=11, cast_label="011")
     h = out.attrs["history"]
     assert (
         h.index("wildedit:")
-        < h.index("filter: not yet applied")
+        < h.index("filter: low-pass")
+        < h.index("loopedit: not yet applied")
         < h.index("celltm: conductivity_1")
     )
     assert "cell_thermal_mass_alpha" in out.conductivity_1.attrs
@@ -193,7 +180,7 @@ def test_file_records_the_order_and_what_exclusion_happened(hex_stage2):
     cfg = {
         "data_processing": {
             "steps": [
-                {"filter": {"time_constant": 0.15}},
+                {"filter": {"time_constant": 0.15, "variables": ["pressure"]}},
                 {"wildedit": {"variables": ["pressure"]}},
             ]
         }
@@ -201,5 +188,5 @@ def test_file_records_the_order_and_what_exclusion_happened(hex_stage2):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         out = stage3(hex_stage2, cfg, cast_number=11)
-    assert out.attrs["data_processing_steps"] == "filter (not applied); wildedit"
+    assert out.attrs["data_processing_steps"] == "filter; wildedit"
     assert out.pressure.attrs["wild_edit_excluded"].startswith("no earlier Loop Edit")

@@ -191,6 +191,12 @@ block that reproduces a cruise's own Sea-Bird processing; ``ctdcast fit`` sugges
    * - ``steps``
      - The processing steps, run in the order listed; a step may appear more than once.  Each entry
        is one step name with its parameters.  A step is applied only if it is listed.
+   * - ``products``
+     - Files made from the stage-3 data by further steps, each ``{name, steps}``: a 1 dbar
+       downcast, a 1 s series.  A product may use any step; ``split`` and ``binavg`` are
+       product-only, since the stage-3 file keeps every scan, and ``binavg`` comes last.  Written
+       to ``<ctd_root>/products/<name>/<cast>_<name>.nc``.  ``ctdcast inspect`` puts a CNV's
+       Split and Bin Average into a product (two, one per leg, after a Split).
    * - ``allow_unapplied``
      - ``true`` to run when ``steps`` lists a step stage 3 does not apply yet (it is skipped).
        Default ``false``: such a config is refused.
@@ -225,8 +231,34 @@ The steps, as Sea-Bird names its modules:
        and tau = 1/beta in seconds), with the temperature of the same sensor pair.  Keyed
        ``conductivity`` or ``conductivity_<N>``, each a bare ``{alpha, tau}`` or a
        ``{default:, ranges:}`` mapping.
-   * - ``window_filter``, ``filter``, ``loopedit``, ``split``, ``binavg``
-     - Read and checked, not yet applied.  Stage 3 refuses a config that lists one, because the
+   * - ``filter``
+     - Sea-Bird's low-pass filter, run forward and backward (no lag): ``time_constant`` (s) and
+       ``variables``.  Sea-Bird's Filter with time constants A and B is two ``filter`` steps.
+       Values an earlier Wild Edit marked are filtered across and kept as they were.  Applied with
+       ``seabirdscientific``.
+   * - ``window_filter``
+     - ``type`` (``boxcar``, ``cosine``, ``triangle``, ``gaussian``, ``median``), ``width``
+       (scans), ``variables``, ``exclude_flagged`` (default true; leaves out scans an earlier Loop
+       Edit marked), and for a gaussian ``half_width`` and ``offset`` (s).  Applied with
+       ``seabirdscientific``.
+   * - ``loopedit``
+     - Marks whole scans where the package reversed, moved slower than ``min_velocity`` (dbar/s,
+       default 0.25; or ``mean_speed_percent`` of the mean speed over ``window_seconds``), or was
+       still in the surface soak (``surface_soak: {min_depth, max_depth, deck_pressure}``, default
+       5 m, 20 m, true; or ``false``).  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
+       ``_qc``; values are kept, and later steps with ``exclude_flagged`` leave the scans out.
+       ``deck_pressure: true`` offsets the soak window by the first scan's depth, as
+       seabirdscientific does; on OdB's CNVs (``useDeckPress = 1``, recordings starting in the
+       water) SBE Data Processing matched no offset, which ``deck_pressure: 0`` reproduces.
+   * - ``split``
+     - Product only: ``down`` or ``up`` keeps that leg (to and from the deepest scan).
+   * - ``binavg``
+     - Product only, and last: ``bin`` (``decibars``, ``seconds``, ``scans``), ``size``, and
+       optionally ``exclude_flagged`` (default true: scans Loop Edit marked are left out),
+       ``min_scans``, ``max_scans``, ``skip_over``, ``omit``, ``surface_bin: {min, max, value}`` and
+       ``interpolate``.  A value whose ``_qc`` is 4 or 9 is left out of its own bin only, so one
+       marked oxygen value does not remove that scan's temperature.  Salinity is re-derived from
+       the binned values.  Applied with ``seabirdscientific``.  Stage 3 refuses a config that lists one, because the
        steps after it would run on data it was meant to change first; set
        ``data_processing.allow_unapplied: true`` to run anyway, skipping it.  The skip is named in
        a warning, in ``history``, and in the stage-3 file's ``data_processing_steps`` attribute
@@ -262,6 +294,15 @@ gets the slope, salinity and QC.
                  value: -0.015
        - celltm:
            conductivity: {alpha: 0.0275, tau: 6.5}
+       - loopedit: {min_velocity: 0.25, surface_soak: {min_depth: 5, max_depth: 20, deck_pressure: true}}
+     products:
+       - name: 1dbar_down
+         steps:
+           - split: down
+           - binavg: {bin: decibars, size: 1}
+       - name: 1sec
+         steps:
+           - binavg: {bin: seconds, size: 1}
 
 ``qc``, ``clock`` and ``fit`` blocks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

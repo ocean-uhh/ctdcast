@@ -366,18 +366,21 @@ One cast in, one cast out, once per cast.
 - **Stage 3 — corrections, calibration and QC.** First the per-sensor conductivity slope
   and offset (``data_processing.slope_offset``), where Sea-Bird applies them; then the
   processing steps listed in ``data_processing.steps``, in that order, at the cast's native
-  scan rate — Wild Edit, conductivity alignment and cell thermal mass so far (Sea-Bird's
-  ``wild_edit`` / ``align_ctd`` / ``cell_thermal_mass`` through ``seabirdscientific``,
-  Sea-Bird's Python package, with the alignment and cell-thermal-mass parameters
-  ``ctdcast fit`` suggests); then salinity re-derived, then — on a ``.hex`` cast carrying
-  the SBE 43 voltage — ``ctd_oxygen`` derived from the aligned voltage. Gross-range and
-  spike QC run **last**, judging the corrected values. Wild Edit marks values in
-  ``_qc`` and keeps them. A cast not at its native scan rate, or one Sea-Bird already
-  processed the same way, skips the native-rate steps with a warning and still gets the
-  calibration, salinity and QC. ``seabirdscientific`` is meant to match SBE Data
+  scan rate — Wild Edit, Window Filter, Filter, Align CTD, Cell Thermal Mass and Loop Edit,
+  each with ``seabirdscientific``, Sea-Bird's Python package (the alignment and
+  cell-thermal-mass parameters are what ``ctdcast fit`` suggests); then salinity re-derived,
+  then — on a ``.hex`` cast carrying the SBE 43 voltage — ``ctd_oxygen`` derived from the
+  aligned voltage. Gross-range and spike QC run **last**, judging the corrected values. Edits
+  mark values in ``_qc`` and keep them; Loop Edit's whole-scan marks are also kept as
+  ``loop_edit_flag``. The stage-3 file keeps every scan; Split and Bin Average make
+  **products** beside it (``data_processing.products``: a 1 dbar downcast, a 1 s series), each
+  its own file under ``<ctd_root>/products/``. A cast not at its native scan rate, or one
+  Sea-Bird already processed the same way, skips the native-rate steps with a warning and still
+  gets the calibration, salinity and QC. ``seabirdscientific`` is meant to match SBE Data
   Processing, Sea-Bird's Windows program, and mostly does; where it appears not to, ctdcast
-  records which it followed: the SBE 43 hysteresis (``oxygen_hysteresis_method``) and Wild
-  Edit on near-constant blocks (see the ``wildedit`` step in :ref:`config_yaml`). Deliberately
+  records which it followed: the SBE 43 hysteresis (``oxygen_hysteresis_method``), Wild Edit
+  on near-constant blocks, and Loop Edit's deck-pressure offset (see the ``wildedit`` and
+  ``loopedit`` steps in :ref:`config_yaml`). Deliberately
   **iterative**: re-run it as calibration improves, which is why it
   must not consume its own output.
 

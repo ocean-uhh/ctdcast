@@ -20,7 +20,13 @@ def test_odb_steps_in_run_order():
         "filter",
         "filter",
         "celltm",
-        "binavg",
+    ]
+    # Bin Average changes which scans there are, so it opens a product.
+    assert out["products"] == [
+        {
+            "name": "1dbar",
+            "steps": [{"binavg": out["products"][0]["steps"][0]["binavg"]}],
+        }
     ]
     assert [s["module"] for s in out["skipped"]] == ["datcnv", "Derive"]
 
@@ -50,12 +56,13 @@ def test_filter_a_and_b_are_two_steps():
 
 
 def test_celltm_per_sensor_and_binavg():
-    steps = processing_steps(header_text_of(FIX / "cnv" / "mixsed2_004.cnv"))["steps"]
+    out = processing_steps(header_text_of(FIX / "cnv" / "mixsed2_004.cnv"))
+    steps = out["steps"]
     assert steps[4]["celltm"] == {
         "conductivity_1": {"alpha": 0.03, "tau": 7.0},
         "conductivity_2": {"alpha": 0.03, "tau": 7.0},
     }
-    bavg = steps[5]["binavg"]
+    bavg = out["products"][0]["steps"][0]["binavg"]
     assert bavg["bin"] == "decibars" and bavg["size"] == 1
     assert bavg["surface_bin"] is None
 
@@ -70,8 +77,12 @@ def test_other_order_alignctd_and_loopedit():
         "celltm",
         "loopedit",
         "wildedit",
-        "binavg",
     ]
+    assert out["products"][0]["steps"][0]["binavg"]["surface_bin"] == {
+        "min": 0.0,
+        "max": 0.0,
+        "value": 0.0,
+    }
     le = out["steps"][4]["loopedit"]
     assert le["min_velocity"] == 0.1
     assert le["surface_soak"] == {
@@ -86,6 +97,7 @@ def test_yaml_round_trips():
     text = header_text_of(FIX / "cnv" / "mixsed2_004.cnv")
     loaded = yaml.safe_load(processing_yaml(text))
     assert loaded["data_processing"]["steps"] == processing_steps(text)["steps"]
+    assert loaded["data_processing"]["products"] == processing_steps(text)["products"]
     assert "# not a step: datcnv" in processing_yaml(text)
 
 
@@ -159,3 +171,20 @@ def test_no_stacked_advance_without_a_conductivity_alignctd():
         text = header_text_of(path)
         assert stacked_advances(text) == []
         assert "# check:" not in processing_yaml(text)
+
+
+def test_a_split_becomes_one_product_per_leg():
+    from ctdcast.config.sbe_steps import _as_products
+
+    trunk, products = _as_products(
+        [
+            {"wildedit": {}},
+            {"split": {"exclude_flagged": True}},
+            {"loopedit": {"min_velocity": 0.25}},
+            {"binavg": {"bin": "decibars", "size": 1}},
+        ]
+    )
+    assert trunk == [{"wildedit": {}}]
+    assert [p["name"] for p in products] == ["1dbar_down", "1dbar_up"]
+    assert products[1]["steps"][0] == {"split": "up"}
+    assert next(iter(products[0]["steps"][1])) == "loopedit"

@@ -1,4 +1,4 @@
-"""Stage-3 editing at the native scan rate: Sea-Bird's Wild Edit.
+"""Stage-3 editing at the native scan rate: Sea-Bird's Wild Edit and Loop Edit.
 
 Wild Edit marks values that sit far from the rest of their block of scans, as SBE Data
 Processing's module of the same name does: in each block of ``scans_per_block`` scans, the
@@ -23,6 +23,19 @@ marked in the cruise's CNV, which marked 5–10 times more on those channels, in
 cause is inferred from the output, not from the Windows program's source.  A ``mindelta`` of a few
 A/D steps on such channels avoids both.
 
+Loop Edit marks whole scans where the package went up on the downcast (or down on the upcast),
+moved slower than ``min_velocity``, or was still in the surface soak, with
+:func:`seabirdscientific.processing.loop_edit`.  ctdcast keeps every value: the marks go into
+``loop_edit_flag`` and QARTOD 4 in each variable's ``_qc``, and later steps (Wild Edit and Window
+Filter with ``exclude_flagged``, Bin Average) leave the marked scans out.
+
+**Deck pressure.**  With ``deck_pressure: true``, seabirdscientific offsets the soak window by the
+first scan's depth.  On OdB casts 011, 017 and 050, whose CNV headers say ``useDeckPress = 1``, SBE
+Data Processing's marks match no offset instead (the recordings start with the package already in
+the water, 1.8–7.5 dbar): with the first-scan offset the soak runs 90–800 scans longer, with none
+the two agree except at 20–40 single scans at the speed threshold.  ``deck_pressure`` also takes a
+number, the deck pressure in dbar, so ``deck_pressure: 0`` reproduces those CNVs.
+
 Configuration, a step in ``data_processing.steps``::
 
     - wildedit:
@@ -32,6 +45,10 @@ Configuration, a step in ``data_processing.steps``::
         scans_per_block: 100
         exclude_flagged: true    # leave scans an earlier Loop Edit marked out of the statistics
         variables: [pressure, ctd_temperature_1, conductivity_1]
+    - loopedit:
+        min_velocity: 0.25         # dbar/s; or mean_speed_percent: 20 with window_seconds: 300
+        surface_soak: {min_depth: 5.0, max_depth: 20.0, deck_pressure: true}   # or false
+        exclude_flagged: true
 """
 
 from __future__ import annotations
@@ -41,6 +58,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import xarray as xr
+from seabirdscientific import conversion as sbs_conversion
 from seabirdscientific import processing as sbs_processing
 
 from ctdcast.config.cnv_header import applied_sbe_corrections, header_from_raw_metadata
@@ -278,3 +296,274 @@ def apply_wild_edit(
         note += f"; not in this cast: {', '.join(absent)}"
     append_history(ds.attrs, note, stage="stage3")
     return ds, marks
+
+
+# --- Loop Edit ---------------------------------------------------------------------------------
+
+#: What ``loop_edit_flag`` holds.
+LOOP_EDIT_FLAG = "loop_edit_flag"
+
+
+@dataclass(frozen=True)
+class LoopEdit:
+    """Resolved Loop Edit parameters.
+
+    Attributes
+    ----------
+    min_velocity : float
+        Slowest good speed along the leg, dbar/s (``fixed``), or the floor under the percent rule.
+    mean_speed_percent : float or None
+        When set, a scan is good if its speed is at least this percentage of the mean speed over
+        ``window_seconds``; None for the fixed rule.
+    window_seconds : float
+        The window of the mean-speed rule.
+    surface_soak : bool
+        Mark the surface soak: the scans before the package passes ``min_depth`` after its last
+        excursion above it, below ``max_depth``.
+    min_depth, max_depth : float
+        The soak window, in metres.
+    deck_pressure : bool or float
+        True: offset the soak window by the first scan's depth (seabirdscientific's meaning); a
+        number: offset it by that pressure, in dbar; False: no offset.
+    exclude_flagged : bool
+        Keep the marks of an earlier Loop Edit.
+    """
+
+    min_velocity: float
+    mean_speed_percent: float | None
+    window_seconds: float
+    surface_soak: bool
+    min_depth: float
+    max_depth: float
+    deck_pressure: bool | float
+    exclude_flagged: bool
+
+    def describe(self) -> str:
+        """Return the parameters as one line, for attributes and ``history``."""
+        rule = (
+            f"min_velocity={self.min_velocity:g} dbar/s"
+            if self.mean_speed_percent is None
+            else f"mean_speed_percent={self.mean_speed_percent:g} over {self.window_seconds:g} s "
+            f"(min_velocity={self.min_velocity:g})"
+        )
+        soak = (
+            f"surface_soak min_depth={self.min_depth:g} max_depth={self.max_depth:g} "
+            f"deck_pressure={self.deck_pressure if isinstance(self.deck_pressure, bool) else f'{self.deck_pressure:g} dbar'}"
+            if self.surface_soak
+            else "no surface soak"
+        )
+        return f"{rule}; {soak}"
+
+
+def resolve_loop_edit(params: object) -> LoopEdit:
+    """Return the Loop Edit parameters of a ``loopedit`` step.
+
+    Parameters
+    ----------
+    params : dict
+        ``min_velocity`` (default 0.25 dbar/s), or ``mean_speed_percent`` with ``window_seconds``
+        (default 300); ``surface_soak: {min_depth, max_depth, deck_pressure}`` (default 5, 20,
+        true), or ``surface_soak: false``; ``exclude_flagged`` (default true).
+
+    Returns
+    -------
+    LoopEdit
+        The resolved parameters.
+
+    Raises
+    ------
+    ValueError
+        On an unknown key or a value of the wrong kind.
+    """
+    params = params or {}
+    if not isinstance(params, dict):
+        raise ValueError(f"loopedit: expected a mapping, got {params!r}")
+    unknown = set(params) - {
+        "min_velocity",
+        "mean_speed_percent",
+        "window_seconds",
+        "surface_soak",
+        "exclude_flagged",
+    }
+    if unknown:
+        raise ValueError(f"loopedit: unknown key(s) {sorted(unknown)}")
+    vmin = _number(params.get("min_velocity", 0.25), "loopedit.min_velocity")
+    pct = params.get("mean_speed_percent")
+    pct = None if pct is None else _number(pct, "loopedit.mean_speed_percent")
+    window = _number(params.get("window_seconds", 300.0), "loopedit.window_seconds")
+    if vmin < 0 or window <= 0 or (pct is not None and not 0 < pct <= 100):
+        raise ValueError(
+            "loopedit: min_velocity must not be negative, window_seconds positive, "
+            "mean_speed_percent in (0, 100]"
+        )
+    soak = params.get("surface_soak", {})
+    if soak is False:
+        on, lo, hi, deck = False, 0.0, 0.0, False
+    elif isinstance(soak, dict):
+        extra = set(soak) - {"min_depth", "max_depth", "deck_pressure"}
+        if extra:
+            raise ValueError(f"loopedit.surface_soak: unknown key(s) {sorted(extra)}")
+        on = True
+        lo = _number(soak.get("min_depth", 5.0), "loopedit.surface_soak.min_depth")
+        hi = _number(soak.get("max_depth", 20.0), "loopedit.surface_soak.max_depth")
+        deck = soak.get("deck_pressure", True)
+        if not isinstance(deck, bool):
+            deck = _number(deck, "loopedit.surface_soak.deck_pressure")
+        if hi < lo:
+            raise ValueError(
+                "loopedit.surface_soak: max_depth is shallower than min_depth"
+            )
+    else:
+        raise ValueError(
+            f"loopedit.surface_soak: expected a mapping or false, got {soak!r}"
+        )
+    excl = params.get("exclude_flagged", True)
+    if not isinstance(excl, bool):
+        raise ValueError(
+            f"loopedit.exclude_flagged: expected true or false, got {excl!r}"
+        )
+    return LoopEdit(vmin, pct, window, on, lo, hi, deck, excl)
+
+
+def _latitude(ds: xr.Dataset) -> float | None:
+    for name in ("latitude", "lat"):
+        if name in ds.variables:
+            lat = np.asarray(ds[name].values, dtype=float)
+            if np.isfinite(lat).any():
+                return float(np.nanmean(lat))
+    return None
+
+
+def loop_edit_mask(
+    pressure: np.ndarray,
+    params: LoopEdit,
+    interval: float,
+    latitude: float,
+    excluded: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return the scans Loop Edit marks, with :func:`seabirdscientific.processing.loop_edit`.
+
+    Parameters
+    ----------
+    pressure : numpy.ndarray
+        Sea pressure, dbar, at the native scan rate.
+    params : LoopEdit
+        The resolved parameters.
+    interval : float
+        Scan interval, seconds.
+    latitude : float
+        For the depth conversion.
+    excluded : numpy.ndarray, optional
+        Scans an earlier Loop Edit marked, kept when ``exclude_flagged``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean, true at the scans marked.
+    """
+    p = np.asarray(pressure, dtype=float)
+    finite = np.isfinite(p)
+    if not finite.any():
+        return np.ones(p.size, dtype=bool)
+    if not finite.all():
+        idx = np.arange(p.size)
+        p = p.copy()
+        p[~finite] = np.interp(idx[~finite], idx[finite], p[finite])
+    flag = np.zeros(p.size)
+    if excluded is not None:
+        flag[np.asarray(excluded, dtype=bool)] = sbs_processing.FLAG_VALUE
+    lo, hi, deck = params.min_depth, params.max_depth, params.deck_pressure
+    if not isinstance(deck, bool):
+        # An explicit deck pressure: offset the soak window by its depth.
+        shift = float(sbs_conversion.depth_from_pressure(np.array([deck]), latitude)[0])
+        lo, hi, deck = lo + shift, hi + shift, False
+    out = sbs_processing.loop_edit(
+        p,
+        flag,
+        interval,
+        "fixed" if params.mean_speed_percent is None else "percent",
+        params.min_velocity,
+        params.window_seconds,
+        params.mean_speed_percent or 20.0,
+        params.surface_soak,
+        lo,
+        hi,
+        deck,
+        params.exclude_flagged,
+        latitude=latitude,
+        units="pressure",
+    )
+    return (out == sbs_processing.FLAG_VALUE) | ~finite
+
+
+def apply_loop_edit(
+    ds: xr.Dataset,
+    params: dict,
+    interval: float,
+    *,
+    excluded: np.ndarray | None = None,
+) -> tuple[xr.Dataset, np.ndarray]:
+    """Apply Loop Edit to one cast: mark whole scans, keep every value.
+
+    The marks are written as ``loop_edit_flag`` (1 where marked) and as QARTOD 4 in every
+    variable that has a ``_qc``; the parameters are recorded on ``loop_edit_flag`` and in
+    ``history``.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        A dataset at its native scan rate, with ``pressure``.
+    params : dict
+        The ``loopedit`` step's parameters (see :func:`resolve_loop_edit`).
+    interval : float
+        Scan interval, seconds.
+    excluded : numpy.ndarray, optional
+        Scans an earlier Loop Edit marked.
+
+    Returns
+    -------
+    tuple of (xarray.Dataset, numpy.ndarray)
+        A new dataset (the input is not mutated) and the scans marked, including any from an
+        earlier Loop Edit kept by ``exclude_flagged``.
+
+    Raises
+    ------
+    ValueError
+        On malformed parameters, or no ``pressure``.
+    """
+    p = resolve_loop_edit(params)
+    if "pressure" not in ds:
+        raise ValueError("loopedit: the cast has no pressure")
+    lat = _latitude(ds)
+    mask = loop_edit_mask(
+        ds["pressure"].values, p, interval, 0.0 if lat is None else lat, excluded
+    )
+    ds = ds.copy()
+    method = f"seabirdscientific {_version()} processing.loop_edit"
+    ds[LOOP_EDIT_FLAG] = (
+        "time",
+        mask.astype(np.int8),
+        {
+            "long_name": "Scan marked by Loop Edit",
+            "flag_values": np.array([0, 1], dtype=np.int8),
+            "flag_meanings": "not_marked marked",
+            "comment": "Pressure reversal, too slow along the leg, or surface soak; every "
+            "value is kept and flagged QARTOD 4 in its _qc.",
+            "loop_edit": p.describe(),
+            "loop_edit_method": method,
+        },
+    )
+    flagged = []
+    for name in list(ds.data_vars):
+        qc = f"{name}_qc"
+        if name.endswith("_qc") or qc not in ds or ds[name].dims != ("time",):
+            continue
+        values = ds[qc].values.copy()
+        _raise_flag(values, mask, QARTOD_FAIL)
+        ds[qc] = (ds[qc].dims, values, ds[qc].attrs)
+        flagged.append(name)
+    note = f"loopedit: {p.describe()}; marked {int(mask.sum())} of {mask.size} scans"
+    if lat is None:
+        note += "; no latitude in the cast, depth computed at latitude 0"
+    append_history(ds.attrs, note, stage="stage3")
+    return ds, mask

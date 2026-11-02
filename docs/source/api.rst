@@ -327,6 +327,12 @@ Cast processing
 .. automodule:: ctdcast.processors.editing
    :members:
 
+.. automodule:: ctdcast.processors.filtering
+   :members:
+
+.. automodule:: ctdcast.processors.products
+   :members:
+
 .. automodule:: ctdcast.processors.corrections
    :members:
    :undoc-members:

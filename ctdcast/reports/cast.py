@@ -32,6 +32,7 @@ from ctdcast.config.cnv_header import (
     detect_instrument,
     header_from_raw_metadata,
     no_reference_tick,
+    pressure_filter_reference_tick,
     provenance_advisories,
     sensor_calibrations,
 )
@@ -1025,6 +1026,51 @@ def _ctdcast_correction_rows(
             lambda k, vs=edited_names: no_reference_tick(k, "wildedit", vs),
         )
 
+    # Filters: one row per filter, naming every variable it changed, in the order applied.
+    by_filter: dict[str, list[str]] = {}
+    for v in names:
+        for part in str(ds[v].attrs.get("filters", "")).split(";"):
+            if part.strip():
+                by_filter.setdefault(part.strip(), []).append(v)
+    history_text = str(ds.attrs.get("history", ""))
+
+    def _ran_at(text: str) -> int:
+        # Each filter's history line, e.g. "filter: low-pass time constant 0.03 s on ...".
+        phrase = text.replace("low-pass ", "low-pass time constant ").replace(
+            "window ", "window_filter: ", 1
+        )
+        at = history_text.find(phrase)
+        return at if at >= 0 else len(history_text)
+
+    for text, variables in sorted(by_filter.items(), key=lambda kv: _ran_at(kv[0])):
+        label = "window_filter" if text.startswith("window") else "filter"
+        tc = re.match(r"low-pass ([0-9.eE+-]+) s", text)
+        joined = ", ".join(variables)
+        if tc and "pressure" in variables:
+            tc_seconds = float(tc.group(1))
+            tick_of = lambda k, t=tc_seconds, vs=joined: (  # noqa: E731
+                pressure_filter_reference_tick(k, "filter", t, vs)
+            )
+        else:
+            tick_of = lambda k, lab=label, vs=joined: no_reference_tick(k, lab, vs)  # noqa: E731
+        add(
+            label,
+            f"ctdcast stage 3 (seabirdscientific {'window_filter' if label == 'window_filter' else 'low_pass_filter'})",
+            str(ds[variables[0]].attrs.get("filters_method", "")),
+            text,
+            tick_of,
+        )
+    if "loop_edit_flag" in ds:
+        a = ds["loop_edit_flag"].attrs
+        n_marked = int(np.asarray(ds["loop_edit_flag"].values).sum())
+        add(
+            "loopedit",
+            "ctdcast stage 3 (seabirdscientific loop_edit)",
+            str(a.get("loop_edit_method", "")),
+            f"{a.get('loop_edit', '')}; {n_marked} of {ds['loop_edit_flag'].size} scans marked "
+            "(QARTOD 4, kept)",
+            lambda k: no_reference_tick(k, "loopedit", "all channels (whole scans)"),
+        )
     for v in names:
         a = ds[v].attrs
         if "alignment_offset_seconds" in a:
@@ -1117,6 +1163,7 @@ def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
         f"<tbody>{_corrections_rows_with_ticks(records, ticks)}</tbody></table>"
         f"{_references_caption(ticks)}"
         f"{_WILD_EDIT_NOTE if any(r.label == 'wildedit' for r in records) else ''}"
+        f"{_LOOP_EDIT_NOTE if 'deck_pressure=True' in str(ds.get('loop_edit_flag', xr.DataArray()).attrs.get('loop_edit', '')) else ''}"
     )
 
 
@@ -1129,6 +1176,15 @@ _WILD_EDIT_NOTE = (
     "surface): with <code>mindelta</code> 0, the Windows program marks the whole block, "
     "seabirdscientific only the values off the block's main level. A <code>mindelta</code> of "
     "a few A/D steps avoids both.</p>"
+)
+
+
+#: Under the ctdcast corrections table when Loop Edit offset its soak window by the first scan.
+_LOOP_EDIT_NOTE = (
+    "<p class='caption'>Loop Edit's <code>deck_pressure: true</code> offsets the surface-soak "
+    "window by the first scan's depth, as seabirdscientific does. On OdB's recordings, which "
+    "start with the package in the water, SBE Data Processing matched no offset; "
+    "<code>deck_pressure: 0</code> reproduces it.</p>"
 )
 
 

@@ -14,6 +14,7 @@ attribute.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -23,7 +24,20 @@ import xarray as xr
 
 from ctdcast.identity import expand_cast_numbers
 from ctdcast.processors import corrections as C
-from ctdcast.processors.editing import apply_wild_edit, resolve_wild_edit
+from ctdcast.processors.editing import (
+    apply_loop_edit,
+    apply_wild_edit,
+    resolve_loop_edit,
+    resolve_wild_edit,
+)
+from ctdcast.processors.filtering import (
+    apply_filter,
+    apply_window_filter,
+    check_filter,
+    check_window_filter,
+)
+from ctdcast.processors.history import append_history
+from ctdcast.processors.products import check_binavg, check_products, check_split
 
 
 @dataclass
@@ -37,7 +51,10 @@ class StepContext:
     cast_label : str
         How the cast is named in warnings.
     excluded : numpy.ndarray or None
-        Scans an earlier Loop Edit marked, for a later Wild Edit's ``exclude_flagged``.
+        Scans an earlier Loop Edit marked, for a later Wild Edit's or Window Filter's
+        ``exclude_flagged``.
+    marked : dict
+        ``{variable: mask}`` of values an earlier Wild Edit marked, which later filters leave out.
     changed : set of str
         Variables whose values a step changed.
     edge_masks : dict
@@ -49,16 +66,52 @@ class StepContext:
     cast_number: int | None = None
     cast_label: str = "?"
     excluded: np.ndarray | None = None
+    marked: dict[str, np.ndarray] = field(default_factory=dict)
     changed: set[str] = field(default_factory=set)
     edge_masks: dict[str, np.ndarray] = field(default_factory=dict)
     applied: list[str] = field(default_factory=list)
 
 
 def _apply_wildedit(ds: xr.Dataset, params: dict, ctx: StepContext) -> xr.Dataset:
-    ds, _marks = apply_wild_edit(
+    ds, marks = apply_wild_edit(
         ds, {"wildedit": params}, excluded=ctx.excluded, cast_label=ctx.cast_label
     )
+    for var, mask in marks.items():
+        ctx.marked[var] = ctx.marked.get(var, np.zeros(mask.size, dtype=bool)) | mask
     return ds
+
+
+def _skip_reason(ds: xr.Dataset, module: str) -> str | None:
+    """Why a scan-by-scan step cannot run on this cast, or None when it can."""
+    interval, reason = C.native_interval(ds)
+    if reason is not None or interval is None:
+        return reason or "not at the native scan rate"
+    header = C.header_from_raw_metadata(ds.attrs.get("raw_metadata")) or ""
+    if module in C.applied_sbe_corrections(header)["modules"]:
+        return f"Sea-Bird {module} already ran"
+    return None
+
+
+def _apply_filtering(
+    name: str, module: str
+) -> Callable[[xr.Dataset, dict, StepContext], xr.Dataset]:
+    def run(ds: xr.Dataset, params: dict, ctx: StepContext) -> xr.Dataset:
+        reason = _skip_reason(ds, module)
+        if reason is not None:
+            message = f"{name} skipped: {reason}"
+            warnings.warn(f"cast {ctx.cast_label}: {message}", stacklevel=3)
+            append_history(ds.attrs, message, stage="stage3")
+            return ds
+        if name == "filter":
+            ds, done = apply_filter(ds, params, marked=ctx.marked)
+        else:
+            ds, done = apply_window_filter(
+                ds, params, marked=ctx.marked, excluded=ctx.excluded
+            )
+        ctx.changed.update(done)
+        return ds
+
+    return run
 
 
 def _apply_correction(
@@ -101,6 +154,39 @@ def _check_wildedit(params: dict, cast: int | None) -> None:  # noqa: ARG001  # 
     resolve_wild_edit({"wildedit": params})
 
 
+def _apply_loopedit(ds: xr.Dataset, params: dict, ctx: StepContext) -> xr.Dataset:
+    reason = _skip_reason(ds, "loopedit")
+    if reason is not None:
+        message = f"loopedit skipped: {reason}"
+        warnings.warn(f"cast {ctx.cast_label}: {message}", stacklevel=3)
+        append_history(ds.attrs, message, stage="stage3")
+        return ds
+    interval, _ = C.native_interval(ds)
+    ds, mask = apply_loop_edit(ds, params, interval, excluded=ctx.excluded)
+    ctx.excluded = mask if ctx.excluded is None else (ctx.excluded | mask)
+    return ds
+
+
+def _check_loopedit(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # one signature for every check
+    resolve_loop_edit(params)
+
+
+def _check_filter(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # one signature for every check
+    check_filter(params)
+
+
+def _check_window_filter(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # one signature for every check
+    check_window_filter(params)
+
+
+def _check_split(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # one signature for every check
+    check_split(params)
+
+
+def _check_binavg(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # one signature for every check
+    check_binavg(params)
+
+
 def _check_mapping(params: Any, cast: int | None) -> None:  # noqa: ANN401, ARG001  # not applied yet: shape only
     if not isinstance(params, dict):
         raise ValueError(f"expected a mapping of parameters, got {params!r}")
@@ -125,6 +211,9 @@ class Step:
     check: Callable[[Any, int | None], None]
 
 
+#: Steps that change which scans there are: allowed only in ``data_processing.products``.
+PRODUCT_ONLY = ("split", "binavg")
+
 #: Every step ``data_processing.steps`` may list, in no particular order.
 STEPS: dict[str, Step] = {
     s.name: s
@@ -132,11 +221,15 @@ STEPS: dict[str, Step] = {
         Step("wildedit", _apply_wildedit, _check_wildedit),
         Step("alignctd", _apply_correction("alignctd"), _check_alignctd),
         Step("celltm", _apply_correction("celltm"), _check_celltm),
-        Step("window_filter", None, _check_mapping),
-        Step("filter", None, _check_mapping),
-        Step("loopedit", None, _check_mapping),
-        Step("split", None, _check_mapping),
-        Step("binavg", None, _check_mapping),
+        Step(
+            "window_filter",
+            _apply_filtering("window_filter", "wfilter"),
+            _check_window_filter,
+        ),
+        Step("filter", _apply_filtering("filter", "filter"), _check_filter),
+        Step("loopedit", _apply_loopedit, _check_loopedit),
+        Step("split", None, _check_split),
+        Step("binavg", None, _check_binavg),
     )
 }
 
@@ -191,7 +284,11 @@ def unapplied(data_processing: dict | None) -> list[str]:
     list of str
         Step names.
     """
-    names = [n for n, _ in iter_steps(data_processing) if STEPS[n].apply is None]
+    names = [
+        n
+        for n, _ in iter_steps(data_processing)
+        if STEPS[n].apply is None and n not in PRODUCT_ONLY
+    ]
     return list(dict.fromkeys(names))
 
 
@@ -214,10 +311,24 @@ def validate_data_processing(data_processing: dict | None) -> None:
         ``allow_unapplied``.
     """
     dp = data_processing or {}
-    unknown = set(dp) - {"steps", "slope_offset", "oxygen", "allow_unapplied"}
+    unknown = set(dp) - {
+        "steps",
+        "products",
+        "slope_offset",
+        "oxygen",
+        "allow_unapplied",
+    }
     if unknown:
         raise ValueError(f"data_processing: unknown key(s) {sorted(unknown)}")
     steps = iter_steps(dp)
+    for i, (name, _params) in enumerate(steps):
+        if name in PRODUCT_ONLY:
+            raise ValueError(
+                f"data_processing.steps[{i}]: {name} changes which scans there are; the "
+                "stage-3 file keeps every scan, so put it in a product "
+                "(data_processing.products)"
+            )
+    check_products(dp.get("products"))
     casts: set[int | None] = {None} | _ranges_casts(dp.get("slope_offset"))
     for _name, params in steps:
         casts |= _ranges_casts(params)

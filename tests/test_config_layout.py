@@ -166,9 +166,8 @@ def test_inspect_block_and_init_template_validate():
 
     fix = Path(__file__).parent / "fixtures" / "cnv" / "mixsed2_004.cnv"
     block_dp = yaml.safe_load(processing_yaml(header_text_of(fix)))["data_processing"]
-    with pytest.raises(ValueError, match="does not apply yet"):
-        validate_config(block_dp)
-    validate_config({**block_dp, "allow_unapplied": True})
+    assert [p["name"] for p in block_dp["products"]] == ["1dbar"]
+    validate_config(block_dp)
     # The init template's data_processing block, uncommented, is valid.
     lines = _CONFIG_TEMPLATE.splitlines()
     start = lines.index("# data_processing:")
@@ -181,21 +180,34 @@ def test_inspect_block_and_init_template_validate():
     processing_view(yaml.safe_load(_CONFIG_TEMPLATE.split("_SECTIONS")[0]))
 
 
-def test_unapplied_steps_refused_unless_allowed_and_recorded(tmp_path):
+def test_unapplied_steps_refused_unless_allowed(monkeypatch):
+    from ctdcast.processors import steps as S
+
+    monkeypatch.setitem(
+        S.STEPS, "loopedit", S.Step("loopedit", None, lambda p, c: None)
+    )
     dp = {
         "steps": [
             {"wildedit": {}},
-            {"filter": {"time_constant": 0.03}},
+            {"loopedit": {}},
             {"celltm": {"conductivity": {"alpha": 0.03, "tau": 7}}},
         ]
     }
     with pytest.raises(
-        ValueError, match="lists filter, which stage 3 does not apply yet"
+        ValueError, match="lists loopedit, which stage 3 does not apply yet"
     ):
         validate_config(dp)
     validate_config({**dp, "allow_unapplied": True})
     with pytest.raises(ValueError, match="unknown key"):
         validate_config({**dp, "allow_unaplied": True})
+
+
+@pytest.mark.parametrize(
+    "step", [{"binavg": {"bin": "decibars", "size": 1}}, {"split": "down"}]
+)
+def test_product_only_steps_refused_in_the_stage3_steps(step):
+    with pytest.raises(ValueError, match="put it in a product"):
+        validate_config({"steps": [step]})
 
 
 def test_step_registry_is_the_one_list():
@@ -219,7 +231,11 @@ def test_step_registry_is_the_one_list():
         "wildedit",
         "alignctd",
         "celltm",
+        "filter",
+        "window_filter",
+        "loopedit",
     }
+    assert {n for n, s in STEPS.items() if not s.apply} == {"split", "binavg"}
 
 
 def test_celltm_header_with_mismatched_lists_is_refused():
