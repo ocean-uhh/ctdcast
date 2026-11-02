@@ -744,6 +744,12 @@ def provenance_advisories(header_text: str) -> list[str]:
             "salinity at sharp temperature steps — confirm from the data."
         )
 
+    for stack in stacked_advances(header_text):
+        advisories.append(
+            f"{stack.sentence()} The deck unit's advance is already in the raw scans, so this is "
+            "either a deliberate residual or the same advance applied twice — confirm from the data."
+        )
+
     # Only claim an offset when both clocks parsed; offset_seconds is None otherwise.
     if start.clock == "system" and acq.clocks.offset_seconds is not None:
         advisories.append(
@@ -1269,6 +1275,104 @@ def conformance_supported(header_text: str) -> bool:
     return instrument is not None and instrument.upper().startswith("SBE 9")
 
 
+_RE_CONDUCTIVITY_CHANNEL = re.compile(r"^c([01])", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class StackedAdvance:
+    """A software conductivity advance applied on top of the deck unit's advance of the same channel.
+
+    ``channel`` is the SBE column (``c0S/m``); ``deck`` and ``software`` are the two advances in
+    seconds and ``total`` their sum, which is what the data carry.
+    """
+
+    channel: str
+    deck: float
+    software: float
+
+    @property
+    def total(self) -> float:
+        """The advance the data carry: the deck unit's plus the software one."""
+        return self.deck + self.software
+
+    def sentence(self) -> str:
+        """Return the finding as one sentence."""
+        return (
+            f"{self.channel} was advanced {self.software:+.3f} s by Align CTD on top of the deck "
+            f"unit's {self.deck:+.3f} s: {self.total:+.3f} s in all."
+        )
+
+
+def stacked_advances(header_text: str) -> list[StackedAdvance]:
+    """Return each conductivity that Align CTD advanced again after the deck unit advanced it.
+
+    The SBE 11plus deck unit advances primary and secondary conductivity in hardware (0.073 s by
+    default), so the advance is already in the raw scans.  An ``alignctd`` advance of the same
+    channel adds to it.  That can be deliberate (a residual found from the data), but more often
+    the deck unit's advance has been applied twice.
+
+    Parameters
+    ----------
+    header_text : str
+        The verbatim CNV header.
+
+    Returns
+    -------
+    list of StackedAdvance
+        In the order the channels appear in the ``alignctd`` step; empty when nothing stacks.
+    """
+    deck = parse_star_block(header_text or "").deck_unit.advance
+    found: list[StackedAdvance] = []
+    for step in parse_processing_chain(header_text or "").steps:
+        if step.module.casefold() != "alignctd":
+            continue
+        for item in (p.strip() for p in step.params.get("adv", "").split(",")):
+            name, _, seconds = item.rpartition(" ")
+            m = _RE_CONDUCTIVITY_CHANNEL.match(name.strip())
+            if m is None:
+                continue
+            role = "primary" if m.group(1) == "0" else "secondary"
+            hw = deck.get(f"{role} conductivity")
+            try:
+                sw = float(seconds)
+            except ValueError:
+                continue
+            if hw and sw:
+                found.append(StackedAdvance(name.strip(), hw, sw))
+    return found
+
+
+def _alignctd_ticks(
+    key: str,
+    step: ProcessingStep,
+    stacked: list[StackedAdvance],
+    rename_map: dict[str, str] | None,
+) -> list[ConformanceTick]:
+    """One tick per Align CTD channel: ✗ where it stacks on the deck unit's advance, else a dash."""
+    by_channel = {s.channel: s for s in stacked}
+    ticks: list[ConformanceTick] = []
+    for item in (p.strip() for p in step.params.get("adv", "").split(",") if p.strip()):
+        name = item.rpartition(" ")[0].strip() or item
+        var = _canonical_var(name, rename_map)
+        s = by_channel.get(name)
+        if s is None:
+            ticks.append(_no_ref_tick(key, "alignctd", f"advance {item} s", var))
+            continue
+        ticks.append(
+            ConformanceTick(
+                key=key,
+                label="alignctd",
+                state=CONFORMANCE_DIFFER,
+                reference="no further advance of a conductivity the deck unit already advanced",
+                source="the deck unit's advance in the same header",
+                detail=f"{name} {s.software:+.3f} s on top of the deck unit's {s.deck:+.3f} s "
+                f"= {s.total:+.3f} s",
+                variables=var,
+            )
+        )
+    return ticks or [_no_ref_tick(key, "alignctd", variables="")]
+
+
 def conformance_ticks(
     header_text: str, rename_map: dict[str, str] | None = None
 ) -> list[ConformanceTick]:
@@ -1290,6 +1394,7 @@ def conformance_ticks(
         return []
     acq = parse_star_block(header_text)
     chain = parse_processing_chain(header_text)
+    stacked = stacked_advances(header_text)
     ticks: list[ConformanceTick] = []
     if acq.deck_unit.advance:
         ticks.extend(_deck_align_ticks(acq.deck_unit))
@@ -1304,6 +1409,8 @@ def conformance_ticks(
             ticks.extend(_filter_ticks(key, step, rename_map))
         elif step.module == "wildedit":
             ticks.extend(_wildedit_ticks(key, step, rename_map))
+        elif step.module == "alignctd":
+            ticks.extend(_alignctd_ticks(key, step, stacked, rename_map))
         else:
             ticks.append(
                 _no_ref_tick(
@@ -1383,7 +1490,9 @@ def conformance_advisories(header_text: str) -> list[str]:
     advisories: list[str] = []
 
     for tick in conformance_ticks(header_text):
-        if tick.state == CONFORMANCE_DIFFER:
+        # A stacked Align CTD advance is not a deviation from a published value; it is
+        # explained once, among the provenance advisories.
+        if tick.state == CONFORMANCE_DIFFER and tick.label != "alignctd":
             advisories.append(
                 f"{tick.label}: {tick.detail} differs from {tick.reference} "
                 f"({tick.source}) — a deviation from a documented typical value; confirm "

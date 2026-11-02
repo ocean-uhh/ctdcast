@@ -41,7 +41,7 @@ class SensorGroup:
     Parameters
     ----------
     config_key : str
-        The ``processing:`` sub-key carrying the declaration — ``"preferred_pair"`` or
+        The settings key carrying the declaration (from ``preferred_sensor.tc`` / ``.oxygen``) — ``"preferred_pair"`` or
         ``"preferred_oxygen"``.  Also the attribute name stamped on the output.
     members : tuple of str
         The composite (plain, unsuffixed) variables this one choice governs, built from
@@ -178,7 +178,7 @@ def resolve_preferred(
     group : SensorGroup
         The group whose declaration to read (``group.config_key`` in *cruise_cfg*).
     cruise_cfg : dict
-        The ``processing:`` config block (``cruise_cfg[group.config_key]`` is the nested
+        The settings from :func:`ctdcast.config.layout.processing_view` (``cruise_cfg[group.config_key]`` is the nested
         ``{default, ranges}`` declaration, or absent).
     cast_number : int
         The cast's integer number (a lettered cast resolves by its number).
@@ -394,7 +394,7 @@ def validate_preferred(
     group : SensorGroup
         The group to check.
     cruise_cfg : dict
-        The ``processing:`` config block.
+        The settings from :func:`ctdcast.config.layout.processing_view`.
     catalog_by_cast : dict of {int: list of dict}
         Per-cast catalog records, keyed by cast number.
 

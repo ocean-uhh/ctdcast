@@ -138,8 +138,45 @@ display:
   # vmax:
   #   CT: 30
 
-# Pipeline processing options.  All optional — sensible defaults are used unless
-# you set these to override per cruise.
+# Pipeline settings.  All optional — sensible defaults are used unless you set
+# these to override per cruise.
+
+# Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
+# gross_range bounds are [min, max]; spike thresholds are on
+# |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
+# default, and the report's QC panel shows the tiers actually applied.  Values
+# are in each variable's stored units: conductivity mS/cm, salinity PSU,
+# temperature deg C, oxygen umol/kg, pressure dbar.
+# qc:
+#   gross_range:
+#     suspect: { ctd_salinity_1: [30.0, 38.0] }
+#     fail:    { ctd_salinity_1: [0.0, 42.0] }
+#   spike:
+#     suspect: { pressure: 10.0 }
+#     fail:    { pressure: 50.0 }
+
+# On a dual-sensor cast, which sensor the plain ctd_temperature / ctd_salinity /
+# ctd_oxygen use: primary (_1) or secondary (_2).
+# preferred_sensor:
+#   tc: primary
+#   oxygen: primary
+
+# What stage 3 applies, in order.  A step runs only if it is listed.  The block
+# below is the SBE Data Processing manual's order for an SBE 911plus (Wild Edit,
+# Filter on pressure, Align CTD, Cell Thermal Mass, Loop Edit); `ctdcast inspect
+# <file>.cnv` prints the block that reproduces a cruise's own CNVs, and
+# `ctdcast fit` suggests the alignctd and celltm values.  Filter and Loop Edit
+# are read but not yet applied.
+# data_processing:
+#   slope_offset:              # per conductivity sensor, from bottle salinities
+#     conductivity_1: {slope: 1.0, offset: 0.0}
+#   steps:
+#     - wildedit: {pass1_nstd: 2.0, pass2_nstd: 20.0, scans_per_block: 100}
+#     - filter: {time_constant: 0.15, variables: [pressure]}
+#     - alignctd: {conductivity: 0.0, oxygen: 3.0}   # conductivity: on top of the deck unit's
+#     - celltm: {conductivity: {alpha: 0.03, tau: 7.0}}
+#     - loopedit: {min_velocity: 0.25}
+
 processing:
   # profiles_dbar: 1        # vertical bin size for the compiled profiles.nc grid
 
@@ -147,24 +184,6 @@ processing:
   # (QARTOD flag 4), not deleted, and excluded from the compiled product.
   # trim:
   #   near_surface_dbar: 10.0
-
-  # Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
-  # gross_range bounds are [min, max]; spike thresholds are on
-  # |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
-  # default, and the report's QC panel shows the tiers actually applied.  Values
-  # are in each variable's stored units: conductivity mS/cm, salinity PSU,
-  # temperature deg C, oxygen umol/kg, pressure dbar.
-  # qc:
-  #   gross_range:
-  #     suspect: { ctd_salinity_1: [30.0, 38.0] }
-  #     fail:    { ctd_salinity_1: [0.0, 42.0] }
-  #   spike:
-  #     suspect: { pressure: 10.0 }
-  #     fail:    { pressure: 50.0 }
-
-  # Stage 3 calibration.
-  # calibration:
-  #   conductivity_slope: 1.0002
 """
 
 _SECTIONS_TEMPLATE = """\

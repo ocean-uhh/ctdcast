@@ -131,7 +131,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 20,
     },
     # Preferred-pair composite: a per-cast copy of ctd_temperature_1 or ctd_temperature_2,
-    # whichever the cast's processing.preferred_pair declaration selects. Built by stage 3
+    # whichever the cast's preferred_sensor.tc declaration selects. Built by stage 3
     # for a dual-sensor cast where a choice is declared; a single-sensor cast carries this
     # plain name natively (stage-1 promotion). Absent on an undeclared dual cast (never a
     # silent _1 fallback). The chosen sensor is recorded in sensor_temperature_preferred.
@@ -243,7 +243,7 @@ VARIABLES: dict[str, dict] = {
         "vmax": 350,
     },
     # ctd_oxygen: preferred-oxygen composite — see ctd_temperature note above, driven by
-    # processing.preferred_oxygen (independent of the T/C pair).
+    # preferred_sensor.oxygen (independent of the T/C pair).
     "ctd_oxygen": {
         "label": "$O_2$",
         "long_name": "Dissolved oxygen (preferred)",
@@ -768,7 +768,7 @@ CCHDO_DIMS: tuple[str, str] = ("N_PROF", "N_LEVELS")
 
 # Preferred-channel composite: maps the plain (unsuffixed) ctdcast name to the CCHDO
 # nc_var name. The plain name is a single-sensor cast's native channel, or — for a
-# dual-sensor cast — the channel selected by processing.preferred_pair /
+# dual-sensor cast — the channel selected by preferred_sensor.tc /
 # preferred_oxygen and built at stage 3. An undeclared dual cast has no plain name
 # (so an export sees it absent, never a silent _1). conductivity is not here: CCHDO
 # stores salinity, not conductivity, so the conductivity composite is internal only.

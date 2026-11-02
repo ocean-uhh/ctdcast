@@ -29,17 +29,23 @@ is reconstructable from the output file alone.  A step that cannot apply to a ca
 binned, or Sea-Bird already applied the same step) is skipped with a warning and a ``history``
 note; the cast's other stage-3 steps still run.
 
-Configuration (``processing:``), one block per correction, each entry a ``default`` and/or
-``ranges`` (``casts`` + ``value``), as ``preferred_pair``::
+Configuration (``data_processing:``, see :mod:`ctdcast.config.layout`): ``alignctd`` and ``celltm``
+are steps in ``data_processing.steps``, each entry a bare value or a ``default`` and/or ``ranges``
+(``casts`` + ``value``) declaration; the oxygen window and the per-sensor conductivity slope and
+offset sit beside the steps::
 
-    alignctd:                    # seconds; + advances the variable relative to pressure
-      conductivity: {default: 0.0}
-      oxygen: {default: 3.0}
-      conductivity_2: {ranges: [{casts: [[30, 45]], value: 0.021}]}
-    celltm:                      # alpha and tau (1/beta, seconds); conductivity only
-      default: {alpha: 0.03, tau: 7.0}
-    oxygen:
-      tau_window_seconds: 2.0    # window for the SBE 43 tau correction's dV/dt
+    data_processing:
+      slope_offset:                # per conductivity sensor: C' = slope * C + offset
+        conductivity_1: {slope: 1.0000452, offset: 0.0}
+      oxygen:
+        tau_window_seconds: 2.0    # window for the SBE 43 tau correction's dV/dt
+      steps:
+        - alignctd:                # seconds; + advances the variable relative to pressure
+            conductivity: 0.0
+            oxygen: 3.0
+            conductivity_2: {ranges: [{casts: [[30, 45]], value: 0.021}]}
+        - celltm:                  # alpha and tau (1/beta, seconds); conductivity only
+            conductivity: {alpha: 0.03, tau: 7.0}
 """
 
 from __future__ import annotations
@@ -233,7 +239,7 @@ def resolve_alignment(
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        ``{"alignctd": ...}``: the step's parameters from ``data_processing.steps``.
     var : str
         A stage variable: ``conductivity_1/2`` or ``oxygen_raw_1/2``.
     cast_number : int or None
@@ -278,7 +284,7 @@ def resolve_cell_thermal_mass(
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        ``{"celltm": ...}``: the step's parameters from ``data_processing.steps``.
     var : str
         ``conductivity_1`` or ``conductivity_2``.
     cast_number : int or None
@@ -327,13 +333,122 @@ def resolve_cell_thermal_mass(
     return alpha, tau, f"{where_hit} {hit[1]}"
 
 
+#: Steps ``data_processing.steps`` may list.  Those not yet applied are skipped with a warning.
+KNOWN_STEPS = (
+    "wildedit",
+    "alignctd",
+    "celltm",
+    "window_filter",
+    "filter",
+    "loopedit",
+    "split",
+    "binavg",
+)
+#: Steps stage 3 applies today.
+APPLIED_STEPS = ("wildedit", "alignctd", "celltm")
+
+
+def iter_steps(data_processing: dict | None) -> list[tuple[str, dict]]:
+    """Return ``data_processing.steps`` as ``(name, parameters)`` pairs, in order.
+
+    Parameters
+    ----------
+    data_processing : dict or None
+        The ``data_processing:`` config block.
+
+    Returns
+    -------
+    list of (str, dict)
+        One pair per entry; a step may appear more than once.
+
+    Raises
+    ------
+    ValueError
+        When an entry is not a one-key mapping or names an unknown step.
+    """
+    steps = (data_processing or {}).get("steps") or []
+    if not isinstance(steps, list):
+        raise ValueError(f"data_processing.steps: expected a list, got {steps!r}")
+    out = []
+    for i, entry in enumerate(steps):
+        if not isinstance(entry, dict) or len(entry) != 1:
+            raise ValueError(
+                f"data_processing.steps[{i}]: expected one step name with its parameters, "
+                f"got {entry!r}"
+            )
+        ((name, params),) = entry.items()
+        if name not in KNOWN_STEPS:
+            raise ValueError(
+                f"data_processing.steps[{i}]: unknown step {name!r}; use one of {list(KNOWN_STEPS)}"
+            )
+        out.append((name, params if params is not None else {}))
+    return out
+
+
+def resolve_slope_offset(
+    block: dict | None, var: str, cast_number: int | None
+) -> tuple[float, float, str] | None:
+    """Return ``(slope, offset, source)`` for conductivity *var* on *cast_number*, or None.
+
+    ``data_processing.slope_offset`` holds one entry per conductivity sensor
+    (``conductivity_1``, ``conductivity_2``), each a bare ``{slope:, offset:}`` or a
+    ``{default:, ranges:}`` declaration of them; ``offset`` defaults to 0.
+
+    Parameters
+    ----------
+    block : dict or None
+        The ``data_processing.slope_offset`` block.
+    var : str
+        ``conductivity_1`` or ``conductivity_2``.
+    cast_number : int or None
+        The cast's number.
+
+    Returns
+    -------
+    tuple of (float, float, str) or None
+        None when nothing is configured for *var* on this cast.
+
+    Raises
+    ------
+    ValueError
+        On an unknown key or a malformed value.
+    """
+    if not block:
+        return None
+    if not isinstance(block, dict):
+        raise ValueError(f"slope_offset: expected a mapping, got {block!r}")
+    unknown = set(block) - {"conductivity_1", "conductivity_2"}
+    if unknown:
+        raise ValueError(
+            f"slope_offset: unknown key(s) {sorted(unknown)}; use conductivity_1, conductivity_2"
+        )
+    if var not in block:
+        return None
+    where = f"slope_offset.{var}"
+    hit = _decl_value(block[var], cast_number, where, value_is_mapping=True)
+    if hit is None:
+        return None
+    value = hit[0]
+    if (
+        not isinstance(value, dict)
+        or "slope" not in value
+        or set(value) - {"slope", "offset"}
+    ):
+        raise ValueError(f"{where}: a value is {{slope:, offset:}}, got {value!r}")
+    slope = _number(value["slope"], f"{where}.slope")
+    offset = _number(value.get("offset", 0.0), f"{where}.offset")
+    if slope <= 0:
+        raise ValueError(f"{where}.slope: must be positive, got {slope!r}")
+    return slope, offset, f"{where} {hit[1]}"
+
+
 def resolve_oxygen_window(cfg: dict | None) -> float:
-    """Return the SBE 43 tau-correction window (s) from ``processing.oxygen``.
+    """Return the SBE 43 tau-correction window (s) from ``data_processing.oxygen``.
 
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        The ``data_processing:`` config block.
 
     Returns
     -------
@@ -365,23 +480,26 @@ def resolve_oxygen_window(cfg: dict | None) -> float:
     return window
 
 
-def validate_config(cfg: dict | None) -> None:
-    """Check the ``alignctd``, ``celltm`` and ``oxygen`` blocks before any cast is processed.
+def validate_config(data_processing: dict | None) -> None:
+    """Check the ``data_processing:`` block before any cast is processed.
 
-    Resolves every channel for the default and for every cast named in a range, so a typo or
-    a non-numeric value fails once, up front, rather than on each cast.
+    Resolves every step's values for the default and for every cast named in a range, so a typo
+    or a non-numeric value fails once, up front, rather than on each cast.
 
     Parameters
     ----------
-    cfg : dict or None
-        The ``processing:`` config block.
+    data_processing : dict or None
+        The ``data_processing:`` config block.
 
     Raises
     ------
     ValueError
         On the first malformed entry, naming it.
     """
-    cfg = cfg or {}
+    from ctdcast.processors.editing import resolve_wild_edit
+
+    dp = data_processing or {}
+    steps = iter_steps(dp)
     casts: set[int | None] = {None}
 
     def _collect(decl: object) -> None:
@@ -390,18 +508,27 @@ def validate_config(cfg: dict | None) -> None:
                 if isinstance(rng, dict) and "casts" in rng:
                     casts.update(expand_cast_numbers(rng["casts"]))
 
-    for block_name in ("alignctd", "celltm"):
-        block = cfg.get(block_name)
-        if isinstance(block, dict):
-            _collect(block)
-            for decl in block.values():
+    for name, params in steps:
+        if name in ("alignctd", "celltm") and isinstance(params, dict):
+            _collect(params)
+            for decl in params.values():
                 _collect(decl)
+    for decl in (dp.get("slope_offset") or {}).values():
+        _collect(decl)
+    for name, params in steps:
+        if name == "wildedit":
+            resolve_wild_edit({"wildedit": params or {"variables": None}})
     for cast in sorted(casts, key=lambda c: -1 if c is None else c):
-        for var in _ALIGN_TARGETS:
-            resolve_alignment(cfg, var, cast)
+        for name, params in steps:
+            if name == "alignctd":
+                for var in _ALIGN_TARGETS:
+                    resolve_alignment({name: params}, var, cast)
+            elif name == "celltm":
+                for var in ("conductivity_1", "conductivity_2"):
+                    resolve_cell_thermal_mass({name: params}, var, cast)
         for var in ("conductivity_1", "conductivity_2"):
-            resolve_cell_thermal_mass(cfg, var, cast)
-    resolve_oxygen_window(cfg)
+            resolve_slope_offset(dp.get("slope_offset"), var, cast)
+    resolve_oxygen_window(dp)
 
 
 # --- appliers ------------------------------------------------------------------------------
@@ -564,7 +691,8 @@ def apply_corrections(
     ds : xarray.Dataset
         A stage-2 dataset at its native scan rate.
     cruise_cfg : dict or None
-        The ``processing:`` config block (``alignctd``, ``celltm``).
+        ``{"alignctd": ...}`` and/or ``{"celltm": ...}``: one step's parameters from
+        ``data_processing.steps``.
     cast_number : int or None
         The cast's number, for per-range values.
     cast_label : str, optional
@@ -903,7 +1031,7 @@ def derive_oxygen(
     ds : xarray.Dataset
         A stage-3 dataset after alignment, CTM and salinity.
     cruise_cfg : dict or None
-        The ``processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.
+        The ``data_processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.
     cast_label : str, optional
         How the cast is named in warnings.
 

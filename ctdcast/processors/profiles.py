@@ -345,7 +345,7 @@ def validate_preferred_against_catalog(
     Parameters
     ----------
     cruise_cfg:
-        The ``processing:`` config block (``None`` or absent declarations → no messages).
+        The settings from :func:`ctdcast.config.layout.processing_view` (``None`` or absent declarations → no messages).
     catalog_by_cast:
         Per-cast ``SENSOR_*`` catalog records keyed by integer cast number.
 
@@ -491,7 +491,7 @@ def build_profiles(
         EXPOCODE coordinate is derived.  Coverage bounds and creation time are
         computed from the data, not taken from here.
     cruise_cfg:
-        The ``processing:`` config block.  Used only to reconcile the
+        The settings from :func:`ctdcast.config.layout.processing_view`.  Used only to reconcile the
         ``preferred_pair`` / ``preferred_oxygen`` declaration against the per-cast
         sensor serials (:func:`~ctdcast.config.preferred_sensors.validate_preferred`);
         a declared range crossing a hardware swap, or a swap segment the declaration

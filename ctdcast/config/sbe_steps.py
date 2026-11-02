@@ -1,7 +1,7 @@
-"""Translate a CNV header's SBE Data Processing chain into ctdcast ``data_processing`` steps.
+"""Translate a CNV header's SBE Data Processing steps into ctdcast ``data_processing`` steps.
 
 A Sea-Bird CNV records every module that ran on it (``# wildedit_date``, ``# filter_low_pass_tc_A``,
-…).  :func:`chain_steps` turns that record into the list of steps ctdcast's stage 3 understands, in
+…).  :func:`processing_steps` turns that record into the list of steps ctdcast's stage 3 understands, in
 the order the modules ran, with the parameters each used and SBE channel names replaced by
 ctdcast's variable names.  It is how a cruise's own processing is reproduced from the ``.hex``: read
 the CNV the cruise made, write the equivalent ``data_processing:`` block, run it, compare.
@@ -10,8 +10,8 @@ Each step is a one-key mapping ``{module: parameters}``; a module that ran twice
 Sea-Bird's Filter, which applies two time constants (A and B) in one run, becomes two ``filter``
 steps.  Modules that are not steps in ctdcast are reported in ``skipped`` with the reason:
 ``datcnv`` (stage 1), ``Derive`` (ctdcast derives salinity, density and oxygen itself), ``strip``
-(a product's variable list) and ``bottlesum`` (bottle files).  One CNV header shows only the branch
-of processing that produced that file; a cruise's other products have their own headers.
+(a product's variable list) and ``bottlesum`` (bottle files).  One CNV header shows only the processing
+that produced that file; a cruise's other products have their own headers.
 """
 
 from __future__ import annotations
@@ -19,7 +19,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ctdcast.config.cnv_header import _canonical_var, parse_processing_chain
+from ctdcast.config.cnv_header import (
+    _canonical_var,
+    parse_processing_chain,
+    stacked_advances,
+)
 
 #: SBE modules with no ctdcast step, and why.
 SKIPPED_MODULES: dict[str, str] = {
@@ -191,10 +195,10 @@ _TRANSLATORS = {
 }
 
 
-def chain_steps(
+def processing_steps(
     header_text: str, rename_map: dict[str, str] | None = None
 ) -> dict[str, list]:
-    """Return the ctdcast processing steps equivalent to a CNV header's SBE chain.
+    """Return the ctdcast processing steps equivalent to a CNV header's SBE Data Processing steps.
 
     Parameters
     ----------
@@ -227,15 +231,15 @@ def chain_steps(
     return {"steps": steps, "skipped": skipped}
 
 
-def chain_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> str:
-    """Return :func:`chain_steps` as a paste-ready ``data_processing:`` YAML block.
+def processing_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> str:
+    """Return :func:`processing_steps` as a paste-ready ``data_processing:`` YAML block.
 
     Parameters
     ----------
     header_text : str
         The CNV header.
     rename_map : dict of str to str, optional
-        As for :func:`chain_steps`.
+        As for :func:`processing_steps`.
 
     Returns
     -------
@@ -262,7 +266,7 @@ def chain_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> st
     _Dumper.add_representer(list, _list)
     _Dumper.add_representer(dict, _dict)
 
-    result = chain_steps(header_text, rename_map)
+    result = processing_steps(header_text, rename_map)
     body = yaml.dump(
         {"data_processing": {"steps": result["steps"]}},
         Dumper=_Dumper,
@@ -270,6 +274,10 @@ def chain_yaml(header_text: str, rename_map: dict[str, str] | None = None) -> st
         width=100,
     )
     notes = [f"# not a step: {s['module']} ({s['reason']})" for s in result["skipped"]]
+    notes += [
+        f"# check: {st.sentence()} The deck unit's advance is already in the raw scans."
+        for st in stacked_advances(header_text)
+    ]
     return "\n".join([*notes, body.rstrip()]) + "\n"
 
 

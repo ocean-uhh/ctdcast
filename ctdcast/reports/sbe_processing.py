@@ -1,4 +1,4 @@
-"""A page showing a CNV's SBE Data Processing chain and the equivalent ``data_processing:`` block.
+"""A page showing a CNV's SBE Data Processing steps and the equivalent ``data_processing:`` block.
 
 Written by ``ctdcast inspect <file>.cnv -o page.html``: the modules in the order they ran, each
 with the parameters the header records, and the block to paste into the config, with a copy
@@ -10,26 +10,30 @@ from __future__ import annotations
 from pathlib import Path
 
 from ctdcast._version import __version__ as _VERSION
-from ctdcast.config.cnv_header import parse_processing_chain
-from ctdcast.config.sbe_chain import chain_yaml, header_text_of
+from ctdcast.config.cnv_header import (
+    _module_date_parts,
+    parse_processing_chain,
+    stacked_advances,
+)
+from ctdcast.config.sbe_steps import header_text_of, processing_yaml
 from ctdcast.reports import design
 from ctdcast.reports._env import get_template
 from ctdcast.reports._format import report_generated_at
 
-__all__ = ["generate_sbe_chain_page"]
+__all__ = ["generate_sbe_processing_page"]
 
 # Fields that say where a module read its input, not how it processed it.
 _NOT_PARAMETERS = ("date", "in")
 
 
-def generate_sbe_chain_page(
+def generate_sbe_processing_page(
     cnv_path: Path,
     out_path: Path,
     *,
     title: str | None = None,
     generated_at: str | None = None,
 ) -> Path:
-    """Render a CNV's processing chain and its ``data_processing:`` block to *out_path*.
+    """Render a CNV's SBE Data Processing steps and its ``data_processing:`` block to *out_path*.
 
     Parameters
     ----------
@@ -48,20 +52,24 @@ def generate_sbe_chain_page(
         The written *out_path*.
     """
     header = header_text_of(cnv_path)
+    stacked = stacked_advances(header)
     steps = [
         {
             "module": s.module,
+            "run": _module_date_parts(s.params),
+            "amber": s.module.casefold() == "alignctd" and bool(stacked),
             "params": [
                 (k, v) for k, v in s.params.items() if k.lower() not in _NOT_PARAMETERS
             ],
         }
         for s in parse_processing_chain(header).steps
     ]
-    html = get_template("sbe_chain.html").render(
+    html = get_template("sbe_processing.html").render(
         page_title=title or cnv_path.name,
         filename=cnv_path.name,
         steps=steps,
-        yaml=chain_yaml(header),
+        stacked=[st.sentence() for st in stacked],
+        yaml=processing_yaml(header),
         cruise="",
         css=design.SHARED_CSS,
         js_top_links=design._JS_TOP_LINKS,

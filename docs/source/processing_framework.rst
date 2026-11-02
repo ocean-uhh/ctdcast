@@ -69,10 +69,10 @@ derives its own correction coefficients. For ctdcast they come from two places:
 Both are recorded in config and *applied* at stage 3. A **clock offset** is found
 one stage earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
 against its GPS (NMEA) clock across the whole cruise, classifies the error
-(constant, step, or drift), and generates a paste-ready ``processing.clock`` block.
+(constant, step, or drift), and generates a paste-ready ``clock`` block.
 Because a clock correction moves the ``time`` coordinate and no measured value,
 stage 2 is where it *belongs* — the exception noted above. ``ctdcast clock`` finds and
-suggests the offset; stage 2 applies it (``processing.clock``) where the ``time``
+suggests the offset; stage 2 applies it (``clock``) where the ``time``
 coordinate is on the System clock — a cruise already anchored to GPS is refused. (oceanarray finds the
 analogous offset for a moored instrument at recovery instead; calibration-dip
 processing — `caldip <https://github.com/ocean-uhh/caldip>`_ — is its route for
@@ -318,7 +318,7 @@ One cast in, one cast out, once per cast.
 
      **Alignment and cell thermal mass have since landed as ctdcast stage-3
      modules** (through ``seabirdscientific``, with parameters in
-     ``processing.alignctd`` / ``processing.celltm`` that ``ctdcast fit`` suggests),
+     the ``alignctd`` / ``celltm`` steps in ``data_processing`` that ``ctdcast fit`` suggests),
      and ``.hex`` + ``.xmlcon`` are now read at stage 1 — so for those steps the
      boundary has moved inside the framework. The longer-term shape is to express
      the rest (wild-edit, low-pass filter, loop-edit) the same way, with their
@@ -363,16 +363,22 @@ One cast in, one cast out, once per cast.
   stage 1 preserved (all of them by default, configurable via
   ``processing.trim.drop_sbe``) — the one place columns are dropped, done
   explicitly and recorded in ``history`` and ``dropped_channels``.
-- **Stage 3 — corrections, calibration and QC.** At a cast's native scan rate:
-  conductivity alignment and cell thermal mass (Sea-Bird's ``align_ctd`` /
-  ``cell_thermal_mass`` through ``seabirdscientific``, with the parameters
-  ``ctdcast fit`` suggests), then any conductivity calibration named in the cruise
-  config, then salinity re-derived from the calibrated conductivity, then — on a
-  ``.hex`` cast carrying the SBE 43 voltage — ``ctd_oxygen`` derived from the aligned
-  voltage. Gross-range and spike QC run **last**, judging the corrected values. A cast
-  not at its native scan rate, or one Sea-Bird already corrected the same way, skips
-  the native-rate steps with a warning and still gets the calibration, salinity and
-  QC. Deliberately **iterative**: re-run it as calibration improves, which is why it
+- **Stage 3 — corrections, calibration and QC.** First the per-sensor conductivity slope
+  and offset (``data_processing.slope_offset``), where Sea-Bird applies them; then the
+  processing steps listed in ``data_processing.steps``, in that order, at the cast's native
+  scan rate — Wild Edit, conductivity alignment and cell thermal mass so far (Sea-Bird's
+  ``wild_edit`` / ``align_ctd`` / ``cell_thermal_mass`` through ``seabirdscientific``,
+  Sea-Bird's Python package, with the alignment and cell-thermal-mass parameters
+  ``ctdcast fit`` suggests); then salinity re-derived, then — on a ``.hex`` cast carrying
+  the SBE 43 voltage — ``ctd_oxygen`` derived from the aligned voltage. Gross-range and
+  spike QC run **last**, judging the corrected values. Wild Edit marks values in
+  ``_qc`` and keeps them. A cast not at its native scan rate, or one Sea-Bird already
+  processed the same way, skips the native-rate steps with a warning and still gets the
+  calibration, salinity and QC. ``seabirdscientific`` is meant to match SBE Data
+  Processing, Sea-Bird's Windows program, and mostly does; where it appears not to, ctdcast
+  records which it followed: the SBE 43 hysteresis (``oxygen_hysteresis_method``) and Wild
+  Edit on near-constant blocks (see the ``wildedit`` step in :ref:`config_yaml`). Deliberately
+  **iterative**: re-run it as calibration improves, which is why it
   must not consume its own output.
 
 LADCP has a single cast-level stage: the LDEO ``.mat`` solution is converted to

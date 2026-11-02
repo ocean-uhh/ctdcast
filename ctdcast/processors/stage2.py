@@ -596,7 +596,7 @@ def run(
         If given, process only casts selected by these zero-padded tags
         (e.g. ``{"042"}``), matched on the parsed cast identity.
     cruise_cfg:
-        The ``processing:`` config block, read for the stage-2 curated drop
+        The settings from :func:`ctdcast.config.layout.processing_view`, read for the stage-2 curated drop
         (``trim.drop_sbe``) and the clock correction; ``None`` uses defaults.
     **kw:
         Tuning forwarded to :func:`apply_stage2` (e.g. ``near_surface_dbar``);
@@ -620,7 +620,7 @@ def run(
 
     stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
     # Cruise-scope clock resolution once: which cast numbers get which offset, with each segment's
-    # measured n/sd and a drift warning.  Empty unless processing.clock is configured.
+    # measured n/sd and a drift warning.  Empty unless clock is configured.
     clock_apply = _resolve_clock_application(root, (cruise_cfg or {}).get("clock"))
     # The curated drop set: the config `trim.drop_sbe:` list, or None for the default (every
     # `sbe_*` channel present).  Config, not a flag, so the output is reproducible from config.

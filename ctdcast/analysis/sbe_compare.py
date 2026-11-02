@@ -81,7 +81,9 @@ def read_reference(cnv_path: Path | str) -> xr.Dataset:
     xarray.Dataset
         The CNV's variables under ctdcast's names and units.  Values Sea-Bird flagged are NaN, and
         each variable that had any carries a boolean ``{var}_sbe_flagged``; a scan Loop Edit
-        marked is flagged in every variable.
+        marked is flagged in every variable.  The two kinds are also kept apart:
+        ``{var}_sbe_value_flagged`` for values set to the bad flag (Wild Edit) and
+        ``sbe_scan_flagged`` for scans Loop Edit marked.
     """
     from ctdcast.readers.cnv import read
 
@@ -97,11 +99,75 @@ def read_reference(cnv_path: Path | str) -> xr.Dataset:
     for name, da in ds.data_vars.items():
         if da.dims != ("time",) or name == "sbe_flag" or da.dtype.kind not in "fi":
             continue
-        bad = _is_bad_flag(da.values) | scan_flag
+        value_bad = _is_bad_flag(da.values)
+        bad = value_bad | scan_flag
         if bad.any():
             out[name] = da.where(~bad)
             out[f"{name}_sbe_flagged"] = ("time", bad)
+        if value_bad.any():
+            out[f"{name}_sbe_value_flagged"] = ("time", value_bad)
+    if scan_flag.any():
+        out["sbe_scan_flagged"] = ("time", scan_flag)
     return out
+
+
+@dataclass(frozen=True)
+class FlagAgreement:
+    """Where ctdcast and a CNV mark the same variable's values.
+
+    Attributes
+    ----------
+    name : str
+        Variable name.
+    ref : int
+        Values the CNV marks.
+    ours : int
+        Values ctdcast marks.
+    both : int
+        Values both mark.
+    """
+
+    name: str
+    ref: int
+    ours: int
+    both: int
+
+
+def flag_agreement(ours: dict[str, np.ndarray], ref: xr.Dataset) -> list[FlagAgreement]:
+    """Compare ctdcast's marks for one step with the values the CNV set to its bad flag.
+
+    Sea-Bird's Wild Edit replaces each value it rejects with the file's bad flag, so a CNV's
+    per-value bad flags are Wild Edit's marks; Loop Edit's whole-scan marks are kept apart, in
+    ``sbe_scan_flagged``, and do not count here.
+
+    Parameters
+    ----------
+    ours : dict of str to numpy.ndarray
+        ``{variable: mask}`` from one ctdcast step (e.g. :func:`ctdcast.processors.editing.apply_wild_edit`).
+    ref : xarray.Dataset
+        The CNV from :func:`read_reference`.
+
+    Returns
+    -------
+    list of FlagAgreement
+        One per variable in *ours* that the CNV also carries.
+    """
+    rows = []
+    for name, mask in ours.items():
+        if name not in ref:
+            continue
+        r = (
+            ref[f"{name}_sbe_value_flagged"].values
+            if f"{name}_sbe_value_flagged" in ref
+            else np.zeros(ref.sizes["time"], dtype=bool)
+        )
+        m = np.asarray(mask, dtype=bool)
+        if m.size != r.size:
+            raise ValueError(
+                f"{name}: scan counts differ (ctdcast {m.size}, CNV {r.size})"
+            )
+        rows.append(FlagAgreement(name, int(r.sum()), int(m.sum()), int((r & m).sum())))
+    return rows
 
 
 def _ours_flagged(ds: xr.Dataset, name: str, n: int) -> np.ndarray:
@@ -152,6 +218,7 @@ def compare(
             and da.dtype.kind == "f"
             and not v.endswith("_qc")
             and not v.startswith("sbe_")
+            and not v.endswith("_flagged")
         ]
     rows = []
     for name in variables:

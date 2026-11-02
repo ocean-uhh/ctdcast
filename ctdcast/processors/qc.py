@@ -34,7 +34,7 @@ QARTOD_MISSING = np.int8(9)
 # QC threshold defaults.  Every test has two tiers: SUSPECT (flag 3,
 # oceanographically implausible) and FAIL (flag 4, instrument malfunction).
 # Conductivity is stored in mS/cm (stage 1 converts from S/m).  Per-cruise
-# overrides go in config.yaml under processing.qc.{gross_range,spike} as
+# overrides go in config.yaml under qc.{gross_range,spike} as
 # {suspect: {<var>: ...}, fail: {<var>: ...}}.  A variable may define one tier or
 # both; the report shows the tiers actually applied.
 

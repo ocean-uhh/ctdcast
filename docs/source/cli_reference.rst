@@ -78,7 +78,7 @@ looks at one file and writes one page.
    ctdcast inspect /data/ctd_nc/profiles.nc -o profiles_inventory.html
    ctdcast inspect /data/ctd_nc/profiles.nc --title "MSM142 compiled product"
 
-**A Sea-Bird CNV.**  Given a ``.cnv``, ``inspect`` reads the SBE Data Processing chain from
+**A Sea-Bird CNV.**  Given a ``.cnv``, ``inspect`` reads the SBE Data Processing steps from
 its header instead and prints the equivalent ``data_processing:`` block: the modules in the
 order they ran, each with its parameters and ctdcast's variable names, ready to paste into
 ``config.yaml``.  Modules that are not ctdcast steps (``datcnv``, ``Derive``) are listed as
@@ -86,7 +86,7 @@ comments.  Nothing is written beside the CNV; with ``-o``, the block is also wri
 with a copy button, followed by each module's fields as the header records them::
 
    ctdcast inspect /data/cnv_24Hz/mixsed2_017.cnv
-   ctdcast inspect /data/cnv_24Hz/mixsed2_017.cnv -o mixsed2_017_chain.html
+   ctdcast inspect /data/cnv_24Hz/mixsed2_017.cnv -o mixsed2_017_processing.html
 
 ----
 
@@ -377,7 +377,7 @@ clocks in its header — the acquisition PC's System clock and the GPS-derived N
 clock — and their difference is the offset by which the recorded ``time`` may be
 wrong.  ``clock`` reads that pair off every stage-1 cast, classifies the cruise,
 and prints a verdict, the coordinate-source line, a per-segment table, and a
-paste-ready ``processing.clock`` block.  It writes nothing — applying a correction
+paste-ready ``clock`` block.  It writes nothing — applying a correction
 is a separate stage-2 step.
 
 .. code-block:: text
@@ -427,11 +427,11 @@ you paste them into the config.  ``ctdcast report`` draws the *T/S corrections* 
      --only N [N ...]     Fit only these cast number(s)
      --dry-run            List the casts that would be fitted, write nothing
 
-The recommended ``(alpha, tau)`` is the grid point within ``processing.fit.ctm_tolerance`` (default
+The recommended ``(alpha, tau)`` is the grid point within ``fit.ctm_tolerance`` (default
 2%) of the cost minimum closest to Sea-Bird's default (0.03, 7 s); any value within the tolerance is
 equivalent.  A cast at a non-native scan rate, or one Sea-Bird already aligned or ran cell thermal
 mass on, is reported as not fitted and left out.  Tune the finder (cost windows, tolerance, block
-size) with the ``processing.fit`` block (see :ref:`config_yaml`).
+size) with the ``fit`` block (see :ref:`config_yaml`).
 
 **Examples**::
 

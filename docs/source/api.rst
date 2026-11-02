@@ -147,12 +147,18 @@ no files — the header travels on every stage-1 file in ``raw_metadata``.
    :members:
    :undoc-members:
 
-:mod:`~ctdcast.config.sbe_chain` turns the SBE Data Processing chain recorded in a CNV header
+:mod:`~ctdcast.config.sbe_steps` turns the SBE Data Processing steps recorded in a CNV header
 into the equivalent ``data_processing:`` steps, in the order they ran, with each step's
 parameters and ctdcast's variable names — the starting point for reproducing a cruise's own CNVs
 from its ``.hex`` files.
 
-.. automodule:: ctdcast.config.sbe_chain
+.. automodule:: ctdcast.config.sbe_steps
+   :members:
+
+:mod:`~ctdcast.config.layout` reads a ``config.yaml`` into the settings the stages use, from the
+current layout or, for one release, the 0.4 one.
+
+.. automodule:: ctdcast.config.layout
    :members:
 
 ----
@@ -164,7 +170,7 @@ Acquisition-clock diagnostic
 header and classifies the cruise's clock error (constant, step, drift, or too
 little to tell), recursively segmenting the whole-second offsets into levels and
 claiming a drift only when a rate positively fits.  It is read-only — it finds the
-error and generates a paste-ready ``processing.clock`` block; applying the
+error and generates a paste-ready ``clock`` block; applying the
 correction is a stage-2 step.
 
 .. automodule:: ctdcast.analysis.clock
@@ -208,7 +214,7 @@ Page generators
    :members:
    :undoc-members:
 
-.. automodule:: ctdcast.reports.sbe_chain
+.. automodule:: ctdcast.reports.sbe_processing
    :members:
 
 .. automodule:: ctdcast.reports.corrections
@@ -314,6 +320,9 @@ Cast processing
 .. automodule:: ctdcast.processors.history
    :members:
    :undoc-members:
+
+.. automodule:: ctdcast.processors.editing
+   :members:
 
 .. automodule:: ctdcast.processors.corrections
    :members:

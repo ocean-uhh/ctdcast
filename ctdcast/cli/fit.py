@@ -6,6 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from ctdcast.config.layout import processing_view
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -86,9 +88,9 @@ def run(args: argparse.Namespace) -> int:
         return 1
     root = Path(root_raw)
     try:
-        settings = FitSettings.from_config(cfg.get("processing"))
+        settings = FitSettings.from_config(processing_view(cfg))
     except ValueError as exc:
-        print(f"Config error: processing.{exc}", file=sys.stderr)
+        print(f"Config error: {exc}", file=sys.stderr)
         return 1
     tags = {f"{c:0{CAST_TAG_WIDTH}d}" for c in args.only} if args.only else None
     if args.dry_run:

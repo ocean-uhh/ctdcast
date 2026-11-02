@@ -953,11 +953,12 @@ def _ctdcast_correction_rows(
 ) -> list[tuple[Correction, ConformanceTick]]:
     """Rows for ctdcast's own stage-3 corrections, in the shape of the Sea-Bird table's rows.
 
-    Read from the variables' attributes, in the order stage 3 applies them: alignment, cell
-    thermal mass, conductivity slope, then SBE 43 oxygen from the voltage.  Each row carries a
-    conformance tick against the same SBE references as the rows above it: cell thermal mass
-    against (0.03, 7), alignment by the channel's total advance (deck unit + ctdcast) against
-    0.073 s; the slope and the oxygen conversion have no reference and show a dash.
+    Read from the variables' attributes and put in the order stage 3 applied them, which is the
+    order of their lines in ``history`` (the configured steps can come in any order).  Each row
+    carries a conformance tick against the same SBE references as the rows above it: cell
+    thermal mass against (0.03, 7), alignment by the channel's total advance (deck unit +
+    ctdcast) against 0.073 s; the slope, Wild Edit and the oxygen conversion have no reference
+    and show a dash.
     """
     rows: list[tuple[Correction, ConformanceTick]] = []
     # A preferred-sensor composite copies its source channel's attrs; listing it would show
@@ -968,12 +969,16 @@ def _ctdcast_correction_rows(
         if not str(ds[v].attrs.get("comment", "")).startswith("preferred ")
     ]
 
+    history = str(ds.attrs.get("history", ""))
+    order: list[int] = []
+
     def add(
         label: str,
         producer: str,
         method: str,
         params: str,
         tick_of: Callable[[str], ConformanceTick],
+        marker: str = "",
     ) -> None:
         key = f"ctdcast_{len(rows) + 1}"
         rows.append(
@@ -981,6 +986,41 @@ def _ctdcast_correction_rows(
                 Correction(label, key, producer, _ctdcast_versions(ds, method), params),
                 tick_of(key),
             )
+        )
+        at = history.find(marker) if marker else -1
+        order.append(at if at >= 0 else len(history))
+
+    for v in names:
+        a = ds[v].attrs
+        if "calibration_slope" in a:
+            params = f"× {a['calibration_slope']}"
+            if float(a.get("calibration_offset", 0.0) or 0.0):
+                params += f" {float(a['calibration_offset']):+g}"
+            add(
+                "slope_offset",
+                "ctdcast stage 3",
+                "",
+                params,
+                lambda k, v=v: no_reference_tick(k, "slope_offset", v),
+                f"slope_offset: {v}",
+            )
+    edited = [v for v in names if "wild_edit" in ds[v].attrs]
+    if edited:
+        a = ds[edited[0]].attrs
+        counts = {v: int(ds[v].attrs.get("wild_edit_marked", 0)) for v in edited}
+        marked = (", ".join(f"{v} {n}" for v, n in counts.items() if n) or "none") + (
+            "; none in the others"
+            if 0 in counts.values() and any(counts.values())
+            else ""
+        )
+        edited_names = ", ".join(edited)
+        add(
+            "wildedit",
+            "ctdcast stage 3 (seabirdscientific wild_edit)",
+            str(a.get("wild_edit_method", "")),
+            f"{a['wild_edit']}; values marked (QARTOD 4, kept): {marked}",
+            lambda k, vs=edited_names: no_reference_tick(k, "wildedit", vs),
+            "wildedit:",
         )
 
     for v in names:
@@ -1004,6 +1044,7 @@ def _ctdcast_correction_rows(
                 str(a.get("alignment_method", "")),
                 params,
                 tick_of,
+                f"alignctd: {v}",
             )
     for v in names:
         a = ds[v].attrs
@@ -1018,16 +1059,7 @@ def _ctdcast_correction_rows(
                 lambda k, v=v, al=alpha, ta=tau: celltm_reference_tick(
                     k, "celltm", al, ta, v
                 ),
-            )
-    for v in names:
-        a = ds[v].attrs
-        if "calibration_slope" in a:
-            add(
-                "conductivity slope",
-                "ctdcast stage 3",
-                "",
-                f"× {a['calibration_slope']}",
-                lambda k, v=v: no_reference_tick(k, "conductivity slope", v),
+                f"celltm: {v}",
             )
     for v in names:
         a = ds[v].attrs
@@ -1041,7 +1073,26 @@ def _ctdcast_correction_rows(
                 f"from {a.get('derived_from', '?')}",
                 lambda k, v=v: no_reference_tick(k, "SBE 43 oxygen", v),
             )
-    return rows
+    ranked = sorted(range(len(rows)), key=lambda i: (order[i], i))
+    out = []
+    for n, i in enumerate(ranked, 1):
+        rec, tick = rows[i]
+        key = f"ctdcast_{n}"
+        out.append(
+            (
+                Correction(rec.label, key, rec.producer, rec.version, rec.parameters),
+                ConformanceTick(
+                    key,
+                    tick.label,
+                    tick.state,
+                    tick.reference,
+                    tick.source,
+                    tick.detail,
+                    tick.variables,
+                ),
+            )
+        )
+    return out
 
 
 def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
@@ -1065,7 +1116,20 @@ def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
         f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
         f"<tbody>{_corrections_rows_with_ticks(records, ticks)}</tbody></table>"
         f"{_references_caption(ticks)}"
+        f"{_WILD_EDIT_NOTE if any(r.label == 'wildedit' for r in records) else ''}"
     )
+
+
+#: Under the ctdcast corrections table when Wild Edit ran: where seabirdscientific and the
+#: Windows program differ.
+_WILD_EDIT_NOTE = (
+    "<p class='caption'>Wild Edit uses seabirdscientific, Sea-Bird's Python package. It "
+    "appears to differ from SBE Data Processing, Sea-Bird's Windows program, on blocks where a "
+    "channel sits at one or two A/D levels (oxygen voltage, altimeter or fluorescence near the "
+    "surface): with <code>mindelta</code> 0, the Windows program marks the whole block, "
+    "seabirdscientific only the values off the block's main level. A <code>mindelta</code> of "
+    "a few A/D steps avoids both.</p>"
+)
 
 
 def _render_provenance_table(

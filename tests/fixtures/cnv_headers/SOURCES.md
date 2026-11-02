@@ -11,3 +11,4 @@ tests do not depend on git-excluded fixtures. Bytes are kept verbatim from the s
 | `MSM121_054_1db.cnv` | seasenselib `examples/MSM121_054_1db.cnv` (header through `*END*`) | the wildedit-after-loopedit chain order (`datcnv, filter, alignctd, celltm, loopedit, wildedit, binavg`) |
 | `msm_021_1_168_header.hex.txt` | `fixtures/hex/msm_021_1_168_short.hex` (`*` block through `*END*`) | 11plus V 5.0 **asymmetric** advance (c0 +0.073 s, c1 +0.043 s) |
 | `PS129_014_01_header.hex.txt` | `fixtures/hex/PS129_014_01_short.hex` (`*` block through `*END*`) | no deck-unit line — absence is not an error |
+| `mixsed2_017_cnv24Hz.cnv` | OdB 2026 (MIXSED2) `CTD/cnv_24Hz/mixsed2_017.cnv` (header through `*END*`) | Align CTD advancing `c0S/m` +0.073 s on top of the deck unit's +0.073 s (a stacked advance) |

@@ -32,14 +32,50 @@ from ctdcast.processors.corrections import (
     sbe43_dvdt,
     sbe43_hysteresis,
     sbe43_oxygen,
-    validate_config,
+    validate_config as _validate_config,
 )
 from ctdcast.processors.stage1 import stage1
 from ctdcast.processors.stage2 import run as stage2_run
-from ctdcast.processors.stage3 import stage3
+from ctdcast.processors.stage3 import run as _stage3_run
+from ctdcast.processors.stage3 import stage3 as _stage3
 
 FIX = Path(__file__).parent / "fixtures"
 CTM = {"celltm": {"default": {"alpha": 0.03, "tau": 7.0}}}
+
+
+def _as_data_processing(cfg: dict | None) -> dict:
+    """The settings stage 3 reads, from a test's ``{alignctd, celltm, oxygen, calibration, qc}``.
+
+    The appliers' tests were written per block; this lists them as ``data_processing`` steps in
+    Sea-Bird's order (align, then cell thermal mass) and turns the single slope into per-sensor
+    ``slope_offset`` entries, as :func:`ctdcast.config.layout.processing_view` does for a file.
+    """
+    cfg = cfg or {}
+    dp: dict = {"steps": [{k: cfg[k]} for k in ("alignctd", "celltm") if k in cfg]}
+    if "oxygen" in cfg:
+        dp["oxygen"] = cfg["oxygen"]
+    slope = (cfg.get("calibration") or {}).get("conductivity_slope")
+    if slope is not None:
+        dp["slope_offset"] = {
+            "conductivity_1": {"slope": slope},
+            "conductivity_2": {"slope": slope},
+        }
+    out: dict = {"data_processing": dp}
+    if "qc" in cfg:
+        out["qc"] = cfg["qc"]
+    return out
+
+
+def stage3(ds, cfg=None, **kw):
+    return _stage3(ds, _as_data_processing(cfg), **kw)
+
+
+def stage3_run(root, *, cruise_cfg=None, **kw):
+    return _stage3_run(root, cruise_cfg=_as_data_processing(cruise_cfg), **kw)
+
+
+def validate_config(cfg):
+    return _validate_config(_as_data_processing(cfg)["data_processing"])
 
 
 def _stage2(tmp: Path, src: Path, names: tuple[str, ...]) -> xr.Dataset:
@@ -413,7 +449,6 @@ def test_profiles_carries_parameters_per_profile_when_casts_differ(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         stage2_run(tmp_path / "ctd")
-        from ctdcast.processors.stage3 import run as stage3_run
 
         cfg = {
             **CTM,
@@ -673,7 +708,6 @@ def test_validate_config_accepts_the_documented_grammar():
 
 
 def test_stage3_run_validates_config_before_any_cast(tmp_path):
-    from ctdcast.processors.stage3 import run as stage3_run
 
     (tmp_path / "stage2").mkdir()
     with pytest.raises(ValueError, match="expected a number"):
@@ -863,7 +897,6 @@ def test_cast_page_skips_preferred_composites(slice2):
 
 def test_written_oxygen_metadata_describes_the_oxygen(tmp_path):
     """Through the writer: its own QC label, the conversion level, the SBE 43 catalog link."""
-    from ctdcast.processors.stage3 import run as stage3_run
 
     raw = tmp_path / "raw"
     raw.mkdir()

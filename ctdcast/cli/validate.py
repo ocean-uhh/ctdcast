@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from ctdcast.config.global_attrs import cruise_name
+from ctdcast.config.layout import processing_view
 from ctdcast.config.loader import SectionsConfig, groupings_path
 from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.config.preferred_sensors import GROUPS
@@ -361,11 +362,15 @@ def run(args: argparse.Namespace) -> int:
                         f"section '{sec_name}': cast {cast_num} not found in {nc_dir}"
                     )
 
-    # Preferred-sensor declaration (processing.preferred_pair / preferred_oxygen)
+    # Preferred-sensor declaration (preferred_sensor.tc / preferred_sensor.oxygen)
     # reconciled against the per-cast sensor serials, so a bad declaration surfaces here
     # rather than at compile.  Read-only: warnings, never an error.  Uses the same
     # reconciliation the compile runs, so both report identically.
-    processing_cfg = cfg.get("processing") or {}
+    try:
+        processing_cfg = processing_view(cfg)
+    except ValueError as exc:
+        errors.append(str(exc))
+        processing_cfg = {}
     if (
         nc_dir
         and nc_dir.exists()

@@ -84,12 +84,12 @@ class FitSettings:
 
     @classmethod
     def from_config(cls, processing: dict | None) -> FitSettings:
-        """Build settings from the ``processing.fit`` block, defaults for anything missing.
+        """Build settings from the ``fit`` block, defaults for anything missing.
 
         Parameters
         ----------
         processing : dict or None
-            The config ``processing:`` block.
+            The settings from :func:`ctdcast.config.layout.processing_view` (its ``fit``).
 
         Returns
         -------
@@ -701,11 +701,11 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
 
 
 def suggested_yaml(summaries: list[LineSummary]) -> str:
-    """Return a paste-ready ``processing:`` snippet from the cruise summaries.
+    """Return a paste-ready ``data_processing:`` snippet from the cruise summaries.
 
     Built as a dict and serialised with :func:`yaml.safe_dump`, so the snippet parses back to the
-    same values the resolvers read: per-line ``alignctd`` (the downcast residual) and ``celltm``
-    (the recommended alpha/tau).  Values are rounded to the grids' resolution (advance and alpha
+    same values the resolvers read: an ``alignctd`` step per line (the downcast residual) and a
+    ``celltm`` step (the recommended alpha/tau), in Sea-Bird's order.  Values are rounded to the grids' resolution (advance and alpha
     to 4 dp, tau to 2 dp).
 
     Parameters
@@ -731,13 +731,13 @@ def suggested_yaml(summaries: list[LineSummary]) -> str:
         for s in summaries
         if np.isfinite(s.alpha_rec)
     }
-    block: dict[str, dict] = {}
+    steps: list[dict] = []
     if align:
-        block["alignctd"] = align
+        steps.append({"alignctd": align})
     if ctm:
-        block["celltm"] = ctm
-    if not block:
+        steps.append({"celltm": ctm})
+    if not steps:
         return ""
     return yaml.safe_dump(
-        {"processing": block}, sort_keys=False, default_flow_style=False
+        {"data_processing": {"steps": steps}}, sort_keys=False, default_flow_style=False
     )

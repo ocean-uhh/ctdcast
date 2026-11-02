@@ -105,7 +105,7 @@ def test_reports_step_and_suggests_config(tmp_path: Path, capsys) -> None:
     out = capsys.readouterr().out
     assert "Verdict: step" in out
     assert "Coordinate: System (PC clock) on 10/10" in out  # printed on every run
-    assert "Current processing.clock" in out
+    assert "Current clock" in out
     assert "clock_offset_seconds" in out
 
 

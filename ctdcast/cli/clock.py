@@ -6,6 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from ctdcast.config.layout import processing_view
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction | None = None,  # type: ignore[type-arg]
@@ -16,7 +18,7 @@ Reads every stage-1 cast under the config's ctd_root, compares each cast's
 System (acquisition) clock against its NMEA (GPS) clock, and classifies the
 cruise: a constant offset, a step change (one row per segment), a drift, or
 too little to tell.  It moves nothing -- it prints the verdict and a paste-ready
-'processing.clock' block for config.yaml; applying it is a stage-2 step.
+'clock' block for config.yaml; applying it is a stage-2 step.
 
 Examples:
   # Diagnose and print the verdict + suggested config:
@@ -119,9 +121,9 @@ def run(args: argparse.Namespace) -> int:
             "the headers (no start_time bracket), so whether a correction applies is unknown."
         )
     elif snippet is not None:  # status == "apply"
-        current = (cfg.get("processing") or {}).get("clock")
+        current = processing_view(cfg).get("clock")
         current_desc = current if current else "{} (no correction configured)"
-        print(f"\nCurrent processing.clock in {cfg_path.name}: {current_desc}")
+        print(f"\nCurrent clock in {cfg_path.name}: {current_desc}")
         print(
             f"\nSuggested — paste into {cfg_path.name}, then re-run "
             f"`ctdcast process {cfg_path.name} --stage 2 --force`:\n"

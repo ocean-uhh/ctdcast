@@ -247,7 +247,7 @@ def _run_stage2(
     if paths.ctd_root is None:
         return 0
     # stage2.run filters kw to its own accepted keys, so forwarding the full tuning bag is safe;
-    # cruise_cfg carries processing.clock for the clock applier.
+    # cruise_cfg carries clock for the clock applier.
     return (
         _stage2.run(
             paths.ctd_root,
@@ -304,7 +304,7 @@ def _run_profiles(
     True if any product was written.  ``cruise_info`` (the config ``cruise_info:``
     block) supplies the cruise id, discovery metadata, people, embargo, and the
     ship/date from which the EXPOCODE is derived; it is threaded to both builders.
-    ``cruise_cfg`` (the ``processing:`` block) is threaded to the CTD builder so the
+    ``cruise_cfg`` (:func:`ctdcast.config.layout.processing_view`) is threaded to the CTD builder so the
     preferred-sensor declaration can be reconciled against the per-cast serials.
 
     Sensor provenance is resolved at stage 1, so ``sensor_overrides`` is not
