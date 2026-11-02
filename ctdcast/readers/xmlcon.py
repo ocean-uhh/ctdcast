@@ -18,6 +18,10 @@ The ``<sensor>`` block a CNV header embeds is the same XML as the ``.xmlcon``'s 
 element, wrapped differently and preceded by a comment naming the channel and its quantity
 (``<!-- Frequency 3, Temperature, 2 -->``).  :func:`sensor_records` rebuilds that wrapping, so
 ``raw_block`` reads the same whichever file the sensor came from.
+
+Original author: Joel Bracamontes Ramirez, ctdproc (``parsers.load_xmlcon``), whose approach this
+follows: walk the ``<Sensor>`` elements in order, tell primary from secondary by the order of
+repeated sensor types, and build seabirdscientific coefficient objects.  Rewritten for ctdcast.
 """
 
 from __future__ import annotations
