@@ -85,6 +85,12 @@ The figures on the *T/S corrections* page, drawn from the ``fits.nc`` file ``ctd
    :members:
    :undoc-members:
 
+The figure for a ctdcast-versus-Sea-Bird comparison: the difference in each variable against
+pressure.
+
+.. automodule:: ctdcast.plotters.sbe_compare
+   :members:
+
 Layer-1 primitives
 ------------------
 
@@ -140,6 +146,14 @@ no files — the header travels on every stage-1 file in ``raw_metadata``.
 .. automodule:: ctdcast.config.cnv_header
    :members:
    :undoc-members:
+
+:mod:`~ctdcast.config.sbe_chain` turns the SBE Data Processing chain recorded in a CNV header
+into the equivalent ``data_processing:`` steps, in the order they ran, with each step's
+parameters and ctdcast's variable names — the starting point for reproducing a cruise's own CNVs
+from its ``.hex`` files.
+
+.. automodule:: ctdcast.config.sbe_chain
+   :members:
 
 ----
 
@@ -257,6 +271,13 @@ cruise aggregation behind ``ctdcast fit`` — pure numpy over a cast's arrays, w
 .. automodule:: ctdcast.analysis.fits
    :members:
    :undoc-members:
+
+:mod:`~ctdcast.analysis.sbe_compare` compares a ctdcast stage file with a Sea-Bird CNV made from
+the same ``.hex``, scan by scan: per-variable differences where neither side flags the scan, and
+the flags of each side counted against the other.
+
+.. automodule:: ctdcast.analysis.sbe_compare
+   :members:
 
 ----
 
