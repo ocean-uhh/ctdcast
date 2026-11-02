@@ -2,10 +2,10 @@
 # ctdcast, oceanarray and glidertest.  Source of truth: ctdcast main.
 # The set is the contents of this directory, minus this file.
 # Regenerate after an intentional edit: python -m <pkg>.reports._vendored.check --update
-44a80f6a0e24be6684b5ac5b17ee034985b0a7e4daafc5276fe3ee93cb4cbf8f  README.md
+de5250d35e69a8fb314f8f4921004dc4d96d9e7a82ff17f467e3abd66dff7714  README.md
 8066cc75e8518178ad36a80f06f5e182959373a168d1388be1b6d4f8e0c0736b  __init__.py
 588ce9e52bc45d89ad2ae2de15c3bcc65a24a465a25a69ba1956c889f0d6d245  check.py
-a3778ed75ba94d40f4bbb53abb8eded2721b86ef8495f9b6da7627ac6d2cf8b1  css.py
+9e46339d9f945f396c3a83abde809d9485e7d7ee62d716808369592986d7dcc8  css.py
 54297df11b5252347bb369b041587695704d8c8ace52d8814dbec2d322df5724  design_tokens.py
 2c2d05ab231bb0db643b644d886586eafaba501d059c7e95a7553863e8b42010  figure_png.py
 bbc959aaef7488b38942e7f05cfd1244351f8bce54261951ea17dd7cf60f894b  leaflet/LICENSE
@@ -18,5 +18,6 @@ e8b8593c7db2bd3fabd15687a35c52f402d2c42b596db5648f6fa83decba2467  page_model.py
 91d491aa484b0f9a53e080057eae2bebb650f85d1fb55310ca83732af02b3084  templates/_map.html
 e0c01eed39ba98b860b571cf71d1e58bca33e0f6ed4ae0d9779ec0d2432297b3  templates/_nav.html
 e899efdb540ee33e1d43a8e1e1f0bc9b0306523dad88b2036820fd5868bf1a13  templates/_nc_tables.html
+52d424c915e468cff8624cfc389198ec47694ef974bdb175abccb46454b0ce99  templates/_snippet.html
 20163bf2393810ea3dbc62f2e21e9779bc89f174623090f2e1a3bf38f42a9365  units.py
 212040efa52ef2b1379eab66f26ce63193dd5a5476e8c030a996f20a7a578f06  units_tables.py

@@ -24,6 +24,10 @@ _PAGES: tuple[tuple[str, str, str, str], ...] = (
     ("interactive", "Interactive", "leaflet.html", "map"),
 )
 
+#: The ``Corrections:`` row, in rendered order: (label, bare href).  A page appears only when
+#: its source exists (``fits.nc`` for T/S).
+CORRECTIONS_TS_HREF = "corrections_ts.html"
+
 
 def inventory_sources(
     profiles_path: Path | str | None, ladcp_profiles_path: Path | str | None
@@ -58,14 +62,18 @@ def inventory_sources(
 
 
 def inventory_pills(
-    profiles_path: Path | str | None, ladcp_profiles_path: Path | str | None
+    profiles_path: Path | str | None,
+    ladcp_profiles_path: Path | str | None,
+    fits_path: Path | str | None = None,
 ) -> list[dict[str, str]]:
-    """Return the "Data inventory:" strip pills for the compiled products present.
+    """Return the pills for the pages built from files: the inventory strip and Corrections.
 
     One pill per compiled dataset that exists (``profiles.nc``,
     ``ladcp_profiles.nc``), plus an ``SBE sensors`` pill when ``profiles.nc`` is
     present.  Built from :func:`inventory_sources` so the strip and the caller's
-    generation loop share one existence rule.  Hrefs are bare (no path prefix);
+    generation loop share one existence rule.  When *fits_path* exists, a ``T/S`` pill
+    marked ``"row": "corrections"`` is added; :func:`nav_for` puts it in the
+    ``Corrections:`` row instead of the strip.  Hrefs are bare (no path prefix);
     :func:`nav_for` applies the per-page prefix.
 
     Parameters
@@ -74,16 +82,22 @@ def inventory_pills(
         The compiled ``profiles.nc`` path, or None.
     ladcp_profiles_path : pathlib.Path or str or None
         The compiled ``ladcp_profiles.nc`` path, or None.
+    fits_path : pathlib.Path or str or None, optional
+        The ``fits.nc`` written by ``ctdcast fit``, or None.
 
     Returns
     -------
     list of dict
-        ``{"label", "href"}`` entries, one per inventory page.
+        ``{"label", "href"}`` entries (plus ``"row"`` for a Corrections pill).
     """
     srcs, has_sensors = inventory_sources(profiles_path, ladcp_profiles_path)
     pills = [{"label": p.name, "href": f"{p.stem}_inventory.html"} for p in srcs]
     if has_sensors:
         pills.append({"label": "SBE sensors", "href": "sbe_sensors.html"})
+    if fits_path is not None and Path(fits_path).exists():
+        pills.append(
+            {"label": "T/S", "href": CORRECTIONS_TS_HREF, "row": "corrections"}
+        )
     return pills
 
 
@@ -109,7 +123,8 @@ def nav_for(
         Prepended to every href — ``""`` for top-level pages, ``"../"`` for the
         per-cast / per-section / per-timeseries detail pages.
     inventory : sequence of mapping, default ()
-        The strip pills from :func:`inventory_pills` (``{"label", "href"}``).
+        The pills from :func:`inventory_pills` (``{"label", "href"}``, and ``"row":
+        "corrections"`` for the ``Corrections:`` row).
     inventory_current : str or None, default None
         The bare href of the strip pill for the page being viewed, if any.
 
@@ -132,6 +147,18 @@ def nav_for(
             ],
         }
     ]
+    corrections = [
+        {
+            "label": p["label"],
+            "href": prefix + p["href"],
+            "role": "aggregate-a",
+            "state": "current" if p["href"] == inventory_current else "link",
+        }
+        for p in inventory
+        if p.get("row") == "corrections"
+    ]
+    if corrections:
+        rows.append({"label": "Corrections:", "pills": corrections})
     strip = [
         {
             "label": p["label"],
@@ -140,6 +167,7 @@ def nav_for(
             "state": "current" if p["href"] == inventory_current else "link",
         }
         for p in inventory
+        if p.get("row") != "corrections"
     ]
     nav = {"rows": rows, "back": None, "inventory": strip}
     validate_nav(nav)

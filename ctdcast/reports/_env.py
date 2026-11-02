@@ -27,7 +27,7 @@ from jinja2 import ChoiceLoader, Environment, FileSystemLoader, Template
 from ctdcast.reports import _figdebug
 from ctdcast.reports._anchors import legacy_anchor_spans
 from ctdcast.reports._vendored.figure_png import source_of
-from ctdcast.reports.design import _JS_SORT_TABLES, FIGURE_SOURCE
+from ctdcast.reports.design import _JS_COPY_SNIPPET, _JS_SORT_TABLES, FIGURE_SOURCE
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _VENDORED_TEMPLATES_DIR = Path(__file__).parent / "_vendored" / "templates"
@@ -58,6 +58,9 @@ _env.globals["show_source"] = FIGURE_SOURCE
 # Click-to-sort script, emitted once by base.html so every page's tables sort (each opts out
 # with data-nosort).  A global, not per-page context, so no page builder has to pass it.
 _env.globals["js_sort_tables"] = _JS_SORT_TABLES
+# Copy-button script for yaml_snippet boxes, emitted once by base.html (same once-per-page
+# pattern as js_sort_tables); harmless on a page with no snippet.
+_env.globals["js_snippets"] = _JS_COPY_SNIPPET
 
 _env_raw: Environment = Environment(
     loader=_loader,
@@ -66,6 +69,7 @@ _env_raw: Environment = Environment(
 # base.html references js_sort_tables; leaflet.html renders through this env, so it needs the
 # global too (its page has no data tables, but the base template is shared).
 _env_raw.globals["js_sort_tables"] = _JS_SORT_TABLES
+_env_raw.globals["js_snippets"] = _JS_COPY_SNIPPET
 
 
 def get_template(name: str) -> Template:

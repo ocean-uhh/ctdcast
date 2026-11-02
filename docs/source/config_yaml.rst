@@ -177,18 +177,27 @@ back to a built-in default.
      - Stage-3 alignment: seconds to advance a channel relative to pressure, as Sea-Bird's
        Align CTD does, applied with ``seabirdscientific``.  Channels: ``conductivity``,
        ``oxygen`` (every line), or ``conductivity_1/2``, ``oxygen_1/2`` (one line; wins over
-       the family key).  Each takes a ``default`` and/or ``ranges``
-       (``- {casts: [[first, last]], value: 0.021}``).  Conductivity values are a residual on
+       the family key).  Each is a **bare value** — the seconds for every cast — or, for
+       per-cast-range exceptions, a ``{default:, ranges:}`` mapping
+       (``ranges: - {casts: [[first, last]], value: 0.021}``).  Conductivity values are a residual on
        top of the deck unit's hardware advance, which is already in the raw data; oxygen acts
        on the SBE 43 voltage (``oxygen_raw_<N>``), never on a converted oxygen.  Values shifted
        past either end of a cast become NaN, flagged 9 (missing); no scan is removed.
    * - ``celltm.default`` / ``celltm.ranges`` / ``celltm.conductivity_<N>``
      - Stage-3 cell thermal mass correction of conductivity: ``{alpha: 0.03, tau: 7.0}``
        (Sea-Bird's alpha and tau = 1/beta in seconds), with the temperature of the same line.
-       A per-line key wins over the block's own ``default`` / ``ranges``.
+       A per-line key is a bare ``{alpha, tau}`` mapping, or a ``{default:, ranges:}`` mapping for
+       per-cast-range exceptions, and wins over the block's own ``default`` / ``ranges``.
    * - ``oxygen.tau_window_seconds``
      - Window (s) for the SBE 43 tau correction's dV/dt when stage 3 derives ``ctd_oxygen``
        from the voltage (``.hex`` casts).  Default ``2``.
+   * - ``fit.<setting>``
+     - ``ctdcast fit`` settings (the finder that suggests ``alignctd`` / ``celltm`` values, not an
+       applier): the cell-thermal-mass window top (``ctm_pmin``, dbar), the thermocline threshold for
+       the alignment cost (``gradient``, deg C/dbar), the alignment window top and minimum along-leg
+       speed (``align_pmin`` dbar, ``min_speed`` dbar/s), the down/up weighting scale
+       (``gap_seconds``), the recommended-value tolerance (``ctm_tolerance``, a fraction of the cost
+       minimum; default ``0.02`` = 2 %), and the casts per block (``block``).  All optional.
 
    * - ``preferred_pair.default`` / ``preferred_pair.ranges``
      - On a dual-sensor cast, which temperature/conductivity pair (and the salinity derived
@@ -245,6 +254,23 @@ the corrected values.
            clock_offset_seconds: -2.07
            n_casts: 150
            clock_offset_sd_seconds: 0.69
+
+Alignment and cell thermal mass take a bare value for the common case, or a ``{default:, ranges:}``
+mapping when the hardware changed mid-cruise.  ``ctdcast fit`` suggests these values and prints the
+block to paste:
+
+.. code-block:: yaml
+
+   processing:
+     alignctd:
+       conductivity: -0.015            # bare value: seconds for every cast (the usual case)
+       conductivity_2:                 # a sensor swapped at cast 7: its own value from there on
+         default: -0.015
+         ranges:
+           - casts: [[7, 182]]
+             value: -0.040
+     celltm:
+       conductivity: {alpha: 0.0275, tau: 6.5}   # bare {alpha, tau} for every cast
 
 Preferred sensor
 ^^^^^^^^^^^^^^^^

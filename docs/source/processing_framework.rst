@@ -63,17 +63,17 @@ derives its own correction coefficients. For ctdcast they come from two places:
 
 - the **conductivity slope**, from comparing CTD conductivity against **bottle
   salinities** analysed from the rosette samples;
-- the **align lags** and **cell-thermal-mass coefficients**, from finder tools
-  that use nothing but the CTD data itself.
+- the **align lags** and **cell-thermal-mass coefficients**, from a finder
+  (``ctdcast fit``) that uses nothing but the CTD data itself.
 
 Both are recorded in config and *applied* at stage 3. A **clock offset** is found
 one stage earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
 against its GPS (NMEA) clock across the whole cruise, classifies the error
 (constant, step, or drift), and generates a paste-ready ``processing.clock`` block.
 Because a clock correction moves the ``time`` coordinate and no measured value,
-stage 2 is where it *belongs* — the exception noted above. Finding the offset is
-implemented; **applying it is not yet**, so today ``ctdcast clock`` reports and
-suggests, and nothing shifts the coordinate. (oceanarray finds the
+stage 2 is where it *belongs* — the exception noted above. ``ctdcast clock`` finds and
+suggests the offset; stage 2 applies it (``processing.clock``) where the ``time``
+coordinate is on the System clock — a cruise already anchored to GPS is refused. (oceanarray finds the
 analogous offset for a moored instrument at recovery instead; calibration-dip
 processing — `caldip <https://github.com/ocean-uhh/caldip>`_ — is its route for
 moored instruments, and is not part of the CTD workflow.)
@@ -104,10 +104,11 @@ directories, not inside them.
 What Sea-Bird has already done to the file
 ------------------------------------------
 
-ctdcast does not *yet* receive raw measurements — ingesting the 24 Hz ``.hex`` is
-planned, and is the point at which ctdcast would run the full chain itself. Today a
-Sea-Bird CNV has usually been through two rounds of processing before ctdcast opens
-it, and **neither of them announces itself in a way the stages can see**:
+ctdcast now ingests the 24 Hz ``.hex`` directly (through ``seabirdscientific``) and
+applies alignment and cell thermal mass itself at stage 3; the rest of the Sea-Bird
+chain is not yet run here. The other input, a calibrated Sea-Bird CNV, has usually
+been through two rounds of processing before ctdcast opens it, and **neither of them
+announces itself in a way the stages can see**:
 
 - the **deck unit**, at acquisition, in hardware;
 - **SBE Data Processing**, ashore or at sea, as a chain of modules.
@@ -278,9 +279,12 @@ Cast-level processing
 
 One cast in, one cast out, once per cast.
 
-- **Stage 0 (planned):** acquire and convert raw instrument files — hex → CNV for
-  Sea-Bird CTDs. Not implemented in ctdcast; today ctdcast starts from calibrated
-  CNV. **This is what** `ctdam <https://github.com/ocean-uhh/ctdam>`_ **does**: it
+- **Stage 0 (partly landed).** Acquire and convert raw instrument files. ctdcast now
+  reads raw ``.hex`` + ``.xmlcon`` at stage 1 (conversion to engineering units through
+  ``seabirdscientific``), so a cruise need no longer start from a calibrated CNV; the
+  rest of the Sea-Bird chain (wild-edit, low-pass filter, loop-edit, bottle files) is
+  still external. **That chain is what** `ctdam <https://github.com/ocean-uhh/ctdam>`_
+  **does**: it
   drives the Sea-Bird processing chain (``wildedit``, ``wfilter``, ``alignctd``,
   ``celltm``, bottle-file creation, gsw derivations) from a ``proc_template.toml``
   and writes CNV. Stage 0 is therefore a *boundary* with a sibling package rather
@@ -312,8 +316,13 @@ One cast in, one cast out, once per cast.
        plausible numbers. Stage 3 reading the upstream chain is a safety check,
        not only a record.
 
-     The longer-term shape is to express these as ctdcast stage-3 modules with
-     their parameters in ctdcast's config, ingesting unfiltered ``datcnv`` output
+     **Alignment and cell thermal mass have since landed as ctdcast stage-3
+     modules** (through ``seabirdscientific``, with parameters in
+     ``processing.alignctd`` / ``processing.celltm`` that ``ctdcast fit`` suggests),
+     and ``.hex`` + ``.xmlcon`` are now read at stage 1 — so for those steps the
+     boundary has moved inside the framework. The longer-term shape is to express
+     the rest (wild-edit, low-pass filter, loop-edit) the same way, with their
+     parameters in ctdcast's config, ingesting unfiltered ``datcnv`` output
      — one place for the parameters, and re-runnable within the stages.
      Importantly this needs **no file round-trip**: ctdam is a Python library
      whose appliers (``AlignCTD``, ``WFilter``, ``CellTM``, ``LoopRemoval``)
@@ -338,8 +347,9 @@ One cast in, one cast out, once per cast.
   ``sbe_`` prefix rather than discarded. Canonical variable names, unit
   normalisation (conductivity to mS/cm, pressure to dbar), and single-sensor
   renaming — ``ctd_temperature_1`` becomes ``ctd_temperature`` when there is no
-  second sensor to distinguish it from. The backend is pluggable (``CtdBackend``);
-  ``seasenselib`` is the current implementation.
+  second sensor to distinguish it from. Raw ``.hex`` + ``.xmlcon`` are read directly
+  through ``seabirdscientific``; calibrated ``.cnv`` through ``seasenselib`` (the
+  pluggable ``CtdBackend``).
 - **Stage 2 — trim.** Decide which scans belong to the real cast: soak detection at
   the start and back-on-deck detection at the end. It does **not** split the cast
   into downcast and upcast — splitting changes the sampling representation, so by
@@ -353,10 +363,17 @@ One cast in, one cast out, once per cast.
   stage 1 preserved (all of them by default, configurable via
   ``processing.trim.drop_sbe``) — the one place columns are dropped, done
   explicitly and recorded in ``history`` and ``dropped_channels``.
-- **Stage 3 — QC and calibration.** Gross-range and spike QC, then any conductivity
-  calibration named in the cruise config, then salinity re-derived from the
-  calibrated conductivity. Deliberately **iterative**: re-run it as calibration
-  improves, which is why it must not consume its own output.
+- **Stage 3 — corrections, calibration and QC.** At a cast's native scan rate:
+  conductivity alignment and cell thermal mass (Sea-Bird's ``align_ctd`` /
+  ``cell_thermal_mass`` through ``seabirdscientific``, with the parameters
+  ``ctdcast fit`` suggests), then any conductivity calibration named in the cruise
+  config, then salinity re-derived from the calibrated conductivity, then — on a
+  ``.hex`` cast carrying the SBE 43 voltage — ``ctd_oxygen`` derived from the aligned
+  voltage. Gross-range and spike QC run **last**, judging the corrected values. A cast
+  not at its native scan rate, or one Sea-Bird already corrected the same way, skips
+  the native-rate steps with a warning and still gets the calibration, salinity and
+  QC. Deliberately **iterative**: re-run it as calibration improves, which is why it
+  must not consume its own output.
 
 LADCP has a single cast-level stage: the LDEO ``.mat`` solution is converted to
 per-cast netCDF. Its upstream processing happens outside ctdcast.

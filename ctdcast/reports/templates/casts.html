@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% import "_map.html" as mapm %}
+{% import "_snippet.html" as snip %}
 {% set masthead_role = "collection" %}
 
 {% block title %}Station index — {{ cruise }}{% endblock %}
@@ -30,9 +31,6 @@ tbody tr:hover td { background: var(--seafoam); }
   .pill-btn:hover { opacity: 0.85; }
   .ladcp-yes { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--ok); color:#fff; }
   .ladcp-no  { display:inline-block; padding:0.18rem 0.5rem; border-radius:999px; font-size:var(--fs-xs); font-weight:600; background:var(--error); color:#fff; }
-  .clock-configs { display:flex; flex-wrap:wrap; gap:1rem; margin:0.5rem 0; }
-  .clock-configs > div { flex:1 1 22rem; }
-  .clock-configs pre { background:var(--seafoam); padding:0.5rem 0.7rem; border-radius:4px; overflow-x:auto; white-space:pre; }
   tbody tr.track-hover td { background: var(--seafoam); }
 </style>
 {% if casts_map_payload_json and casts_map_payload_json != "[]" %}{{ mapm.map_styles(leaflet_css, map_height) }}{% endif %}
@@ -123,9 +121,8 @@ tbody tr:hover td { background: var(--seafoam); }
 {% endif %}
 
 {% if clock.suggested_yaml %}
-<div class="clock-configs">
-  <div><strong>Suggested</strong> — paste into your <code>config.yaml</code>, then re-run <code>ctdcast process config.yaml --stage 2 --force</code><pre>{{ clock.suggested_yaml }}</pre></div>
-</div>
+<p class="caption">Paste into your <code>config.yaml</code>, then re-run <code>ctdcast process config.yaml --stage 2 --force</code>.</p>
+{{ snip.yaml_snippet("clock-config", clock.suggested_yaml) }}
 {% elif clock.kind in ["step", "constant"] and clock.correction_status == "on_gps" %}
 <p>No correction suggested — the coordinate is already on GPS (NMEA); the measured offset is a comparison artefact, not applied.</p>
 {% elif clock.kind in ["step", "constant"] and clock.correction_status == "undetermined" %}

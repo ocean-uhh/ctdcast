@@ -136,12 +136,15 @@ def render_b64(
         captured["fig"] = fig
         return fig
 
+    # A caller may already pass source= (through **kwargs, e.g. the corrections page); let it win
+    # and only derive one from the real draw otherwise, so the two never collide into a duplicate
+    # keyword argument.
+    kwargs.setdefault("source", _encode.source_for(draw))
     b64 = _encode.render_b64(
         _wrapped,
         *args,
         optional=optional,
         on_error=on_error,
-        source=_encode.source_for(draw),
         **kwargs,
     )
     record(b64, _draw_name(draw), captured.get("fig"))
