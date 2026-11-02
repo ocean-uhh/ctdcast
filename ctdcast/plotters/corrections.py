@@ -21,6 +21,7 @@ from ctdcast.reports._vendored.design_tokens import pen
 DOWN = "#0072B2"
 UP = "#D55E00"
 TAU_COLOUR = "#CC79A7"
+CONFIG_CHANGE = "#009E73"  # Okabe–Ito bluish green — a sensor-configuration change
 LINE_STYLE = {1: ("o", "-", "primary"), 2: ("^", "--", "secondary")}
 
 
@@ -29,6 +30,44 @@ def _xticks(ax: plt.Axes, labels: list[str]) -> None:
     idx = np.arange(0, len(labels), step)
     ax.set_xticks(idx)
     ax.set_xticklabels([labels[i] for i in idx], rotation=90)
+
+
+def _config_boundaries(fits: xr.Dataset) -> list[float]:
+    """Return x positions (``i - 0.5``) where the sensor configuration changed between casts.
+
+    A boundary sits between cast ``i-1`` and cast ``i`` whenever their ``sensor_config``
+    fingerprints differ and both are non-empty (a catalog-less cast is not a boundary).
+
+    Parameters
+    ----------
+    fits : xarray.Dataset
+        The ``fits.nc`` dataset.
+
+    Returns
+    -------
+    list of float
+        The boundary x positions, in cast order; empty when ``sensor_config`` is absent.
+    """
+    if "sensor_config" not in fits:
+        return []
+    cfg = [str(c) for c in fits["sensor_config"].values]
+    return [
+        i - 0.5
+        for i in range(1, len(cfg))
+        if cfg[i] and cfg[i - 1] and cfg[i] != cfg[i - 1]
+    ]
+
+
+def _mark_config_changes(ax: plt.Axes, fits: xr.Dataset, *, label: bool = True) -> None:
+    """Draw a vertical line at each sensor-configuration change; label the first once."""
+    for k, xb in enumerate(_config_boundaries(fits)):
+        ax.axvline(
+            xb,
+            color=CONFIG_CHANGE,
+            ls=(0, (2, 2)),
+            lw=pen("thin"),
+            label="hardware change" if label and k == 0 else None,
+        )
 
 
 def per_cast_alignment(fits: xr.Dataset, li: int, leg: int = 0) -> np.ndarray:
@@ -174,6 +213,7 @@ def draw_alignment_fig(
                 transform=ax.get_xaxis_transform(), label=f"no estimate ({int(edge_any.sum())})")  # fmt: skip
     if np.isfinite(deck).any():
         ax.axhline(float(np.nanmax(deck)), color="0.75", lw=pen("thinner"))
+    _mark_config_changes(ax, fits)
     ax.set_ylabel("total conductivity advance (s)")
     # At least 0.15 s of headroom so the legend clears the data at the top.
     ax.set_ylim(top=max(ax.get_ylim()[1], 0.15))
@@ -197,10 +237,11 @@ def _well_xlim(x: np.ndarray, curves: list[np.ndarray]) -> tuple[float, float]:
     for c in curves:
         inside |= c <= 2.5
     if not inside.any():
-        return max(0.0, float(x[0])), float(x[-1])
+        return float(x[0]), float(x[-1])
     lo, hi = x[inside].min(), x[inside].max()
     pad = 0.25 * (hi - lo)
-    return max(0.0, float(lo - pad)), float(hi + pad)
+    # Do not clamp to 0: the residual advance is often negative, so the well sits left of zero.
+    return float(lo - pad), float(hi + pad)
 
 
 def draw_alignment_wells_fig(
@@ -535,6 +576,9 @@ def draw_blocks_fig(
         rec = cruise.get(line)
         if rec is not None and np.isfinite(rec.residual):
             a0.axhline(rec.residual + base, color="0.6", ls=ls, lw=pen("thin"))
+    _mark_config_changes(a0, fits)
+    _mark_config_changes(a1, fits, label=False)
+    _mark_config_changes(a2, fits, label=False)
     a0.set_title("Align CT")
     a1.set_title("Cell thermal mass")
     a0.set_ylabel("advance (s)")

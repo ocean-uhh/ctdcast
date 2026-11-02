@@ -53,11 +53,11 @@ td.num { text-align: right; }
   </tbody>
 </table>
 
-<p class="caption"><strong>Cell thermal mass.</strong> The cruise value is the minimum of the averaged cost; because α and τ trade off along a valley, the one-parameter fits (one held at Sea-Bird's {{ sbe_alpha }} or {{ sbe_tau }} s) are the steadier numbers. "Sea-Bird ×" is the cost at Sea-Bird's ({{ sbe_alpha }}, {{ sbe_tau }} s) as a multiple of the minimum: within 1.{{ "%02d" % valley_pct }} is inside the valley.</p>
+<p class="caption"><strong>Cell thermal mass.</strong> The recommended (α, τ) (bold) is the grid point within {{ tol_pct }}% of the cost minimum that is closest to Sea-Bird's default ({{ sbe_alpha }}, {{ sbe_tau }} s) — any (α, τ) within {{ tol_pct }}% of the minimum is equivalent, so the one shown is the one nearest the default. Because α and τ trade off along a valley, the one-parameter fits (one held at Sea-Bird's {{ sbe_alpha }} or {{ sbe_tau }} s) are the steadier per-value numbers.</p>
 <table class="nc">
-  {{ nc.thead(["CT", "CTM (α, τ)", "α at τ = " ~ sbe_tau ~ " s", "τ at α = " ~ sbe_alpha, "Sea-Bird ×", "casts"], units=["", "(–, s)", "", "s", "", ""]) }}
+  {{ nc.thead(["CT", "Recommended (α, τ)", "α at τ = " ~ sbe_tau ~ " s", "τ at α = " ~ sbe_alpha, "casts"], units=["", "(–, s)", "", "s", ""]) }}
   <tbody>
-  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num">{{ r.ctm }}</td><td class="num">{{ r.alpha_at_tau }}</td><td class="num">{{ r.tau_at_alpha }}</td><td class="num">{{ r.sbe }}</td><td class="num">{{ r.ctm_n }}</td></tr>
+  {% for r in rows %}<tr><td>{{ r.line }}</td><td class="num"><strong>{{ r.ctm }}</strong></td><td class="num">{{ r.alpha_at_tau }}</td><td class="num">{{ r.tau_at_alpha }}</td><td class="num">{{ r.ctm_n }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -68,7 +68,7 @@ td.num { text-align: right; }
 <p class="caption">Cost: the mean square of practical salinity minus its 1-s running mean (Tukey window), in the thermocline (|dT/dp| &gt; {{ gradient }} °C/dbar), below {{ align_pmin | round(0) | int }} dbar, on scans moving along the leg faster than {{ min_speed }} dbar/s (pressure low-passed at 0.15 s, as SBE Data Processing's Filter). Median lowering speed {{ speed_down }} dbar/s, hauling {{ speed_up }} dbar/s.</p>
 <blockquote class="caption">“The best diagnostic of proper alignment is the elimination of salinity spikes that coincide with very sharp temperature steps. To determine the best alignment, plot 10 meters of temperature and salinity data at a depth that contains a very sharp temperature step. For the downcast, when temperature and salinity decrease with increasing pressure: A negative salinity spike at the conductivity step means that conductivity leads temperature (conductivity sensor sees step before temperature sensor does). Advance conductivity relative to temperature a negative number of seconds. Conversely, if the salinity spike is positive, advance conductivity relative to temperature a positive number of seconds. […] The best alignment of conductivity with respect to temperature is obtained when the salinity spikes are minimized. Some experimentation with different advances is required to find the best alignment.” — Sea-Bird Scientific, <em>SBE Data Processing</em> manual, rev. 7.26.8, p. 84.</blockquote>
 {{ fig("wells", "Cruise salinity-spike cost against total advance, downcast blue and upcast vermillion: each cast's cost divided by its own minimum, the median across casts drawn and the middle half of casts shaded; dashed lines at the minima. The downcast's minimum (bold in the legend) is the value suggested. Grey line: the deck unit's advance. Top axis in scans.") }}
-{{ fig("alignment", "Total conductivity advance at each cast's minimum downcast salinity-spike cost. Casts whose cost is still falling at an end of the search, or never rises to twice its minimum (no well: a faulty line), have no estimate and are ticked along the top. Circles primary, triangles secondary; solid and dashed lines at their medians; grey line the deck unit's advance.") }}
+{{ fig("alignment", "Total conductivity advance at each cast's minimum downcast salinity-spike cost. Casts whose cost is still falling at an end of the search, or never rises to twice its minimum (no well: a faulty line), have no estimate and are ticked along the top. Circles primary, triangles secondary; solid and dashed lines at their medians; grey line the deck unit's advance; a green dashed vertical line marks a sensor-configuration change.") }}
 {{ fig("align_hist", "Distribution of each cast's total conductivity advance, primary and secondary, with the median drawn.", slot="half") }}
 
 {{ heading("s-ctm") }}
@@ -77,7 +77,7 @@ td.num { text-align: right; }
 {{ fig("ctm_hist", "Counts of the per-cast one-parameter fits — α at τ = " ~ sbe_tau ~ " s and τ at α = " ~ sbe_alpha ~ " — by line; dark where the cast's |ΔT| is above the cruise median, light below; dotted at Sea-Bird's value.", slot="half") }}
 
 {{ heading("s-blocks") }}
-{{ fig("blocks", "The same fits for blocks of " ~ block ~ " consecutive casts, at each block's centre: total advance, α with τ = " ~ sbe_tau ~ " s, and τ with α = " ~ sbe_alpha ~ ". A trend suggests drift (a pump wearing); a step, a hardware change — a per-cast range in the config.") }}
+{{ fig("blocks", "The same fits for blocks of " ~ block ~ " consecutive casts, at each block's centre: total advance, α with τ = " ~ sbe_tau ~ " s, and τ with α = " ~ sbe_alpha ~ ". A trend suggests drift (a pump wearing); a step, a hardware change — a per-cast range in the config. Green dashed vertical lines mark where the sensor configuration changed.") }}
 
 {% if skipped %}
 {{ heading("s-skipped") }}

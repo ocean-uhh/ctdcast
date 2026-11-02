@@ -4,8 +4,9 @@
    current/suggested pair side by side (stacking at phone width via .snippet-pair).  Each box has a
    title row with a Copy button (wired by the vendored _JS_COPY_SNIPPET, injected once per page) and
    the text in a <pre class="snippet"> — not a <textarea>, so it never clips and prints.  Clicking the
-   <pre> selects all, so copy works without JavaScript.  `text` / `current` are autoescaped: pass
-   plain YAML.  `id` must be unique on the page; the current box uses `<id>-current`. #}
+   box selects all its text (wired by _JS_COPY_SNIPPET), so you can copy with the keyboard if the Copy
+   button fails.  `text` / `current` are autoescaped: pass plain YAML.  `id` must be unique on the page;
+   the current box uses `<id>-current`. #}
 {% macro yaml_snippet(id, text, title="Suggested — copy into the config", current=None, current_title="Current") -%}
 <div class="snippet-pair{% if current is none %} snippet-single{% endif %}">
   {%- if current is not none %}

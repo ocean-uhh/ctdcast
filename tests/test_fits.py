@@ -217,10 +217,11 @@ def test_fit_cruise_writes_costs_and_summary(root):
     assert 0.2 < down < 2.0 and (np.isnan(up) or up < down)
     (s1, s2) = summarise(fits)
     assert (s1.line, s2.line) == (1, 2)
-    assert np.isfinite(s1.residual) and np.isnan(s1.alpha)
+    assert np.isfinite(s1.residual) and np.isnan(s1.alpha_rec)
     assert np.isnan(s1.residual_up)  # the suggestion is the downcast's
-    text = suggested_yaml([s1, s2], 0.073)
-    assert "conductivity_1: {default:" in text and "deck unit's 0.073" in text
+    text = suggested_yaml([s1, s2])
+    assert "conductivity_1: {default:" in text  # plain YAML, no comments
+    assert "#" not in text
     assert "celltm" not in text  # nothing to suggest without an upcast
 
 

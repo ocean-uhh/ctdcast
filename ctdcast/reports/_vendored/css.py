@@ -313,12 +313,12 @@ tr.units th {{
 }}
 .snippet-copy {{
   font: inherit; font-size: var(--fs-xs); cursor: pointer; color: var(--text);
-  border: 1px solid var(--rule); background: var(--bg-soft);
+  border: 1px solid var(--rule); background: var(--bg-sunken);
   border-radius: 4px; padding: 0.1rem 0.5rem;
 }}
-.snippet-copy:hover {{ background: var(--bg-sunken); }}
+.snippet-copy:hover {{ background: var(--seafoam); }}
 pre.snippet {{
-  background: var(--bg-soft); padding: 0.6rem 0.8rem; margin: 0;
+  background: var(--bg-sunken); padding: 0.6rem 0.8rem; margin: 0;
   white-space: pre; overflow-x: auto; cursor: text; height: auto;
   font-family: var(--font-mono); font-size: var(--fs-xs); border-left: 3px solid var(--rule);
 }}
@@ -453,6 +453,12 @@ document.querySelectorAll('h2').forEach(h => {
 #: the button reads "Copied" for two seconds.
 _JS_COPY_SNIPPET: str = """\
 <script>
+document.querySelectorAll('pre.snippet').forEach(function (pre) {
+  pre.addEventListener('click', function () {
+    var sel = window.getSelection(), r = document.createRange();
+    r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
+  });
+});
 document.querySelectorAll('button[data-copy]').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var pre = document.getElementById(btn.getAttribute('data-copy'));
@@ -463,10 +469,11 @@ document.querySelectorAll('button[data-copy]').forEach(function (btn) {
       setTimeout(function () { btn.textContent = label; }, 2000);
     }
     function fallback() {
-      var sel = window.getSelection(), r = document.createRange();
+      var sel = window.getSelection(), r = document.createRange(), ok = false;
       r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
-      try { document.execCommand('copy'); done(); } catch (e) {}
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
       sel.removeAllRanges();
+      if (ok) { done(); }
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(pre.textContent).then(done, fallback);

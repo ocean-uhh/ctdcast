@@ -57,7 +57,6 @@ Examples:
 
 def run(args: argparse.Namespace) -> int:
     """Execute ``ctdcast fit``."""
-    import numpy as np
     import yaml
 
     from ctdcast.config.parameters import CAST_TAG_WIDTH
@@ -77,10 +76,11 @@ def run(args: argparse.Namespace) -> int:
         return 1
     with cfg_path.open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
-    root_raw = (cfg.get("data") or {}).get("ctd_root")
+    data = cfg.get("data") or {}
+    root_raw = data.get("ctd_root") or data.get("nc_dir")
     if not root_raw or not Path(root_raw).is_dir():
         print(
-            f"Config error: data.ctd_root is missing or not a directory: {root_raw}",
+            f"Config error: data.ctd_root (or data.nc_dir) is missing or not a directory: {root_raw}",
             file=sys.stderr,
         )
         return 1
@@ -126,6 +126,5 @@ def run(args: argparse.Namespace) -> int:
     print(
         f"\nSuggested — paste into {cfg_path.name}, then re-run `ctdcast process {cfg_path.name} --stage 3 --force`:\n"
     )
-    deck = fits["deck_advance"].values[0]
-    print(suggested_yaml(summaries, float(deck) if np.isfinite(deck) else None))
+    print(suggested_yaml(summaries))
     return 0

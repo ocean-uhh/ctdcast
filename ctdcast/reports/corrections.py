@@ -56,10 +56,11 @@ def _summary_rows(
                 "advance": _f(s.residual + base, ".4f"),
                 "advance_up": _f(s.residual_up + base, ".4f"),
                 "align_n": str(s.alignment_n),
-                "ctm": "–" if not np.isfinite(s.alpha) else f"({s.alpha:g}, {s.tau:g})",
+                "ctm": "–"
+                if not np.isfinite(s.alpha_rec)
+                else f"({s.alpha_rec:g}, {s.tau_rec:g})",
                 "alpha_at_tau": _f(s.alpha_at_tau, "g"),
                 "tau_at_alpha": _f(s.tau_at_alpha, "g"),
-                "sbe": _f(s.sbe_ratio, ".3f"),
                 "ctm_n": str(s.ctm_n),
             }
         )
@@ -100,7 +101,6 @@ def generate_corrections_page(
     with xr.open_dataset(fits_path, engine="netcdf4") as ds:
         fits = ds.load()
     summaries = summarise(fits)
-    deck = fits["deck_advance"].values[0] if "deck_advance" in fits else np.nan
     figs = {
         name: render_b64(
             draw,
@@ -165,13 +165,12 @@ def generate_corrections_page(
         speed_up=speeds[1],
         fit_created=str(fits.attrs.get("date_created", "")),
         rows=_summary_rows(fits, summaries),
-        yaml=suggested_yaml(summaries, float(deck) if np.isfinite(deck) else None)
-        if summaries
-        else "",
+        yaml=suggested_yaml(summaries) if summaries else "",
         figs=figs,
         sbe_alpha=F.DEFAULT_ALPHA_SBE,
         sbe_tau=F.DEFAULT_TAU_SBE,
         valley_pct=round(F.VALLEY_FRACTION * 100),
+        tol_pct=round(float(fits.attrs.get("ctm_tolerance", 0.02)) * 100),
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")

@@ -239,13 +239,10 @@ def report(
     # built once here so every page — not just the inventory pages — can render
     # the strip beneath its masthead.  Derived from the compiled paths, so it is
     # available before the first page is written.
-    # ``ctdcast fit`` writes fits.nc beside profiles.nc (both at the top of the CTD root); when
-    # it exists the masthead gains a Corrections: row and corrections_ts.html is drawn from it.
-    fits_path = (
-        Path(profiles_path).parent / FITS_FILENAME
-        if profiles_path is not None
-        else None
-    )
+    # ``ctdcast fit`` writes fits.nc at the top of the CTD root (``nc_dir``), which is where it is
+    # looked for here — not beside profiles.nc, which the config may place elsewhere.  When it exists
+    # the masthead gains a Corrections: row and corrections_ts.html is drawn from it.
+    fits_path = Path(nc_dir) / FITS_FILENAME
     inventory_datasets = inventory_pills(profiles_path, ladcp_profiles_path, fits_path)
 
     # Load sections YAML once. SectionsConfig returns empty defaults when absent.

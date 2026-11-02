@@ -483,6 +483,54 @@ def ctm_cost(
     return out
 
 
+def snap_to_default(
+    surface: np.ndarray,
+    alpha: np.ndarray = DEFAULT_ALPHA,
+    tau: np.ndarray = DEFAULT_TAU,
+    *,
+    tolerance: float = 0.02,
+    alpha_default: float = DEFAULT_ALPHA_SBE,
+    tau_default: float = DEFAULT_TAU_SBE,
+    alpha_scale: float = 0.01,
+    tau_scale: float = 1.0,
+) -> tuple[float, float]:
+    """Return the ``(alpha, tau)`` within *tolerance* of the cost minimum closest to the default.
+
+    Any grid point whose cost is within ``tolerance`` of the minimum is treated as equally good;
+    among those the one nearest Sea-Bird's default is returned, distance measured in ``alpha_scale``
+    / ``tau_scale`` units (a step of ``tau_scale`` in tau counts as much as ``alpha_scale`` in
+    alpha).  The default itself is returned when it falls inside the region.
+
+    Parameters
+    ----------
+    surface : numpy.ndarray
+        A cruise cost surface on the ``(alpha, tau)`` grid.
+    alpha, tau : numpy.ndarray, optional
+        The grid.
+    tolerance : float, optional
+        The acceptability fraction above the minimum (``0.02`` = 2%).
+    alpha_default, tau_default : float, optional
+        The point to stay close to.
+    alpha_scale, tau_scale : float, optional
+        The per-axis distance units.
+
+    Returns
+    -------
+    tuple of float
+        ``(alpha, tau)``; ``(nan, nan)`` when the surface has no usable minimum.
+    """
+    smin = float(np.nanmin(surface)) if np.isfinite(surface).any() else np.nan
+    if not np.isfinite(smin) or smin <= 0:
+        return (np.nan, np.nan)
+    ii, jj = np.where(surface <= smin * (1 + tolerance))
+    if ii.size == 0:
+        return (np.nan, np.nan)
+    da = (np.asarray(alpha)[ii] - alpha_default) / alpha_scale
+    dt = (np.asarray(tau)[jj] - tau_default) / tau_scale
+    k = int(np.argmin(da**2 + dt**2))
+    return (float(alpha[ii[k]]), float(tau[jj[k]]))
+
+
 def has_interior_minimum(cost: np.ndarray) -> bool:
     """Return whether a 1-D cost has its minimum strictly inside the search.
 

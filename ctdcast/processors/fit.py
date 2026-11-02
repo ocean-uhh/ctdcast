@@ -27,6 +27,7 @@ from ctdcast.analysis import fits as F
 from ctdcast.config.cnv_header import applied_sbe_corrections, header_from_raw_metadata
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.corrections import native_interval
+from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import group_by_cast, matches_tags
 
 #: Lines fitted, as (line number, conductivity variable, temperature variable).
@@ -59,6 +60,9 @@ class FitSettings:
         every scan.
     gap_seconds : float
         Down/up weighting time scale (s).
+    ctm_tolerance : float
+        Acceptability fraction above the cost minimum for the recommended (alpha, tau): any point
+        within it is treated as equally good (0.02 = 2%).
     block : int
         Consecutive casts per block.
     residuals, alpha, tau : numpy.ndarray
@@ -70,6 +74,7 @@ class FitSettings:
     align_pmin: float = F.DEFAULT_ALIGN_PMIN
     min_speed: float = F.DEFAULT_MIN_SPEED
     gap_seconds: float = F.DEFAULT_GAP_SCALE
+    ctm_tolerance: float = 0.02
     block: int = DEFAULT_BLOCK
     residuals: np.ndarray = field(default_factory=lambda: F.DEFAULT_RESIDUALS.copy())
     alpha: np.ndarray = field(default_factory=lambda: F.DEFAULT_ALPHA.copy())
@@ -104,6 +109,7 @@ class FitSettings:
             "align_pmin",
             "min_speed",
             "gap_seconds",
+            "ctm_tolerance",
             "block",
         }
         unknown = set(block) - known
@@ -185,6 +191,7 @@ class _CastRecord:
     pmax: float = np.nan
     delta_t: tuple[float, float] = (np.nan, np.nan)
     speed: tuple[float, float] = (np.nan, np.nan)
+    config: str = ""
     skipped: str = ""
     casts: dict[int, F.Cast] = field(default_factory=dict)
     align: dict[int, np.ndarray] = field(default_factory=dict)
@@ -302,6 +309,11 @@ def fit_cruise(
         with xr.open_dataset(
             groups[cid][2], engine="netcdf4", decode_timedelta=False
         ) as ds:
+            # The cast's sensor-configuration fingerprint (SENSOR_* catalog names): a change
+            # between consecutive casts marks a hardware swap, drawn on the figures.
+            rec.config = "|".join(
+                sorted(r["name"] for r in read_cast_sensor_catalog(ds))
+            )
             interval, reason = native_interval(ds)
             if interval is None:
                 rec.skipped = reason or "not at the native scan rate"
@@ -420,6 +432,13 @@ def _to_dataset(
                 ("cast",),
                 np.array([r.skipped for r in records], dtype=object),
             ),
+            "sensor_config": (
+                ("cast",),
+                np.array([r.config for r in records], dtype=object),
+                {
+                    "long_name": "sensor catalog fingerprint (SENSOR_* names); a change marks a hardware swap"
+                },
+            ),
             "alignment_cost": (
                 ("cast", "line", "leg", "residual"),
                 align,
@@ -489,6 +508,7 @@ def _to_dataset(
             "alignment_highpass": f"salinity minus its 1-s running mean, Tukey window (taper {F.TUKEY_ALPHA})",
             "alignment_speed_filter_seconds": F.PRESSURE_FILTER_SECONDS,
             "ctm_gap_seconds": settings.gap_seconds,
+            "ctm_tolerance": settings.ctm_tolerance,
             "block": settings.block,
             "scan_interval_s": np.nan
             if scan_interval is None
@@ -515,12 +535,11 @@ class LineSummary:
         The same for the upcast, shown beside it.
     alignment_n_up : int
         Casts in the upcast curve.
-    alpha, tau : float
-        Cruise two-parameter minimum.
+    alpha_rec, tau_rec : float
+        The recommended (alpha, tau): the point within ``ctm_tolerance`` of the cost minimum
+        closest to Sea-Bird's default. The value suggested in the YAML.
     alpha_at_tau, tau_at_alpha : float
         One-parameter fits at Sea-Bird's default for the other.
-    sbe_ratio : float
-        Sea-Bird's (0.03, 7) cost as a multiple of the minimum.
     ctm_n : int
         Casts in the cell thermal mass average.
     """
@@ -530,11 +549,10 @@ class LineSummary:
     alignment_n: int
     residual_up: float
     alignment_n_up: int
-    alpha: float
-    tau: float
+    alpha_rec: float
+    tau_rec: float
     alpha_at_tau: float
     tau_at_alpha: float
-    sbe_ratio: float
     ctm_n: int
 
 
@@ -560,6 +578,7 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
     res = fits["residual"].values.astype(np.float64)
     al = fits["alpha"].values.astype(np.float64)
     ta = fits["tau"].values.astype(np.float64)
+    tol = float(fits.attrs.get("ctm_tolerance", 0.02))
     out = []
     for li, line in enumerate(fits["line"].values):
         acost = sub["alignment_cost"].values[:, li].astype(np.float64)
@@ -581,10 +600,11 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
             if cfit is None
             else F.one_parameter_fits(cfit.surface, al, ta)
         )
-        if cfit is not None:
-            ia = int(np.argmin(np.abs(al - F.DEFAULT_ALPHA_SBE)))
-            jt = int(np.argmin(np.abs(ta - F.DEFAULT_TAU_SBE)))
-            ratio = float(cfit.surface[ia, jt] / cfit.surface[cfit.index])
+        a_rec, t_rec = (
+            (np.nan, np.nan)
+            if cfit is None
+            else F.snap_to_default(cfit.surface, al, ta, tolerance=tol)
+        )
         out.append(
             LineSummary(
                 line=int(line),
@@ -592,54 +612,41 @@ def summarise(fits: xr.Dataset, *, casts: slice | None = None) -> list[LineSumma
                 alignment_n=0 if afit is None else afit.n_casts,
                 residual_up=np.nan if ufit is None else float(res[ufit.index]),
                 alignment_n_up=0 if ufit is None else ufit.n_casts,
-                alpha=np.nan if cfit is None else float(al[cfit.index[0]]),
-                tau=np.nan if cfit is None else float(ta[cfit.index[1]]),
+                alpha_rec=a_rec,
+                tau_rec=t_rec,
                 alpha_at_tau=a1,
                 tau_at_alpha=t1,
-                sbe_ratio=np.nan if cfit is None else ratio,
                 ctm_n=0 if cfit is None else cfit.n_casts,
             )
         )
     return out
 
 
-def suggested_yaml(summaries: list[LineSummary], deck_advance: float | None) -> str:
+def suggested_yaml(summaries: list[LineSummary]) -> str:
     """Return a paste-ready ``processing:`` snippet from the cruise summaries.
+
+    Plain YAML, no comments: per-line ``alignctd`` (the downcast residual) and ``celltm`` (the
+    recommended alpha/tau).
 
     Parameters
     ----------
     summaries : list of LineSummary
         From :func:`summarise` over the whole cruise.
-    deck_advance : float or None
-        The deck unit's advance already in the data (s), for the comment.
 
     Returns
     -------
     str
-        YAML text with per-line ``alignctd`` and ``celltm`` entries and comments giving n and how
-        Sea-Bird's default compares.
+        The YAML text.
     """
     align = [
-        f"    conductivity_{s.line}: {{default: {s.residual:+.4f}}}  # downcast, n={s.alignment_n}"
-        + (
-            ""
-            if deck_advance is None
-            else f", total {deck_advance + s.residual:.4f} s with the deck unit's {deck_advance:.3f}"
-        )
-        + (
-            ""
-            if not np.isfinite(s.residual_up)
-            else f"; upcast residual {s.residual_up:+.4f}"
-        )
+        f"    conductivity_{s.line}: {{default: {s.residual:+.4f}}}"
         for s in summaries
         if np.isfinite(s.residual)
     ]
     ctm = [
-        f"    conductivity_{s.line}: {{default: {{alpha: {s.alpha:g}, tau: {s.tau:g}}}}}"
-        f"  # n={s.ctm_n}; Sea-Bird (0.03, 7) is {s.sbe_ratio:.3f}x the minimum;"
-        f" alpha {s.alpha_at_tau:g} at tau 7, tau {s.tau_at_alpha:g} at alpha 0.03"
+        f"    conductivity_{s.line}: {{default: {{alpha: {s.alpha_rec:g}, tau: {s.tau_rec:g}}}}}"
         for s in summaries
-        if np.isfinite(s.alpha)
+        if np.isfinite(s.alpha_rec)
     ]
     lines = ["processing:"]
     if align:
