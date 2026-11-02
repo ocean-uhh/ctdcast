@@ -365,7 +365,10 @@ def run(
         If *root* does not exist or is not a directory.
     """
     if not root.is_dir():
-        raise FileNotFoundError(f"stage root not found: {root}")
+        raise FileNotFoundError(
+            f"stage root not found: {root}. Stage 1 creates it from the raw input, so run "
+            "--stage 1 first and check that the config's data: block sets cnv_dir or hex_dir."
+        )
 
     cruise_cfg: dict | None = kw.get("cruise_cfg")  # type: ignore[assignment]
     # A declared ``D`` is a human claim about a finished cruise (OceanSITES table 4), not

@@ -743,7 +743,10 @@ def sbe43_dvdt(volts: np.ndarray, window_seconds: float, interval: float) -> np.
 
 
 def sbe43_hysteresis(
-    volts: np.ndarray, pressure: np.ndarray, coefs: Oxygen43Coefficients, interval: float
+    volts: np.ndarray,
+    pressure: np.ndarray,
+    coefs: Oxygen43Coefficients,
+    interval: float,
 ) -> np.ndarray:
     """Return SBE 43 voltage corrected for hysteresis, as Sea-Bird Application Note 64-3 gives it.
 
@@ -784,7 +787,10 @@ def sbe43_hysteresis(
 
 
 def sbe43_tau_term(
-    dvdt: np.ndarray, temperature: np.ndarray, pressure: np.ndarray, coefs: Oxygen43Coefficients
+    dvdt: np.ndarray,
+    temperature: np.ndarray,
+    pressure: np.ndarray,
+    coefs: Oxygen43Coefficients,
 ) -> np.ndarray:
     """Return the tau correction in volts: ``tau20·exp(D1·P + D2·(T − 20))·dV/dt``.
 
