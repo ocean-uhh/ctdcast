@@ -220,8 +220,8 @@ def test_fit_cruise_writes_costs_and_summary(root):
     assert np.isfinite(s1.residual) and np.isnan(s1.alpha_rec)
     assert np.isnan(s1.residual_up)  # the suggestion is the downcast's
     text = suggested_yaml([s1, s2])
-    assert "conductivity_1: {default:" in text  # plain YAML, no comments
-    assert "#" not in text
+    assert "conductivity_1:" in text  # bare value, no {default:} wrapper, no comments
+    assert "default" not in text and "#" not in text
     assert "celltm" not in text  # nothing to suggest without an upcast
 
 
@@ -287,7 +287,7 @@ def test_corrections_page_renders(root, tmp_path):
     html = out.read_text(encoding="utf-8")
     assert "T/S corrections" in html and "Corrections:" in html
     assert "Conductivity alignment" in html and "data:image/png;base64," in html
-    assert "conductivity_1: {default:" in html  # the suggested YAML
+    assert "conductivity_1:" in html and "{default:" not in html  # bare suggested YAML
     assert "Nothing to show" in html  # the slice has no upcast, so no CTM figures
     assert "The best diagnostic of proper alignment" in html and "p. 84" in html
     assert "Median lowering speed" in html

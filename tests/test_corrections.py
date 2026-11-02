@@ -173,6 +173,29 @@ def test_ctm_resolution_and_errors():
         )
 
 
+def test_bare_value_resolves_like_default():
+    # alignctd: a bare number is the default for every cast, same as {default: n}.
+    assert resolve_alignment(
+        {"alignctd": {"conductivity": -0.01}}, "conductivity_1", 11
+    ) == (-0.01, "alignctd.conductivity default")
+    # celltm: a bare {alpha, tau} mapping is the default, same as {default: {alpha, tau}}.
+    assert resolve_cell_thermal_mass(
+        {"celltm": {"conductivity_1": {"alpha": 0.03, "tau": 7.0}}}, "conductivity_1", 11
+    ) == (0.03, 7.0, "celltm.conductivity_1 default")
+    # The bare default and the {default:, ranges:} form coexist: the range wins inside its casts,
+    # the bare default outside.
+    ranged = {
+        "alignctd": {
+            "conductivity_2": {
+                "default": -0.01,
+                "ranges": [{"casts": [[7, 99]], "value": -0.02}],
+            }
+        }
+    }
+    assert resolve_alignment(ranged, "conductivity_2", 5)[0] == -0.01
+    assert resolve_alignment(ranged, "conductivity_2", 7)[0] == -0.02
+
+
 # --- appliers ------------------------------------------------------------------------------
 
 

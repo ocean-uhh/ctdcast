@@ -176,11 +176,16 @@ def native_interval(ds: xr.Dataset) -> tuple[float | None, str | None]:
 def _decl_value(
     decl: object, cast_number: int | None, where: str
 ) -> tuple[Any, str] | None:
-    """Value a ``{default, ranges}`` declaration gives *cast_number*, with its source, or None."""
-    if not isinstance(decl, dict):
-        raise ValueError(
-            f"{where}: expected a mapping with default and/or ranges, got {decl!r}"
-        )
+    """Value a declaration gives *cast_number*, with its source, or None.
+
+    A declaration is either a **bare value** — the value for every cast (a number for ``alignctd``,
+    an ``{alpha, tau}`` mapping for ``celltm``) — or a mapping with ``default`` and/or ``ranges`` for
+    per-cast-range exceptions.
+    """
+    if not isinstance(decl, dict) or not ({"default", "ranges"} & set(decl)):
+        # A bare value: the default for every cast.  (An {alpha, tau} mapping has no default/ranges
+        # key, so it is read here and validated downstream.)
+        return decl, "default"
     unknown = set(decl) - {"default", "ranges"}
     if unknown:
         raise ValueError(f"{where}: unknown key(s) {sorted(unknown)}")

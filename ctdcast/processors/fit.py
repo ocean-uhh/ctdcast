@@ -367,7 +367,8 @@ def fit_cruise(
                 reasons.append(
                     "Sea-Bird aligned "
                     + ", ".join(
-                        f"conductivity_{line}" for line in sorted(rec.sbe_aligned)
+                        f"{_LINE_NAME[line]} conductivity"
+                        for line in sorted(rec.sbe_aligned)
                     )
                 )
             if rec.sbe_celltm:
@@ -708,12 +709,12 @@ def suggested_yaml(summaries: list[LineSummary]) -> str:
         The YAML text.
     """
     align = [
-        f"    conductivity_{s.line}: {{default: {s.residual:+.4f}}}"
+        f"    conductivity_{s.line}: {s.residual:+.4f}"
         for s in summaries
         if np.isfinite(s.residual)
     ]
     ctm = [
-        f"    conductivity_{s.line}: {{default: {{alpha: {s.alpha_rec:g}, tau: {s.tau_rec:g}}}}}"
+        f"    conductivity_{s.line}: {{alpha: {s.alpha_rec:g}, tau: {s.tau_rec:g}}}"
         for s in summaries
         if np.isfinite(s.alpha_rec)
     ]
