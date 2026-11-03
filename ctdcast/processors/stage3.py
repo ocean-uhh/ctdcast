@@ -61,6 +61,7 @@ def stage3(
     *,
     cast_number: int | None = None,
     cast_label: str = "?",
+    context: StepContext | None = None,
 ) -> xr.Dataset:
     """Apply the configured processing steps, derived variables and QC to a per-cast Dataset.
 
@@ -95,6 +96,9 @@ def stage3(
         The cast's number, for per-cast-range values.
     cast_label : str
         How the cast is named in warnings (e.g. ``"011"``).
+    context : StepContext, optional
+        Filled in as the steps run (Wild Edit's marks, Loop Edit's scans), for the products
+        made from this cast in the same run.
 
     Returns
     -------
@@ -108,7 +112,8 @@ def stage3(
     ds, calibrated = _apply_slope_offset(ds, dp.get("slope_offset"), cast_number)
 
     # Step 2: the listed steps, in order (validated by run(), before any cast).
-    ctx = StepContext(cast_number=cast_number, cast_label=cast_label)
+    ctx = context if context is not None else StepContext()
+    ctx.cast_number, ctx.cast_label = cast_number, cast_label
     ctx.changed.update(calibrated)
     if calibrated:
         ctx.applied.append("slope_offset")
@@ -160,7 +165,7 @@ def stage3(
         )
 
     # Step 4: oxygen from the SBE 43 voltage (hex casts; a CNV's own oxygen is left alone).
-    ds, _oxygen = derive_oxygen(ds, dp, cast_label=cast_label)
+    ds, _oxygen = derive_oxygen(ds, dp, cast_label=cast_label, marked=ctx.marked)
     if ctx.applied:
         # The order the steps ran in, for the file and for the cast page's corrections table.
         ds.attrs["data_processing_steps"] = "; ".join(ctx.applied)
@@ -191,14 +196,21 @@ def product_path(root: Path, stem: str, name: str) -> Path:
 
 
 def _write_products(
-    ds: xr.Dataset, root: Path, stem: str, products: list[dict], cast_id: tuple
+    ds: xr.Dataset,
+    root: Path,
+    stem: str,
+    products: list[dict],
+    cast_id: tuple,
+    marked: dict | None = None,
 ) -> None:
     """Make and write each configured product of one cast; a failure names the product only."""
     label = format_cast_id(*cast_id)
     for product in products:
         path = product_path(root, stem, product["name"])
         try:
-            out = make_product(ds, product, cast_number=cast_id[0], cast_label=label)
+            out = make_product(
+                ds, product, cast_number=cast_id[0], cast_label=label, marked=marked
+            )
             path.parent.mkdir(parents=True, exist_ok=True)
             _write_nc(out, path)
             print(f"  ok: {path.parent.name}/{path.name}")
@@ -484,11 +496,13 @@ def run(
         ds = None
         try:
             ds = xr.open_dataset(input_path, engine="netcdf4").load()
+            steps_ctx = StepContext()
             ds_out = stage3(
                 ds,
                 cruise_cfg=cruise_cfg,
                 cast_number=cast_id[0],
                 cast_label=format_cast_id(*cast_id),
+                context=steps_ctx,
             )
             # Lineage: record the stage-2 file's id before the writer stamps ds_out's own
             # fresh tracking_id (empty on a legacy stage-2 file that predates the id).
@@ -528,7 +542,7 @@ def run(
             _write_nc(ds_out, target)
             print(f"  ok: {target.name}")
             n += 1
-            _write_products(ds_out, root, stem, products, cast_id)
+            _write_products(ds_out, root, stem, products, cast_id, steps_ctx.marked)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",

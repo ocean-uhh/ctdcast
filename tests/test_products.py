@@ -18,9 +18,7 @@ FIX = Path(__file__).parent / "fixtures"
 
 
 def test_seconds_bins_average_each_second(hex_stage2):
-    out = bin_average(
-        hex_stage2, {"bin": "seconds", "size": 1, "exclude_flagged": False}
-    )
+    out = bin_average(hex_stage2, {"bin": "seconds", "size": 1})
     n = hex_stage2.sizes["time"]
     assert abs(out.sizes["bin"] - n / 24) <= 2
     assert set(out.nbin.values[1:-1]) <= {23, 24, 25}
@@ -41,7 +39,7 @@ def test_a_flagged_value_leaves_only_its_own_variable(hex_stage2):
     qc = np.ones(ds.sizes["time"], dtype=np.int8)
     qc[:240] = 4  # the first ten seconds of temperature fail
     ds["ctd_temperature_1_qc"] = ("time", qc)
-    out = bin_average(ds, {"bin": "seconds", "size": 1, "exclude_flagged": False})
+    out = bin_average(ds, {"bin": "seconds", "size": 1})
     early = out.time.values < ds.time.values[0] + np.timedelta64(9, "s")
     assert np.isnan(out.ctd_temperature_1.values[early]).all()
     assert np.isfinite(out.pressure.values[early]).all()
@@ -52,8 +50,8 @@ def test_loop_edit_scans_leave_the_whole_bin(hex_stage2):
     flag = np.zeros(ds.sizes["time"], dtype=np.int8)
     flag[:240] = 1
     ds["loop_edit_flag"] = ("time", flag)
-    kept = bin_average(ds, {"bin": "seconds", "size": 1, "exclude_flagged": False})
-    dropped = bin_average(ds, {"bin": "seconds", "size": 1, "exclude_flagged": True})
+    kept = bin_average(hex_stage2, {"bin": "seconds", "size": 1})
+    dropped = bin_average(ds, {"bin": "seconds", "size": 1})
     assert dropped.sizes["bin"] < kept.sizes["bin"]
     assert dropped.time.values.min() >= ds.time.values[230]
 

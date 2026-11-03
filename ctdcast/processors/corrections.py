@@ -913,8 +913,29 @@ def _finite_runs(good: np.ndarray) -> list[slice]:
     return [slice(int(a), int(b)) for a, b in zip(starts, stops, strict=True)]
 
 
+def _fill_marked(x: np.ndarray, marked: np.ndarray | None) -> np.ndarray:
+    """Return *x* with the finite values in *marked* replaced by interpolation from unmarked neighbours.
+
+    NaN stays NaN (a cast's alignment edges have no value to convert).
+    """
+    if marked is None:
+        return x
+    gap = np.asarray(marked, dtype=bool) & np.isfinite(x)
+    ok = np.isfinite(x) & ~gap
+    if not gap.any() or not ok.any():
+        return x
+    idx = np.arange(x.size)
+    out = x.copy()
+    out[gap] = np.interp(idx[gap], idx[ok], x[ok])
+    return out
+
+
 def derive_oxygen(
-    ds: xr.Dataset, cruise_cfg: dict | None = None, *, cast_label: str = "?"
+    ds: xr.Dataset,
+    cruise_cfg: dict | None = None,
+    *,
+    cast_label: str = "?",
+    marked: dict[str, np.ndarray] | None = None,
 ) -> tuple[xr.Dataset, list[str]]:
     """Derive ``ctd_oxygen`` from each SBE 43 voltage, as Sea-Bird's Data Conversion does.
 
@@ -933,6 +954,12 @@ def derive_oxygen(
         The ``data_processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.
     cast_label : str, optional
         How the cast is named in warnings.
+    marked : dict of str to numpy.ndarray, optional
+        ``{variable: mask}`` of values an earlier Wild Edit marked.  The tau and hysteresis
+        corrections step scan to scan, so a marked voltage, temperature, conductivity or
+        pressure would spread into the neighbouring oxygen; each is replaced by interpolation
+        from its unmarked neighbours for the conversion, and the oxygen at those scans is
+        flagged 4.
 
     Returns
     -------
@@ -940,6 +967,7 @@ def derive_oxygen(
         A new dataset and the names of the variables written.
     """
     raws = [v for v in ("oxygen_raw_1", "oxygen_raw_2") if v in ds]
+    marked = marked or {}
     if not raws or any(v in ds for v in ("ctd_oxygen", "ctd_oxygen_1", "ctd_oxygen_2")):
         return ds, []
     xml = raw_metadata_block(ds.attrs.get("raw_metadata"), "xmlcon")
@@ -985,8 +1013,20 @@ def derive_oxygen(
                 stacklevel=2,
             )
             continue
-        volts = ds[raw].values.astype(np.float64)
-        t, s, p = (ds[v].values.astype(np.float64) for v in (temp, sal, "pressure"))
+        cond = (
+            f"conductivity_{line}" if f"conductivity_{line}" in ds else "conductivity_1"
+        )
+        none = np.zeros(ds.sizes[ds[raw].dims[0]], dtype=bool)
+        m_v, m_t, m_c, m_p = (
+            np.asarray(marked.get(v, none), dtype=bool)
+            for v in (raw, temp, cond, "pressure")
+        )
+        # A marked input is bridged for the conversion, so it does not spread to its neighbours.
+        volts = _fill_marked(ds[raw].values.astype(np.float64), m_v)
+        t = _fill_marked(ds[temp].values.astype(np.float64), m_t)
+        s = _fill_marked(ds[sal].values.astype(np.float64), m_t | m_c)
+        p = _fill_marked(ds["pressure"].values.astype(np.float64), m_p)
+        any_marked = m_v | m_t | m_c | m_p
         good = np.isfinite(volts) & np.isfinite(t) & np.isfinite(s) & np.isfinite(p)
         o2 = np.full(volts.shape, np.nan)
         coefs = oxygen43_coefficients(sensors[n - 1])
@@ -1026,6 +1066,20 @@ def derive_oxygen(
                 ds[f"{raw}_qc"].values.copy(),
                 {k: v for k, v in ds[f"{raw}_qc"].attrs.items() if k != "long_name"},
             )
+        if any_marked.any():
+            # Oxygen at a scan whose input was marked is an interpolated estimate: fail.
+            if f"{name}_qc" not in ds:
+                from ctdcast.processors.qc import _qc_attrs
+
+                ds[f"{name}_qc"] = (
+                    ds[raw].dims,
+                    np.where(np.isfinite(o2), 1, 9).astype(np.int8),
+                    _qc_attrs(name, None),
+                )
+            qc_o2 = ds[f"{name}_qc"].values.copy()
+            qc_o2[any_marked & (qc_o2 < 4)] = 4
+            ds[f"{name}_qc"] = (ds[raw].dims, qc_o2, ds[f"{name}_qc"].attrs)
+            ds[name].attrs["oxygen_marked_inputs_bridged"] = int(any_marked.sum())
         written.append(name)
         append_history(
             ds.attrs,

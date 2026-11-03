@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -188,3 +189,17 @@ def test_a_split_becomes_one_product_per_leg():
     assert [p["name"] for p in products] == ["1dbar_down", "1dbar_up"]
     assert products[1]["steps"][0] == {"split": "up"}
     assert next(iter(products[0]["steps"][1])) == "loopedit"
+
+
+def test_bin_average_that_kept_bad_scans_becomes_a_check_line():
+    from ctdcast.config.sbe_steps import header_text_of, processing_yaml
+    from ctdcast.processors.steps import validate_data_processing
+
+    header = header_text_of(FIX / "cnv" / "mixsed2_004.cnv")
+    assert "binavg_excl_bad_scans" in header
+    kept = re.sub(r"(binavg_excl_bad_scans\s*=\s*)\w+", r"\1no", header)
+    block = processing_yaml(kept)
+    assert "# check: this file's Bin Average kept scans marked bad" in block
+    dp = yaml.safe_load(block)["data_processing"]
+    assert "exclude_flagged" not in dp["products"][0]["steps"][-1]["binavg"]
+    validate_data_processing(dp)

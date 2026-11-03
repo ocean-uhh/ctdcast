@@ -43,6 +43,7 @@ from seabirdscientific import processing as sbs_processing
 from ctdcast.analysis.derive import derive_salinity
 from ctdcast.processors.corrections import _number, _version
 from ctdcast.processors.history import append_history
+from ctdcast.processors.qc import usable_pressure
 
 #: Bin types, and the variable each bins on.
 BIN_TYPES = {"decibars": "pressure", "seconds": "elapsed_seconds", "scans": "nScan"}
@@ -131,6 +132,12 @@ def check_binavg(params: object) -> dict:
         if not isinstance(value, bool):
             raise ValueError(f"binavg.{key}: expected true or false, got {value!r}")
         out[key] = value
+    if not out["exclude_flagged"]:
+        raise ValueError(
+            "binavg.exclude_flagged: false is not supported: a value flagged fail (4) or "
+            "missing (9), Loop Edit's scans among them, never enters a ctdcast bin, as in "
+            "profiles.nc; remove the key"
+        )
     surface = params.get("surface_bin")
     if surface is not None:
         if not isinstance(surface, dict) or set(surface) - {"min", "max", "value"}:
@@ -199,6 +206,13 @@ def check_products(products: object) -> list[dict]:
     return products
 
 
+def _leg_slice(ds: xr.Dataset, leg: str) -> slice:
+    """Return the scans of one leg: to the deepest scan (inclusive), or from it."""
+    # A scan with a failed pressure has no depth: it cannot be the bottom of the cast.
+    deepest = int(np.nanargmax(usable_pressure(ds)))
+    return slice(0, deepest + 1) if leg == "down" else slice(deepest, None)
+
+
 def split_leg(ds: xr.Dataset, leg: str) -> xr.Dataset:
     """Return the downcast (to the deepest scan, inclusive) or the upcast (from it).
 
@@ -214,9 +228,8 @@ def split_leg(ds: xr.Dataset, leg: str) -> xr.Dataset:
     xarray.Dataset
         The scans of that leg; the dataset's ``product_leg`` attribute names it.
     """
-    p = np.asarray(ds["pressure"].values, dtype=float)
-    deepest = int(np.nanargmax(p))
-    sel = slice(0, deepest + 1) if leg == "down" else slice(deepest, None)
+    sel = _leg_slice(ds, leg)
+    p = ds["pressure"].values
     out = ds.isel(time=sel).copy()
     out.attrs = dict(ds.attrs)  # isel shares the attributes; the input must not change
     out.attrs["product_leg"] = leg
@@ -276,10 +289,11 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
         flag,
         0.0,
     )
-    # The bin variable itself is never left out: a scan without one has no bin.
+    # The bin variable's own values are never left out singly: a scan without one has no bin.
     control = BIN_TYPES[p["bin"]]
     if control == "pressure":
-        columns["pressure"] = np.asarray(ds["pressure"].values, dtype=float)
+        # A scan whose pressure failed has no bin: it is left out whole.
+        columns["pressure"] = usable_pressure(ds)
     keep = (
         np.isfinite(columns[control])
         if control in columns
@@ -358,7 +372,12 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
 
 
 def make_product(
-    ds: xr.Dataset, product: dict, *, cast_number: int | None, cast_label: str
+    ds: xr.Dataset,
+    product: dict,
+    *,
+    cast_number: int | None,
+    cast_label: str,
+    marked: dict[str, np.ndarray] | None = None,
 ) -> xr.Dataset:
     """Run one product's steps on a finished stage-3 dataset.
 
@@ -372,6 +391,11 @@ def make_product(
         For per-cast-range values in the product's steps.
     cast_label : str
         How the cast is named in warnings.
+    marked : dict of str to numpy.ndarray, optional
+        ``{variable: mask}`` of the values stage 3's Wild Edit marked, which a filter in the
+        product steps over as at stage 3.  Without it (a product made later from the file),
+        every value flagged fail or missing outside Loop Edit's scans is stepped over: the file
+        keeps the flag, not which step raised it.
 
     Returns
     -------
@@ -383,11 +407,19 @@ def make_product(
     ctx = StepContext(cast_number=cast_number, cast_label=cast_label)
     if "loop_edit_flag" in ds:
         ctx.excluded = ds["loop_edit_flag"].values.astype(bool)
+    # A filter here steps over what stage 3's Wild Edit marked, as it does at stage 3.
+    ctx.marked = (
+        {k: np.asarray(v, dtype=bool) for k, v in marked.items()}
+        if marked is not None
+        else _failed_values(ds, ctx.excluded)
+    )
     out = ds.copy()
     out.attrs["product_name"] = product["name"]
     ran = []
     for name, params in iter_steps({"steps": product["steps"]}):
         if name == "split":
+            sl = _leg_slice(out, check_split(params))
+            ctx.marked = {k: v[sl] for k, v in ctx.marked.items()}
             out = split_leg(out, check_split(params))
             ctx.excluded = (
                 out["loop_edit_flag"].values.astype(bool)
@@ -399,5 +431,28 @@ def make_product(
         else:
             out = STEPS[name].apply(out, params, ctx)
         ran.append(name)
+    if "binavg" not in ran and any(
+        v.startswith(("conductivity", "ctd_temperature")) or v == "pressure"
+        for v in ctx.changed
+    ):
+        # Salinity is always derived: re-derived whenever a step changed C, T or P.
+        out = derive_salinity(out)
+        append_history(out.attrs, "salinity re-derived", stage="stage3")
     out.attrs["product_steps"] = "; ".join(ran)
     return out
+
+
+def _failed_values(
+    ds: xr.Dataset, excluded: np.ndarray | None
+) -> dict[str, np.ndarray]:
+    """Return ``{variable: mask}`` of each variable's fail (4) and missing (9) values, Loop Edit's scans out."""
+    keep_out = (
+        np.asarray(excluded, dtype=bool)
+        if excluded is not None
+        else np.zeros(ds.sizes["time"], dtype=bool)
+    )
+    return {
+        v[: -len("_qc")]: np.isin(ds[v].values, (4, 9)) & ~keep_out
+        for v in ds.data_vars
+        if v.endswith("_qc") and v[: -len("_qc")] in ds and ds[v].dims == ("time",)
+    }

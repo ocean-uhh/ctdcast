@@ -278,6 +278,11 @@ def apply_wild_edit(
             absent.append(var)
             continue
         mask = wild_edit_mask(ds[var].values, params, excluded)
+        if n_excluded:
+            # A scan Loop Edit left out of the statistics is still compared with them, and
+            # seabirdscientific may mark it; it is already flagged 4 everywhere, so it is not
+            # counted as Wild Edit's, and later filters do not step over it on Wild Edit's say.
+            mask = mask & ~np.asarray(excluded, dtype=bool)
         qc_name = _ensure_qc(ds, var)
         qc = ds[qc_name].values.copy()
         _raise_flag(qc, mask, QARTOD_FAIL)
@@ -473,7 +478,13 @@ def loop_edit_mask(
     if excluded is not None:
         flag[np.asarray(excluded, dtype=bool)] = sbs_processing.FLAG_VALUE
     lo, hi, deck = params.min_depth, params.max_depth, params.deck_pressure
-    if not isinstance(deck, bool):
+    if not params.surface_soak:
+        # seabirdscientific still looks for the start of the downcast between the soak depths
+        # when the soak test is off, and with both at 0 finds nothing to search.  Searching up
+        # to the deepest scan makes the downcast start at the shallowest scan before it.
+        d = sbs_conversion.depth_from_pressure(p, latitude)
+        lo, hi, deck = 0.0, float(np.max(d)) * (1.0 - 1e-9), False
+    elif not isinstance(deck, bool):
         # An explicit deck pressure: offset the soak window by its depth.
         shift = float(sbs_conversion.depth_from_pressure(np.array([deck]), latitude)[0])
         lo, hi, deck = lo + shift, hi + shift, False

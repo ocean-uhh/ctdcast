@@ -87,3 +87,16 @@ def test_later_wild_edit_leaves_loop_edit_scans_out(hex_stage2):
         f"{n} scan(s) marked by an earlier Loop Edit"
     )
     assert out.attrs["data_processing_steps"] == "loopedit; wildedit"
+
+
+def test_no_surface_soak_runs_and_marks_less(hex_stage2):
+    p = hex_stage2.pressure.values.astype(float)
+    lat = float(np.nanmean(hex_stage2.latitude.values))
+    with_soak = loop_edit_mask(p, resolve_loop_edit({}), DT, lat)
+    no_soak = loop_edit_mask(p, resolve_loop_edit({"surface_soak": False}), DT, lat)
+    assert no_soak.any() and not no_soak.all()
+    # Without the soak test the soak itself is no longer marked; nothing new is.
+    assert no_soak.sum() < with_soak.sum()
+    assert not (no_soak & ~with_soak).any()
+    out, _ = apply_loop_edit(hex_stage2, {"surface_soak": False}, DT)
+    assert "no surface soak" in out.loop_edit_flag.attrs["loop_edit"]

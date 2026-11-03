@@ -245,7 +245,8 @@ The steps, as Sea-Bird names its modules:
      - Marks whole scans where the package reversed, moved slower than ``min_velocity`` (dbar/s,
        default 0.25; or ``mean_speed_percent`` of the mean speed over ``window_seconds``), or was
        still in the surface soak (``surface_soak: {min_depth, max_depth, deck_pressure}``, default
-       5 m, 20 m, true; or ``false``).  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
+       5 m, 20 m, true; or ``false``, which marks no soak: the downcast starts at the shallowest
+       scan before the deepest).  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
        ``_qc``; values are kept, and later steps with ``exclude_flagged`` leave the scans out.
        ``deck_pressure: true`` offsets the soak window by the first scan's depth, as
        seabirdscientific does; on OdB's CNVs (``useDeckPress = 1``, recordings starting in the
@@ -254,10 +255,11 @@ The steps, as Sea-Bird names its modules:
      - Product only: ``down`` or ``up`` keeps that leg (to and from the deepest scan).
    * - ``binavg``
      - Product only, and last: ``bin`` (``decibars``, ``seconds``, ``scans``), ``size``, and
-       optionally ``exclude_flagged`` (default true: scans Loop Edit marked are left out),
-       ``min_scans``, ``max_scans``, ``skip_over``, ``omit``, ``surface_bin: {min, max, value}`` and
+       optionally ``min_scans``, ``max_scans``, ``skip_over``, ``omit``, ``surface_bin: {min, max, value}`` and
        ``interpolate``.  A value whose ``_qc`` is 4 or 9 is left out of its own bin only, so one
-       marked oxygen value does not remove that scan's temperature.  Salinity is re-derived from
+       marked oxygen value does not remove that scan's temperature; a scan whose pressure is
+       flagged 4 or 9 has no bin at all.  Scans Loop Edit marked are always left out
+       (``exclude_flagged: false`` is refused).  Salinity is re-derived from
        the binned values.  Applied with ``seabirdscientific``.  Stage 3 refuses a config that lists one, because the
        steps after it would run on data it was meant to change first; set
        ``data_processing.allow_unapplied: true`` to run anyway, skipping it.  The skip is named in

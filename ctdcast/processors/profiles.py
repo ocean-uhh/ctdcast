@@ -25,7 +25,7 @@ from ctdcast.config.parameters import VARIABLES, is_sbe_channel
 from ctdcast.config.preferred_sensors import GROUPS, validate_preferred
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
-from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_MISSING
+from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_MISSING, usable_pressure
 from ctdcast.processors.sensor_catalog import (
     catalog_by_cast_number,
     read_cast_sensor_catalog,
@@ -395,13 +395,15 @@ def _bin_to_grid(
     exactly (``idx == p_bin - p0``); ``dbar=2`` averages each adjacent pressure
     pair, halving the number of levels and reducing per-level sample noise.
     """
-    p_raw = ds_half["pressure"].values
-    p_bin = np.round(p_raw).astype(int)
+    p_raw = ds_half["pressure"].values.astype(float)
+    has_p = np.isfinite(p_raw)
+    p_bin = np.round(np.where(has_p, p_raw, 0.0)).astype(int)
     p0 = int(p_grid[0])
     n = len(p_grid)
     # Uniform dbar-wide bins: grid level i collects p_bin in [p0+i*dbar, p0+(i+1)*dbar).
-    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).
-    idx = (p_bin - p0) // dbar
+    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).  A scan
+    # without a pressure (failed or missing) has no bin.
+    idx = np.where(has_p, (p_bin - p0) // dbar, -1)
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
@@ -533,7 +535,9 @@ def build_profiles(
     p_max_global = 0.0
     for _num, _suffix, path, _stage in cast_list:
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
-        p_max_global = max(p_max_global, float(ds["pressure"].max()))
+        p_ok = usable_pressure(ds)
+        if np.isfinite(p_ok).any():
+            p_max_global = max(p_max_global, float(np.nanmax(p_ok)))
         ds.close()
     # p_grid holds the bin LOWER EDGES used for the binning assignment in
     # _bin_to_grid (level i collects rounded pressures [1+i*dbar, 1+(i+1)*dbar)).
@@ -653,8 +657,10 @@ def build_profiles(
         # Honour QARTOD flags 4 (fail) and 9 (missing) from stage 2 (soak/deck) AND
         # stage 3 (edits, gross-range, spike): NaN the flagged samples so they do not
         # enter the bin means.  A suspect (3) sample is kept, as in a product's Bin
-        # Average.  pressure is in _SKIP_VARS and carries no _qc, so the
-        # binning coordinate is untouched; stage-1-only files have no _qc and are
+        # Average.  pressure is in _SKIP_VARS: it is the binning coordinate, and a scan
+        # whose pressure failed (pressure_qc 4 or 9, e.g. a Wild Edit mark) is left out
+        # whole below, from the turnaround, the grid and every bin.  Stage-1-only files
+        # have no _qc and are
         # unaffected — qc_excluded stays False and the history line does not claim
         # an exclusion that never happened.  Only finite samples are counted as excluded,
         # so the excluded count is a subset of the finite count.
@@ -678,7 +684,8 @@ def build_profiles(
         source_files[rank] = path.name
         source_tracking_ids[rank] = str(ds.attrs.get("tracking_id", ""))
         cast_data_modes[rank] = str(ds.attrs.get("data_mode", "P")) or "P"
-        pressure = ds["pressure"].values
+        pressure = usable_pressure(ds)
+        ds["pressure"] = (ds["pressure"].dims, pressure, ds["pressure"].attrs)
         i_turn = _turnaround_index(pressure)
 
         i_max_p = int(np.nanargmax(pressure))

@@ -161,8 +161,8 @@ def _binavg(p: dict[str, str], _rn: dict[str, str] | None) -> list[dict]:
         step["bin"] = p["bintype"].strip()
     if "binsize" in p:
         step["size"] = _num(p["binsize"])
-    if "excl_bad_scans" in p:
-        step["exclude_flagged"] = _yes(p["excl_bad_scans"])
+    # ctdcast always leaves flagged scans out of a bin; a header that kept them gets a
+    # ``# check:`` line instead (see processing_yaml).
     for key, name in (("min_scans_bin", "min_scans"), ("max_scans_bin", "max_scans"),
                       ("skipover", "skip_over"), ("omit", "omit")):  # fmt: skip
         if key in p:
@@ -317,6 +317,16 @@ def processing_yaml(header_text: str, rename_map: dict[str, str] | None = None) 
         f"# check: {st.sentence()} The deck unit's advance is already in the raw scans."
         for st in stacked_advances(header_text)
     ]
+    if any(
+        step.module.lower() == "binavg"
+        and "excl_bad_scans" in step.params
+        and not _yes(step.params["excl_bad_scans"])
+        for step in parse_processing_chain(header_text).steps
+    ):
+        notes.append(
+            "# check: this file's Bin Average kept scans marked bad (excl_bad_scans = no); "
+            "ctdcast always leaves them out of a bin."
+        )
     return "\n".join([*notes, body.rstrip()]) + "\n"
 
 
