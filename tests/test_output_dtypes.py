@@ -139,3 +139,24 @@ def test_stage3_computes_in_float64_on_a_float32_file(cast011, tmp_path):
         warnings.simplefilter("ignore")
         out = stage3(back, {}, cast_number=11)
     assert out["ctd_temperature_1"].dtype == np.float64
+
+
+def test_profiles_do_not_bin_the_loop_edit_flag(hex_stage2, tmp_path):
+    """A bin mean of Loop Edit's 0/1 flag is not a flag (and int8 storage would truncate it)."""
+    from ctdcast.processors.profiles import build_profiles
+    from ctdcast.processors.stage3 import stage3
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s3 = stage3(
+            hex_stage2,
+            {"data_processing": {"steps": [{"loopedit": {}}]}},
+            cast_number=11,
+        )
+        assert s3["loop_edit_flag"].values.any()
+        (tmp_path / "stage3").mkdir()
+        write(s3, tmp_path / "stage3" / "MIXSED2_011_stage3.nc")
+        build_profiles(tmp_path, tmp_path / "profiles.nc", force=True)
+    with xr.open_dataset(tmp_path / "profiles.nc", engine="netcdf4") as prof:
+        assert "loop_edit_flag" not in prof
+        assert "ctd_temperature_1" in prof
