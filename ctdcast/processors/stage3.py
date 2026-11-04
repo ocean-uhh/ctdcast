@@ -52,6 +52,7 @@ from ctdcast.processors.steps import (
     iter_steps,
     validate_data_processing,
 )
+from ctdcast.writers.dtypes import open_widened, widen_floats
 from ctdcast.writers.netcdf import write as _write_nc
 
 
@@ -103,8 +104,10 @@ def stage3(
     Returns
     -------
     xarray.Dataset
-        New Dataset; input is not mutated.
+        New Dataset; input is not mutated.  Values read from a file (stored float32) are
+        computed on in float64.
     """
+    ds = widen_floats(ds)
     cfg = cruise_cfg or {}
     dp = cfg.get("data_processing") or {}
 
@@ -495,7 +498,7 @@ def run(
             continue
         ds = None
         try:
-            ds = xr.open_dataset(input_path, engine="netcdf4").load()
+            ds = open_widened(input_path)
             steps_ctx = StepContext()
             ds_out = stage3(
                 ds,

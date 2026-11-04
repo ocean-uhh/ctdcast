@@ -32,7 +32,6 @@ from ctdcast.processors.stage_layout import (
     stage_path,
 )
 from ctdcast.readers.ladcp import read_ladcp_cast
-from ctdcast.writers.dtypes import cast_output_dtypes
 from ctdcast.writers.netcdf import write as write_nc
 
 #: Bare LADCP stem: zero-padded cast number + optional letter suffix (``004b``).
@@ -88,7 +87,6 @@ def convert_ladcp_cast(
     if nc_path.exists() and not force:
         return False
     ds = read_ladcp_cast(mat_path, cast_num=cast_num, cast_suffix=cast_suffix)
-    ds = cast_output_dtypes(ds)
     # Stamp the immutable cruise identity; identity_attrs returns {} for no config.
     ds.attrs.update(identity_attrs(cruise_info))
     # Lineage root for the LADCP source (parallels stage-1's source_cnv); the writer adds
@@ -282,7 +280,7 @@ def build_ladcp_profiles(
         stage="ladcp_profiles",
     )
 
-    write_nc(cast_output_dtypes(ds_out), ladcp_profiles_path)
+    write_nc(ds_out, ladcp_profiles_path)  # storage dtypes are set by the writer
     print(f"ladcp-profiles: wrote {ladcp_profiles_path}")
     return True
 

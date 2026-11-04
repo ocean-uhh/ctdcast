@@ -31,6 +31,7 @@ from ctdcast.identity import format_cast_id
 from ctdcast.processors.corrections import native_interval
 from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import group_by_cast, matches_tags
+from ctdcast.writers.dtypes import widen_floats
 
 #: Lines fitted, as (line number, conductivity variable, temperature variable).
 _LINES = (
@@ -347,7 +348,7 @@ def fit_cruise(
                 rec.skipped = reason or "not at the native scan rate"
                 continue
             scan_interval = scan_interval or interval
-            ds = ds.load()
+            ds = widen_floats(ds.load())
             # Read every cast's header (not just the first) and apply the stage-3 refusals: do not
             # fit alignment for a line Sea-Bird already aligned, nor cell thermal mass if its celltm
             # ran, so the finder never fits a correction on top of one already applied.
