@@ -55,10 +55,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `seabirdscientific>=3.1,<4` is a core dependency.
 - A sensor role whose measured variable is absent links its raw signal instead (`config.sensors.ROLE_RAW_VARIABLE`: an SBE 43 to `oxygen_raw_<N>`), rather than warning that the reader dropped it.
 
-### Breaking changes
-
-- **Files store science values as float32.** Every file ctdcast writes (stage files, products, `profiles.nc`, LADCP) goes through `writers.dtypes.cast_output_dtypes` at the one write seam: science variables float64 → float32 (pressure, temperature, conductivity, salinity, oxygen, fluorescence, turbidity, altimeter and the rest), flags int8; time, `latitude` and `longitude` stay float64 by rule, as coordinates or data. The rounding is about 10⁻⁷ relative (on a 3764 dbar cast: at most 4.6 × 10⁻⁷ °C, 1.2 × 10⁻⁴ dbar, 1.9 × 10⁻⁶ in salinity), two to three orders below the SBE 911plus's resolution; files are about a fifth smaller again on top of compression. Stages compute in float64 (`writers.dtypes.widen_floats` on every file a stage reads, and in `stage3()` and `apply_corrections()`), so the rounding happens once, at the write, and never compounds. A reader that asserts float64, or compares values bit-exactly with a file written before this change, sees the difference; caldip's differences move at the 10⁻⁶ level.
-
 ### Deprecated
 
 - `processing.preferred_pair` / `preferred_oxygen`, `processing.clock`, `processing.qc` and `processing.calibration.conductivity_slope` are read with a `DeprecationWarning` until the next release; use `preferred_sensor.tc` / `.oxygen`, `clock`, `qc` and the per-sensor `data_processing.slope_offset` (the old single slope applies to both sensors, offset 0). `use:` in a preferred-sensor range is read with a warning; use `value:`.

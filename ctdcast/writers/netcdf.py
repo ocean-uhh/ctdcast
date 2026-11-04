@@ -17,7 +17,6 @@ import xarray as xr
 
 from ctdcast.config.global_attrs import data_mode_with_meaning, order_attrs
 from ctdcast.config.parameters import VARIABLES
-from ctdcast.writers.dtypes import cast_output_dtypes
 
 _QARTOD_FLAG_VALUES = np.array([1, 2, 3, 4, 9], dtype=np.int8)
 _QARTOD_FLAG_MEANINGS = (
@@ -71,10 +70,6 @@ def write(ds: xr.Dataset, path: Path, *, encoding: dict | None = None) -> None:
         ds = to_canonical_units(ds)
     except UnitsError as exc:
         raise UnitsError(f"{exc} [writing {path.name}]") from exc
-
-    # Storage dtypes at this one seam, so every file (stage files, products, profiles.nc,
-    # LADCP) gets them: science values float32, flags int8, time and position float64.
-    ds = cast_output_dtypes(ds)
 
     # Apply CF metadata from VARIABLES for each known variable.  Units are already canonical
     # (set above), so this pass only fills long_name / standard_name / comment.

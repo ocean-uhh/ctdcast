@@ -89,7 +89,46 @@ def test_widen_floats_restores_float64_without_touching_the_input(cast011, tmp_p
     wide = widen_floats(back)
     assert wide["ctd_temperature_1"].dtype == np.float64
     assert back["ctd_temperature_1"].dtype == np.float32
-    assert widen_floats(wide) is wide  # nothing to widen: returned as is
+    again = widen_floats(wide)
+    assert again is not wide  # always a new dataset, so a caller may change it freely
+
+
+def test_name_rules_do_not_misfire():
+    """``altimeter`` is not a time; Sea-Bird's own flag column is not a QARTOD flag."""
+    f64 = xr.DataArray(np.zeros(2))
+    assert find_best_dtype("ctd_altimeter", f64) == np.float32
+    for name in ("time", "timeJ", "time_start", "sbe_timeS"):
+        assert find_best_dtype(name, f64) == np.float64, name
+    assert find_best_dtype("sbe_flag", f64) == np.float32
+    assert find_best_dtype("loop_edit_flag", f64) == np.int8
+    assert find_best_dtype("ctd_temperature_1_qc", f64) == np.int8
+
+
+def test_sea_bird_loop_edit_marks_survive_read_and_write(tmp_path):
+    """A real Loop-Edited CNV: its -9.99e-29 marks are kept through stage 1's read and a write."""
+    from ctdcast.readers.cnv import read
+
+    pytest.importorskip("seasenselib")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ds = read(
+            Path(__file__).parent / "fixtures" / "cnv" / "mixsed2_050_24Hz_slice.cnv"
+        )
+    marked = ds["sbe_flag"].values != 0
+    assert marked.sum() == 1076  # counted in the CNV text: 1076 of 1150 scans
+    back = _written(ds, tmp_path)
+    np.testing.assert_array_equal(back["sbe_flag"].values != 0, marked)
+    assert back["ctd_altimeter"].dtype == np.float32
+
+
+def test_stage3_leaves_an_all_float64_input_untouched(cast011):
+    from ctdcast.processors.stage3 import stage3
+
+    before = dict(cast011.attrs)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stage3(cast011, {"data_processing": {"steps": []}}, cast_number=11)
+    assert cast011.attrs == before
 
 
 def test_stage3_computes_in_float64_on_a_float32_file(cast011, tmp_path):

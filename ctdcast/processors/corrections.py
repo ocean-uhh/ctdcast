@@ -78,7 +78,6 @@ from ctdcast.processors.history import (
     append_history,
 )
 from ctdcast.processors.qc import QARTOD_MISSING
-from ctdcast.writers.dtypes import widen_floats
 
 #: Native scan interval by instrument, as :func:`ctdcast.config.cnv_header.detect_instrument`
 #: names it.  Extend as other instruments arrive.
@@ -609,8 +608,6 @@ def apply_corrections(
     ValueError
         On malformed configuration.
     """
-    # Recursive corrections (cell thermal mass) run in float64, whatever the file stored.
-    ds = widen_floats(ds)
     cfg = cruise_cfg or {}
     record = CorrectionRecord()
     if not cfg.get("alignctd") and not cfg.get("celltm"):

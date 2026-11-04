@@ -6,20 +6,15 @@ two functions are ported from oceanarray and may diverge as ctdcast's on-disk
 conventions require; keep them in sync by choice, not by vendoring discipline.
 
 :func:`find_best_dtype` picks a variable's storage dtype from its name and current
-dtype; :func:`cast_output_dtypes` applies that across a whole dataset (coordinates
-included) at the one write seam, shrinking file size (float64 → float32, int64 → int32,
-QC → int8) without touching time, position or provenance.  :func:`widen_floats` is the
-reverse for a stage that reads a file to compute on it: storage is float32, arithmetic is
-float64.
+dtype; :func:`cast_output_dtypes` applies that across a whole dataset before write,
+shrinking file size (float64 → float32, int64 → int32, QC → int8) without touching
+coordinates or provenance.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import xarray as xr
-
-#: Position variables keep float64 by rule, whether they are coordinates or data.
-_POSITION = frozenset({"latitude", "longitude", "lat", "lon"})
 
 
 def find_best_dtype(var_name: str, da: xr.DataArray) -> type:
@@ -41,25 +36,21 @@ def find_best_dtype(var_name: str, da: xr.DataArray) -> type:
     -----
     Rules applied in order:
 
-    - String / datetime / timedelta / object variables: unchanged.
+    - String / datetime / object variables: unchanged.
     - ``time`` in name: unchanged (preserve datetime64 / float encoding).
-    - ``latitude`` / ``longitude`` (and ``lat`` / ``lon``): ``float64``, as everywhere in
-      the family; they compress to almost nothing, so float32 would save no space.
     - ``*_qc`` suffix or ``flag`` in name: ``int8``.
     - ``serial_number`` or ``serial``: ``int32``.
     - Integer input: downsize to ``int32`` if stored as ``int64``, else unchanged.
-    - ``float64`` input: ``float32`` (about 10⁻⁷ relative, two to three orders of
-      magnitude below the CTD sensors' resolution).
+    - ``float64`` input: ``float32`` (including ``latitude``/``longitude`` —
+      float32 gives ~1 m position precision, adequate for CTD/LADCP stations).
     - Anything else: unchanged.
 
     """
     input_dtype = da.dtype.type
-    if da.dtype.kind in ("U", "S", "O", "M", "m"):
+    if da.dtype.kind in ("U", "S", "O", "M"):
         return input_dtype
     if "time" in var_name.lower():
         return input_dtype
-    if var_name in _POSITION:
-        return np.float64 if da.dtype.kind == "f" else input_dtype
     if var_name.endswith("_qc") or "flag" in var_name:
         return np.int8
     if var_name in ("serial_number", "serial"):
@@ -74,11 +65,8 @@ def find_best_dtype(var_name: str, da: xr.DataArray) -> type:
 def cast_output_dtypes(ds: xr.Dataset) -> xr.Dataset:
     """Cast every variable in *ds* to its optimal storage dtype.
 
-    Calls :func:`find_best_dtype` per variable, coordinates included, and rebuilds only
-    those that change.  Attributes are preserved.  The input dataset is not modified.
-    A float variable cast to an integer has NaN written as 9 (QARTOD missing) for a flag;
-    ctdcast has no other float-to-integer case (serial numbers are text), and the ``0``
-    fill kept for one is oceanarray's rule, copied unchanged.
+    Calls :func:`find_best_dtype` per variable and rebuilds only those that
+    change.  Attributes are preserved.  The input dataset is not modified.
 
     Parameters
     ----------
@@ -92,7 +80,7 @@ def cast_output_dtypes(ds: xr.Dataset) -> xr.Dataset:
 
     """
     updates: dict[str, xr.Variable] = {}
-    for vname in ds.variables:
+    for vname in ds.data_vars:
         var = ds[vname]
         target = find_best_dtype(vname, var)
         if np.dtype(target) != var.dtype:
@@ -112,42 +100,4 @@ def cast_output_dtypes(ds: xr.Dataset) -> xr.Dataset:
                 )
     if not updates:
         return ds
-    out = ds.copy()
-    for vname, var in updates.items():
-        if vname in out.coords:
-            out = out.assign_coords({vname: var})
-        else:
-            out[vname] = var
-    return out
-
-
-def widen_floats(ds: xr.Dataset) -> xr.Dataset:
-    """Return *ds* with every float32 variable as float64, for computation.
-
-    Files are stored as float32 (:func:`cast_output_dtypes`); a stage that reads one and
-    computes on it (filters, recursive corrections, TEOS-10) does so in float64, so the
-    float32 rounding happens once, at the write, and never compounds.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        A dataset read from a ctdcast file.
-
-    Returns
-    -------
-    xr.Dataset
-        A new dataset; float32 variables (coordinates included) are float64.  The input is
-        not modified.
-    """
-    narrow = [v for v, var in ds.variables.items() if var.dtype == np.float32]
-    if not narrow:
-        return ds
-    out = ds.copy()
-    for vname in narrow:
-        var = ds.variables[vname]
-        wide = xr.Variable(var.dims, var.values.astype(np.float64), attrs=var.attrs)
-        if vname in out.coords:
-            out = out.assign_coords({vname: wide})
-        else:
-            out[vname] = wide
-    return out
+    return ds.assign(updates)
