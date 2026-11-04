@@ -119,10 +119,6 @@ Sea-Bird processing applied; its conductivity, temperature and pressure carry th
 ``.xmlcon`` Slope and Offset they were converted with (``xmlcon_slope``,
 ``xmlcon_offset``) and the conversion function (``conversion_method``).
 
-Storage dtypes, in every file ctdcast writes: science values ``float32`` (about 10⁻⁷
-relative, far below the sensors' resolution), QARTOD flags ``int8``, ``time``,
-``latitude`` and ``longitude`` ``float64``.  Processing reads them back as ``float64``.
-
 Global attributes: cruise identity (``cruise``, ``platform_*``, ``expocode``),
 ``raw_filename``, ``raw_metadata``, a stamped ``history``, and the upstream
 correction ledger (``sbe_*``, ``correction_*``, ``time_coordinate_source``,
