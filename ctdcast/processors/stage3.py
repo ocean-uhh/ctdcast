@@ -239,10 +239,12 @@ def _stamp_product_divergence(
 
 def _write_products(
     made: list[tuple[dict, xr.Dataset | None]], root: Path, stem: str
-) -> None:
-    """Write the products made by :func:`_make_products`."""
+) -> int:
+    """Write the products made by :func:`_make_products`; return how many failed (made or written)."""
+    failed = 0
     for product, out in made:
         if out is None:
+            failed += 1
             continue
         path = product_path(root, stem, product["name"])
         try:
@@ -251,12 +253,14 @@ def _write_products(
             print(f"  ok: {path.parent.name}/{path.name}")
         except Exception as exc:  # noqa: BLE001
             # One product failing to write names that product only; the stage-3 file and the
-            # other products stand.
+            # other products stand.  A file from an earlier run may still be there.
             print(
                 f"  FAILED writing product {product['name']}: {path.name}  "
-                f"({type(exc).__name__}: {exc})",
+                f"({type(exc).__name__}: {exc}); any older {path.name} is stale",
                 file=sys.stderr,
             )
+            failed += 1
+    return failed
 
 
 def _apply_slope_offset(
@@ -505,7 +509,7 @@ def run(
     validate_data_processing((cruise_cfg or {}).get("data_processing"))
     products = ((cruise_cfg or {}).get("data_processing") or {}).get("products") or []
     groups = group_by_cast(root)
-    n = n_skipped = n_failed = 0
+    n = n_skipped = n_failed = n_products_failed = 0
     for cast_id in sorted(groups):
         if cast_tags is not None and not matches_tags(cast_id, cast_tags):
             continue
@@ -581,7 +585,7 @@ def run(
             _write_nc(ds_out, target)
             print(f"  ok: {target.name}")
             n += 1
-            _write_products(made, root, stem)
+            n_products_failed += _write_products(made, root, stem)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",
@@ -595,5 +599,7 @@ def run(
         parts = [f"{n} written", f"{n_skipped} skipped"]
         if n_failed:
             parts.append(f"{n_failed} FAILED")
+        if n_products_failed:
+            parts.append(f"{n_products_failed} product file(s) FAILED")
         print(f"stage 3: {', '.join(parts)}.")
     return n

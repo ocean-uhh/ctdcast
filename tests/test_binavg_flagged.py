@@ -46,7 +46,7 @@ def clean(hex_stage2):
 
 def test_flagged_value_leaves_only_its_own_variable_and_is_recorded(marked):
     assert marked["oxygen_raw_1_qc"].values[2000] == 4
-    with pytest.warns(UserWarning, match="would be dropped whole"):
+    with pytest.warns(UserWarning, match="would have lost every value"):
         out = make_product(marked, PRODUCT, cast_number=11, cast_label="011")
     assert out.attrs["bin_average_partly_flagged_scans"] == 1
     assert "oxygen_raw_1 1" in out.attrs["bin_average_partly_flagged"]
@@ -72,16 +72,23 @@ def test_stage2_soak_and_deck_flags_are_not_counted(clean, kind):
     assert out.attrs["bin_average_partly_flagged_scans"] == 0
 
 
+def test_scans_trimmed_off_are_not_counted(marked):
+    out = _make(marked, _binavg(bin="scans", size=24, skip_over=2500))
+    assert out.attrs["bin_average_partly_flagged_scans"] == 0
+
+
 @pytest.mark.parametrize(
     "params",
     [
-        {"bin": "scans", "size": 24, "skip_over": 2500},  # the spike is trimmed off
-        {"bin": "decibars", "size": 1, "min_scans": 100000},  # no bins at all
+        {"bin": "decibars", "size": 1},
+        {"bin": "decibars", "size": 1, "max_scans": 20, "min_scans": 5},
+        {"bin": "seconds", "size": 1, "interpolate": True},
     ],
 )
-def test_scans_in_no_bin_are_not_counted(marked, params):
+def test_the_count_is_the_flagged_scan_whatever_the_bin_rules(marked, params):
+    """The count is the scans entering the bins with a flagged value: never negative, never a bin."""
     assert (
-        _make(marked, _binavg(**params)).attrs["bin_average_partly_flagged_scans"] == 0
+        _make(marked, _binavg(**params)).attrs["bin_average_partly_flagged_scans"] == 1
     )
 
 
@@ -111,7 +118,7 @@ def test_a_product_that_fails_to_write_names_only_itself(
         real(ds, path)
 
     monkeypatch.setattr(s3, "_write_nc", flaky)
-    s3._write_products(made, tmp_path, "MIXSED2_011")
+    assert s3._write_products(made, tmp_path, "MIXSED2_011") == 1
     err = capsys.readouterr().err
     assert "FAILED writing product bad" in err
     assert (tmp_path / "products" / "good" / "MIXSED2_011_good.nc").exists()

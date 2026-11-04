@@ -408,9 +408,9 @@ in the output file, and shown on the cast page.
        every other sensor's good value from the bin, without saying so.
      - **Deliberately different.** Only the flagged value leaves its bin; the scan's other
        values stay. Loop Edit's scans, and scans flagged in every variable (the stage-2 soak
-       and deck), still leave whole, as in Sea-Bird. Every product records how many scans
-       seabirdscientific's rule would have dropped from it, found by running its
-       ``bin_average`` both ways, and what each variable's flags alone would cost
+       and deck), still leave whole, as in Sea-Bird. Every product records how many of the
+       scans entering its bins had a flagged value beside good ones — the scans
+       seabirdscientific's rule would have dropped whole — by variable
        (``bin_average_partly_flagged``); the run warns; the cast page shows an amber *binavg*
        row.
    * - **SBE 43 oxygen** (stage 3)

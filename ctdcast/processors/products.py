@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -334,9 +333,14 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
             )
 
     binned = run(columns)
-    partial, by_var = _sea_bird_would_drop(
-        run, columns, bad_of, int(binned["nbin"].sum()), skip=control
-    )
+    # The scans that enter the binning, as seabirdscientific takes them: a usable bin variable,
+    # then skip_over/omit counted on those rows, then Loop Edit's scans out.
+    rows = np.flatnonzero(keep)
+    rows = rows[p["skip_over"] : max(rows.size - p["omit"], 0)]
+    entering = np.zeros(t.size, dtype=bool)
+    entering[rows] = True
+    entering &= columns["flag"] == 0
+    partial, by_var = _sea_bird_would_drop(bad_of, entering, skip=control)
     binned = (
         binned.rename({"bin_number": "bin"}) if "bin_number" in binned.dims else binned
     )
@@ -384,51 +388,36 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
 
 
 def _sea_bird_would_drop(
-    run: Callable[[dict[str, np.ndarray]], xr.Dataset],
-    columns: dict[str, np.ndarray],
-    bad_of: dict[str, np.ndarray],
-    binned_scans: int,
-    *,
-    skip: str,
+    bad_of: dict[str, np.ndarray], entering: np.ndarray, *, skip: str
 ) -> tuple[int, dict[str, int]]:
-    """Count the scans seabirdscientific's ``bin_average`` would drop that ctdcast keeps in part.
+    """Count the scans entering the binning that carry a flagged value beside good ones.
 
-    seabirdscientific drops the whole scan when any value in it holds its bad flag; ctdcast
-    leaves out only that value.  The count is seabirdscientific's own answer: the same binning
-    run again with the per-value flags written as its bad flag, so every rule of the step
-    (trims, the leg, ``min_scans``, ``max_scans``) applies to both.  A scan flagged in every
-    variable that has a ``_qc``, pressure aside (the stage-2 soak and deck) is a whole-scan flag, not a
-    per-value one, and is left out of the comparison; so are salinity (re-derived from the
-    binned values) and the bin variable (*skip*).  Also returned: what each variable's flags
-    alone would cost.
+    seabirdscientific's ``bin_average`` drops the whole scan when any value in it holds its bad
+    flag; ctdcast leaves out only that value.  These are the scans where the two part ways.
+    *entering* is the scans that reach the binning (usable bin variable, ``skip_over`` /
+    ``omit``, Loop Edit's scans out).  A scan flagged in every variable that has a ``_qc``,
+    pressure aside (stage 2's soak and deck), is a whole-scan flag both treat alike, when at
+    least two variables carry flags; salinity (re-derived from the binned values) and the bin
+    variable (*skip*) are not counted.  A bin that ``min_scans`` / ``max_scans`` then removes is
+    not tracked.  Also returned: the flagged scans by variable.
     """
     # Stage 2 never flags pressure (it places the scan), so a whole-scan flag is one on every
-    # other variable that has a _qc.
+    # other variable that has a _qc; with a single such variable, every flag is that variable's.
     judged = [m for v, m in bad_of.items() if v != "pressure"]
-    if not judged:
-        return 0, {}
-    whole = np.logical_and.reduce(judged)
+    whole = (
+        np.logical_and.reduce(judged)
+        if len(judged) >= 2
+        else np.zeros(entering.size, dtype=bool)
+    )
     per_value = {
-        v: m & ~whole
+        v: m & ~whole & entering
         for v, m in bad_of.items()
-        if v != skip and not v.startswith("ctd_salinity") and (m & ~whole).any()
+        if v != skip and not v.startswith("ctd_salinity")
     }
     if not per_value:
         return 0, {}
-
-    def lost(marks: dict[str, np.ndarray]) -> int:
-        cols = dict(columns)
-        for v, m in marks.items():
-            x = cols[v].copy()
-            x[m] = sbs_processing.FLAG_VALUE
-            cols[v] = x
-        try:
-            return binned_scans - int(run(cols)["nbin"].sum())
-        except (ValueError, KeyError, IndexError):  # every scan dropped: no bins at all
-            return binned_scans
-
-    total = lost(per_value)
-    by_var = {v: lost({v: m}) for v, m in per_value.items()} if total else {}
+    total = int(np.logical_or.reduce(list(per_value.values())).sum())
+    by_var = {v: int(m.sum()) for v, m in per_value.items()}
     return total, {v: n for v, n in by_var.items() if n}
 
 
@@ -442,9 +431,10 @@ def _partly_flagged_text(n: int, by_var: dict[str, int]) -> str:
         f"{v} {k}" for v, k in sorted(by_var.items(), key=lambda t: -t[1])
     )
     return (
-        f"{n} scan(s) kept their other values here but would be dropped whole if these "
-        f"flags were treated as seabirdscientific's bin_average treats its bad flag (each "
-        f"variable's flags alone: {parts}); ctdcast left out only the flagged values."
+        f"{n} scan(s) entering the bins had a value flagged fail or missing beside good "
+        f"values (by variable: {parts}). ctdcast left out only the flagged values; "
+        "seabirdscientific's bin_average drops a whole scan when one of its values carries "
+        "its bad flag, so treated that way these scans would have lost every value."
     )
 
 
