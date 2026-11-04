@@ -439,7 +439,7 @@ def _partly_flagged_text(n: int, by_var: dict[str, int]) -> str:
 
 
 def describe_product_steps(steps: list[dict]) -> str:
-    """Return a product's configured steps as one line, e.g. ``split down; binavg decibars 1``.
+    """Return a product's configured steps as one line: ``split down; binavg bin=decibars size=1``.
 
     Parameters
     ----------
@@ -449,17 +449,19 @@ def describe_product_steps(steps: list[dict]) -> str:
     Returns
     -------
     str
-        The steps in order, ``"; "``-separated; a mapping's values follow the step name in
-        their configured order.
+        The steps in order, ``"; "``-separated; a mapping's ``key=value`` pairs follow the step
+        name in their configured order.
     """
     parts = []
     for step in steps:
         for name, params in step.items():
             if isinstance(params, dict):
-                values = " ".join(f"{v}" for v in params.values())
+                values = " ".join(f"{k}={v}" for k, v in params.items())
                 parts.append(f"{name} {values}".strip())
+            elif params is None:
+                parts.append(name)
             else:
-                parts.append(f"{name} {params}".strip())
+                parts.append(f"{name} {params}")
     return "; ".join(parts)
 
 

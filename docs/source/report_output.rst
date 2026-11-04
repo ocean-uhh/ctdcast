@@ -185,9 +185,12 @@ reference · Reference**.
   with the range of each changing number, and a figure of the value against cast number when
   only one number changes.
 - A row is amber when the setting differs from the value SBE documents for that step, or when
-  the step did not run as its setting says on some casts: Loop Edit on a cast whose recording
-  starts below the surface-soak window (``surface_soak.starts_below: skip``) has its own amber
-  row naming those casts.  The caption above the tables states the criterion.
+  the step did not run as its setting says on some casts: Loop Edit without its soak test (a
+  recording that starts below the surface-soak window), or Bin Average keeping the good values
+  of scans with a flagged value, each get an amber row naming those casts.  The caption above
+  the tables states the criterion.
+- A step that runs more than once on a cast (a filter per variable, a correction per sensor)
+  is matched across casts by the variables it changed.
 
 What a step did on one cast (values marked, scans flagged) is on that cast's page.
 

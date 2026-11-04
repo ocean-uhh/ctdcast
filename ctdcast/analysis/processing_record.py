@@ -73,6 +73,10 @@ class ProcessingRow:
         The documented value checked against, when there is one.
     source : str
         Where that value comes from.
+    exception : str
+        How the step ran differently from its setting on this cast, as a fixed phrase that reads
+        the same on every cast it applies to (``""`` when it ran as set).  Not part of the
+        setting, so it does not split casts into runs; the processing page lists it apart.
     """
 
     stage: str
@@ -85,6 +89,24 @@ class ProcessingRow:
     state: str = CONFORMANCE_NO_REFERENCE
     reference: str = ""
     source: str = ""
+    exception: str = ""
+
+
+#: The exception a product's Bin Average records on a cast where it kept part of a flagged scan.
+BINAVG_KEPT_PARTLY_FLAGGED = (
+    "kept the good values of scans with a flagged value; seabirdscientific's bin_average "
+    "drops such a scan whole"
+)
+
+
+def _exception_of(step: str, outcome: str) -> str:
+    """Return the fixed phrase for how *step* ran differently from its setting, from *outcome*."""
+    if step == "loopedit":
+        found = re.search(r"surface soak not applied: [^(;]*", outcome)
+        return found.group(0).strip() if found else ""
+    if step.startswith("binavg (") and outcome.split(" ", 1)[0].isdigit():
+        return BINAVG_KEPT_PARTLY_FLAGGED
+    return ""
 
 
 def ctdcast_versions(ds: xr.Dataset, method: str) -> str:
@@ -300,8 +322,18 @@ def _stage3_rows(
         return out
 
     partly = _by_name("products_bin_average_partly_flagged")
-    made = _by_name("products_made") or dict.fromkeys(partly, "")
+    made = _by_name("products_made") or dict.fromkeys(partly, "binavg")
     for name, steps in made.items():
+        if "binavg" not in steps:
+            # A product with no Bin Average (a split leg, a filtered copy): named for what it is.
+            add(
+                f"product ({name})",
+                f"ctdcast product {name}",
+                "",
+                steps,
+                lambda k, name=name: no_reference_tick(k, f"product ({name})", ""),
+            )
+            continue
         text = partly.get(name, "")
         if text:
             tick_of = lambda k, name=name, text=text: ConformanceTick(  # noqa: E731
@@ -472,18 +504,29 @@ def processing_rows(ds: xr.Dataset) -> list[ProcessingRow]:
     """
     rows = _stage1_rows(ds) + _sea_bird_rows(ds) + _stage2_rows(ds)
     for rec, tick, setting, outcome in _stage3_rows(ds):
+        step = rec.label if tick.label == rec.label else tick.label
+        product = rec.label.startswith(("binavg (", "product ("))
+        exception = _exception_of(step, outcome)
+        # Bin Average's divergence from seabirdscientific is what it did on this cast (an
+        # exception), not its setting, so across casts it is compared as unreferenced.
+        state = (
+            CONFORMANCE_NO_REFERENCE
+            if exception == BINAVG_KEPT_PARTLY_FLAGGED
+            else tick.state
+        )
         rows.append(
             ProcessingRow(
-                stage="product" if rec.label.startswith("binavg (") else "stage 3",
-                step=rec.label if tick.label == rec.label else tick.label,
+                stage="product" if product else "stage 3",
+                step=step,
                 producer=rec.producer,
                 version=rec.version,
                 setting=setting,
                 outcome=outcome,
                 variables=tick.variables,
-                state=tick.state,
-                reference=tick.reference,
-                source=tick.source,
+                state=state,
+                reference="" if state != tick.state else tick.reference,
+                source="" if state != tick.state else tick.source,
+                exception=exception,
             )
         )
     return rows

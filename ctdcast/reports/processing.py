@@ -27,7 +27,6 @@ from ctdcast.analysis.processing_record import STAGES, ProcessingRow, rows_from_
 from ctdcast.config.cnv_header import CONFORMANCE_DIFFER, CONFORMANCE_MATCH
 from ctdcast.identity import format_cast_id
 from ctdcast.plotters.processing import draw_setting_by_cast_fig
-from ctdcast.processors.editing import SOAK_NOT_APPLIED
 from ctdcast.reports._env import get_template
 from ctdcast.reports._figdebug import render_b64
 from ctdcast.reports._format import report_generated_at
@@ -77,10 +76,9 @@ class StepRows:
     runs: list[Run] = field(default_factory=list)
     varies: dict[str, Any] | None = None
     figure: str | None = None
-    # Casts on which the step ran differently from its setting, and how (an amber row).
-    exception_casts: str = ""
-    exception_count: int = 0
-    exception: str = ""
+    # Casts on which the step ran differently from its setting: one amber row per way it did,
+    # ``{"text", "casts", "count"}``.
+    exceptions: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _label_runs(labels: list[str], picked: list[bool]) -> str:
@@ -97,31 +95,36 @@ def _label_runs(labels: list[str], picked: list[bool]) -> str:
     return ", ".join(r[0] if len(r) == 1 else f"{r[0]}–{r[-1]}" for r in runs)
 
 
-def _step_keys(records: list[list[ProcessingRow]]) -> list[tuple[str, str, int]]:
-    """Return every (stage, step, occurrence) seen, in stage order then first position."""
-    seen: dict[tuple[str, str, int], tuple[int, int]] = {}
+#: A step's rows across casts are matched on this: a step that runs more than once on a cast (a
+#: filter per variable, a correction per sensor) is told apart by the variables it changed, so a
+#: cast without one of them shows that one as not applied rather than shifting the others.
+_StepKey = tuple[str, str, str, int]
+
+
+def _keyed(rows: list[ProcessingRow]) -> dict[_StepKey, ProcessingRow]:
+    """Return one cast's rows by (stage, step, variables, occurrence)."""
+    out: dict[_StepKey, ProcessingRow] = {}
+    count: dict[tuple[str, str, str], int] = {}
+    for r in rows:
+        k = (r.stage, r.step, r.variables)
+        n = count.get(k, 0)
+        count[k] = n + 1
+        out[(*k, n)] = r
+    return out
+
+
+def _step_keys(records: list[dict[_StepKey, ProcessingRow]]) -> list[_StepKey]:
+    """Return every step key seen, in stage order then the position it first ran at."""
+    seen: dict[_StepKey, tuple[int, int]] = {}
     for rows in records:
-        count: dict[tuple[str, str], int] = {}
-        for pos, r in enumerate(rows):
-            k = (r.stage, r.step)
-            n = count.get(k, 0)
-            count[k] = n + 1
-            key = (r.stage, r.step, n)
-            rank = (STAGES.index(r.stage) if r.stage in STAGES else len(STAGES), pos)
+        for pos, key in enumerate(rows):
+            rank = (STAGES.index(key[0]) if key[0] in STAGES else len(STAGES), pos)
             seen[key] = min(seen.get(key, rank), rank)
     return sorted(seen, key=lambda k: seen[k])
 
 
-def _row_at(
-    rows: list[ProcessingRow], key: tuple[str, str, int]
-) -> ProcessingRow | None:
-    stage, step, n = key
-    matches = [r for r in rows if r.stage == stage and r.step == step]
-    return matches[n] if n < len(matches) else None
-
-
 def _same(a: ProcessingRow | None, b: ProcessingRow | None) -> bool:
-    """Return whether two casts' rows count as the same setting."""
+    """Return whether two casts' rows count as the same setting (not what each did)."""
     if a is None or b is None:
         return a is b
     return (a.setting, a.producer, a.version, a.state, a.variables) == (
@@ -133,19 +136,22 @@ def _same(a: ProcessingRow | None, b: ProcessingRow | None) -> bool:
     )
 
 
-def _varies(runs: list[Run], numbers: list[int]) -> dict[str, Any]:
-    """Summarise a step whose setting changes cast to cast: its shape and value ranges."""
+def _varies(runs: list[Run], per_cast: list[ProcessingRow | None]) -> dict[str, Any]:
+    """Summarise a step whose setting changes cast to cast: its shape, ranges and values."""
     present = [r for r in runs if r.row is not None]
     settings = [r.row.setting for r in present]
     shapes = {_NUMBER.sub("#", s) for s in settings}
+    differs = [r.row for r in present if r.row.state == CONFORMANCE_DIFFER]
     summary: dict[str, Any] = {
         "n_settings": len(set(settings)),
         "casts": f"{runs[0].first}–{runs[-1].last}",
         "missing": sum(1 for r in runs if r.row is None),
-        "row": present[0].row,
+        # The row whose tick and reference are shown: one that differs when any does, so the
+        # amber row's ✗ and reference say why it is amber.
+        "row": differs[0] if differs else present[0].row,
         "setting": None,
         "values": None,
-        "state_differs": any(r.row.state == CONFORMANCE_DIFFER for r in present),
+        "state_differs": bool(differs),
     }
     if len(shapes) == 1:
         # The same text with different numbers: show each varying number as its range.
@@ -164,11 +170,10 @@ def _varies(runs: list[Run], numbers: list[int]) -> dict[str, Any]:
         summary["setting"] = text
         if len(varying) == 1:
             i = varying[0]
-            by_run = {
-                r.first_number: float(_NUMBER.findall(r.row.setting)[i])
-                for r in present
-            }
-            summary["values"] = (numbers, [by_run.get(n, np.nan) for n in numbers])
+            summary["values"] = [
+                np.nan if row is None else float(_NUMBER.findall(row.setting)[i])
+                for row in per_cast
+            ]
     return summary
 
 
@@ -199,12 +204,14 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
             if "cast_suffix" in ds.variables
             else [""] * len(down)
         )
-        records = [rows_from_json(str(ds["processing_record"].values[i])) for i in down]
+        records = [
+            _keyed(rows_from_json(str(ds["processing_record"].values[i]))) for i in down
+        ]
     labels = [format_cast_id(n, s) for n, s in zip(numbers, suffixes, strict=True)]
     meta.update(has_record=any(records), n_casts=len(records))
     steps: list[StepRows] = []
     for key in _step_keys(records):
-        per_cast = [_row_at(rows, key) for rows in records]
+        per_cast = [rows.get(key) for rows in records]
         runs: list[Run] = []
         for label, number, row in zip(labels, numbers, per_cast, strict=True):
             if runs and _same(runs[-1].row, row):
@@ -212,24 +219,23 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
             else:
                 runs.append(Run(label, label, number, row))
         step = StepRows(stage=key[0], step=key[1], runs=runs)
-        soak_skipped = [
-            row is not None and SOAK_NOT_APPLIED in row.outcome for row in per_cast
-        ]
-        if any(soak_skipped):
-            step.exception_casts = _label_runs(labels, soak_skipped)
-            step.exception_count = sum(soak_skipped)
-            step.exception = (
-                "soak test not applied: the recording starts below the soak window "
-                "(surface_soak.starts_below: skip)"
+        for text in dict.fromkeys(r.exception for r in per_cast if r and r.exception):
+            picked = [r is not None and r.exception == text for r in per_cast]
+            step.exceptions.append(
+                {
+                    "text": text,
+                    "casts": _label_runs(labels, picked),
+                    "count": sum(picked),
+                }
             )
         if sum(1 for r in runs if r.row is not None) > VARIES_AFTER:
-            step.varies = _varies(runs, numbers)
+            step.varies = _varies(runs, per_cast)
             values = step.varies.pop("values")
             if values is not None:
                 step.figure = render_b64(
                     draw_setting_by_cast_fig,
-                    values[0],
-                    values[1],
+                    numbers,
+                    values,
                     f"{key[1]} setting",
                     width_in=W_HALF,
                     optional=True,
@@ -246,7 +252,7 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
         for s in steps
         for r in s.runs
     )
-    meta["any_exception"] = any(s.exception for s in steps)
+    meta["any_exception"] = any(s.exceptions for s in steps)
     meta["match"] = CONFORMANCE_MATCH
     meta["differ"] = CONFORMANCE_DIFFER
     meta["varies_after"] = VARIES_AFTER

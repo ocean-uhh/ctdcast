@@ -40,11 +40,11 @@ def draw_setting_by_cast_fig(
     """
     x = np.asarray(casts, dtype=float)
     y = np.asarray(values, dtype=float)
-    ok = np.isfinite(x) & np.isfinite(y)
-    if not ok.any():
+    if not (np.isfinite(x) & np.isfinite(y)).any():
         return None
     fig, ax = plt.subplots(figsize=(width_in, width_in * _ASPECT))
-    ax.plot(x[ok], y[ok], marker="o", linestyle="-", markersize=3)
+    # NaN breaks the line, so casts the step did not run on leave a gap rather than a bridge.
+    ax.plot(x, y, marker="o", linestyle="-", markersize=3)
     ax.set_xlabel("Cast")
     ax.set_ylabel(label)
     return fig

@@ -39,7 +39,7 @@ carry each cast's processing steps.</p>
 </div>
 
 <p class="caption">Every step applied to the casts in {{ meta.filename }}, in the order they ran. A row covers the casts in its <em>Casts</em> column, which used the same setting; a step whose setting changed has one row per run of casts, and a step whose setting changed more than {{ meta.varies_after }} times has a single <em>varies cast to cast</em> row with the range of its values. What a step did on one cast (values marked, scans flagged) is on that cast's page.</p>
-{% if meta.any_differ or meta.any_exception %}<p class="caption">Amber row: {% if meta.any_differ %}the setting differs from the value SBE documents for that step (<em>Matches reference</em> ✗; the reference and its source are in the row's <em>Reference</em> column){% endif %}{% if meta.any_differ and meta.any_exception %}, or {% endif %}{% if meta.any_exception %}the step did not run as its setting says on the casts in that row (the <em>Setting</em> column says how it ran instead){% endif %}.</p>{% endif %}
+{% if meta.any_differ or meta.any_exception %}<p class="caption">Amber row: {% if meta.any_differ %}the setting differs from the value SBE documents for that step (<em>Matches reference</em> ✗; the reference and its source are in the row's <em>Reference</em> column){% endif %}{% if meta.any_differ and meta.any_exception %}, or {% endif %}{% if meta.any_exception %}the step did not run as its setting says on the casts the row names (the row says how it ran instead){% endif %}.</p>{% endif %}
 
 {% for stage, title, steps in meta.stages %}
 <h2 id="s-{{ loop.index }}">{{ m.heading_text(loop.index, title) }}</h2>
@@ -85,14 +85,14 @@ carry each cast's processing steps.</p>
     {% endif %}
     {% endfor %}
     {% endif %}
-    {% if s.exception %}
+    {% for x in s.exceptions %}
     {% set bg = ' style="background:var(--warn-bg)"' %}
-    <tr>
-      <td class="range"{{ bg | safe }}>{{ s.exception_count }} cast{{ "s" if s.exception_count != 1 }}</td>
+    <tr class="exception">
+      <td class="range"{{ bg | safe }}>{{ x.count }} cast{{ "s" if x.count != 1 }}</td>
       <td class="mono"{{ bg | safe }}>{{ s.step }}</td>
-      <td{{ bg | safe }} colspan="6">{{ s.exception }}: <strong>{{ s.exception_casts }}</strong></td>
+      <td{{ bg | safe }} colspan="6">{{ x.text }}: <strong>{{ x.casts }}</strong></td>
     </tr>
-    {% endif %}
+    {% endfor %}
   {% endfor %}
   </tbody>
 </table>

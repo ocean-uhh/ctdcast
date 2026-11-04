@@ -159,6 +159,38 @@ def test_cast_starting_at_depth_runs_without_the_soak_test(hex_stage2):
 def test_starts_below_fail_refuses_the_cast(hex_stage2):
     deep = _starts_at_depth(hex_stage2)
     strict = {"surface_soak": {"deck_pressure": 0, "starts_below": "fail"}}
-    with pytest.raises(ValueError, match=r"cast 011 starts at .*starts_below: fail"):
+    with pytest.raises(
+        ValueError, match=r"cast 011: the recording starts below .*starts_below: fail"
+    ):
         apply_loop_edit(deep, strict, DT, cast_label="011")
     apply_loop_edit(hex_stage2, strict, DT, cast_label="011")  # a cast with a soak runs
+
+
+def test_shallow_cast_runs_without_the_soak_test_even_with_fail(hex_stage2):
+    # The slice reaches 97 dbar: a window down to 120 m is never passed, so there is no soak
+    # test to run, and the record says that rather than "starts below".
+    shallow = {
+        "surface_soak": {"max_depth": 120, "deck_pressure": 0, "starts_below": "fail"}
+    }
+    out, _ = apply_loop_edit(hex_stage2, shallow, DT, cast_label="011")
+    note = out.loop_edit_flag.attrs["loop_edit_soak_not_applied"]
+    assert "never goes deeper than the soak window" in note
+
+
+def test_soak_search_leaves_out_scans_an_earlier_loop_edit_marked(hex_stage2):
+    # An earlier Loop Edit marked every scan down to the first one below the window: the soak
+    # search (which skips marked scans when exclude_flagged) finds nothing in the window first.
+    p = hex_stage2.pressure.values.astype(float)
+    lat = float(np.nanmean(hex_stage2.latitude.values))
+    excluded = np.zeros(p.size, dtype=bool)
+    excluded[: int(np.argmax(p > 25.0))] = True
+    params = resolve_loop_edit(FIXED)
+    assert soak_window_reached(p, params, lat)
+    assert not soak_window_reached(p, params, lat, excluded)
+    out, mask = apply_loop_edit(
+        hex_stage2, FIXED, DT, excluded=excluded, cast_label="011"
+    )
+    assert mask[excluded].all()
+    assert out.loop_edit_flag.attrs["loop_edit_soak_not_applied"].startswith(
+        SOAK_NOT_APPLIED
+    )

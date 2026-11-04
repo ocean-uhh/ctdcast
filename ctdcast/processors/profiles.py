@@ -656,7 +656,14 @@ def build_profiles(
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = open_widened(path, decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
-        processing_records[rank] = record_json(ds)
+        try:
+            processing_records[rank] = record_json(ds)
+        except Exception as exc:  # noqa: BLE001  # one cast's odd attribute must not stop the compile
+            warnings.warn(
+                f"cast {format_cast_id(cast_num, cast_suffix)}: processing record not built "
+                f"({type(exc).__name__}: {exc}); its processing_record is empty",
+                stacklevel=2,
+            )
         cast_catalog = read_cast_sensor_catalog(ds)
         cast_catalogs.append(cast_catalog)
         if not cast_catalog:

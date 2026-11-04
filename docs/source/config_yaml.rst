@@ -251,7 +251,8 @@ The steps, as Sea-Bird names its modules:
        below the soak window before it is in it (a yo-yo cut into casts at depth) has no soak to
        remove: ``starts_below: skip`` runs it without the soak test and records why
        (``loop_edit_soak_not_applied``; an amber row on the processing page), ``fail`` refuses
-       the cast.  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
+       the cast.  A cast that never goes below the window has no soak test to run either way,
+       and runs without it, recorded the same way.  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
        ``_qc``; values are kept, and later steps with ``exclude_flagged`` leave the scans out.
        ``deck_pressure: true`` offsets the soak window by the first scan's depth, as
        seabirdscientific does; on OdB's CNVs (``useDeckPress = 1``, recordings starting in the
