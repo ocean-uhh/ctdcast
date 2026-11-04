@@ -31,6 +31,7 @@ from ctdcast.processors.sensor_catalog import (
     read_cast_sensor_catalog,
 )
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
+from ctdcast.writers.dtypes import open_widened
 from ctdcast.writers.netcdf import write as _write_nc
 
 # Non-profile columns: seasenselib time-bookkeeping, and per-cast provenance scalars a stage
@@ -44,14 +45,15 @@ _SKIP_VARS: frozenset[str] = frozenset(
 def _is_griddable(ds: xr.Dataset, name: str) -> bool:
     """Whether *name* is a per-sample science channel ``build_profiles`` should bin.
 
-    Excludes bookkeeping/coordinate columns (:data:`_SKIP_VARS`), QARTOD ``_qc`` flags, SeaBird
+    Excludes bookkeeping/coordinate columns (:data:`_SKIP_VARS`), QARTOD ``_qc`` flags, per-scan
+    flags such as ``loop_edit_flag`` (a bin mean of a 0/1 flag is not a flag), SeaBird
     diagnostics (``sbe_*`` — dropped at stage 2, never binned), and non-per-sample columns such
     as the dimensionless ``SENSOR_<type>_<serial>`` catalog scalars (caught by the pressure-shape
     test).  One predicate so the several sites that select griddable columns cannot drift apart.
     """
     return (
         name not in _SKIP_VARS
-        and not str(name).endswith("_qc")
+        and not str(name).endswith(("_qc", "_flag"))
         and not is_sbe_channel(name)
         and ds[name].shape == ds["pressure"].shape
     )
@@ -648,7 +650,7 @@ def build_profiles(
         for v in var_names
     }
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
-        ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
+        ds = open_widened(path, decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
         cast_catalog = read_cast_sensor_catalog(ds)
         cast_catalogs.append(cast_catalog)
