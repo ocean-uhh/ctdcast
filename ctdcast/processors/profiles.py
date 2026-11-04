@@ -15,6 +15,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.analysis.bathymetry import interpolate_bathy_at_casts
+from ctdcast.analysis.processing_record import record_json
 from ctdcast.config.global_attrs import (
     CREATION_NOTE,
     aggregate_identity,
@@ -614,6 +615,9 @@ def build_profiles(
     # Lineage: the tracking_id of each per-cast file compiled here (empty for a legacy file
     # that predates the id), so the chain back from profiles.nc is readable per profile.
     source_tracking_ids: list[str] = [""] * n_casts
+    # Each cast's processing record (every step applied, its settings and what it did), as
+    # JSON; the cruise processing page draws it as runs of casts.
+    processing_records: list[str] = [""] * n_casts
     # Each cast's own OceanSITES data_mode (P, or D when declared — stage 1 guarantees the
     # attribute exists).  A compiled file mixing modes is labelled "M", and the manual then
     # requires per-profile modes to resolve which data is in which mode; this array is that.
@@ -652,6 +656,7 @@ def build_profiles(
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
         ds = open_widened(path, decode_timedelta=False)
         per_cast_attrs.append(dict(ds.attrs))
+        processing_records[rank] = record_json(ds)
         cast_catalog = read_cast_sensor_catalog(ds)
         cast_catalogs.append(cast_catalog)
         if not cast_catalog:
@@ -741,6 +746,7 @@ def build_profiles(
     source_stage_prof = np.repeat(source_stages, 2)
     source_file_prof = np.repeat(np.array(source_files), 2)
     source_tid_prof = np.repeat(np.array(source_tracking_ids), 2)
+    processing_record_prof = np.repeat(np.array(processing_records, dtype=object), 2)
     source_data_mode_prof = np.repeat(np.array(cast_data_modes), 2)
 
     # Two independent kinds of heterogeneity, two mechanisms — do not conflate them.
@@ -862,6 +868,20 @@ def build_profiles(
                         "to be stage 1 by the compatibility shim, which does not "
                         "state its own stage. Casts can be at mixed stages early "
                         "in a cruise."
+                    ),
+                },
+            ),
+            "processing_record": (
+                ["N_PROF"],
+                processing_record_prof,
+                {
+                    "long_name": "processing steps applied to this profile's cast",
+                    "comment": (
+                        "JSON list, one object per step in the order applied: stage, step, "
+                        "producer, version, setting (what was configured), outcome (what "
+                        "it did on this cast), variables, and the conformance check "
+                        "(state, reference, source). Read from the cast's stage file: "
+                        "its history, Sea-Bird header and variable attributes."
                     ),
                 },
             ),

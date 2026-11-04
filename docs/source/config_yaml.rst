@@ -196,7 +196,8 @@ block that reproduces a cruise's own Sea-Bird processing; ``ctdcast fit`` sugges
        downcast, a 1 s series.  A product may use any step; ``split`` and ``binavg`` are
        product-only, since the stage-3 file keeps every scan, and ``binavg`` comes last.  Written
        to ``<ctd_root>/products/<name>/<cast>_<name>.nc``.  ``ctdcast inspect`` puts a CNV's
-       Split and Bin Average into a product (two, one per leg, after a Split).
+       Split and Bin Average into a product (two, one per leg, after a Split).  The stage-3 file
+       records each product made and its steps in ``products_made``.
    * - ``allow_unapplied``
      - ``true`` to run when ``steps`` lists a step stage 3 does not apply yet (it is skipped).
        Default ``false``: such a config is refused.
@@ -244,9 +245,13 @@ The steps, as Sea-Bird names its modules:
    * - ``loopedit``
      - Marks whole scans where the package reversed, moved slower than ``min_velocity`` (dbar/s,
        default 0.25; or ``mean_speed_percent`` of the mean speed over ``window_seconds``), or was
-       still in the surface soak (``surface_soak: {min_depth, max_depth, deck_pressure}``, default
-       5 m, 20 m, true; or ``false``, which marks no soak: the downcast starts at the shallowest
-       scan before the deepest).  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
+       still in the surface soak (``surface_soak: {min_depth, max_depth, deck_pressure,
+       starts_below}``, default 5 m, 20 m, true, ``skip``; or ``false``, which marks no soak: the
+       downcast starts at the shallowest scan before the deepest).  A cast whose recording is
+       below the soak window before it is in it (a yo-yo cut into casts at depth) has no soak to
+       remove: ``starts_below: skip`` runs it without the soak test and records why
+       (``loop_edit_soak_not_applied``; an amber row on the processing page), ``fail`` refuses
+       the cast.  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
        ``_qc``; values are kept, and later steps with ``exclude_flagged`` leave the scans out.
        ``deck_pressure: true`` offsets the soak window by the first scan's depth, as
        seabirdscientific does; on OdB's CNVs (``useDeckPress = 1``, recordings starting in the

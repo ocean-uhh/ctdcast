@@ -24,6 +24,7 @@ Directory layout
        timeseries.html         cruise-wide time series index
        leaflet.html            interactive map
        sbe_sensors.html        sensors by cast and device, and the sensor variables
+       processing.html         every processing step applied, by run of casts
        profiles_inventory.html netCDF variable + attribute inventory
        casts/
            cast_001.html
@@ -166,6 +167,33 @@ or Offset away from 0 is a ``datcnv`` drift/span correction already baked in; th
 tinted amber and the specific value bolded, so a correction is visible at a glance.  A cast
 file that predates the catalog falls back to the header-parsed device inventory and
 calibration-state tables.
+
+----
+
+processing.html
+---------------
+
+Every processing step applied to the casts in ``profiles.nc``, read from each profile's
+``processing_record`` (see :doc:`data_files`), one table per stage: stage 1 (reading the raw
+file), the Sea-Bird steps recorded in the raw header, stage 2 (soak and deck), stage 3 and the
+products.  The columns are **Casts · Step · Producer · Version · Setting · Variables · Matches
+reference · Reference**.
+
+- Casts that used the same setting of a step share one row, its *Casts* column a run such as
+  ``001–138``; a change of setting starts a new row.
+- A step whose setting changed more than five times is drawn as one *varies cast to cast* row
+  with the range of each changing number, and a figure of the value against cast number when
+  only one number changes.
+- A row is amber when the setting differs from the value SBE documents for that step, or when
+  the step did not run as its setting says on some casts: Loop Edit on a cast whose recording
+  starts below the surface-soak window (``surface_soak.starts_below: skip``) has its own amber
+  row naming those casts.  The caption above the tables states the criterion.
+
+What a step did on one cast (values marked, scans flagged) is on that cast's page.
+
+The masthead groups ``sbe_sensors.html`` and ``processing.html`` in a **Provenance** row: they
+describe how the data were taken and processed, not a data file, so they sit apart from the
+*Data inventory* strip.
 
 ----
 

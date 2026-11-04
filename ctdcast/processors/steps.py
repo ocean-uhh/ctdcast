@@ -162,7 +162,9 @@ def _apply_loopedit(ds: xr.Dataset, params: dict, ctx: StepContext) -> xr.Datase
         append_history(ds.attrs, message, stage="stage3")
         return ds
     interval, _ = C.native_interval(ds)
-    ds, mask = apply_loop_edit(ds, params, interval, excluded=ctx.excluded)
+    ds, mask = apply_loop_edit(
+        ds, params, interval, excluded=ctx.excluded, cast_label=ctx.cast_label
+    )
     ctx.excluded = mask if ctx.excluded is None else (ctx.excluded | mask)
     return ds
 

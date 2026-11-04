@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_nc_tables.html" as nc %}
+
+{% block title %}Processing — {{ cruise }}{% endblock %}
+{% block masthead_title %}Processing{% endblock %}
+{% block masthead_type %}every step applied, by run of casts{% endblock %}
+
+{% block head_extra %}
+<style>
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+td.range { white-space: nowrap; font-weight: 600; }
+td.absent { color: var(--muted); font-style: italic; }
+.scroll-x { overflow-x: auto; }
+.varies-fig img { max-width: 100%; }
+</style>
+{% endblock %}
+
+{% block masthead_meta %}
+  <dl class="meta-grid">
+    {% if cruise %}<div><dt>Cruise</dt><dd>{{ cruise }}</dd></div>{% endif %}
+    <div><dt>Source</dt><dd>{{ meta.filename }}</dd></div>
+    <div><dt>Casts</dt><dd>{{ meta.n_casts }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% macro match_cell(row, bg) %}{% if row.state == meta.match %}<td{{ bg | safe }}>✓</td>{% elif row.state == meta.differ %}<td{{ bg | safe }}>✗</td>{% else %}<td{{ bg | safe }}>—</td>{% endif %}{% endmacro %}
+
+{% block content %}
+{% if not meta.has_record %}
+<p class="warn">No processing record in {{ meta.filename }}. Rebuild it with
+<code>ctdcast process config.yaml --stage profiles --force</code> so the compiled profiles
+carry each cast's processing steps.</p>
+{% else %}
+
+<div class="jump-nav">
+  {% for stage, title, steps in meta.stages %}<a href="#s-{{ loop.index }}">{{ m.heading_text(loop.index, title) }}</a>
+  {% endfor %}
+</div>
+
+<p class="caption">Every step applied to the casts in {{ meta.filename }}, in the order they ran. A row covers the casts in its <em>Casts</em> column, which used the same setting; a step whose setting changed has one row per run of casts, and a step whose setting changed more than {{ meta.varies_after }} times has a single <em>varies cast to cast</em> row with the range of its values. What a step did on one cast (values marked, scans flagged) is on that cast's page.</p>
+{% if meta.any_differ or meta.any_exception %}<p class="caption">Amber row: {% if meta.any_differ %}the setting differs from the value SBE documents for that step (<em>Matches reference</em> ✗; the reference and its source are in the row's <em>Reference</em> column){% endif %}{% if meta.any_differ and meta.any_exception %}, or {% endif %}{% if meta.any_exception %}the step did not run as its setting says on the casts in that row (the <em>Setting</em> column says how it ran instead){% endif %}.</p>{% endif %}
+
+{% for stage, title, steps in meta.stages %}
+<h2 id="s-{{ loop.index }}">{{ m.heading_text(loop.index, title) }}</h2>
+<div class="scroll-x">
+<table class="nc">
+  {{ nc.thead(["Casts", "Step", "Producer", "Version", "Setting", "Variables", "Matches reference", "Reference"]) }}
+  <tbody>
+  {% for s in steps %}
+    {% if s.varies %}
+    {% set v = s.varies %}
+    {% set bg = ' style="background:var(--warn-bg)"' if v.state_differs else "" %}
+    <tr>
+      <td class="range"{{ bg | safe }}>{{ v.casts }}</td>
+      <td class="mono"{{ bg | safe }}>{{ s.step }}</td>
+      <td{{ bg | safe }}>{{ v.row.producer }}</td>
+      <td class="mono"{{ bg | safe }}>{{ v.row.version }}</td>
+      <td{{ bg | safe }}><strong>varies cast to cast</strong> ({{ v.n_settings }} settings{% if v.missing %}; not applied on {{ v.missing }} run(s) of casts{% endif %}){% if v.setting %}: {{ v.setting }}{% endif %}
+        {% if s.figure %}<div class="varies-fig"><img src="data:image/png;base64,{{ s.figure }}" alt="{{ s.step }} setting against cast number"></div>{% endif %}</td>
+      <td{{ bg | safe }}><span class="caption">{{ v.row.variables }}</span></td>
+      {{ match_cell(v.row, bg) }}
+      <td{{ bg | safe }}><span class="caption">{% if v.row.reference %}{{ v.row.reference }} — {{ v.row.source }}{% endif %}</span></td>
+    </tr>
+    {% else %}
+    {% for r in s.runs %}
+    {% if r.row is none %}
+    <tr>
+      <td class="range">{{ r.casts }}</td>
+      <td class="mono">{{ s.step }}</td>
+      <td class="absent" colspan="6">not applied on these casts</td>
+    </tr>
+    {% else %}
+    {% set bg = ' style="background:var(--warn-bg)"' if r.row.state == meta.differ else "" %}
+    <tr>
+      <td class="range"{{ bg | safe }}>{{ r.casts }}</td>
+      <td class="mono"{{ bg | safe }}>{{ s.step }}</td>
+      <td{{ bg | safe }}>{{ r.row.producer }}</td>
+      <td class="mono"{{ bg | safe }}>{{ r.row.version }}</td>
+      <td{{ bg | safe }}>{{ r.row.setting or "—" }}</td>
+      <td{{ bg | safe }}><span class="caption">{{ r.row.variables }}</span></td>
+      {{ match_cell(r.row, bg) }}
+      <td{{ bg | safe }}><span class="caption">{% if r.row.reference %}{{ r.row.reference }} — {{ r.row.source }}{% endif %}</span></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    {% if s.exception %}
+    {% set bg = ' style="background:var(--warn-bg)"' %}
+    <tr>
+      <td class="range"{{ bg | safe }}>{{ s.exception_count }} cast{{ "s" if s.exception_count != 1 }}</td>
+      <td class="mono"{{ bg | safe }}>{{ s.step }}</td>
+      <td{{ bg | safe }} colspan="6">{{ s.exception }}: <strong>{{ s.exception_casts }}</strong></td>
+    </tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

@@ -85,6 +85,11 @@ The figures on the *T/S corrections* page, drawn from the ``fits.nc`` file ``ctd
    :members:
    :undoc-members:
 
+The figure of a processing setting against cast number, for the processing page.
+
+.. automodule:: ctdcast.plotters.processing
+   :members:
+
 The figure for a ctdcast-versus-Sea-Bird comparison: the difference in each variable against
 pressure.
 
@@ -217,6 +222,9 @@ Page generators
 .. automodule:: ctdcast.reports.sbe_processing
    :members:
 
+.. automodule:: ctdcast.reports.processing
+   :members:
+
 .. automodule:: ctdcast.reports.corrections
    :members:
    :undoc-members:
@@ -280,6 +288,13 @@ cruise aggregation behind ``ctdcast fit`` — pure numpy over a cast's arrays, w
 .. automodule:: ctdcast.analysis.fits
    :members:
    :undoc-members:
+
+:mod:`~ctdcast.analysis.processing_record` lists every step applied to a cast — stage 1, the
+Sea-Bird steps in the raw header, stage 2, stage 3 and products — with the setting kept apart from
+what it did on the cast; ``profiles.nc`` stores it per cast as ``processing_record``.
+
+.. automodule:: ctdcast.analysis.processing_record
+   :members:
 
 :mod:`~ctdcast.analysis.sbe_compare` compares a ctdcast stage file with a Sea-Bird CNV made from
 the same ``.hex``, scan by scan: per-variable differences where neither side flags the scan, and
