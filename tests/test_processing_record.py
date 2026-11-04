@@ -168,7 +168,7 @@ def test_page_collapses_runs_and_marks_exceptions(stage3_ds, tmp_path):
     assert meta["any_exception"]
 
     out = generate_processing_page(path, tmp_path / "processing.html", cruise="test")
-    html = out.read_text()
+    html = out.read_text(encoding="utf-8")
     assert "did not run as its setting says" in html
     row = html[html.index('<tr class="exception">') :].split("</tr>")[0]
     assert "1 cast<" in row and "<strong>006</strong>" in row and skipped in row
@@ -203,7 +203,9 @@ def test_amber_caption_states_the_reference_criterion(stage3_ds, tmp_path):
         source="SBE manual",
     )
     path = _cruise(tmp_path, [differ, differ])
-    html = generate_processing_page(path, tmp_path / "p.html").read_text()
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
     assert "differs from the value SBE documents" in html
     row = html[html.index("celltm") :].split("</tr>")[0]
     assert 'style="background:var(--warn-bg)"' in row and "✗" in row
@@ -212,7 +214,9 @@ def test_amber_caption_states_the_reference_criterion(stage3_ds, tmp_path):
 def test_page_without_a_record_says_how_to_rebuild(tmp_path):
     path = tmp_path / "old.nc"
     xr.Dataset({"cast_number": ("N_PROF", [1, 1])}).to_netcdf(path)
-    html = generate_processing_page(path, tmp_path / "p.html").read_text()
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
     assert "No processing record" in html and "--stage profiles --force" in html
 
 
@@ -318,7 +322,9 @@ def test_steps_are_numbered_in_the_order_they_ran(stage3_ds, tmp_path):
     stage_rank = ["stage 1", "Sea-Bird", "stage 2", "stage 3", "product"]
     ranks = [stage_rank.index(s.stage) for s in steps]
     assert ranks == sorted(ranks)
-    html = generate_processing_page(path, tmp_path / "p.html").read_text()
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
     keys = [int(k) for k in re.findall(r'class="order" data-sort="(\d+)"', html)]
     assert keys == sorted(keys) and len(keys) == len(set(keys))
 
@@ -334,3 +340,32 @@ def test_a_cnv_cast_records_how_stage_1_read_it(ds_011):
     assert read.version == "ctdcast 0.1.0"
     # The steps SBE Data Processing applied before the CNV follow, from its header.
     assert any(r.stage == "Sea-Bird" for r in rows)
+
+
+def test_a_cast_without_a_record_is_listed_not_called_unapplied(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    # Cast 3's record could not be built at the compile (stored as an empty list).
+    path = _cruise(tmp_path, [base, base, [], base, base])
+    meta = read_processing_tables(path)
+    assert (meta["no_record_casts"], meta["no_record_count"]) == ("003", 1)
+    for _, _, steps in meta["stages"]:
+        for s in steps:
+            # No "not applied" row for it, and no run spans it.
+            assert [r.casts for r in s.runs] == ["001–002", "004–005"]
+            assert all(r.row is not None for r in s.runs)
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
+    assert "no processing record: <strong>003</strong>" in html
+    assert html.index("could not be built") < html.index("no processing record:")
+
+
+def test_page_without_a_record_still_counts_the_casts(tmp_path):
+    path = tmp_path / "old.nc"
+    xr.Dataset(
+        {
+            "cast_number": ("N_PROF", [1, 1, 2, 2]),
+            "cast_direction": ("N_PROF", np.array(["down", "up"] * 2, dtype=object)),
+        }
+    ).to_netcdf(path)
+    assert read_processing_tables(path)["n_casts"] == 2

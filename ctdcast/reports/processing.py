@@ -196,11 +196,15 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
     """
     meta: dict[str, Any] = {"filename": Path(profiles_path).name, "stages": []}
     with xr.open_dataset(profiles_path, engine="netcdf4") as ds:
-        if "processing_record" not in ds.variables:
-            meta.update(has_record=False, n_casts=0)
-            return meta
-        direction = ds["cast_direction"].values.astype(str)
+        direction = (
+            ds["cast_direction"].values.astype(str)
+            if "cast_direction" in ds.variables
+            else np.array([])
+        )
         down = [i for i, d in enumerate(direction) if d == "down"]
+        if "processing_record" not in ds.variables:
+            meta.update(has_record=False, n_casts=len(down))
+            return meta
         numbers = [int(ds["cast_number"].values[i]) for i in down]
         suffixes = (
             [str(ds["cast_suffix"].values[i]) for i in down]
@@ -212,15 +216,28 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
         ]
     labels = [format_cast_id(n, s) for n, s in zip(numbers, suffixes, strict=True)]
     meta.update(has_record=any(records), n_casts=len(records))
+    # A cast whose record could not be built (the compile warns and stores "") says nothing
+    # about its steps: it is left out of every step's runs, breaks a run so no range spans it,
+    # and is listed on its own.
+    no_record = [not rows for rows in records]
+    meta["no_record_casts"] = _label_runs(labels, no_record) if any(no_record) else ""
+    meta["no_record_count"] = sum(no_record)
     steps: list[StepRows] = []
     for key in _step_keys(records):
         per_cast = [rows.get(key) for rows in records]
         runs: list[Run] = []
-        for label, number, row in zip(labels, numbers, per_cast, strict=True):
-            if runs and _same(runs[-1].row, row):
+        broken = False
+        for label, number, row, missing in zip(
+            labels, numbers, per_cast, no_record, strict=True
+        ):
+            if missing:
+                broken = True
+                continue
+            if runs and not broken and _same(runs[-1].row, row):
                 runs[-1].last = label
             else:
                 runs.append(Run(label, label, number, row))
+            broken = False
         step = StepRows(stage=key[0], step=key[1], runs=runs)
         for text in dict.fromkeys(r.exception for r in per_cast if r and r.exception):
             picked = [r is not None and r.exception == text for r in per_cast]

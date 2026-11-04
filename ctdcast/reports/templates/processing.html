@@ -40,6 +40,15 @@ carry each cast's processing steps.</p>
 </div>
 
 <p class="caption">Every step applied to the casts in {{ meta.filename }}, in the order they ran; <em>#</em> numbers the steps in that order through the page, so sorting by it restores the order after sorting by another column. A row covers the casts in its <em>Casts</em> column, which used the same setting; a step whose setting changed has one row per run of casts, and a step whose setting changed more than {{ meta.varies_after }} times has a single <em>varies cast to cast</em> row with the range of its values. What a step did on one cast (values marked, scans flagged) is on that cast's page.</p>
+{% if meta.no_record_count %}
+<p class="caption">Amber: these casts' processing record could not be built when {{ meta.filename }} was compiled (the compile names each one and why); their steps are left out of the tables below, and no row of casts spans them.</p>
+<table class="nc" data-nosort>
+  <tbody><tr>
+    <td class="range" style="background:var(--warn-bg)">{{ meta.no_record_count }} cast{{ "s" if meta.no_record_count != 1 }}</td>
+    <td style="background:var(--warn-bg)">no processing record: <strong>{{ meta.no_record_casts }}</strong></td>
+  </tr></tbody>
+</table>
+{% endif %}
 {% if meta.any_differ or meta.any_exception %}<p class="caption">Amber row: {% if meta.any_differ %}the setting differs from the value SBE documents for that step (<em>Matches reference</em> ✗; the reference and its source are in the row's <em>Reference</em> column){% endif %}{% if meta.any_differ and meta.any_exception %}, or {% endif %}{% if meta.any_exception %}the step did not run as its setting says on the casts the row names (the row says how it ran instead){% endif %}.</p>{% endif %}
 
 {% for stage, title, steps in meta.stages %}
