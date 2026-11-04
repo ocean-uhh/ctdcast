@@ -378,14 +378,55 @@ One cast in, one cast out, once per cast.
   Sea-Bird already processed the same way, skips the native-rate steps with a warning and still
   gets the calibration, salinity and QC. ``seabirdscientific`` is meant to match SBE Data
   Processing, Sea-Bird's Windows program, and mostly does; where it appears not to, ctdcast
-  records which it followed: the SBE 43 hysteresis (``oxygen_hysteresis_method``), Wild Edit
-  on near-constant blocks, and Loop Edit's deck-pressure offset (see the ``wildedit`` and
-  ``loopedit`` steps in :ref:`config_yaml`). Deliberately
+  records which it followed (:ref:`sbe_differences`). Deliberately
   **iterative**: re-run it as calibration improves, which is why it
   must not consume its own output.
 
 LADCP has a single cast-level stage: the LDEO ``.mat`` solution is converted to
 per-cast netCDF. Its upstream processing happens outside ctdcast.
+
+.. _sbe_differences:
+
+Where ctdcast differs from Sea-Bird's software
+----------------------------------------------
+
+ctdcast applies Sea-Bird's processing steps with ``seabirdscientific``, Sea-Bird's Python
+package, which is meant to reproduce SBE Data Processing, Sea-Bird's Windows program. Where the
+two appear to differ, or where ctdcast chooses differently from both, it is listed here, recorded
+in the output file, and shown on the cast page.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 40 42
+
+   * - Step
+     - Sea-Bird
+     - ctdcast
+   * - **Bin Average** (products)
+     - ``seabirdscientific`` drops the **whole scan** when any one value in it carries the bad
+       flag (a Wild Edit mark), so one bad sensor — an oxygen voltage, a fluorometer — removes
+       every other sensor's good value from the bin, without saying so.
+     - **Deliberately different.** Only the flagged value leaves its bin; the scan's other
+       values stay. Loop Edit's scans, and scans flagged in every variable (the stage-2 soak
+       and deck), still leave whole, as in Sea-Bird. Every product records how many of the
+       scans entering its bins had a flagged value beside good ones — the scans
+       seabirdscientific's rule would have dropped whole — by variable
+       (``bin_average_partly_flagged``); the run warns; the cast page shows an amber *binavg*
+       row.
+   * - **SBE 43 oxygen** (stage 3)
+     - ``seabirdscientific`` 3.1.1 feeds the corrected previous voltage back into the
+       hysteresis correction; Application Note 64-3 uses the uncorrected one.
+     - Follows the application note (``oxygen_hysteresis_method`` on each oxygen variable).
+   * - **Wild Edit** (stage 3)
+     - On a block where a channel sits at one or two A/D levels, SBE Data Processing marks the
+       whole block when ``mindelta`` is 0; ``seabirdscientific`` marks only the values off the
+       block's main level.
+     - Follows ``seabirdscientific``. A ``mindelta`` of a few A/D steps avoids both.
+   * - **Loop Edit** (stage 3)
+     - ``deck_pressure: true`` offsets the surface-soak window by the first scan's depth in
+       ``seabirdscientific``; on OdB's recordings, which start in the water, SBE Data
+       Processing matched no offset.
+     - Follows ``seabirdscientific``; ``deck_pressure: 0`` reproduces the Windows program.
 
 ----
 

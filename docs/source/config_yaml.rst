@@ -257,8 +257,9 @@ The steps, as Sea-Bird names its modules:
      - Product only, and last: ``bin`` (``decibars``, ``seconds``, ``scans``), ``size``, and
        optionally ``min_scans``, ``max_scans``, ``skip_over``, ``omit``, ``surface_bin: {min, max, value}`` and
        ``interpolate``.  A value whose ``_qc`` is 4 or 9 is left out of its own bin only, so one
-       marked oxygen value does not remove that scan's temperature; a scan whose pressure is
-       flagged 4 or 9 has no bin at all.  Scans Loop Edit marked are always left out
+       marked oxygen value does not remove that scan's temperature — unlike
+       ``seabirdscientific``, which drops the whole scan (:ref:`sbe_differences`); a scan whose
+       pressure is flagged 4 or 9 has no bin at all.  Scans Loop Edit marked are always left out
        (``exclude_flagged: false`` is refused).  Salinity is re-derived from
        the binned values.  Applied with ``seabirdscientific``.  Stage 3 refuses a config that lists one, because the
        steps after it would run on data it was meant to change first; set

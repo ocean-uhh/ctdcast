@@ -273,11 +273,13 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
     names = _binnable(ds)
     flag = sbs_processing.FLAG_VALUE
     columns: dict[str, np.ndarray] = {}
+    bad_of: dict[str, np.ndarray] = {}
     for v in names:
         x = np.asarray(ds[v].values, dtype=float).copy()
         qc = f"{v}_qc"
         if qc in ds:
-            x[np.isin(ds[qc].values, (4, 9))] = np.nan
+            bad_of[v] = np.isin(ds[qc].values, (4, 9))
+            x[bad_of[v]] = np.nan
         columns[v] = x
     t = pd.to_datetime(ds["time"].values)
     columns["elapsed_seconds"] = np.asarray((t - t[0]).total_seconds(), dtype=float)
@@ -299,7 +301,6 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
         if control in columns
         else np.ones(t.size, dtype=bool)
     )
-    frame = xr.Dataset({k: ("scan", v[keep]) for k, v in columns.items()})
     if p["bin"] == "decibars":
         cast = {
             "down": sbs_processing.CastType.DOWNCAST,
@@ -308,25 +309,38 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
     else:
         cast = sbs_processing.CastType.NONE
     surface = p["surface_bin"]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        binned = sbs_processing.bin_average(
-            frame,
-            control,
-            p["size"],
-            include_scan_count=True,
-            min_scans=p["min_scans"],
-            max_scans=p["max_scans"],
-            exclude_bad_scans=p["exclude_flagged"],
-            interpolate=p["interpolate"],
-            cast_type=cast,
-            trim_start=p["skip_over"],
-            trim_end=p["omit"],
-            include_surface_bin=surface is not None,
-            surface_bin_min=(surface or {}).get("min", 0.0),
-            surface_bin_max=(surface or {}).get("max", 5.0),
-            surface_bin_value=(surface or {}).get("value", 2.5),
-        )
+
+    def run(cols: dict[str, np.ndarray]) -> xr.Dataset:
+        frame = xr.Dataset({k: ("scan", v[keep]) for k, v in cols.items()})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            return sbs_processing.bin_average(
+                frame,
+                control,
+                p["size"],
+                include_scan_count=True,
+                min_scans=p["min_scans"],
+                max_scans=p["max_scans"],
+                exclude_bad_scans=p["exclude_flagged"],
+                interpolate=p["interpolate"],
+                cast_type=cast,
+                trim_start=p["skip_over"],
+                trim_end=p["omit"],
+                include_surface_bin=surface is not None,
+                surface_bin_min=(surface or {}).get("min", 0.0),
+                surface_bin_max=(surface or {}).get("max", 5.0),
+                surface_bin_value=(surface or {}).get("value", 2.5),
+            )
+
+    binned = run(columns)
+    # The scans that enter the binning, as seabirdscientific takes them: a usable bin variable,
+    # then skip_over/omit counted on those rows, then Loop Edit's scans out.
+    rows = np.flatnonzero(keep)
+    rows = rows[p["skip_over"] : max(rows.size - p["omit"], 0)]
+    entering = np.zeros(t.size, dtype=bool)
+    entering[rows] = True
+    entering &= columns["flag"] == 0
+    partial, by_var = _sea_bird_would_drop(bad_of, entering, skip=control)
     binned = (
         binned.rename({"bin_number": "bin"}) if "bin_number" in binned.dims else binned
     )
@@ -359,6 +373,8 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
         + (f", {leg}cast" if leg else "")
     )
     out.attrs["bin_average"] = desc
+    out.attrs["bin_average_partly_flagged_scans"] = int(partial)
+    out.attrs["bin_average_partly_flagged"] = _partly_flagged_text(partial, by_var)
     out.attrs["bin_average_method"] = (
         f"seabirdscientific {_version()} processing.bin_average; a value with _qc 4 or 9 "
         "left out of its own bin"
@@ -369,6 +385,57 @@ def bin_average(ds: xr.Dataset, params: dict) -> xr.Dataset:
         stage="stage3",
     )
     return out
+
+
+def _sea_bird_would_drop(
+    bad_of: dict[str, np.ndarray], entering: np.ndarray, *, skip: str
+) -> tuple[int, dict[str, int]]:
+    """Count the scans entering the binning that carry a flagged value beside good ones.
+
+    seabirdscientific's ``bin_average`` drops the whole scan when any value in it holds its bad
+    flag; ctdcast leaves out only that value.  These are the scans where the two part ways.
+    *entering* is the scans that reach the binning (usable bin variable, ``skip_over`` /
+    ``omit``, Loop Edit's scans out).  A scan flagged in every variable that has a ``_qc``,
+    pressure aside (stage 2's soak and deck), is a whole-scan flag both treat alike, when at
+    least two variables carry flags; salinity (re-derived from the binned values) and the bin
+    variable (*skip*) are not counted.  A bin that ``min_scans`` / ``max_scans`` then removes is
+    not tracked.  Also returned: the flagged scans by variable.
+    """
+    # Stage 2 never flags pressure (it places the scan), so a whole-scan flag is one on every
+    # other variable that has a _qc; with a single such variable, every flag is that variable's.
+    judged = [m for v, m in bad_of.items() if v != "pressure"]
+    whole = (
+        np.logical_and.reduce(judged)
+        if len(judged) >= 2
+        else np.zeros(entering.size, dtype=bool)
+    )
+    per_value = {
+        v: m & ~whole & entering
+        for v, m in bad_of.items()
+        if v != skip and not v.startswith("ctd_salinity")
+    }
+    if not per_value:
+        return 0, {}
+    total = int(np.logical_or.reduce(list(per_value.values())).sum())
+    by_var = {v: int(m.sum()) for v, m in per_value.items()}
+    return total, {v: n for v, n in by_var.items() if n}
+
+
+def _partly_flagged_text(n: int, by_var: dict[str, int]) -> str:
+    """Return the one-line record of :func:`_sea_bird_would_drop`, for the product attributes."""
+    if not n:
+        return (
+            "none: no scan with a value flagged fail or missing would be dropped whole"
+        )
+    parts = ", ".join(
+        f"{v} {k}" for v, k in sorted(by_var.items(), key=lambda t: -t[1])
+    )
+    return (
+        f"{n} scan(s) entering the bins had a value flagged fail or missing beside good "
+        f"values (by variable: {parts}). ctdcast left out only the flagged values; "
+        "seabirdscientific's bin_average drops a whole scan when one of its values carries "
+        "its bad flag, so treated that way these scans would have lost every value."
+    )
 
 
 def make_product(
@@ -428,6 +495,13 @@ def make_product(
             )
         elif name == "binavg":
             out = bin_average(out, params)
+            n = int(out.attrs.get("bin_average_partly_flagged_scans", 0))
+            if n:
+                warnings.warn(
+                    f"cast {cast_label}, product {product['name']}: "
+                    + out.attrs["bin_average_partly_flagged"],
+                    stacklevel=2,
+                )
         else:
             out = STEPS[name].apply(out, params, ctx)
         ran.append(name)
