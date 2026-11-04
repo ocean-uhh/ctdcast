@@ -195,31 +195,59 @@ def product_path(root: Path, stem: str, name: str) -> Path:
     return root / "products" / name / f"{stem}_{name}.nc"
 
 
-def _write_products(
+def _make_products(
     ds: xr.Dataset,
-    root: Path,
-    stem: str,
     products: list[dict],
     cast_id: tuple,
     marked: dict | None = None,
-) -> None:
-    """Make and write each configured product of one cast; a failure names the product only."""
+) -> list[tuple[dict, xr.Dataset | None]]:
+    """Make each configured product of one cast in memory; a failure names the product only."""
     label = format_cast_id(*cast_id)
+    made: list[tuple[dict, xr.Dataset | None]] = []
     for product in products:
-        path = product_path(root, stem, product["name"])
         try:
             out = make_product(
                 ds, product, cast_number=cast_id[0], cast_label=label, marked=marked
             )
-            path.parent.mkdir(parents=True, exist_ok=True)
-            _write_nc(out, path)
-            print(f"  ok: {path.parent.name}/{path.name}")
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED product {product['name']} of cast {label}  "
                 f"({type(exc).__name__}: {exc})",
                 file=sys.stderr,
             )
+            out = None
+        made.append((product, out))
+    return made
+
+
+def _stamp_product_divergence(
+    ds: xr.Dataset, made: list[tuple[dict, xr.Dataset | None]]
+) -> None:
+    """Record on the stage-3 file each product's Bin Average that kept part of a flagged scan.
+
+    The cast page reads it (the products themselves are separate files), so the divergence from
+    seabirdscientific is shown where the cast's processing is.
+    """
+    lines = [
+        f"{product['name']}: {out.attrs['bin_average_partly_flagged']}"
+        for product, out in made
+        if out is not None and int(out.attrs.get("bin_average_partly_flagged_scans", 0))
+    ]
+    if lines:
+        ds.attrs["products_bin_average_partly_flagged"] = " | ".join(lines)
+
+
+def _write_products(
+    made: list[tuple[dict, xr.Dataset | None]], root: Path, stem: str
+) -> None:
+    """Write the products made by :func:`_make_products`."""
+    for product, out in made:
+        if out is None:
+            continue
+        path = product_path(root, stem, product["name"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _write_nc(out, path)
+        print(f"  ok: {path.parent.name}/{path.name}")
 
 
 def _apply_slope_offset(
@@ -538,11 +566,13 @@ def run(
                     )
             ds.close()
             ds = None  # prevent double-close in finally; file released before write
+            made = _make_products(ds_out, products, cast_id, steps_ctx.marked)
+            _stamp_product_divergence(ds_out, made)
             target.parent.mkdir(parents=True, exist_ok=True)
             _write_nc(ds_out, target)
             print(f"  ok: {target.name}")
             n += 1
-            _write_products(ds_out, root, stem, products, cast_id, steps_ctx.marked)
+            _write_products(made, root, stem)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",

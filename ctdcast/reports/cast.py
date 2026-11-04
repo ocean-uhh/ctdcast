@@ -1145,6 +1145,29 @@ def _ctdcast_correction_rows(
                 f"from {a.get('derived_from', '?')}",
                 lambda k, v=v: no_reference_tick(k, "SBE 43 oxygen", v),
             )
+    # A product's Bin Average that kept part of a flagged scan: where ctdcast parts ways with
+    # seabirdscientific, which would drop the whole scan.  Products come after stage 3.
+    for line in str(ds.attrs.get("products_bin_average_partly_flagged", "")).split(
+        " | "
+    ):
+        name, _, text = line.partition(": ")
+        if not text:
+            continue
+        add(
+            f"binavg ({name})",
+            f"ctdcast product {name} (seabirdscientific bin_average)",
+            "",
+            text,
+            lambda k, name=name, text=text: ConformanceTick(
+                k,
+                f"binavg ({name})",
+                CONFORMANCE_DIFFER,
+                "a scan with any flagged value is dropped whole",
+                "seabirdscientific processing.bin_average",
+                text.split(";")[0],
+                "",
+            ),
+        )
     ranked = sorted(range(len(rows)), key=lambda i: (order[i], i))
     out = []
     for n, i in enumerate(ranked, 1):
@@ -1190,6 +1213,7 @@ def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
         f"{_references_caption(ticks)}"
         f"{_WILD_EDIT_NOTE if any(r.label == 'wildedit' for r in records) else ''}"
         f"{_LOOP_EDIT_NOTE if 'deck_pressure=True' in str(ds.get('loop_edit_flag', xr.DataArray()).attrs.get('loop_edit', '')) else ''}"
+        f"{_BIN_AVERAGE_NOTE if ds.attrs.get('products_bin_average_partly_flagged') else ''}"
     )
 
 
@@ -1202,6 +1226,17 @@ _WILD_EDIT_NOTE = (
     "surface): with <code>mindelta</code> 0, the Windows program marks the whole block, "
     "seabirdscientific only the values off the block's main level. A <code>mindelta</code> of "
     "a few A/D steps avoids both.</p>"
+)
+
+
+#: Under the ctdcast corrections table when a product's Bin Average kept part of a flagged scan.
+_BIN_AVERAGE_NOTE = (
+    "<p class='caption'><strong>Amber binavg row: ctdcast differs from seabirdscientific here, on "
+    "purpose.</strong> In those scans one variable's value was flagged fail or missing while "
+    "the others were good. ctdcast's Bin Average leaves out only the flagged value; "
+    "seabirdscientific's drops the whole scan, so one bad sensor (an oxygen voltage, a "
+    "fluorometer) silently removes every other sensor's good data from the bin. The row "
+    "counts the scans, by variable.</p>"
 )
 
 
