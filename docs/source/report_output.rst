@@ -176,8 +176,10 @@ processing.html
 Every processing step applied to the casts in ``profiles.nc``, read from each profile's
 ``processing_record`` (see :doc:`data_files`), one table per stage: stage 1 (reading the raw
 file), the Sea-Bird steps recorded in the raw header, stage 2 (soak and deck), stage 3 and the
-products.  The columns are **Casts · Step · Producer · Version · Setting · Variables · Matches
-reference · Reference**.
+products.  The columns are **# · Casts · Step · Producer · Version · Setting · Variables ·
+Matches reference · Reference**; *#* numbers the steps in the order they ran, through the whole
+page, and every row of a step carries its number, so sorting by *#* restores the order after
+sorting by another column.
 
 - Casts that used the same setting of a step share one row, its *Casts* column a run such as
   ``001–138``; a change of setting starts a new row.

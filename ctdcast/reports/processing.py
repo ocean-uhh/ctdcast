@@ -74,6 +74,9 @@ class StepRows:
     stage: str
     step: str
     runs: list[Run] = field(default_factory=list)
+    # The step's place in the order the steps ran, through the whole page (1, 2, …): shown in
+    # every row of the step, so sorting the table by another column loses nothing.
+    number: int = 0
     varies: dict[str, Any] | None = None
     figure: str | None = None
     # Casts on which the step ran differently from its setting: one amber row per way it did,
@@ -247,6 +250,10 @@ def read_processing_tables(profiles_path: Path) -> dict[str, Any]:
         for stage in STAGES
         if any(s.stage == stage for s in steps)
     ]
+    for number, step in enumerate(
+        (s for _, _, stage_steps in meta["stages"] for s in stage_steps), 1
+    ):
+        step.number = number
     meta["any_differ"] = any(
         r.row is not None and r.row.state == CONFORMANCE_DIFFER
         for s in steps

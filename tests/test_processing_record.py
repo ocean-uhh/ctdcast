@@ -2,6 +2,7 @@
 
 import dataclasses
 import json
+import re
 import warnings
 
 import numpy as np
@@ -305,3 +306,18 @@ def test_provenance_row_holds_the_sensors_and_processing_pages(odb_root):
     assert [p["label"] for p in rows["Provenance:"]] == ["SBE sensors", "Processing"]
     assert [p["state"] for p in rows["Provenance:"]] == ["link", "current"]
     assert [p["label"] for p in nav["inventory"]] == ["profiles.nc"]
+
+
+def test_steps_are_numbered_in_the_order_they_ran(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    path = _cruise(tmp_path, [base, base])
+    meta = read_processing_tables(path)
+    steps = [s for _, _, ss in meta["stages"] for s in ss]
+    assert [s.number for s in steps] == list(range(1, len(steps) + 1))
+    # Stage order first, so the numbers run through the page top to bottom.
+    stage_rank = ["stage 1", "Sea-Bird", "stage 2", "stage 3", "product"]
+    ranks = [stage_rank.index(s.stage) for s in steps]
+    assert ranks == sorted(ranks)
+    html = generate_processing_page(path, tmp_path / "p.html").read_text()
+    keys = [int(k) for k in re.findall(r'class="order" data-sort="(\d+)"', html)]
+    assert keys == sorted(keys) and len(keys) == len(set(keys))
