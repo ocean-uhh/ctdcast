@@ -40,6 +40,7 @@ from ctdcast.processors.stage_layout import (
     parse_stage,
     stage_path,
 )
+from ctdcast.writers.dtypes import widen_floats
 from ctdcast.writers.netcdf import write as _write_nc
 
 # _SKIP_STAGE2_QC: variables that are coordinates or administrative — not physical
@@ -655,7 +656,8 @@ def run(
             continue
         ds = None
         try:
-            ds = xr.open_dataset(input_path, engine="netcdf4").load()
+            with xr.open_dataset(input_path, engine="netcdf4") as _raw:
+                ds = widen_floats(_raw.load())
             ds_out = apply_stage2(ds, **stage2_kw)
             if cast_id[0] in clock_apply:  # cast_id is (num, suffix)
                 offset, n_seg, sd_seg = clock_apply[cast_id[0]]

@@ -207,8 +207,8 @@ class TestCompression:
         back.close()
 
     def test_shuffle_off_for_float64_on_for_integers(self, tmp_path):
-        """shuffle roughly doubles ctdcast's float64 science columns, so it is off
-        for float64 and on for integer variables (the QARTOD flag arrays)."""
+        """shuffle is off for float64 (time, position) and on for the float32 science
+        columns and the integer QARTOD flags."""
         from ctdcast.processors.stage2 import apply_stage2
         from ctdcast.writers.netcdf import write
 
@@ -216,8 +216,10 @@ class TestCompression:
         out = tmp_path / "c.nc"
         write(ds, out)
         back = _load(out)
-        assert back["ctd_temperature_1"].dtype == np.float64
-        assert not back["ctd_temperature_1"].encoding.get("shuffle")
+        assert back["ctd_temperature_1"].dtype == np.float32
+        assert back["ctd_temperature_1"].encoding.get("shuffle") is True
+        assert back["latitude"].dtype == np.float64
+        assert not back["latitude"].encoding.get("shuffle")
         qc = [n for n in back.variables if n.endswith("_qc")]
         assert qc, "stage2 should have produced _qc flag variables"
         for n in qc:
@@ -244,8 +246,8 @@ class TestCompression:
         back.close()
 
     def test_compression_is_lossless(self, tmp_path):
-        """Compressed float values equal the source exactly (zlib is lossless),
-        NaN-aware, across every floating variable."""
+        """Compressed float values equal the stored dtype's values exactly (zlib is
+        lossless), NaN-aware, across every floating variable."""
         from ctdcast.writers.netcdf import write
 
         ds = _load(CAST_011)
@@ -255,7 +257,9 @@ class TestCompression:
         floats = [v for v in ds.variables if np.issubdtype(ds[v].dtype, np.floating)]
         assert floats
         for v in floats:
-            np.testing.assert_array_equal(ds[v].values, back[v].values)
+            np.testing.assert_array_equal(
+                ds[v].values.astype(back[v].dtype), back[v].values
+            )
         assert back["ctd_temperature_1"].encoding.get("zlib") is True
         back.close()
 

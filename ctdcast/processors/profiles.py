@@ -31,6 +31,7 @@ from ctdcast.processors.sensor_catalog import (
     read_cast_sensor_catalog,
 )
 from ctdcast.processors.stage_layout import is_up_to_date, select_best_available
+from ctdcast.writers.dtypes import widen_floats
 from ctdcast.writers.netcdf import write as _write_nc
 
 # Non-profile columns: seasenselib time-bookkeeping, and per-cast provenance scalars a stage
@@ -648,7 +649,8 @@ def build_profiles(
         for v in var_names
     }
     for rank, (cast_num, cast_suffix, path, source_stage) in enumerate(cast_list):
-        ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
+        with xr.open_dataset(path, engine="netcdf4", decode_timedelta=False) as _raw:
+            ds = widen_floats(_raw.load())
         per_cast_attrs.append(dict(ds.attrs))
         cast_catalog = read_cast_sensor_catalog(ds)
         cast_catalogs.append(cast_catalog)

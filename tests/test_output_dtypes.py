@@ -1,0 +1,102 @@
+"""Storage dtypes: float32 science on disk, float64 time and position, float64 arithmetic."""
+
+import warnings
+from pathlib import Path
+
+import numpy as np
+import pytest
+import xarray as xr
+
+from ctdcast.writers.dtypes import cast_output_dtypes, find_best_dtype, widen_floats
+from ctdcast.writers.netcdf import write
+
+NC = Path(__file__).parent / "fixtures" / "nc"
+
+SCIENCE = (
+    "pressure",
+    "ctd_temperature_1",
+    "ctd_temperature_2",
+    "conductivity_1",
+    "conductivity_2",
+    "ctd_salinity_1",
+    "ctd_salinity_2",
+)
+
+
+@pytest.fixture
+def cast011():
+    with xr.open_dataset(NC / "mixsed2_011.nc", engine="netcdf4") as ds:
+        return widen_floats(ds.load())
+
+
+def _written(ds, tmp_path):
+    path = tmp_path / "c.nc"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        write(ds, path)
+    with xr.open_dataset(path, engine="netcdf4") as back:
+        return back.load()
+
+
+def test_science_is_float32_time_and_position_float64(cast011, tmp_path):
+    back = _written(cast011, tmp_path)
+    for v in SCIENCE:
+        if v in cast011:
+            assert back[v].dtype == np.float32, v
+    assert back["latitude"].dtype == np.float64
+    assert back["longitude"].dtype == np.float64
+    assert np.issubdtype(back["time"].dtype, np.datetime64)
+    assert all(back[v].dtype == np.int8 for v in back.data_vars if v.endswith("_qc"))
+
+
+def test_round_trip_error_is_below_the_sensors(cast011, tmp_path):
+    """float32 storage loses about 10^-7 relative: far below the SBE 911plus resolution."""
+    back = _written(cast011, tmp_path)
+    bounds = {"pressure": 5e-4, "ctd_temperature_1": 1e-6, "ctd_salinity_1": 1e-5}
+    for v, bound in bounds.items():
+        err = np.nanmax(np.abs(back[v].values.astype(float) - cast011[v].values))
+        assert err < bound, (v, err)
+
+
+def test_position_stays_float64_as_data_or_coordinate():
+    lat = np.array([60.123456789, 60.123456791])
+    as_data = xr.Dataset({"latitude": ("N_PROF", lat)})
+    as_coord = xr.Dataset(coords={"latitude": ("N_PROF", lat)})
+    for ds in (as_data, as_coord):
+        out = cast_output_dtypes(ds)
+        assert out["latitude"].dtype == np.float64
+        np.testing.assert_array_equal(out["latitude"].values, lat)
+
+
+def test_float_coordinate_is_narrowed_too():
+    ds = xr.Dataset(
+        {"ctd_temperature": (("N_PROF", "pressure"), np.ones((2, 3)))},
+        coords={"pressure": np.array([1.0, 2.0, 3.0])},
+    )
+    out = cast_output_dtypes(ds)
+    assert out["pressure"].dtype == np.float32
+    assert out["ctd_temperature"].dtype == np.float32
+    assert ds["pressure"].dtype == np.float64  # input untouched
+
+
+def test_timedelta_is_left_alone():
+    da = xr.DataArray(np.array([1, 2], dtype="timedelta64[s]"))
+    assert find_best_dtype("soak_duration", da) == np.timedelta64
+
+
+def test_widen_floats_restores_float64_without_touching_the_input(cast011, tmp_path):
+    back = _written(cast011, tmp_path)
+    wide = widen_floats(back)
+    assert wide["ctd_temperature_1"].dtype == np.float64
+    assert back["ctd_temperature_1"].dtype == np.float32
+    assert widen_floats(wide) is wide  # nothing to widen: returned as is
+
+
+def test_stage3_computes_in_float64_on_a_float32_file(cast011, tmp_path):
+    from ctdcast.processors.stage3 import stage3
+
+    back = _written(cast011, tmp_path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = stage3(back, {}, cast_number=11)
+    assert out["ctd_temperature_1"].dtype == np.float64
