@@ -321,3 +321,16 @@ def test_steps_are_numbered_in_the_order_they_ran(stage3_ds, tmp_path):
     html = generate_processing_page(path, tmp_path / "p.html").read_text()
     keys = [int(k) for k in re.findall(r'class="order" data-sort="(\d+)"', html)]
     assert keys == sorted(keys) and len(keys) == len(set(keys))
+
+
+def test_a_cnv_cast_records_how_stage_1_read_it(ds_011):
+    # OdB cast 011 from its CNV (the committed stage-1 fixture), read by SeaSenseLib.
+    rows = processing_rows(ds_011)
+    read = next(r for r in rows if r.stage == "stage 1")
+    assert read.setting == (
+        "with SeaSenseLib 0.6.0 (SbeCnvReader); normalise (CNV → canonical names)"
+    )
+    assert read.outcome == "mixsed2_011.cnv"
+    assert read.version == "ctdcast 0.1.0"
+    # The steps SBE Data Processing applied before the CNV follow, from its header.
+    assert any(r.stage == "Sea-Bird" for r in rows)

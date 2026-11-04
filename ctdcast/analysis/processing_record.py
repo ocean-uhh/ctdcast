@@ -414,6 +414,8 @@ def _stage1_rows(ds: xr.Dataset) -> list[ProcessingRow]:
         text = line.split("stage1: ", 1)[1]
         read = re.match(r"read \S+(?: \+ \S+)? (with .*)", text)
         if not read:
+            if text.startswith("normalise"):
+                rows.append(_cnv_read_row(ds, version, text))
             continue
         rows.append(
             ProcessingRow(
@@ -426,6 +428,28 @@ def _stage1_rows(ds: xr.Dataset) -> list[ProcessingRow]:
             )
         )
     return rows
+
+
+def _cnv_read_row(ds: xr.Dataset, version: re.Match | None, text: str) -> ProcessingRow:
+    """Return stage 1's row for a CNV, read by SeaSenseLib and renamed to ctdcast's names."""
+    history = str(ds.attrs.get("history", ""))
+    reader = re.search(r"SeaSenseLib v(\S+); Reader: (\w+)", history)
+    source = re.search(r"Source file: ([^;]+)", history)
+    setting = (
+        f"with SeaSenseLib {reader.group(1)} ({reader.group(2)}); {text}"
+        if reader
+        else text
+    )
+    return ProcessingRow(
+        stage="stage 1",
+        step="read",
+        producer="ctdcast stage 1",
+        version=f"ctdcast {version.group(1)}" if version else "",
+        setting=setting,
+        outcome=source.group(1).strip()
+        if source
+        else str(ds.attrs.get("source_cnv", "")),
+    )
 
 
 def _stage2_rows(ds: xr.Dataset) -> list[ProcessingRow]:
