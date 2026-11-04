@@ -407,9 +407,12 @@ in the output file, and shown on the cast page.
        flag (a Wild Edit mark), so one bad sensor — an oxygen voltage, a fluorometer — removes
        every other sensor's good value from the bin, without saying so.
      - **Deliberately different.** Only the flagged value leaves its bin; the scan's other
-       values stay. Loop Edit's scans still leave whole, as in Sea-Bird. Every product records
-       how many scans this affected, by variable (``bin_average_partly_flagged``); the run
-       warns; the cast page shows an amber *binavg* row.
+       values stay. Loop Edit's scans, and scans flagged in every variable (the stage-2 soak
+       and deck), still leave whole, as in Sea-Bird. Every product records how many scans
+       seabirdscientific's rule would have dropped from it, found by running its
+       ``bin_average`` both ways, and what each variable's flags alone would cost
+       (``bin_average_partly_flagged``); the run warns; the cast page shows an amber *binavg*
+       row.
    * - **SBE 43 oxygen** (stage 3)
      - ``seabirdscientific`` 3.1.1 feeds the corrected previous voltage back into the
        hysteresis correction; Application Note 64-3 uses the uncorrected one.

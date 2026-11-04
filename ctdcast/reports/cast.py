@@ -1207,7 +1207,8 @@ def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
     return (
         f"<h3{tight}>Corrections applied by ctdcast</h3>"
         "<p class='caption'>Applied at stage 3 after the steps above, in the order of the # "
-        "column; each is recorded on the variable it changed.</p>"
+        "column; each is recorded on the variable it changed. A <em>binavg</em> row is a "
+        "product made from the stage-3 file, recorded on the product.</p>"
         f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
         f"<tbody>{_corrections_rows_with_ticks(records, ticks)}</tbody></table>"
         f"{_references_caption(ticks)}"
@@ -1234,9 +1235,10 @@ _BIN_AVERAGE_NOTE = (
     "<p class='caption'><strong>Amber binavg row: ctdcast differs from seabirdscientific here, on "
     "purpose.</strong> In those scans one variable's value was flagged fail or missing while "
     "the others were good. ctdcast's Bin Average leaves out only the flagged value; "
-    "seabirdscientific's drops the whole scan, so one bad sensor (an oxygen voltage, a "
-    "fluorometer) silently removes every other sensor's good data from the bin. The row "
-    "counts the scans, by variable.</p>"
+    "seabirdscientific's drops the whole scan when one of its values carries its bad flag, so "
+    "one bad sensor (an oxygen voltage, an altimeter out of range) silently removes every other "
+    "sensor's good data from the bin. The row counts the scans seabirdscientific would have "
+    "dropped from this product, and what each variable's flags alone would cost.</p>"
 )
 
 

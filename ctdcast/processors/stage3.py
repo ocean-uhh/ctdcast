@@ -245,9 +245,18 @@ def _write_products(
         if out is None:
             continue
         path = product_path(root, stem, product["name"])
-        path.parent.mkdir(parents=True, exist_ok=True)
-        _write_nc(out, path)
-        print(f"  ok: {path.parent.name}/{path.name}")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _write_nc(out, path)
+            print(f"  ok: {path.parent.name}/{path.name}")
+        except Exception as exc:  # noqa: BLE001
+            # One product failing to write names that product only; the stage-3 file and the
+            # other products stand.
+            print(
+                f"  FAILED writing product {product['name']}: {path.name}  "
+                f"({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
 
 
 def _apply_slope_offset(
