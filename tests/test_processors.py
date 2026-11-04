@@ -245,7 +245,14 @@ def test_compiled_profiles_processing_level_agrees_or_marks_mixed(
 
     from ctdcast.processors.profiles import build_profiles
 
-    cal = {"calibration": {"conductivity_slope": 1.0002}}
+    cal = {
+        "data_processing": {
+            "slope_offset": {
+                "conductivity_1": {"slope": 1.0002},
+                "conductivity_2": {"slope": 1.0002},
+            }
+        }
+    }
 
     # Agreement: both casts processed identically to stage 3.
     agree = tmp_path / "agree"
@@ -302,7 +309,17 @@ def test_processing_level_accumulates_idempotently_across_stages(
     root = tmp_path / "CTD"
     _place(root, "mixsed2_011.nc", "mixsed2_011", 1)
     stage2_run(root)
-    stage3_run(root, cruise_cfg={"calibration": {"conductivity_slope": 1.0002}})
+    stage3_run(
+        root,
+        cruise_cfg={
+            "data_processing": {
+                "slope_offset": {
+                    "conductivity_1": {"slope": 1.0002},
+                    "conductivity_2": {"slope": 1.0002},
+                }
+            }
+        },
+    )
 
     ds = xr.open_dataset(stage_path(root, "mixsed2_011", 3), engine="netcdf4")
     try:
@@ -361,7 +378,14 @@ def test_stage3_declared_delayed_mode_with_calibration_is_silent(
         stage3_run(
             root,
             cruise_info={"data_mode": "D"},
-            cruise_cfg={"calibration": {"conductivity_slope": 1.0002}},
+            cruise_cfg={
+                "data_processing": {
+                    "slope_offset": {
+                        "conductivity_1": {"slope": 1.0002},
+                        "conductivity_2": {"slope": 1.0002},
+                    }
+                }
+            },
         )
     assert not [w for w in caught if "data_mode 'D'" in str(w.message)]
 

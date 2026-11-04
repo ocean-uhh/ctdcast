@@ -6,9 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
-import yaml
-
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+from ctdcast.config.layout import processing_view
+from ctdcast.config.loader import load_config
 from ctdcast.config.parameters import CAST_TAG_WIDTH
 from ctdcast.config.sensors import SensorOverrides
 from ctdcast.processors import STAGES, StagePaths, resolve_stage, stages_for
@@ -196,10 +196,13 @@ def run(args: argparse.Namespace) -> int:
         print(f"Config not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    with cfg_path.open() as f:
-        cfg = yaml.safe_load(f) or {}
+    cfg = load_config(cfg_path)
     data = cfg.get("data") or {}
-    processing_cfg = cfg.get("processing") or {}
+    try:
+        processing_cfg = processing_view(cfg)
+    except ValueError as exc:
+        print(f"Config error: {exc}", file=sys.stderr)
+        return 1
     trim_cfg = processing_cfg.get("trim") or {}
 
     # StagePaths.from_config is the single home of the ctd_root/nc_dir precedence

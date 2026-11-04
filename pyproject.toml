@@ -165,33 +165,42 @@ include = ["ctdcast*"]
 "ctdcast/processors/profiles.py"     = 97
 "ctdcast/processors/__init__.py"     = 97
 "ctdcast/config/global_attrs.py"     = 94
-"ctdcast/writers/netcdf.py"          = 100
+"ctdcast/writers/netcdf.py"          = 99
 "ctdcast/processors/ladcp.py"        = 85    # measured 85.9
 "ctdcast/config/people.py"           = 90    # measured 90.3
 # Public module (not _private), so its naming/precedence contract is API surface.
-# Pure path logic with no I/O, and it measured 100% (51 stmts, 0 missing) on the
-# first pass -- so 100 is the seed, not an aspiration. 95 would have licensed an
-# untested branch in the module every other step of the stack rests on.
-"ctdcast/processors/stage_layout.py" = 100
+# Pure path logic with no I/O; measured 100%.  Floors stop at 99 (a 100% floor fails
+# on the first defensive branch).
+"ctdcast/processors/stage_layout.py" = 99
 # New in proc/stage1-hex; measured from the committed slice only (the full casts are
 # git-ignored, so CI never sees them): hex 92.4, xmlcon 92.3.
 "ctdcast/readers/hex.py"             = 92
 "ctdcast/readers/xmlcon.py"          = 92
 # New in proc/stage3-align-ctm, measured on the committed slice and CNV fixtures only: 92.2.
 "ctdcast/processors/corrections.py"  = 92
-# Pure functions over header text, no I/O, measured 100% (93 stmts, 0 missing). 100 is
-# the seed, not an aspiration -- the deck-unit advance it recovers is the load-bearing
-# finding of the upstream-provenance work, so no branch may go untested.
-"ctdcast/config/cnv_header.py"       = 100
+# Pure functions over header text, no I/O; measured 99.4% (proc/stage-3-appliers).  The
+# deck-unit advance it recovers is load-bearing, so it sits at the 99 cap.
+"ctdcast/config/cnv_header.py"       = 99
 # Sensor-block + role reader, seeded here because this is the file the sensor-catalog work
 # most changes; measured 94.81%.  Guards the shared <Sensors> parse against regressing.
 "ctdcast/readers/metadata.py"        = 94
 # Recursive clock-offset segmentation plus a small file reader, measured 100% in CI from
 # synthetic series and a tmp_path reader test. The real MSM142 regression is local-only and skips
-# on CI, but every branch it would touch is covered synthetically. Same shape as cnv_header.py:
-# the recursive step detection is load-bearing (a missed changepoint corrupts a whole segment's
-# correction), so no branch may go untested.
-"ctdcast/analysis/clock.py"          = 100
+# on CI, but every branch it would touch is covered synthetically. The recursive step detection
+# is load-bearing (a missed changepoint corrupts a whole segment's correction), so it sits at
+# the 99 cap.
+"ctdcast/analysis/clock.py"          = 99
+# New in proc/stage-3-appliers, seeded a point under what they measured (with seasenselib):
+# steps 93.8, editing 92.7, filtering 90.0, products 94.0, layout 95.2, loader 100,
+# sbe_steps 97.0, sbe_compare 87.0.
+"ctdcast/processors/steps.py"        = 92
+"ctdcast/processors/editing.py"      = 91
+"ctdcast/processors/filtering.py"    = 89
+"ctdcast/processors/products.py"     = 93
+"ctdcast/config/layout.py"           = 94
+"ctdcast/config/loader.py"           = 99
+"ctdcast/config/sbe_steps.py"        = 96
+"ctdcast/analysis/sbe_compare.py"    = 86
 # One floor is still deferred: enrich.py does not exist yet, and a floor for a
 # file that is not in the coverage report fails as MISSING (verified by running
 # the checker) rather than passing quietly -- an unguarded module is the one

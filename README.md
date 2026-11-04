@@ -44,7 +44,7 @@ ctdcast run config.yaml           # the report; --force rebuilds, --only 42 one 
 ```
 
 `ctdcast clock config.yaml` diagnoses the acquisition-clock error and prints a paste-ready
-`processing.clock` block. See the [quickstart](https://ocean-uhh.github.io/ctdcast/quickstart.html)
+`clock` block. See the [quickstart](https://ocean-uhh.github.io/ctdcast/quickstart.html)
 for the recommended first-cruise workflow, the [config reference](https://ocean-uhh.github.io/ctdcast/config_yaml.html)
 and the [CLI reference](https://ocean-uhh.github.io/ctdcast/cli_reference.html).
 

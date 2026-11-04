@@ -44,3 +44,27 @@ def ds_128():
     ds = xr.open_dataset(CAST_128, engine="netcdf4")
     yield ds
     ds.close()
+
+
+@pytest.fixture(scope="session")
+def hex_stage2(tmp_path_factory):
+    """The committed OdB .hex slice (cast 011, 24 Hz), through stages 1 and 2."""
+    import shutil
+    import warnings
+
+    from ctdcast.processors.stage1 import stage1
+    from ctdcast.processors.stage2 import run as stage2_run
+
+    fix = Path(__file__).parent / "fixtures"
+    tmp = tmp_path_factory.mktemp("hex_stage2")
+    raw = tmp / "raw"
+    raw.mkdir()
+    for name in ("MIXSED2_011.hex", "MIXSED2_011.XMLCON"):
+        shutil.copy(fix / "hex_slice" / name, raw / name)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stage1(raw, tmp / "ctd", backend="hex", pattern="*.[hH][eE][xX]")
+        stage2_run(tmp / "ctd")
+    path = next((tmp / "ctd" / "stage2").glob("*.nc"))
+    with xr.open_dataset(path, engine="netcdf4") as ds:
+        return ds.load()

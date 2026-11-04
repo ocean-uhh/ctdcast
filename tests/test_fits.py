@@ -246,7 +246,8 @@ def test_suggested_yaml_round_trips_through_the_resolvers():
         tau_at_alpha=6.0,
         ctm_n=5,
     )
-    cfg = yaml.safe_load(suggested_yaml([s]))["processing"]
+    (step_a, step_c) = yaml.safe_load(suggested_yaml([s]))["data_processing"]["steps"]
+    cfg = {**step_a, **step_c}
     assert resolve_alignment(cfg, "conductivity_1", 11)[0] == -0.0125
     alpha, tau, _ = resolve_cell_thermal_mass(cfg, "conductivity_1", 11)
     assert (alpha, tau) == (0.0275, 6.5)
@@ -266,9 +267,7 @@ def test_cli_writes_fits_nc_and_prints_yaml(root, tmp_path, capsys):
     from ctdcast.cli.fit import run
 
     cfg = tmp_path / "config.yaml"
-    cfg.write_text(
-        f"data:\n  ctd_root: {root}\nprocessing:\n  fit:\n    ctm_pmin: 20\n"
-    )
+    cfg.write_text(f"data:\n  ctd_root: {root}\nfit:\n  ctm_pmin: 20\n")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         assert run(SimpleNamespace(config=cfg, only=None, dry_run=False)) == 0

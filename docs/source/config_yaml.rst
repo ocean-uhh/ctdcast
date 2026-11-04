@@ -138,11 +138,230 @@ reads, so a stray directory never changes what a cruise is read from.
 config key, not part of the ``generate`` block; it defaults to ``false`` and is
 overridden by ``--force`` on the command line.
 
-``processing`` block (optional)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Processing settings (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Per-cruise overrides for the pipeline stages.  Every key is optional and falls
+Five top-level blocks set how the pipeline treats the data, each by what it does, plus a small
+``processing:`` block for the stage-2 trim and the profiles grid.  Every key is optional and falls
 back to a built-in default.
+
+.. code-block:: yaml
+
+   preferred_sensor:      # which sensor the plain ctd_temperature / ctd_salinity / ctd_oxygen use
+     tc: primary
+     oxygen: primary
+   clock: {...}           # stage-2 acquisition-clock correction, from `ctdcast clock`
+   qc: {...}              # stage-3 gross-range and spike tests
+   fit: {...}             # how `ctdcast fit` searches; nothing here is applied
+   data_processing:       # what ctdcast applies to the data at stage 3
+     slope_offset: {...}
+     oxygen: {...}
+     steps: [...]
+   processing:
+     trim: {...}
+     profiles_dbar: 1
+
+**From the 0.4 layout.** Everything used to sit under ``processing:``.  ``processing.preferred_pair`` /
+``preferred_oxygen``, ``processing.clock``, ``processing.qc`` and
+``processing.calibration.conductivity_slope`` are still read, with a deprecation warning, until the
+release after this one; the slope then applies to both sensors with offset 0.  Ranges in a
+preferred-sensor declaration now take ``value:`` (``use:`` is read with a warning).
+
+``data_processing`` block
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+What stage 3 applies, after stage 2's soak and deck flags.  ``ctdcast inspect <file>.cnv`` prints the
+block that reproduces a cruise's own Sea-Bird processing; ``ctdcast fit`` suggests the ``alignctd`` and
+``celltm`` values.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 74
+
+   * - Key
+     - Description
+   * - ``slope_offset.conductivity_<N>``
+     - Per conductivity sensor, ``conductivity = slope * conductivity + offset``, applied first (where
+       Sea-Bird applies them, at conversion); salinity is re-derived.  A bare ``{slope:, offset:}``
+       (``offset`` defaults to 0) or a ``{default:, ranges:}`` declaration, for a sensor swapped
+       mid-cruise.
+   * - ``oxygen.tau_window_seconds``
+     - Window (s) for the SBE 43 tau correction's dV/dt when stage 3 derives ``ctd_oxygen`` from the
+       voltage (``.hex`` casts).  Default ``2``.
+   * - ``steps``
+     - The processing steps, run in the order listed; a step may appear more than once.  Each entry
+       is one step name with its parameters.  A step is applied only if it is listed.
+   * - ``products``
+     - Files made from the stage-3 data by further steps, each ``{name, steps}``: a 1 dbar
+       downcast, a 1 s series.  A product may use any step; ``split`` and ``binavg`` are
+       product-only, since the stage-3 file keeps every scan, and ``binavg`` comes last.  Written
+       to ``<ctd_root>/products/<name>/<cast>_<name>.nc``.  ``ctdcast inspect`` puts a CNV's
+       Split and Bin Average into a product (two, one per leg, after a Split).
+   * - ``allow_unapplied``
+     - ``true`` to run when ``steps`` lists a step stage 3 does not apply yet (it is skipped).
+       Default ``false``: such a config is refused.
+
+The steps, as Sea-Bird names its modules:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 82
+
+   * - Step
+     - Parameters
+   * - ``wildedit``
+     - ``pass1_nstd``, ``pass2_nstd``, ``mindelta``, ``scans_per_block``, ``exclude_flagged``,
+       ``variables`` (defaults 2, 20, 0, 100, true, and pressure, temperature, conductivity and the
+       SBE 43 voltages).  Marks outliers QARTOD 4 in each variable's ``_qc``; the values are kept.
+       Applied with ``seabirdscientific``, Sea-Bird's Python package, which appears to differ from
+       SBE Data Processing, Sea-Bird's Windows program, on near-constant blocks: with
+       ``mindelta`` 0 the Windows program marks a whole 100-scan block where a channel sits at one
+       or two A/D levels, seabirdscientific only the values off the main level.  Set ``mindelta``
+       to a few A/D steps on such channels (SBE 43 voltage, altimeter, fluorescence).
+   * - ``alignctd``
+     - Seconds to advance a channel relative to pressure, as Sea-Bird's Align CTD.  Channels:
+       ``conductivity``, ``oxygen`` (every sensor), or ``conductivity_1/2``, ``oxygen_1/2`` (one
+       sensor; wins over the family key).  Each a **bare value** or a ``{default:, ranges:}``
+       mapping (``ranges: - {casts: [[first, last]], value: 0.021}``).  Conductivity values are a
+       residual on top of the deck unit's hardware advance, which is already in the raw data; oxygen
+       acts on the SBE 43 voltage (``oxygen_raw_<N>``).  Values shifted past either end of a cast
+       become NaN, flagged 9; no scan is removed.
+   * - ``celltm``
+     - Cell thermal mass correction of conductivity, ``{alpha: 0.03, tau: 7.0}`` (Sea-Bird's alpha,
+       and tau = 1/beta in seconds), with the temperature of the same sensor pair.  Keyed
+       ``conductivity`` or ``conductivity_<N>``, each a bare ``{alpha, tau}`` or a
+       ``{default:, ranges:}`` mapping.
+   * - ``filter``
+     - Sea-Bird's low-pass filter, run forward and backward (no lag): ``time_constant`` (s) and
+       ``variables``.  Sea-Bird's Filter with time constants A and B is two ``filter`` steps.
+       Values an earlier Wild Edit marked are filtered across and kept as they were.  Applied with
+       ``seabirdscientific``.
+   * - ``window_filter``
+     - ``type`` (``boxcar``, ``cosine``, ``triangle``, ``gaussian``, ``median``), ``width``
+       (scans), ``variables``, ``exclude_flagged`` (default true; leaves out scans an earlier Loop
+       Edit marked), and for a gaussian ``half_width`` and ``offset`` (s).  Applied with
+       ``seabirdscientific``.
+   * - ``loopedit``
+     - Marks whole scans where the package reversed, moved slower than ``min_velocity`` (dbar/s,
+       default 0.25; or ``mean_speed_percent`` of the mean speed over ``window_seconds``), or was
+       still in the surface soak (``surface_soak: {min_depth, max_depth, deck_pressure}``, default
+       5 m, 20 m, true; or ``false``, which marks no soak: the downcast starts at the shallowest
+       scan before the deepest).  The marks go into ``loop_edit_flag`` and QARTOD 4 in every
+       ``_qc``; values are kept, and later steps with ``exclude_flagged`` leave the scans out.
+       ``deck_pressure: true`` offsets the soak window by the first scan's depth, as
+       seabirdscientific does; on OdB's CNVs (``useDeckPress = 1``, recordings starting in the
+       water) SBE Data Processing matched no offset, which ``deck_pressure: 0`` reproduces.
+   * - ``split``
+     - Product only: ``down`` or ``up`` keeps that leg (to and from the deepest scan).
+   * - ``binavg``
+     - Product only, and last: ``bin`` (``decibars``, ``seconds``, ``scans``), ``size``, and
+       optionally ``min_scans``, ``max_scans``, ``skip_over``, ``omit``, ``surface_bin: {min, max, value}`` and
+       ``interpolate``.  A value whose ``_qc`` is 4 or 9 is left out of its own bin only, so one
+       marked oxygen value does not remove that scan's temperature; a scan whose pressure is
+       flagged 4 or 9 has no bin at all.  Scans Loop Edit marked are always left out
+       (``exclude_flagged: false`` is refused).  Salinity is re-derived from
+       the binned values.  Applied with ``seabirdscientific``.  Stage 3 refuses a config that lists one, because the
+       steps after it would run on data it was meant to change first; set
+       ``data_processing.allow_unapplied: true`` to run anyway, skipping it.  The skip is named in
+       a warning, in ``history``, and in the stage-3 file's ``data_processing_steps`` attribute
+       (the order the steps ran in).
+
+Alignment, cell thermal mass, Wild Edit and the oxygen derivation act scan by scan, so they run only
+on a cast at its instrument's native scan rate (24 Hz on a 911plus) that Sea-Bird has not already
+processed the same way.  Any other cast skips them with a warning and a ``history`` note, and still
+gets the slope, salinity and QC.
+
+.. code-block:: yaml
+
+   data_processing:
+     slope_offset:
+       conductivity_1: {slope: 1.0000452, offset: 0.0}
+       conductivity_2:                       # a sensor swapped at cast 7
+         default: {slope: 0.9999368}
+         ranges:
+           - casts: [[1, 6]]
+             value: {slope: 1.0000120}
+     steps:
+       - wildedit:
+           pass1_nstd: 2.0
+           pass2_nstd: 20.0
+           scans_per_block: 100
+           variables: [pressure, ctd_temperature_1, conductivity_1, ctd_temperature_2, conductivity_2]
+       - alignctd:
+           conductivity: -0.015              # bare value: seconds for every cast (the usual case)
+           conductivity_2:                   # a sensor swapped at cast 7: its own value from there on
+             default: -0.040
+             ranges:
+               - casts: [[1, 6]]
+                 value: -0.015
+       - celltm:
+           conductivity: {alpha: 0.0275, tau: 6.5}
+       - loopedit: {min_velocity: 0.25, surface_soak: {min_depth: 5, max_depth: 20, deck_pressure: true}}
+     products:
+       - name: 1dbar_down
+         steps:
+           - split: down
+           - binavg: {bin: decibars, size: 1}
+       - name: 1sec
+         steps:
+           - binavg: {bin: seconds, size: 1}
+
+``qc``, ``clock`` and ``fit`` blocks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 74
+
+   * - Key
+     - Description
+   * - ``qc.gross_range.{suspect,fail}.<var>``
+     - Stage-3 gross-range bounds ``[min, max]`` per variable, in two tiers: ``suspect`` (QARTOD
+       flag 3) and ``fail`` (flag 4).  Anything not listed keeps its built-in default; the cast
+       page's QC panel shows the tiers actually applied.  Bounds are in the variable's **stored
+       units** — conductivity mS/cm, salinity PSU, temperature deg C, oxygen umol/kg, pressure dbar.
+   * - ``qc.spike.{suspect,fail}.<var>``
+     - Stage-3 spike thresholds on ``|v[i] - (v[i-1]+v[i+1])/2|``, in two tiers (flag 3 / flag 4),
+       same units.  Fluorescence and turbidity have no spike test by default (natural fine-scale
+       variability).
+   * - ``clock.segments``
+     - Stage-2 acquisition-clock correction: a list of
+       ``{casts: [[first, last]], clock_offset_seconds: N}`` entries, each shifting the ``time``
+       coordinate of the casts in range by ``N`` seconds (``NMEA - System``).  Each entry also
+       carries ``n_casts`` and ``clock_offset_sd_seconds`` — the evidence that justified the
+       offset, recorded with the correction.  **Generated by ``ctdcast clock``** — paste it in as-is
+       rather than hand-computing the sign.  Applied only where the coordinate is on the System
+       clock; a ``drift`` verdict has no applier.
+   * - ``fit.<setting>``
+     - ``ctdcast fit`` settings (the finder that suggests ``alignctd`` / ``celltm`` values; nothing
+       here is applied): the cell-thermal-mass window top (``ctm_pmin``, dbar), the thermocline
+       threshold for the alignment cost (``gradient``, deg C/dbar), the alignment window top and
+       minimum along-leg speed (``align_pmin`` dbar, ``min_speed`` dbar/s), the down/up weighting
+       scale (``gap_seconds``), the recommended-value tolerance (``ctm_tolerance``, a fraction of the
+       cost minimum; default ``0.02``), and the casts per block (``block``).
+
+.. code-block:: yaml
+
+   qc:
+     gross_range:
+       suspect: { ctd_salinity_1: [30.0, 38.0] }   # tighten for a cruise
+       fail:    { ctd_salinity_1: [0.0, 42.0] }
+     spike:
+       suspect: { pressure: 10.0 }                 # dbar
+       fail:    { pressure: 50.0 }
+   clock:                                          # from `ctdcast clock config.yaml`
+     segments:                                     # one entry per segment found
+       - casts: [[1, 3]]
+         clock_offset_seconds: 4.33
+         n_casts: 3                                # the evidence for the offset
+         clock_offset_sd_seconds: 0.47
+       - casts: [[4, 182]]
+         clock_offset_seconds: 7.76
+         n_casts: 179
+         clock_offset_sd_seconds: 0.57
+
+``processing`` block
+^^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
    :header-rows: 1
@@ -155,157 +374,49 @@ back to a built-in default.
    * - ``trim.near_surface_dbar``
      - Pressure threshold for stage-2 soak detection (dbar).  Default ``10``.
    * - ``trim.drop_sbe``
-     - Stage-2 curated drop: the list of SeaBird-derived ``sbe_*`` channels to remove
-       (recorded in ``history`` and the ``dropped_channels`` attribute).  Omit for the
-       default — every ``sbe_*`` channel present.  May name only ``sbe_*`` channels; a
-       non-``sbe_`` name is refused.  ``[]`` keeps them all.
-   * - ``qc.gross_range.{suspect,fail}.<var>``
-     - Stage-3 gross-range bounds ``[min, max]`` per variable, in two tiers:
-       ``suspect`` (QARTOD flag 3) and ``fail`` (flag 4).  Anything not listed
-       keeps its built-in default; the cast page's QC panel shows the tiers
-       actually applied.  Bounds are in the variable's **stored units** —
-       conductivity mS/cm, salinity PSU, temperature deg C, oxygen umol/kg,
-       pressure dbar.
-   * - ``qc.spike.{suspect,fail}.<var>``
-     - Stage-3 spike thresholds on ``|v[i] - (v[i-1]+v[i+1])/2|``, in two tiers
-       (flag 3 / flag 4), same units.  Fluorescence and turbidity have no spike
-       test by default (natural fine-scale variability).
-   * - ``calibration.conductivity_slope``
-     - Multiplicative conductivity calibration applied at stage 3; salinity is
-       re-derived from the calibrated conductivity.
-   * - ``alignctd.<channel>``
-     - Stage-3 alignment: seconds to advance a channel relative to pressure, as Sea-Bird's
-       Align CTD does, applied with ``seabirdscientific``.  Channels: ``conductivity``,
-       ``oxygen`` (every line), or ``conductivity_1/2``, ``oxygen_1/2`` (one line; wins over
-       the family key).  Each is a **bare value** — the seconds for every cast — or, for
-       per-cast-range exceptions, a ``{default:, ranges:}`` mapping
-       (``ranges: - {casts: [[first, last]], value: 0.021}``).  Conductivity values are a residual on
-       top of the deck unit's hardware advance, which is already in the raw data; oxygen acts
-       on the SBE 43 voltage (``oxygen_raw_<N>``), never on a converted oxygen.  Values shifted
-       past either end of a cast become NaN, flagged 9 (missing); no scan is removed.
-   * - ``celltm.default`` / ``celltm.ranges`` / ``celltm.conductivity_<N>``
-     - Stage-3 cell thermal mass correction of conductivity: ``{alpha: 0.03, tau: 7.0}``
-       (Sea-Bird's alpha and tau = 1/beta in seconds), with the temperature of the same line.
-       A per-line key is a bare ``{alpha, tau}`` mapping, or a ``{default:, ranges:}`` mapping for
-       per-cast-range exceptions, and wins over the block's own ``default`` / ``ranges``.
-   * - ``oxygen.tau_window_seconds``
-     - Window (s) for the SBE 43 tau correction's dV/dt when stage 3 derives ``ctd_oxygen``
-       from the voltage (``.hex`` casts).  Default ``2``.
-   * - ``fit.<setting>``
-     - ``ctdcast fit`` settings (the finder that suggests ``alignctd`` / ``celltm`` values, not an
-       applier): the cell-thermal-mass window top (``ctm_pmin``, dbar), the thermocline threshold for
-       the alignment cost (``gradient``, deg C/dbar), the alignment window top and minimum along-leg
-       speed (``align_pmin`` dbar, ``min_speed`` dbar/s), the down/up weighting scale
-       (``gap_seconds``), the recommended-value tolerance (``ctm_tolerance``, a fraction of the cost
-       minimum; default ``0.02`` = 2 %), and the casts per block (``block``).  All optional.
-
-   * - ``preferred_pair.default`` / ``preferred_pair.ranges``
-     - On a dual-sensor cast, which temperature/conductivity pair (and the salinity derived
-       from it) is the better one: ``primary`` (the ``_1`` channel) or ``secondary`` (``_2``).
-       A cruise-wide ``default`` plus per-cast-range exceptions
-       (``- {casts: [[first, last]], use: secondary}``).  Stage 3 builds the plain
-       ``ctd_temperature`` / ``ctd_salinity`` / ``conductivity`` as a per-cast copy of the
-       selected channel and records the chosen sensor in ``sensor_<role>_preferred``.  Values
-       are exactly ``primary`` / ``secondary``; a single-sensor cast has no choice and is left
-       untouched; an undeclared dual cast gets no plain name (never a silent ``_1``).
-   * - ``preferred_oxygen.default`` / ``preferred_oxygen.ranges``
-     - The same grammar for the oxygen sensor, declared independently of the pair (oxygen
-       preference can flip cast-to-cast on fouling/drift — a single-cast range
-       ``[[15, 15]]`` is valid).  Builds the plain ``ctd_oxygen``.
-   * - ``clock.segments``
-     - Stage-2 acquisition-clock correction: a list of
-       ``{casts: [[first, last]], clock_offset_seconds: N}`` entries, each shifting
-       the ``time`` coordinate of the casts in range by ``N`` seconds
-       (``NMEA - System``).  Each entry also carries ``n_casts`` and
-       ``clock_offset_sd_seconds`` — the evidence that justified the offset, recorded
-       with the correction so its uncertainty travels with it.  **Generated by
-       ``ctdcast clock``** — paste it in as-is rather than hand-computing the sign.
-       Applied only where the coordinate is on the System clock (a cruise already on
-       GPS is refused); a ``drift`` verdict has no applier.
-
-Alignment, cell thermal mass and the oxygen derivation act scan by scan, so they run only
-on a cast at its instrument's native scan rate (24 Hz on a 911plus) that Sea-Bird has not
-already corrected the same way.  Any other cast skips them with a warning and a
-``history`` note, and still gets the slope, salinity and QC.  Stage 3 runs: alignment,
-cell thermal mass, conductivity slope, salinity, oxygen, then gross-range and spike QC on
-the corrected values.
-
-.. code-block:: yaml
-
-   processing:
-     qc:
-       gross_range:
-         suspect: { ctd_salinity_1: [30.0, 38.0] }   # tighten for a cruise
-         fail:    { ctd_salinity_1: [0.0, 42.0] }
-       spike:
-         suspect: { pressure: 10.0 }                 # dbar
-         fail:    { pressure: 50.0 }
-     clock:                                          # from `ctdcast clock config.yaml`
-       segments:                                     # one entry per segment found
-         - casts: [[1, 3]]
-           clock_offset_seconds: 4.33
-           n_casts: 3                                 # the evidence for the offset
-           clock_offset_sd_seconds: 0.47
-         - casts: [[4, 32]]
-           clock_offset_seconds: 7.76
-           n_casts: 29
-           clock_offset_sd_seconds: 0.57
-         - casts: [[33, 182]]
-           clock_offset_seconds: -2.07
-           n_casts: 150
-           clock_offset_sd_seconds: 0.69
-
-Alignment and cell thermal mass take a bare value for the common case, or a ``{default:, ranges:}``
-mapping when the hardware changed mid-cruise.  ``ctdcast fit`` suggests these values and prints the
-block to paste:
-
-.. code-block:: yaml
-
-   processing:
-     alignctd:
-       conductivity: -0.015            # bare value: seconds for every cast (the usual case)
-       conductivity_2:                 # a sensor swapped at cast 7: its own value from there on
-         default: -0.015
-         ranges:
-           - casts: [[7, 182]]
-             value: -0.040
-     celltm:
-       conductivity: {alpha: 0.0275, tau: 6.5}   # bare {alpha, tau} for every cast
+     - Stage-2 curated drop: the list of SeaBird-derived ``sbe_*`` channels to remove (recorded in
+       ``history`` and the ``dropped_channels`` attribute).  Omit for the default — every ``sbe_*``
+       channel present.  May name only ``sbe_*`` channels; a non-``sbe_`` name is refused.  ``[]``
+       keeps them all.
 
 Preferred sensor
 ^^^^^^^^^^^^^^^^
 
-A dual-sensor cast records both a primary (``_1``) and a secondary (``_2``) channel; which
-is the better one is a judgement about noise that only the operator can make.  Declare it
-cruise-wide with per-cast exceptions:
+A dual-sensor cast records both a primary (``_1``) and a secondary (``_2``) channel; which is the
+better one is a judgement about noise that only the operator can make.  Declare it cruise-wide with
+per-cast exceptions.  ``tc`` is the temperature/conductivity pair (and the salinity derived from it);
+stage 3 builds the plain ``ctd_temperature`` / ``ctd_salinity`` / ``conductivity`` (and, for
+``oxygen``, ``ctd_oxygen``) as a per-cast copy of the selected channel and records the chosen sensor in
+``sensor_<role>_preferred``.
 
 .. code-block:: yaml
 
-   processing:
-     preferred_pair:                 # temperature + conductivity + salinity move together
+   preferred_sensor:
+     tc:                             # temperature + conductivity + salinity move together
        default: primary              # cruise-wide; "primary" | "secondary"
        ranges:                       # exceptions by cast number; [[first, last]] inclusive
          - casts: [[31, 60]]
-           use: secondary
-     preferred_oxygen:               # independent oxygen choice, same grammar
+           value: secondary
+     oxygen:                         # independent oxygen choice, same grammar
        default: primary
        ranges:
          - casts: [[15, 15]]         # a single-cast range is valid
-           use: secondary
+           value: secondary
 
 Notes:
 
-* Values are exactly ``primary`` / ``secondary`` — a digit or any other spelling is refused
-  at stage 3 (a clear error, not a silent guess).
-* ``casts`` needs an explicit last number (no open-ended range).  So declare the
-  **latest / ongoing** configuration as the unbounded ``default`` and the **earlier** casts
-  as explicit ``ranges`` — then the config need not be edited as new casts are added.
-* Declaring one group, both, or neither is valid, and ``preferred_oxygen`` may differ from
-  ``preferred_pair``.  An **explicit range** naming a channel a single-sensor cast lacks is
-  an error; a **default** that lands on a single-sensor cast is silently skipped.
-* Where the per-cast serials of a declared range do not match where the hardware actually
-  changed, the compile and ``ctdcast validate`` warn (never block) — reconcile the range
-  with the sensor-change log on the cast page.
+* Values are exactly ``primary`` / ``secondary`` — a digit or any other spelling is refused at
+  stage 3 (a clear error, not a silent guess).  A single-sensor cast has no choice and is left
+  untouched; an undeclared dual cast gets no plain name (never a silent ``_1``).
+* ``casts`` needs an explicit last number (no open-ended range).  So declare the **latest /
+  ongoing** configuration as the unbounded ``default`` and the **earlier** casts as explicit
+  ``ranges`` — then the config need not be edited as new casts are added.
+* Declaring one, both, or neither is valid, and ``oxygen`` may differ from ``tc``.  An **explicit
+  range** naming a channel a single-sensor cast lacks is an error; a **default** that lands on a
+  single-sensor cast is silently skipped.
+* Where the per-cast serials of a declared range do not match where the hardware actually changed,
+  the compile and ``ctdcast validate`` warn (never block) — reconcile the range with the
+  sensor-change log on the cast page.
 
 ``sensors`` block (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

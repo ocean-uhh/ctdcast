@@ -33,8 +33,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 _PLATFORMS_YAML = Path(__file__).parent / "platforms.yaml"
 
 
@@ -52,8 +50,9 @@ def _load_raw() -> dict[str, Any]:
     """Return the parsed ``platforms.yaml`` (empty mapping when absent)."""
     if not _PLATFORMS_YAML.exists():
         return {}
-    with _PLATFORMS_YAML.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
+    from ctdcast.config.loader import load_yaml
+
+    return load_yaml(_PLATFORMS_YAML) or {}
 
 
 def load_platforms() -> dict[str, dict[str, Any]]:

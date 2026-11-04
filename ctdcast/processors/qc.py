@@ -31,10 +31,35 @@ QARTOD_FAIL = np.int8(4)
 #: QARTOD 9 "missing": no measurement exists at that point (e.g. shifted past a cast's end).
 QARTOD_MISSING = np.int8(9)
 
+
+def usable_pressure(ds: xr.Dataset) -> np.ndarray:
+    """Return the cast's pressure, NaN where ``pressure_qc`` is fail (4) or missing (9).
+
+    Pressure places every other value in the cast: it picks the deepest scan, the bins and the
+    grid.  A scan whose pressure failed a test (a Wild Edit mark, a gross-range fail) has no
+    trustworthy depth, so it is left out of all three, as SBE Data Processing drops a scan
+    Wild Edit marked.  Without ``pressure_qc`` the pressure is returned as it is.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        A cast with ``pressure`` and, optionally, ``pressure_qc``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Pressure as float, a copy.
+    """
+    p = np.asarray(ds["pressure"].values, dtype=float).copy()
+    if "pressure_qc" in ds:
+        p[np.isin(ds["pressure_qc"].values, (QARTOD_FAIL, QARTOD_MISSING))] = np.nan
+    return p
+
+
 # QC threshold defaults.  Every test has two tiers: SUSPECT (flag 3,
 # oceanographically implausible) and FAIL (flag 4, instrument malfunction).
 # Conductivity is stored in mS/cm (stage 1 converts from S/m).  Per-cruise
-# overrides go in config.yaml under processing.qc.{gross_range,spike} as
+# overrides go in config.yaml under qc.{gross_range,spike} as
 # {suspect: {<var>: ...}, fail: {<var>: ...}}.  A variable may define one tier or
 # both; the report shows the tiers actually applied.
 

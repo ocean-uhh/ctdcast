@@ -32,6 +32,7 @@ from ctdcast.config.cnv_header import (
     detect_instrument,
     header_from_raw_metadata,
     no_reference_tick,
+    pressure_filter_reference_tick,
     provenance_advisories,
     sensor_calibrations,
 )
@@ -340,6 +341,7 @@ def generate_station_page(
         "version": _VERSION,
         "source_str": source_str,
         "raw_input_str": _raw_input_str(ds),
+        "sample_rate_str": _sample_rate_str(ds),
         "processed_str": processed_str,
         "preferred_str": _preferred_str(ds),
         "report": report,
@@ -669,6 +671,31 @@ def _raw_input_str(ds: xr.Dataset) -> str:
     return f"{cnv} (Sea-Bird CNV)" if cnv else ""
 
 
+def _sample_rate_str(ds: xr.Dataset) -> str:
+    """Return the cast's sample rate for the header, or ``""`` when the file records none.
+
+    A ``.hex`` cast is at the instrument's own rate (``24 Hz (native, unbinned)`` for a
+    911plus).  A CNV cast reads its ``# interval`` line: a rate when the interval is under a
+    second, otherwise the interval itself (``1 s interval``, ``1 dbar bins``), since Sea-Bird
+    writes the same line after a time or pressure Bin Average.
+    """
+    a = ds.attrs
+    kind = a.get("sample_interval_kind")
+    seconds = a.get("sample_interval_seconds")
+    if a.get("input_format") == "hex":
+        if seconds is None or float(seconds) <= 0:
+            return ""
+        return f"{1.0 / float(seconds):.3g} Hz (native, unbinned)"
+    if kind == "decibars" and a.get("sample_interval_dbar") is not None:
+        return f"{float(a['sample_interval_dbar']):g} dbar bins (CNV)"
+    if seconds is None or float(seconds) <= 0:
+        return ""
+    seconds = float(seconds)
+    if seconds < 1.0:
+        return f"{1.0 / seconds:.3g} Hz (CNV, {seconds:g} s interval)"
+    return f"{seconds:g} s interval (CNV)"
+
+
 def _preferred_str(ds: xr.Dataset) -> str:
     """Return the cast's preferred T/C pair and oxygen for the header, or ``""``.
 
@@ -953,11 +980,13 @@ def _ctdcast_correction_rows(
 ) -> list[tuple[Correction, ConformanceTick]]:
     """Rows for ctdcast's own stage-3 corrections, in the shape of the Sea-Bird table's rows.
 
-    Read from the variables' attributes, in the order stage 3 applies them: alignment, cell
-    thermal mass, conductivity slope, then SBE 43 oxygen from the voltage.  Each row carries a
-    conformance tick against the same SBE references as the rows above it: cell thermal mass
-    against (0.03, 7), alignment by the channel's total advance (deck unit + ctdcast) against
-    0.073 s; the slope and the oxygen conversion have no reference and show a dash.
+    Read from the variables' attributes and put in the order stage 3 applied them, which it
+    records in the file's ``data_processing_steps`` attribute (the configured steps can come in
+    any order); without it, the rows keep the order they are read in.  Each row
+    carries a conformance tick against the same SBE references as the rows above it: cell
+    thermal mass against (0.03, 7), alignment by the channel's total advance (deck unit +
+    ctdcast) against 0.073 s; the slope, Wild Edit and the oxygen conversion have no reference
+    and show a dash.
     """
     rows: list[tuple[Correction, ConformanceTick]] = []
     # A preferred-sensor composite copies its source channel's attrs; listing it would show
@@ -967,6 +996,13 @@ def _ctdcast_correction_rows(
         for v in ds.data_vars
         if not str(ds[v].attrs.get("comment", "")).startswith("preferred ")
     ]
+
+    ran = [
+        part.strip()
+        for part in str(ds.attrs.get("data_processing_steps", "")).split(";")
+        if part.strip()
+    ]
+    order: list[int] = []
 
     def add(
         label: str,
@@ -982,7 +1018,85 @@ def _ctdcast_correction_rows(
                 tick_of(key),
             )
         )
+        # The SBE 43 oxygen is derived after every step; anything not in the record keeps its place.
+        order.append(ran.index(label) if label in ran else len(ran) + len(order))
 
+    for v in names:
+        a = ds[v].attrs
+        if "calibration_slope" in a:
+            params = f"× {a['calibration_slope']}"
+            if float(a.get("calibration_offset", 0.0) or 0.0):
+                params += f" {float(a['calibration_offset']):+g}"
+            add(
+                "slope_offset",
+                "ctdcast stage 3",
+                "",
+                params,
+                lambda k, v=v: no_reference_tick(k, "slope_offset", v),
+            )
+    edited = [v for v in names if "wild_edit" in ds[v].attrs]
+    if edited:
+        a = ds[edited[0]].attrs
+        counts = {v: int(ds[v].attrs.get("wild_edit_marked", 0)) for v in edited}
+        marked = (", ".join(f"{v} {n}" for v, n in counts.items() if n) or "none") + (
+            "; none in the others"
+            if 0 in counts.values() and any(counts.values())
+            else ""
+        )
+        edited_names = ", ".join(edited)
+        add(
+            "wildedit",
+            "ctdcast stage 3 (seabirdscientific wild_edit)",
+            str(a.get("wild_edit_method", "")),
+            f"{a['wild_edit']}; values marked (QARTOD 4, kept): {marked}",
+            lambda k, vs=edited_names: no_reference_tick(k, "wildedit", vs),
+        )
+
+    # Filters: one row per filter, naming every variable it changed, in the order applied.
+    by_filter: dict[str, list[str]] = {}
+    for v in names:
+        for part in str(ds[v].attrs.get("filters", "")).split(";"):
+            if part.strip():
+                by_filter.setdefault(part.strip(), []).append(v)
+    history_text = str(ds.attrs.get("history", ""))
+
+    def _ran_at(text: str) -> int:
+        # Each filter's history line, e.g. "filter: low-pass time constant 0.03 s on ...".
+        phrase = text.replace("low-pass ", "low-pass time constant ").replace(
+            "window ", "window_filter: ", 1
+        )
+        at = history_text.find(phrase)
+        return at if at >= 0 else len(history_text)
+
+    for text, variables in sorted(by_filter.items(), key=lambda kv: _ran_at(kv[0])):
+        label = "window_filter" if text.startswith("window") else "filter"
+        tc = re.match(r"low-pass ([0-9.eE+-]+) s", text)
+        joined = ", ".join(variables)
+        if tc and "pressure" in variables:
+            tc_seconds = float(tc.group(1))
+            tick_of = lambda k, t=tc_seconds, vs=joined: (  # noqa: E731
+                pressure_filter_reference_tick(k, "filter", t, vs)
+            )
+        else:
+            tick_of = lambda k, lab=label, vs=joined: no_reference_tick(k, lab, vs)  # noqa: E731
+        add(
+            label,
+            f"ctdcast stage 3 (seabirdscientific {'window_filter' if label == 'window_filter' else 'low_pass_filter'})",
+            str(ds[variables[0]].attrs.get("filters_method", "")),
+            text,
+            tick_of,
+        )
+    if "loop_edit_flag" in ds:
+        a = ds["loop_edit_flag"].attrs
+        n_marked = int(np.asarray(ds["loop_edit_flag"].values).sum())
+        add(
+            "loopedit",
+            "ctdcast stage 3 (seabirdscientific loop_edit)",
+            str(a.get("loop_edit_method", "")),
+            f"{a.get('loop_edit', '')}; {n_marked} of {ds['loop_edit_flag'].size} scans marked "
+            "(QARTOD 4, kept)",
+            lambda k: no_reference_tick(k, "loopedit", "all channels (whole scans)"),
+        )
     for v in names:
         a = ds[v].attrs
         if "alignment_offset_seconds" in a:
@@ -1021,16 +1135,6 @@ def _ctdcast_correction_rows(
             )
     for v in names:
         a = ds[v].attrs
-        if "calibration_slope" in a:
-            add(
-                "conductivity slope",
-                "ctdcast stage 3",
-                "",
-                f"× {a['calibration_slope']}",
-                lambda k, v=v: no_reference_tick(k, "conductivity slope", v),
-            )
-    for v in names:
-        a = ds[v].attrs
         if a.get("oxygen_tau_correction"):
             add(
                 "SBE 43 oxygen",
@@ -1041,7 +1145,26 @@ def _ctdcast_correction_rows(
                 f"from {a.get('derived_from', '?')}",
                 lambda k, v=v: no_reference_tick(k, "SBE 43 oxygen", v),
             )
-    return rows
+    ranked = sorted(range(len(rows)), key=lambda i: (order[i], i))
+    out = []
+    for n, i in enumerate(ranked, 1):
+        rec, tick = rows[i]
+        key = f"ctdcast_{n}"
+        out.append(
+            (
+                Correction(rec.label, key, rec.producer, rec.version, rec.parameters),
+                ConformanceTick(
+                    key,
+                    tick.label,
+                    tick.state,
+                    tick.reference,
+                    tick.source,
+                    tick.detail,
+                    tick.variables,
+                ),
+            )
+        )
+    return out
 
 
 def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
@@ -1065,7 +1188,30 @@ def _ctdcast_corrections_html(ds: xr.Dataset, tight: str) -> str:
         f"<table class='nc' style='margin-top:0'><thead><tr>{head}</tr></thead>"
         f"<tbody>{_corrections_rows_with_ticks(records, ticks)}</tbody></table>"
         f"{_references_caption(ticks)}"
+        f"{_WILD_EDIT_NOTE if any(r.label == 'wildedit' for r in records) else ''}"
+        f"{_LOOP_EDIT_NOTE if 'deck_pressure=True' in str(ds.get('loop_edit_flag', xr.DataArray()).attrs.get('loop_edit', '')) else ''}"
     )
+
+
+#: Under the ctdcast corrections table when Wild Edit ran: where seabirdscientific and the
+#: Windows program differ.
+_WILD_EDIT_NOTE = (
+    "<p class='caption'>Wild Edit uses seabirdscientific, Sea-Bird's Python package. It "
+    "appears to differ from SBE Data Processing, Sea-Bird's Windows program, on blocks where a "
+    "channel sits at one or two A/D levels (oxygen voltage, altimeter or fluorescence near the "
+    "surface): with <code>mindelta</code> 0, the Windows program marks the whole block, "
+    "seabirdscientific only the values off the block's main level. A <code>mindelta</code> of "
+    "a few A/D steps avoids both.</p>"
+)
+
+
+#: Under the ctdcast corrections table when Loop Edit offset its soak window by the first scan.
+_LOOP_EDIT_NOTE = (
+    "<p class='caption'>Loop Edit's <code>deck_pressure: true</code> offsets the surface-soak "
+    "window by the first scan's depth, as seabirdscientific does. On OdB's recordings, which "
+    "start with the package in the water, SBE Data Processing matched no offset; "
+    "<code>deck_pressure: 0</code> reproduces it.</p>"
+)
 
 
 def _render_provenance_table(

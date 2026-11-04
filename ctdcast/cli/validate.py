@@ -9,7 +9,13 @@ from pathlib import Path
 import yaml
 
 from ctdcast.config.global_attrs import cruise_name
-from ctdcast.config.loader import SectionsConfig, groupings_path
+from ctdcast.config.layout import processing_view
+from ctdcast.config.loader import (
+    ConfigError,
+    SectionsConfig,
+    groupings_path,
+    load_config,
+)
 from ctdcast.config.people import check_contributors, contributor_attrs
 from ctdcast.config.preferred_sensors import GROUPS
 from ctdcast.identity import cast_id_from_name, expand_cast_ids, format_cast_id
@@ -83,10 +89,9 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        with cfg_path.open() as f:
-            cfg = yaml.safe_load(f)
-    except yaml.YAMLError as exc:
-        print(f"ERROR: config YAML parse error: {exc}", file=sys.stderr)
+        cfg = load_config(cfg_path)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     # PyYAML resolves a repeated mapping key to the LAST occurrence and says
@@ -361,11 +366,15 @@ def run(args: argparse.Namespace) -> int:
                         f"section '{sec_name}': cast {cast_num} not found in {nc_dir}"
                     )
 
-    # Preferred-sensor declaration (processing.preferred_pair / preferred_oxygen)
+    # Preferred-sensor declaration (preferred_sensor.tc / preferred_sensor.oxygen)
     # reconciled against the per-cast sensor serials, so a bad declaration surfaces here
     # rather than at compile.  Read-only: warnings, never an error.  Uses the same
     # reconciliation the compile runs, so both report identically.
-    processing_cfg = cfg.get("processing") or {}
+    try:
+        processing_cfg = processing_view(cfg)
+    except ValueError as exc:
+        errors.append(str(exc))
+        processing_cfg = {}
     if (
         nc_dir
         and nc_dir.exists()
@@ -439,8 +448,8 @@ def _duplicate_top_level_keys(path: Path) -> dict[str, int]:
     """
     counts: dict[str, int] = {}
     try:
-        text = path.read_text()
-    except OSError:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
         return {}
     for line in text.splitlines():
         # A top-level key starts in column 0 and is not a comment or list item.

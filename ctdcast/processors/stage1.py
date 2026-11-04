@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
+import re
 import sys
 import warnings
 from pathlib import Path
@@ -174,6 +175,12 @@ def _normalise(ds: xr.Dataset, cruise_info: dict | None = None) -> xr.Dataset:
         if _v not in ds.data_vars:
             continue
         _suffix = "1" if _v in ("oxygen_1", "oxygen") else "2"
+        # seasenselib numbers oxygen columns in file order, not by sensor: a CNV with
+        # sbeox0PS, sbox0Mm/Kg and sbeox0V gives the primary voltage `oxygen_2`.  The SBE
+        # column name carries the sensor (sbeox0 primary, sbeox1 secondary), so it wins.
+        _sensor = re.match(r"sbe?ox(\d)", ds[_v].attrs.get("original_name", ""), re.I)
+        if _sensor:
+            _suffix = str(int(_sensor.group(1)) + 1)
         _units = ds[_v].attrs.get("units", "").lower().strip()
         # The reader's standard_name describes the raw oxygen channel, but we are about to
         # reclassify it (per-mass measurement / % saturation / raw voltage), so that name no

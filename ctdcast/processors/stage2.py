@@ -24,7 +24,7 @@ import numpy as np
 import xarray as xr
 
 from ctdcast.config.cnv_header import start_time_clock
-from ctdcast.config.parameters import is_sbe_channel
+from ctdcast.config.parameters import is_sbe_channel, is_unflagged_channel
 from ctdcast.config.sensors import is_sensor_catalog_var
 from ctdcast.identity import expand_cast_numbers, format_cast_id
 from ctdcast.processors.history import (
@@ -126,6 +126,9 @@ def apply_stage2(
         # so they get no time-series _qc companion.  Guarding on ndim == 0 as well catches any
         # other scalar bookkeeping variable that should never carry a QARTOD flag.
         if is_sensor_catalog_var(var) or ds[var].ndim == 0:
+            continue
+        # Status bits and unconverted raw voltages are not measurements: no _qc.
+        if is_unflagged_channel(var):
             continue
         qc_name = f"{var}_qc"
         if qc_name not in ds:
@@ -596,7 +599,7 @@ def run(
         If given, process only casts selected by these zero-padded tags
         (e.g. ``{"042"}``), matched on the parsed cast identity.
     cruise_cfg:
-        The ``processing:`` config block, read for the stage-2 curated drop
+        The settings from :func:`ctdcast.config.layout.processing_view`, read for the stage-2 curated drop
         (``trim.drop_sbe``) and the clock correction; ``None`` uses defaults.
     **kw:
         Tuning forwarded to :func:`apply_stage2` (e.g. ``near_surface_dbar``);
@@ -620,7 +623,7 @@ def run(
 
     stage2_kw = {k: v for k, v in kw.items() if k in _STAGE2_KWARGS}
     # Cruise-scope clock resolution once: which cast numbers get which offset, with each segment's
-    # measured n/sd and a drift warning.  Empty unless processing.clock is configured.
+    # measured n/sd and a drift warning.  Empty unless clock is configured.
     clock_apply = _resolve_clock_application(root, (cruise_cfg or {}).get("clock"))
     # The curated drop set: the config `trim.drop_sbe:` list, or None for the default (every
     # `sbe_*` channel present).  Config, not a flag, so the output is reproducible from config.

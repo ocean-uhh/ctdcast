@@ -1,8 +1,8 @@
 """Stage 3 — QC, calibration, and derived-variable orchestrator.
 
 Stage3 is iterative: re-run it as calibration improves.  Each run applies the
-native-rate corrections (alignment, cell thermal mass) configured for the cruise,
-any conductivity calibration, re-derives salinity, derives SBE 43 oxygen from the
+per-sensor conductivity slope and offset and the processing steps configured for the
+cruise (``data_processing:``), re-derives salinity, derives SBE 43 oxygen from the
 voltage where a cast carries it, and then runs gross-range and spike QC on the
 corrected values.
 """
@@ -28,16 +28,16 @@ from ctdcast.config.preferred_sensors import (
 from ctdcast.identity import format_cast_id
 from ctdcast.processors import qc
 from ctdcast.processors.corrections import (
-    apply_corrections,
     derive_oxygen,
     flag_missing,
-    validate_config,
+    resolve_slope_offset,
 )
 from ctdcast.processors.history import (
     PL_CALIBRATED,
     add_processing_level,
     append_history,
 )
+from ctdcast.processors.products import make_product
 from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import (
     group_by_cast,
@@ -45,6 +45,12 @@ from ctdcast.processors.stage_layout import (
     matches_tags,
     parse_stage,
     stage_path,
+)
+from ctdcast.processors.steps import (
+    STEPS,
+    StepContext,
+    iter_steps,
+    validate_data_processing,
 )
 from ctdcast.writers.netcdf import write as _write_nc
 
@@ -55,122 +61,204 @@ def stage3(
     *,
     cast_number: int | None = None,
     cast_label: str = "?",
+    context: StepContext | None = None,
 ) -> xr.Dataset:
-    """Apply corrections, calibration, derived variables and QC to a per-cast Dataset.
+    """Apply the configured processing steps, derived variables and QC to a per-cast Dataset.
 
-    Applies the following in order:
+    Applies, in order:
 
-    1. Native-rate corrections (:func:`ctdcast.processors.corrections.apply_corrections`):
-       alignment (``cruise_cfg["alignctd"]``) and cell thermal mass (``cruise_cfg["celltm"]``).
-       Skipped, with a warning and a ``history`` note, for a cast that is binned or that
-       Sea-Bird already corrected; a cast with neither block configured is untouched.
-    2. Conductivity calibration slope, if ``cruise_cfg["calibration"]["conductivity_slope"]``
-       is present.
-    3. Re-derives practical salinity whenever step 1 or 2 changed conductivity.
+    1. The per-sensor conductivity slope and offset (``data_processing.slope_offset``), as
+       Sea-Bird applies them when it converts the raw counts.
+    2. ``data_processing.steps``, in the order listed: ``wildedit``
+       and ``loopedit`` (:mod:`ctdcast.processors.editing`), ``filter`` and ``window_filter``
+       (:mod:`ctdcast.processors.filtering`), ``alignctd`` and ``celltm``
+       (:func:`ctdcast.processors.corrections.apply_corrections`), from
+       :data:`ctdcast.processors.steps.STEPS`.  A step ctdcast does not apply yet is skipped
+       (``run`` refuses it unless ``data_processing.allow_unapplied``), with a warning and a
+       ``history`` note.  The order they ran in is written to the ``data_processing_steps``
+       attribute.
+    3. Re-derives practical salinity whenever a step changed conductivity, temperature or
+       pressure.
     4. Derives ``ctd_oxygen`` from the SBE 43 voltage on a cast that carries ``oxygen_raw_<N>``
-       and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`).
+       and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`), with the
+       window in ``data_processing.oxygen``.
     5. Two-tier gross-range QC and the QARTOD spike test, on the corrected values, using the
-       package defaults merged with ``cruise_cfg["qc"]["gross_range"]`` / ``["spike"]``.
+       package defaults merged with ``qc.gross_range`` / ``qc.spike``.
 
     Parameters
     ----------
-    ds:
+    ds : xarray.Dataset
         Per-cast Dataset (dim=time), already through stage1 and stage2.
-    cruise_cfg:
-        Optional dict with sub-keys ``alignctd``, ``celltm``, ``oxygen``, ``qc`` and
-        ``calibration``.  Pass ``cfg.get("processing")`` or the full cruise config dict.
-    cast_number:
-        The cast's number, for per-cast-range correction values.
-    cast_label:
+    cruise_cfg : dict or None
+        The settings from :func:`ctdcast.config.layout.processing_view`: ``data_processing``
+        and ``qc`` are read here.
+    cast_number : int or None
+        The cast's number, for per-cast-range values.
+    cast_label : str
         How the cast is named in warnings (e.g. ``"011"``).
+    context : StepContext, optional
+        Filled in as the steps run (Wild Edit's marks, Loop Edit's scans), for the products
+        made from this cast in the same run.
 
     Returns
     -------
-    xr.Dataset
+    xarray.Dataset
         New Dataset; input is not mutated.
     """
     cfg = cruise_cfg or {}
+    dp = cfg.get("data_processing") or {}
 
-    # Step 1: alignment and cell thermal mass, at the native scan rate.
-    ds, record = apply_corrections(ds, cfg, cast_number, cast_label=cast_label)
+    # Step 1: per-sensor slope and offset, before anything else (Sea-Bird applies them at datcnv).
+    ds, calibrated = _apply_slope_offset(ds, dp.get("slope_offset"), cast_number)
 
-    # Step 2: conductivity calibration
-    slope_raw = cfg.get("calibration", {}).get("conductivity_slope")
-    if slope_raw is not None:
-        slope = float(slope_raw)
-        ds = _apply_conductivity_slope(ds, slope)
+    # Step 2: the listed steps, in order (validated by run(), before any cast).
+    ctx = context if context is not None else StepContext()
+    ctx.cast_number, ctx.cast_label = cast_number, cast_label
+    ctx.changed.update(calibrated)
+    if calibrated:
+        ctx.applied.append("slope_offset")
+    for name, params in iter_steps(dp):
+        step = STEPS[name]
+        if step.apply is None:
+            # Recorded where it falls in the order, so history reads as the steps ran.
+            ctx.applied.append(f"{name} (not applied)")
+            append_history(
+                ds.attrs, f"{name}: not yet applied by ctdcast, skipped", stage="stage3"
+            )
+            continue
+        ds = step.apply(ds, params, ctx)
+        ctx.applied.append(name)
+    skipped = [a.split(" ")[0] for a in ctx.applied if a.endswith("(not applied)")]
+    if skipped:
+        warnings.warn(
+            "data_processing step(s) not yet applied by ctdcast, skipped: "
+            + ", ".join(dict.fromkeys(skipped)),
+            stacklevel=2,
+        )
+    changed, edge_masks = ctx.changed, ctx.edge_masks
 
-    # Step 3: re-derive salinity whenever conductivity changed.
-    conductivity_changed = slope_raw is not None or any(
-        v.startswith("conductivity") for v in record.changed
-    )
-    if conductivity_changed:
+    # Step 3: re-derive salinity whenever conductivity, temperature or pressure changed.
+    if any(
+        v.startswith(("conductivity", "ctd_temperature")) or v == "pressure"
+        for v in changed
+    ):
         ds = derive_salinity(ds)
-        for var, mask in record.edge_masks.items():
+        for var, mask in edge_masks.items():
             if var.startswith("conductivity"):
                 line = var[-1]
                 for sal in (f"ctd_salinity_{line}", "ctd_salinity"):
                     if sal in ds:
                         flag_missing(ds, sal, mask)
                         break
-    if slope_raw is not None:
-        # Salinity now embodies the calibration (value-changing procedure propagates to the
-        # variable derived from the changed input) — but keeps no conversion value, since it
-        # was computed, never instrument data.
-        for _sal in ("ctd_salinity", "ctd_salinity_1", "ctd_salinity_2"):
-            if _sal in ds:
-                add_processing_level(ds[_sal].attrs, PL_CALIBRATED)
+        if calibrated:
+            # Salinity now embodies the calibration, but keeps no conversion value: it was
+            # computed, never instrument data.
+            for _sal in ("ctd_salinity", "ctd_salinity_1", "ctd_salinity_2"):
+                if _sal in ds:
+                    add_processing_level(ds[_sal].attrs, PL_CALIBRATED)
         append_history(
             ds.attrs,
-            f"calibration: conductivity_slope={slope} applied; "
-            "salinity re-derived from calibrated conductivity",
-            stage="stage3",
-        )
-    elif conductivity_changed:
-        append_history(
-            ds.attrs,
-            "salinity re-derived from corrected conductivity",
+            "salinity re-derived from "
+            + ("calibrated and corrected" if calibrated else "corrected")
+            + " conductivity",
             stage="stage3",
         )
 
     # Step 4: oxygen from the SBE 43 voltage (hex casts; a CNV's own oxygen is left alone).
-    ds, _oxygen = derive_oxygen(ds, cfg, cast_label=cast_label)
+    ds, _oxygen = derive_oxygen(ds, dp, cast_label=cast_label, marked=ctx.marked)
+    if ctx.applied:
+        # The order the steps ran in, for the file and for the cast page's corrections table.
+        ds.attrs["data_processing_steps"] = "; ".join(ctx.applied)
 
     # Step 5: gross-range + spike QC, judging the corrected values.
-    ds = qc.apply_gross_range(ds, cfg.get("qc", {}).get("gross_range") or None)
-    return qc.apply_spike_test(ds, cfg.get("qc", {}).get("spike") or None)
+    ds = qc.apply_gross_range(ds, (cfg.get("qc") or {}).get("gross_range") or None)
+    return qc.apply_spike_test(ds, (cfg.get("qc") or {}).get("spike") or None)
 
 
-def _apply_conductivity_slope(ds: xr.Dataset, slope: float) -> xr.Dataset:
-    """Multiply conductivity variables by *slope* and record in attributes.
+def product_path(root: Path, stem: str, name: str) -> Path:
+    """Return where a cast's product is written: ``<root>/products/<name>/<stem>_<name>.nc``.
 
     Parameters
     ----------
-    ds:
-        Per-cast Dataset containing ``conductivity_1`` (and optionally
-        ``conductivity_2``).
-    slope:
-        Multiplicative calibration factor (e.g. 1.0002).
+    root : pathlib.Path
+        The CTD stage root (``ctd_root``).
+    stem : str
+        The cast's file stem (``MIXSED2_050``).
+    name : str
+        The product's name.
 
     Returns
     -------
-    xr.Dataset
-        New Dataset with calibrated conductivity; input is not mutated.
+    pathlib.Path
+        The product file's path.
+    """
+    return root / "products" / name / f"{stem}_{name}.nc"
+
+
+def _write_products(
+    ds: xr.Dataset,
+    root: Path,
+    stem: str,
+    products: list[dict],
+    cast_id: tuple,
+    marked: dict | None = None,
+) -> None:
+    """Make and write each configured product of one cast; a failure names the product only."""
+    label = format_cast_id(*cast_id)
+    for product in products:
+        path = product_path(root, stem, product["name"])
+        try:
+            out = make_product(
+                ds, product, cast_number=cast_id[0], cast_label=label, marked=marked
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _write_nc(out, path)
+            print(f"  ok: {path.parent.name}/{path.name}")
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"  FAILED product {product['name']} of cast {label}  "
+                f"({type(exc).__name__}: {exc})",
+                file=sys.stderr,
+            )
+
+
+def _apply_slope_offset(
+    ds: xr.Dataset, block: dict | None, cast_number: int | None
+) -> tuple[xr.Dataset, list[str]]:
+    """Apply ``C' = slope * C + offset`` to each conductivity sensor configured for this cast.
+
+    Returns the new dataset (the input is not mutated) and the variables changed.  Each changed
+    variable records its slope, offset and the config entry they came from.
     """
     import numpy as np
 
-    ds = ds.copy()
+    done: list[str] = []
     for var in ("conductivity_1", "conductivity_2"):
         if var not in ds:
             continue
-        calibrated = (ds[var].values.astype(np.float64) * slope).astype(np.float32)
-        new_attrs = dict(ds[var].attrs)
-        new_attrs["calibration_slope"] = slope
-        new_attrs["calibration_note"] = f"conductivity multiplied by {slope}"
-        add_processing_level(new_attrs, PL_CALIBRATED)
-        dim = ds[var].dims[0]
-        ds[var] = xr.DataArray(calibrated, dims=[dim], attrs=new_attrs)
-    return ds
+        hit = resolve_slope_offset(block, var, cast_number)
+        if hit is None:
+            continue
+        slope, offset, source = hit
+        if not done:
+            ds = ds.copy()
+        values = ds[var].values.astype(np.float64) * slope + offset
+        attrs = dict(ds[var].attrs)
+        attrs["calibration_slope"] = slope
+        attrs["calibration_offset"] = offset
+        attrs["calibration_config"] = source
+        attrs["calibration_note"] = (
+            f"conductivity = {slope:.8g} * conductivity + {offset:g}"
+        )
+        add_processing_level(attrs, PL_CALIBRATED)
+        ds[var] = (ds[var].dims, values.astype(ds[var].dtype, copy=False), attrs)
+        append_history(
+            ds.attrs,
+            f"slope_offset: {var} slope={slope:.8g} offset={offset:g} ({source})",
+            stage="stage3",
+        )
+        done.append(var)
+    return ds, done
 
 
 def _preferred_use(
@@ -222,7 +310,7 @@ def _stamp_preferred_sensors(
         The stage-3 dataset, carrying the ``SENSOR_*`` catalog stage 1 built; mutated in
         place.
     cruise_cfg:
-        The ``processing:`` config block (``cruise_cfg[group.config_key]`` is the nested
+        The settings from :func:`ctdcast.config.layout.processing_view` (``cruise_cfg[group.config_key]`` is the nested
         declaration, or absent).
     cast_number:
         The cast's integer number; a lettered cast resolves by its number.
@@ -268,7 +356,7 @@ def _build_preferred_composites(
     ds:
         The stage-3 dataset; mutated in place.
     cruise_cfg:
-        The ``processing:`` config block.
+        The settings from :func:`ctdcast.config.layout.processing_view`.
     cast_number:
         The cast's integer number.
     """
@@ -377,7 +465,8 @@ def run(
     declare_delayed = str((cruise_info or {}).get("data_mode", "")).upper() == "D"
 
     # A malformed correction block fails once, here, not as one error per cast.
-    validate_config(cruise_cfg)
+    validate_data_processing((cruise_cfg or {}).get("data_processing"))
+    products = ((cruise_cfg or {}).get("data_processing") or {}).get("products") or []
     groups = group_by_cast(root)
     n = n_skipped = n_failed = 0
     for cast_id in sorted(groups):
@@ -407,11 +496,13 @@ def run(
         ds = None
         try:
             ds = xr.open_dataset(input_path, engine="netcdf4").load()
+            steps_ctx = StepContext()
             ds_out = stage3(
                 ds,
                 cruise_cfg=cruise_cfg,
                 cast_number=cast_id[0],
                 cast_label=format_cast_id(*cast_id),
+                context=steps_ctx,
             )
             # Lineage: record the stage-2 file's id before the writer stamps ds_out's own
             # fresh tracking_id (empty on a legacy stage-2 file that predates the id).
@@ -451,6 +542,7 @@ def run(
             _write_nc(ds_out, target)
             print(f"  ok: {target.name}")
             n += 1
+            _write_products(ds_out, root, stem, products, cast_id, steps_ctx.marked)
         except Exception as exc:  # noqa: BLE001
             print(
                 f"  FAILED: {input_path.name}  ({type(exc).__name__}: {exc})",

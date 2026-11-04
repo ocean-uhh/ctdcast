@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
 from ctdcast.cli.process import _STAGE_METAVAR, _stage_token
+from ctdcast.config.layout import processing_view
 
 
 def build_parser(
@@ -141,17 +142,20 @@ def run(args: argparse.Namespace) -> int:
     # Run the pipeline stages across every configured source (CTD + LADCP): a
     # stage ingests/compiles both when both are configured, so there is no
     # separate LADCP step here.
-    import yaml
 
+    from ctdcast.config.loader import load_config
     from ctdcast.config.parameters import CAST_TAG_WIDTH
     from ctdcast.config.sensors import SensorOverrides
     from ctdcast.processors import process as _process
     from ctdcast.processors import stages_for
 
-    with cfg_path.open() as _f:
-        _cfg = yaml.safe_load(_f) or {}
+    _cfg = load_config(cfg_path)
     _data = _cfg.get("data") or {}
-    _processing = _cfg.get("processing") or {}
+    try:
+        _processing = processing_view(_cfg)
+    except ValueError as exc:
+        print(f"Config error: {exc}", file=sys.stderr)
+        return 1
     # --only/--cast use nargs='+', so cast_filter is a list or None.
     _cast_tags = (
         {f"{c:0{CAST_TAG_WIDTH}d}" for c in cast_filter} if cast_filter else None
@@ -188,7 +192,7 @@ def run(args: argparse.Namespace) -> int:
                 pattern=_data.get("cnv_pattern") or "*.cnv",
                 ladcp_pattern=_data.get("ladcp_pattern"),
                 profiles_dbar=int(_processing.get("profiles_dbar", 1)),
-                cruise_cfg=_processing,  # carries processing.clock for the stage-2 applier
+                cruise_cfg=_processing,  # carries clock for the stage-2 applier
                 sensor_overrides=SensorOverrides.from_cruise_config(_cfg),
                 cruise_info=_cfg.get("cruise_info") or {},
             )

@@ -44,8 +44,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 #: Separator written between entries in the parallel attribute strings.
 #: OceanSITES mandates ``;``; OG1 says ``,``.  Semicolon is the safe choice
 #: because personal names and "Name, Institution" strings contain commas.
@@ -470,8 +468,9 @@ def institution_registry_paths(extra: Path | str | None = None) -> list[Path]:
 @lru_cache(maxsize=8)
 def _load_registry_file(path: Path) -> dict[str, dict[str, Any]]:
     """Load one institution registry file, keyed by slug."""
-    with path.open(encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
+    from ctdcast.config.loader import load_yaml
+
+    data = load_yaml(path) or {}
     return data.get("institutions") or {}
 
 

@@ -112,7 +112,7 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``sbe_oxygen_1`` / ``sbe_oxygen_2``
      - ``.hex`` casts only: quick-look SBE 43 oxygen in µmol kg⁻¹, converted at read time by ctdcast with Sea-Bird's ``seabirdscientific`` toolkit (uncorrected T/S, no tau or hysteresis correction). Dropped at stage 2 with the other ``sbe_`` channels.
    * - ``pump_status``, ``bottom_contact_status``, ``bottle_confirm_status``, ``modem_status``, ``data_integrity``
-     - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter.
+     - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter. Neither these nor the ``volt{N}_raw`` channels get a ``_qc`` flag at stage 2: they are not measurements a flag could describe. ``oxygen_raw_N`` does, as stage 3 derives oxygen from it.
 
 A cast read from ``.hex`` is at the native scan rate (24 Hz on a 911plus), with no
 Sea-Bird processing applied; its conductivity, temperature and pressure carry the
@@ -251,9 +251,10 @@ rather than by index.
 The pressure coordinate is the **bin centre**, so a binned value sits at the mean
 depth of the samples it averages rather than at the bin's shallow edge.
 
-Samples flagged QARTOD suspect (``3``) or fail (``4``) — from the stage-2 soak /
-back-on-deck trim and the stage-3 gross-range and spike tests — are dropped before
-binning, so flagged data does not enter the bin means. Each science variable
+Samples flagged QARTOD fail (``4``) or missing (``9``) — from the stage-2 soak /
+back-on-deck trim and the stage-3 edits, gross-range and spike tests — are dropped
+before binning, so failed data does not enter the bin means; a suspect (``3``) sample is
+kept, as in a product's Bin Average. Each science variable
 records ``qc_input_samples`` (finite input samples) and ``qc_excluded_samples``
 (dropped); the netCDF inventory page reports these per variable as a percentage of
 pre-binning samples, so the figure is not confounded by binning's own reduction in

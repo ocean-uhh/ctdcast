@@ -203,3 +203,25 @@ class TestCuratedDrop:
             assert "sbe_density" in sbe and "sbe_timeJ" in sbe
         finally:
             ds.close()
+
+
+def test_status_words_and_raw_voltages_get_no_qc(hex_stage2):
+    from ctdcast.config.parameters import STATUS_CHANNELS, is_unflagged_channel
+
+    status = [v for v in hex_stage2.data_vars if v in STATUS_CHANNELS]
+    volts = [v for v in hex_stage2.data_vars if v.startswith("volt")]
+    assert status and volts  # the .hex slice carries both
+    for var in status + volts:
+        assert f"{var}_qc" not in hex_stage2, var
+    # The SBE 43 voltage feeds stage 3's oxygen, so it keeps its flag.
+    assert "oxygen_raw_1_qc" in hex_stage2
+    assert "conductivity_1_qc" in hex_stage2
+    assert not is_unflagged_channel("oxygen_raw_1")
+    assert is_unflagged_channel("volt7_raw") and not is_unflagged_channel("volt_raw")
+
+
+def test_status_names_match_the_hex_reader():
+    from ctdcast.config.parameters import STATUS_CHANNELS
+    from ctdcast.readers.hex import _STATUS_VARS
+
+    assert {name for name, _ in _STATUS_VARS.values()} == STATUS_CHANNELS

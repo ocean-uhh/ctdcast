@@ -25,7 +25,7 @@ from ctdcast.config.parameters import VARIABLES, is_sbe_channel
 from ctdcast.config.preferred_sensors import GROUPS, validate_preferred
 from ctdcast.identity import format_cast_id
 from ctdcast.processors.history import append_history
-from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_SUSPECT
+from ctdcast.processors.qc import QARTOD_FAIL, QARTOD_MISSING, usable_pressure
 from ctdcast.processors.sensor_catalog import (
     catalog_by_cast_number,
     read_cast_sensor_catalog,
@@ -345,7 +345,7 @@ def validate_preferred_against_catalog(
     Parameters
     ----------
     cruise_cfg:
-        The ``processing:`` config block (``None`` or absent declarations → no messages).
+        The settings from :func:`ctdcast.config.layout.processing_view` (``None`` or absent declarations → no messages).
     catalog_by_cast:
         Per-cast ``SENSOR_*`` catalog records keyed by integer cast number.
 
@@ -395,13 +395,15 @@ def _bin_to_grid(
     exactly (``idx == p_bin - p0``); ``dbar=2`` averages each adjacent pressure
     pair, halving the number of levels and reducing per-level sample noise.
     """
-    p_raw = ds_half["pressure"].values
-    p_bin = np.round(p_raw).astype(int)
+    p_raw = ds_half["pressure"].values.astype(float)
+    has_p = np.isfinite(p_raw)
+    p_bin = np.round(np.where(has_p, p_raw, 0.0)).astype(int)
     p0 = int(p_grid[0])
     n = len(p_grid)
     # Uniform dbar-wide bins: grid level i collects p_bin in [p0+i*dbar, p0+(i+1)*dbar).
-    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).
-    idx = (p_bin - p0) // dbar
+    # With dbar=1 this is exactly ``p_bin - p0`` (the original 1-dbar assignment).  A scan
+    # without a pressure (failed or missing) has no bin.
+    idx = np.where(has_p, (p_bin - p0) // dbar, -1)
 
     result: dict[str, np.ndarray] = {}
     for v in ds_half.data_vars:
@@ -463,9 +465,9 @@ def build_profiles(
     The ``altimeter`` channel (when present in the input files) is binned onto
     the 1-dbar grid as a standard 2-D variable.
 
-    Samples carrying a QARTOD suspect (3) or fail (4) flag on their ``{var}_qc``
-    companion are NaN-masked before binning, so flagged data does not enter the bin
-    means.  Each science variable records how many finite input samples it carried
+    Samples carrying a QARTOD fail (4) or missing (9) flag on their ``{var}_qc``
+    companion are NaN-masked before binning, so failed data does not enter the bin
+    means; a suspect (3) sample is kept, as in a product's Bin Average.  Each science variable records how many finite input samples it carried
     (``qc_input_samples``) and how many were excluded (``qc_excluded_samples``).
 
     Parameters
@@ -491,7 +493,7 @@ def build_profiles(
         EXPOCODE coordinate is derived.  Coverage bounds and creation time are
         computed from the data, not taken from here.
     cruise_cfg:
-        The ``processing:`` config block.  Used only to reconcile the
+        The settings from :func:`ctdcast.config.layout.processing_view`.  Used only to reconcile the
         ``preferred_pair`` / ``preferred_oxygen`` declaration against the per-cast
         sensor serials (:func:`~ctdcast.config.preferred_sensors.validate_preferred`);
         a declared range crossing a hardware swap, or a swap segment the declaration
@@ -533,7 +535,9 @@ def build_profiles(
     p_max_global = 0.0
     for _num, _suffix, path, _stage in cast_list:
         ds = xr.open_dataset(path, engine="netcdf4", decode_timedelta=False)
-        p_max_global = max(p_max_global, float(ds["pressure"].max()))
+        p_ok = usable_pressure(ds)
+        if np.isfinite(p_ok).any():
+            p_max_global = max(p_max_global, float(np.nanmax(p_ok)))
         ds.close()
     # p_grid holds the bin LOWER EDGES used for the binning assignment in
     # _bin_to_grid (level i collects rounded pressures [1+i*dbar, 1+(i+1)*dbar)).
@@ -622,7 +626,7 @@ def build_profiles(
     per_cast_attrs: list[dict[str, str]] = []
 
     # Pass 2: split and bin each cast
-    qc_excluded = False  # did any input carry suspect/fail records to exclude?
+    qc_excluded = False  # did any input carry fail/missing records to exclude?
     # Per-variable tally of pre-binning samples excluded and the finite-sample
     # denominator they were drawn from, reported at the top of the inventory page.
     # The denominator is the count of finite input samples (not binned points), so
@@ -650,13 +654,16 @@ def build_profiles(
         cast_catalogs.append(cast_catalog)
         if not cast_catalog:
             catalog_less.append(path.name)
-        # Honour QARTOD flags 3 (suspect) and 4 (fail) from stage 2 (soak/deck) AND
-        # stage 3 (gross-range and spike): NaN the flagged samples so they do not
-        # enter the bin means.  pressure is in _SKIP_VARS and carries no _qc, so the
-        # binning coordinate is untouched; stage-1-only files have no _qc and are
+        # Honour QARTOD flags 4 (fail) and 9 (missing) from stage 2 (soak/deck) AND
+        # stage 3 (edits, gross-range, spike): NaN the flagged samples so they do not
+        # enter the bin means.  A suspect (3) sample is kept, as in a product's Bin
+        # Average.  pressure is in _SKIP_VARS: it is the binning coordinate, and a scan
+        # whose pressure failed (pressure_qc 4 or 9, e.g. a Wild Edit mark) is left out
+        # whole below, from the turnaround, the grid and every bin.  Stage-1-only files
+        # have no _qc and are
         # unaffected — qc_excluded stays False and the history line does not claim
-        # an exclusion that never happened.  Suspect/fail flags are only raised on
-        # finite samples, so the excluded count is a subset of the finite count.
+        # an exclusion that never happened.  Only finite samples are counted as excluded,
+        # so the excluded count is a subset of the finite count.
         for _v in var_names:
             if _v in ds:
                 qc_input_counts[_v] += int(np.isfinite(ds[_v].values).sum())
@@ -667,8 +674,8 @@ def build_profiles(
                     correction_values[_v][_a][rank] = ds[_v].attrs.get(_a)
             _qc = f"{_v}_qc"
             if _qc in ds and _v in ds:
-                _is_bad = (ds[_qc] == QARTOD_SUSPECT) | (ds[_qc] == QARTOD_FAIL)
-                _n_bad = int(_is_bad.values.sum())
+                _is_bad = (ds[_qc] == QARTOD_FAIL) | (ds[_qc] == QARTOD_MISSING)
+                _n_bad = int((_is_bad & np.isfinite(ds[_v])).values.sum())
                 if _n_bad:
                     qc_excluded = True
                     qc_dropped_counts[_v] += _n_bad
@@ -677,7 +684,8 @@ def build_profiles(
         source_files[rank] = path.name
         source_tracking_ids[rank] = str(ds.attrs.get("tracking_id", ""))
         cast_data_modes[rank] = str(ds.attrs.get("data_mode", "P")) or "P"
-        pressure = ds["pressure"].values
+        pressure = usable_pressure(ds)
+        ds["pressure"] = (ds["pressure"].dims, pressure, ds["pressure"].attrs)
         i_turn = _turnaround_index(pressure)
 
         i_max_p = int(np.nanargmax(pressure))
@@ -1065,8 +1073,8 @@ def build_profiles(
     )
     if qc_excluded:
         _note += (
-            "; excluded QARTOD flag 3 (suspect) and flag 4 (fail) records "
-            "(soak/deck and gross-range/spike) before binning"
+            "; excluded QARTOD flag 4 (fail) and 9 (missing) records "
+            "(soak/deck, edits, gross-range/spike) before binning; suspect (3) kept"
         )
     append_history(attrs, _note, stage="profiles")
 

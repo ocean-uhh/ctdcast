@@ -138,8 +138,51 @@ display:
   # vmax:
   #   CT: 30
 
-# Pipeline processing options.  All optional — sensible defaults are used unless
-# you set these to override per cruise.
+# Pipeline settings.  All optional — sensible defaults are used unless you set
+# these to override per cruise.
+
+# Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
+# gross_range bounds are [min, max]; spike thresholds are on
+# |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
+# default, and the report's QC panel shows the tiers actually applied.  Values
+# are in each variable's stored units: conductivity mS/cm, salinity PSU,
+# temperature deg C, oxygen umol/kg, pressure dbar.
+# qc:
+#   gross_range:
+#     suspect: { ctd_salinity_1: [30.0, 38.0] }
+#     fail:    { ctd_salinity_1: [0.0, 42.0] }
+#   spike:
+#     suspect: { pressure: 10.0 }
+#     fail:    { pressure: 50.0 }
+
+# On a dual-sensor cast, which sensor the plain ctd_temperature / ctd_salinity /
+# ctd_oxygen use: primary (_1) or secondary (_2).
+# preferred_sensor:
+#   tc: primary
+#   oxygen: primary
+
+# What stage 3 applies, in order.  A step runs only if it is listed.  The block
+# below is the SBE Data Processing manual's order for an SBE 911plus (Wild Edit,
+# Filter on pressure, Align CTD, Cell Thermal Mass, Loop Edit); `ctdcast inspect
+# <file>.cnv` prints the block that reproduces a cruise's own CNVs, and
+# `ctdcast fit` suggests the alignctd and celltm values.  Products are files
+# made from the stage-3 file by further steps (a 1 dbar downcast, a 1 s series),
+# written to <ctd_root>/products/<name>/.
+# data_processing:
+#   slope_offset:              # per conductivity sensor, from bottle salinities
+#     conductivity_1: {slope: 1.0, offset: 0.0}
+#   steps:
+#     - wildedit: {pass1_nstd: 2.0, pass2_nstd: 20.0, scans_per_block: 100}
+#     - filter: {time_constant: 0.15, variables: [pressure]}
+#     - alignctd: {conductivity: 0.0, oxygen: 3.0}   # conductivity: on top of the deck unit's
+#     - celltm: {conductivity: {alpha: 0.03, tau: 7.0}}
+#     - loopedit: {min_velocity: 0.25}
+#   products:
+#     - name: 1dbar_down
+#       steps:
+#         - split: down
+#         - binavg: {bin: decibars, size: 1}
+
 processing:
   # profiles_dbar: 1        # vertical bin size for the compiled profiles.nc grid
 
@@ -147,24 +190,6 @@ processing:
   # (QARTOD flag 4), not deleted, and excluded from the compiled product.
   # trim:
   #   near_surface_dbar: 10.0
-
-  # Stage 3 QC — two tiers per test: suspect (QARTOD flag 3) and fail (flag 4).
-  # gross_range bounds are [min, max]; spike thresholds are on
-  # |v[i] - (v[i-1]+v[i+1])/2|.  Anything you do not list keeps its built-in
-  # default, and the report's QC panel shows the tiers actually applied.  Values
-  # are in each variable's stored units: conductivity mS/cm, salinity PSU,
-  # temperature deg C, oxygen umol/kg, pressure dbar.
-  # qc:
-  #   gross_range:
-  #     suspect: { ctd_salinity_1: [30.0, 38.0] }
-  #     fail:    { ctd_salinity_1: [0.0, 42.0] }
-  #   spike:
-  #     suspect: { pressure: 10.0 }
-  #     fail:    { pressure: 50.0 }
-
-  # Stage 3 calibration.
-  # calibration:
-  #   conductivity_slope: 1.0002
 """
 
 _SECTIONS_TEMPLATE = """\
@@ -411,9 +436,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
     ``profiles_nc`` overrides it -- and does not modify the config file.  All
     detection parameters come from CLI flags.
     """
-    import yaml
-
-    from ctdcast.config.loader import groupings_path
+    from ctdcast.config.loader import groupings_path, load_config
     from ctdcast.processors import StagePaths
 
     config_path = Path(args.dest)
@@ -423,8 +446,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
         print(f"ERROR: config file not found: {config_path}", file=sys.stderr)
         return 1
 
-    with config_path.open() as fh:
-        cfg = yaml.safe_load(fh) or {}
+    cfg = load_config(config_path)
 
     data_cfg: dict = cfg.get("data") or {}
     profiles_path = StagePaths.from_config(data_cfg).profiles_path
@@ -905,9 +927,9 @@ def _run_interactive(args: argparse.Namespace) -> int:
     _ex: dict[str, str] = {}
     if initial.exists():
         try:
-            import yaml as _yaml
+            from ctdcast.config.loader import load_config as _load_config
 
-            _cfg = _yaml.safe_load(initial.read_text()) or {}
+            _cfg = _load_config(initial)
             _d = _cfg.get("data", {}) or {}
             if not _d.get("groupings_yaml") and _d.get("section_yaml"):
                 from ctdcast.config.loader import warn_section_yaml_deprecated
@@ -1670,7 +1692,7 @@ def _build_config_text(
 
 def _write_file(path: Path, text: str) -> None:
     """Write *text* to *path*."""
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
 
 
 # Keep old name as alias so existing callers are not broken.

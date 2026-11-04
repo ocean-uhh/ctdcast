@@ -6,9 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-import yaml
-
 from ctdcast.cli._deprecate import DeprecatedAlias, warn_deprecated
+from ctdcast.config.loader import load_config
 
 
 def run_ladcp_pipeline(
@@ -225,8 +224,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"Config file not found: {cfg_path}", file=sys.stderr)
         return 1
 
-    with cfg_path.open() as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(cfg_path)
 
     data = cfg.get("data") or {}
 

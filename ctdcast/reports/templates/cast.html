@@ -62,6 +62,9 @@ table.data-ranges { font-size: var(--fs-nav); }
     {% if raw_input_str %}
     <div><dt>Raw input</dt><dd class="mono">{{ raw_input_str }}</dd></div>
     {% endif %}
+    {% if sample_rate_str %}
+    <div><dt>Sampling</dt><dd>{{ sample_rate_str }}</dd></div>
+    {% endif %}
     {% if source_str %}
     <div><dt>Source</dt><dd class="mono">{{ source_str }}</dd></div>
     {% endif %}

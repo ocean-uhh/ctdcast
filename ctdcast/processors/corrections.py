@@ -29,21 +29,28 @@ is reconstructable from the output file alone.  A step that cannot apply to a ca
 binned, or Sea-Bird already applied the same step) is skipped with a warning and a ``history``
 note; the cast's other stage-3 steps still run.
 
-Configuration (``processing:``), one block per correction, each entry a ``default`` and/or
-``ranges`` (``casts`` + ``value``), as ``preferred_pair``::
+Configuration (``data_processing:``, see :mod:`ctdcast.config.layout`): ``alignctd`` and ``celltm``
+are steps in ``data_processing.steps``, each entry a bare value or a ``default`` and/or ``ranges``
+(``casts`` + ``value``) declaration; the oxygen window and the per-sensor conductivity slope and
+offset sit beside the steps::
 
-    alignctd:                    # seconds; + advances the variable relative to pressure
-      conductivity: {default: 0.0}
-      oxygen: {default: 3.0}
-      conductivity_2: {ranges: [{casts: [[30, 45]], value: 0.021}]}
-    celltm:                      # alpha and tau (1/beta, seconds); conductivity only
-      default: {alpha: 0.03, tau: 7.0}
-    oxygen:
-      tau_window_seconds: 2.0    # window for the SBE 43 tau correction's dV/dt
+    data_processing:
+      slope_offset:                # per conductivity sensor: C' = slope * C + offset
+        conductivity_1: {slope: 1.0000452, offset: 0.0}
+      oxygen:
+        tau_window_seconds: 2.0    # window for the SBE 43 tau correction's dV/dt
+      steps:
+        - alignctd:                # seconds; + advances the variable relative to pressure
+            conductivity: 0.0
+            oxygen: 3.0
+            conductivity_2: {ranges: [{casts: [[30, 45]], value: 0.021}]}
+        - celltm:                  # alpha and tau (1/beta, seconds); conductivity only
+            conductivity: {alpha: 0.03, tau: 7.0}
 """
 
 from __future__ import annotations
 
+import functools
 import importlib.metadata
 import math
 import warnings
@@ -95,6 +102,7 @@ _DECK_CHANNEL = {
 }
 
 
+@functools.cache
 def _version() -> str:
     return importlib.metadata.version("seabirdscientific")
 
@@ -233,7 +241,7 @@ def resolve_alignment(
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        ``{"alignctd": ...}``: the step's parameters from ``data_processing.steps``.
     var : str
         A stage variable: ``conductivity_1/2`` or ``oxygen_raw_1/2``.
     cast_number : int or None
@@ -278,7 +286,7 @@ def resolve_cell_thermal_mass(
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        ``{"celltm": ...}``: the step's parameters from ``data_processing.steps``.
     var : str
         ``conductivity_1`` or ``conductivity_2``.
     cast_number : int or None
@@ -327,13 +335,70 @@ def resolve_cell_thermal_mass(
     return alpha, tau, f"{where_hit} {hit[1]}"
 
 
+def resolve_slope_offset(
+    block: dict | None, var: str, cast_number: int | None
+) -> tuple[float, float, str] | None:
+    """Return ``(slope, offset, source)`` for conductivity *var* on *cast_number*, or None.
+
+    ``data_processing.slope_offset`` holds one entry per conductivity sensor
+    (``conductivity_1``, ``conductivity_2``), each a bare ``{slope:, offset:}`` or a
+    ``{default:, ranges:}`` declaration of them; ``offset`` defaults to 0.
+
+    Parameters
+    ----------
+    block : dict or None
+        The ``data_processing.slope_offset`` block.
+    var : str
+        ``conductivity_1`` or ``conductivity_2``.
+    cast_number : int or None
+        The cast's number.
+
+    Returns
+    -------
+    tuple of (float, float, str) or None
+        None when nothing is configured for *var* on this cast.
+
+    Raises
+    ------
+    ValueError
+        On an unknown key or a malformed value.
+    """
+    if not block:
+        return None
+    if not isinstance(block, dict):
+        raise ValueError(f"slope_offset: expected a mapping, got {block!r}")
+    unknown = set(block) - {"conductivity_1", "conductivity_2"}
+    if unknown:
+        raise ValueError(
+            f"slope_offset: unknown key(s) {sorted(unknown)}; use conductivity_1, conductivity_2"
+        )
+    if var not in block:
+        return None
+    where = f"slope_offset.{var}"
+    hit = _decl_value(block[var], cast_number, where, value_is_mapping=True)
+    if hit is None:
+        return None
+    value = hit[0]
+    if (
+        not isinstance(value, dict)
+        or "slope" not in value
+        or set(value) - {"slope", "offset"}
+    ):
+        raise ValueError(f"{where}: a value is {{slope:, offset:}}, got {value!r}")
+    slope = _number(value["slope"], f"{where}.slope")
+    offset = _number(value.get("offset", 0.0), f"{where}.offset")
+    if slope <= 0:
+        raise ValueError(f"{where}.slope: must be positive, got {slope!r}")
+    return slope, offset, f"{where} {hit[1]}"
+
+
 def resolve_oxygen_window(cfg: dict | None) -> float:
-    """Return the SBE 43 tau-correction window (s) from ``processing.oxygen``.
+    """Return the SBE 43 tau-correction window (s) from ``data_processing.oxygen``.
 
     Parameters
     ----------
     cfg : dict or None
-        The ``processing:`` config block.
+        The ``data_processing:`` config block.
 
     Returns
     -------
@@ -363,45 +428,6 @@ def resolve_oxygen_window(cfg: dict | None) -> float:
             f"got {window!r}"
         )
     return window
-
-
-def validate_config(cfg: dict | None) -> None:
-    """Check the ``alignctd``, ``celltm`` and ``oxygen`` blocks before any cast is processed.
-
-    Resolves every channel for the default and for every cast named in a range, so a typo or
-    a non-numeric value fails once, up front, rather than on each cast.
-
-    Parameters
-    ----------
-    cfg : dict or None
-        The ``processing:`` config block.
-
-    Raises
-    ------
-    ValueError
-        On the first malformed entry, naming it.
-    """
-    cfg = cfg or {}
-    casts: set[int | None] = {None}
-
-    def _collect(decl: object) -> None:
-        if isinstance(decl, dict):
-            for rng in decl.get("ranges") or []:
-                if isinstance(rng, dict) and "casts" in rng:
-                    casts.update(expand_cast_numbers(rng["casts"]))
-
-    for block_name in ("alignctd", "celltm"):
-        block = cfg.get(block_name)
-        if isinstance(block, dict):
-            _collect(block)
-            for decl in block.values():
-                _collect(decl)
-    for cast in sorted(casts, key=lambda c: -1 if c is None else c):
-        for var in _ALIGN_TARGETS:
-            resolve_alignment(cfg, var, cast)
-        for var in ("conductivity_1", "conductivity_2"):
-            resolve_cell_thermal_mass(cfg, var, cast)
-    resolve_oxygen_window(cfg)
 
 
 # --- appliers ------------------------------------------------------------------------------
@@ -564,7 +590,8 @@ def apply_corrections(
     ds : xarray.Dataset
         A stage-2 dataset at its native scan rate.
     cruise_cfg : dict or None
-        The ``processing:`` config block (``alignctd``, ``celltm``).
+        ``{"alignctd": ...}`` and/or ``{"celltm": ...}``: one step's parameters from
+        ``data_processing.steps``.
     cast_number : int or None
         The cast's number, for per-range values.
     cast_label : str, optional
@@ -886,8 +913,29 @@ def _finite_runs(good: np.ndarray) -> list[slice]:
     return [slice(int(a), int(b)) for a, b in zip(starts, stops, strict=True)]
 
 
+def _fill_marked(x: np.ndarray, marked: np.ndarray | None) -> np.ndarray:
+    """Return *x* with the finite values in *marked* replaced by interpolation from unmarked neighbours.
+
+    NaN stays NaN (a cast's alignment edges have no value to convert).
+    """
+    if marked is None:
+        return x
+    gap = np.asarray(marked, dtype=bool) & np.isfinite(x)
+    ok = np.isfinite(x) & ~gap
+    if not gap.any() or not ok.any():
+        return x
+    idx = np.arange(x.size)
+    out = x.copy()
+    out[gap] = np.interp(idx[gap], idx[ok], x[ok])
+    return out
+
+
 def derive_oxygen(
-    ds: xr.Dataset, cruise_cfg: dict | None = None, *, cast_label: str = "?"
+    ds: xr.Dataset,
+    cruise_cfg: dict | None = None,
+    *,
+    cast_label: str = "?",
+    marked: dict[str, np.ndarray] | None = None,
 ) -> tuple[xr.Dataset, list[str]]:
     """Derive ``ctd_oxygen`` from each SBE 43 voltage, as Sea-Bird's Data Conversion does.
 
@@ -903,9 +951,15 @@ def derive_oxygen(
     ds : xarray.Dataset
         A stage-3 dataset after alignment, CTM and salinity.
     cruise_cfg : dict or None
-        The ``processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.
+        The ``data_processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.
     cast_label : str, optional
         How the cast is named in warnings.
+    marked : dict of str to numpy.ndarray, optional
+        ``{variable: mask}`` of values an earlier Wild Edit marked.  The tau and hysteresis
+        corrections step scan to scan, so a marked voltage, temperature, conductivity or
+        pressure would spread into the neighbouring oxygen; each is replaced by interpolation
+        from its unmarked neighbours for the conversion, and the oxygen at those scans is
+        flagged 4.
 
     Returns
     -------
@@ -913,6 +967,7 @@ def derive_oxygen(
         A new dataset and the names of the variables written.
     """
     raws = [v for v in ("oxygen_raw_1", "oxygen_raw_2") if v in ds]
+    marked = marked or {}
     if not raws or any(v in ds for v in ("ctd_oxygen", "ctd_oxygen_1", "ctd_oxygen_2")):
         return ds, []
     xml = raw_metadata_block(ds.attrs.get("raw_metadata"), "xmlcon")
@@ -958,8 +1013,20 @@ def derive_oxygen(
                 stacklevel=2,
             )
             continue
-        volts = ds[raw].values.astype(np.float64)
-        t, s, p = (ds[v].values.astype(np.float64) for v in (temp, sal, "pressure"))
+        cond = (
+            f"conductivity_{line}" if f"conductivity_{line}" in ds else "conductivity_1"
+        )
+        none = np.zeros(ds.sizes[ds[raw].dims[0]], dtype=bool)
+        m_v, m_t, m_c, m_p = (
+            np.asarray(marked.get(v, none), dtype=bool)
+            for v in (raw, temp, cond, "pressure")
+        )
+        # A marked input is bridged for the conversion, so it does not spread to its neighbours.
+        volts = _fill_marked(ds[raw].values.astype(np.float64), m_v)
+        t = _fill_marked(ds[temp].values.astype(np.float64), m_t)
+        s = _fill_marked(ds[sal].values.astype(np.float64), m_t | m_c)
+        p = _fill_marked(ds["pressure"].values.astype(np.float64), m_p)
+        any_marked = m_v | m_t | m_c | m_p
         good = np.isfinite(volts) & np.isfinite(t) & np.isfinite(s) & np.isfinite(p)
         o2 = np.full(volts.shape, np.nan)
         coefs = oxygen43_coefficients(sensors[n - 1])
@@ -999,6 +1066,20 @@ def derive_oxygen(
                 ds[f"{raw}_qc"].values.copy(),
                 {k: v for k, v in ds[f"{raw}_qc"].attrs.items() if k != "long_name"},
             )
+        if any_marked.any():
+            # Oxygen at a scan whose input was marked is an interpolated estimate: fail.
+            if f"{name}_qc" not in ds:
+                from ctdcast.processors.qc import _qc_attrs
+
+                ds[f"{name}_qc"] = (
+                    ds[raw].dims,
+                    np.where(np.isfinite(o2), 1, 9).astype(np.int8),
+                    _qc_attrs(name, None),
+                )
+            qc_o2 = ds[f"{name}_qc"].values.copy()
+            qc_o2[any_marked & (qc_o2 < 4)] = 4
+            ds[f"{name}_qc"] = (ds[raw].dims, qc_o2, ds[f"{name}_qc"].attrs)
+            ds[name].attrs["oxygen_marked_inputs_bridged"] = int(any_marked.sum())
         written.append(name)
         append_history(
             ds.attrs,
