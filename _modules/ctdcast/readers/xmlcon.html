@@ -1,0 +1,756 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.readers.xmlcon &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.readers.xmlcon</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.readers.xmlcon</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Reader for Sea-Bird ``.xmlcon`` instrument configuration files (SBE 911plus).</span>
+
+<span class="sd">An ``.xmlcon`` is the configuration Seasave writes beside each ``.hex``: the instrument</span>
+<span class="sd">settings (which channels are suppressed, what the deck unit appends to each scan) and one</span>
+<span class="sd">``&lt;Sensor index=…&gt;`` element per channel, holding the sensor's serial number, calibration</span>
+<span class="sd">date and coefficients.</span>
+
+<span class="sd">This module turns it into three things:</span>
+
+<span class="sd">- :class:`XmlconInstrument`, the parsed settings and sensors;</span>
+<span class="sd">- seabirdscientific coefficient objects for the sensors ctdcast converts at stage 1</span>
+<span class="sd">  (temperature, conductivity, Digiquartz pressure, SBE 43 oxygen, ECO, altimeter, C-Star);</span>
+<span class="sd">- sensor records shaped exactly like</span>
+<span class="sd">  :func:`ctdcast.config.cnv_header.parse_sensor_block`'s, so the per-cast sensor catalog is</span>
+<span class="sd">  built by the same code for a ``.hex`` cast as for a ``.cnv`` one.</span>
+
+<span class="sd">The ``&lt;sensor&gt;`` block a CNV header embeds is the same XML as the ``.xmlcon``'s ``&lt;Sensor&gt;``</span>
+<span class="sd">element, wrapped differently and preceded by a comment naming the channel and its quantity</span>
+<span class="sd">(``&lt;!-- Frequency 3, Temperature, 2 --&gt;``).  :func:`sensor_records` rebuilds that wrapping, so</span>
+<span class="sd">``raw_block`` reads the same whichever file the sensor came from.</span>
+
+<span class="sd">Original author: Joel Bracamontes Ramirez, ctdproc (``parsers.load_xmlcon``), whose approach this</span>
+<span class="sd">follows: walk the ``&lt;Sensor&gt;`` elements in order, tell primary from secondary by the order of</span>
+<span class="sd">repeated sensor types, and build seabirdscientific coefficient objects.  Rewritten for ctdcast.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xml.etree.ElementTree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ET</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">cal_coefficients</span> <span class="k">as</span> <span class="n">cc</span>
+
+<span class="c1">#: Frequency channels on a 911plus before suppression: T, C, P, T2, C2.</span>
+<span class="n">N_FREQUENCY_CHANNELS</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="c1">#: Voltage channels on a 911plus before suppression (4 words of 2 channels each).</span>
+<span class="n">N_VOLTAGE_CHANNELS</span> <span class="o">=</span> <span class="mi">8</span>
+
+<span class="c1"># .xmlcon element -&gt; the quantity text Seasave writes in the CNV sensor comment.  Taken from</span>
+<span class="c1"># real CNV headers (MIXSED2 and MSM142 fixtures); the comment's first part is what</span>
+<span class="c1"># readers.metadata resolves to a sensor role.  An element not listed here keeps its element</span>
+<span class="c1"># name as the comment, which resolves to a role by the generic fallback.</span>
+<span class="n">_COMMENT_FOR_ELEMENT</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"TemperatureSensor"</span><span class="p">:</span> <span class="s2">"Temperature"</span><span class="p">,</span>
+    <span class="s2">"ConductivitySensor"</span><span class="p">:</span> <span class="s2">"Conductivity"</span><span class="p">,</span>
+    <span class="s2">"PressureSensor"</span><span class="p">:</span> <span class="s2">"Pressure, Digiquartz with TC"</span><span class="p">,</span>
+    <span class="s2">"OxygenSensor"</span><span class="p">:</span> <span class="s2">"Oxygen, SBE 43"</span><span class="p">,</span>
+    <span class="s2">"UserPolynomialSensor"</span><span class="p">:</span> <span class="s2">"User Polynomial"</span><span class="p">,</span>
+    <span class="s2">"NotInUse"</span><span class="p">:</span> <span class="s2">"Free"</span><span class="p">,</span>
+    <span class="s2">"pH_Sensor"</span><span class="p">:</span> <span class="s2">"pH"</span><span class="p">,</span>
+    <span class="s2">"AltimeterSensor"</span><span class="p">:</span> <span class="s2">"Altimeter"</span><span class="p">,</span>
+    <span class="s2">"WET_LabsCStar"</span><span class="p">:</span> <span class="s2">"Transmissometer, WET Labs C-Star"</span><span class="p">,</span>
+    <span class="s2">"TurbidityMeter"</span><span class="p">:</span> <span class="s2">"Turbidity Meter, WET Labs, ECO-NTU"</span><span class="p">,</span>
+    <span class="s2">"FluoroWetlabECO_AFL_FL_Sensor"</span><span class="p">:</span> <span class="s2">"Fluorometer, WET Labs ECO-AFL/FL"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Elements that can appear twice on a 911plus; the second gets ", 2" in its comment.</span>
+<span class="n">_INDEXED_ELEMENTS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">"TemperatureSensor"</span><span class="p">,</span> <span class="s2">"ConductivitySensor"</span><span class="p">,</span> <span class="s2">"OxygenSensor"</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">_RE_DECLARATION</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^\s*&lt;\?xml[^&gt;]*\?&gt;"</span><span class="p">)</span>
+<span class="n">_RE_SENSOR_SPAN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s1">'&lt;Sensor index="(\d+)"[^&gt;]*&gt;\n(.*?)\n[ \t]*&lt;/Sensor&gt;'</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="XmlconSensor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.XmlconSensor">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlconSensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One ``&lt;Sensor&gt;`` of an ``.xmlcon``."""</span>
+
+    <span class="c1">#: The ``.xmlcon`` index, 0-based.</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: The sensor's element tag, e.g. ``"TemperatureSensor"``.</span>
+    <span class="n">element</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: Sea-Bird's ``SensorID`` for the element.</span>
+    <span class="n">sensor_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: The serial number as written (may be empty).</span>
+    <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: The calibration date as written (may be empty).</span>
+    <span class="n">calibration_date</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: ``"frequency"`` or ``"voltage"``.</span>
+    <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: The channel number within its kind: frequency 0–4, voltage 0–7.</span>
+    <span class="n">number</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: The quantity text Seasave would write in the CNV sensor comment, e.g. ``"Temperature,</span>
+    <span class="c1">#: 2"``.</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: The sensor element's XML, verbatim, with Unix newlines.</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: The parsed sensor element (the child of ``&lt;Sensor&gt;``).</span>
+    <span class="n">node</span><span class="p">:</span> <span class="n">ET</span><span class="o">.</span><span class="n">Element</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compare</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="XmlconSensor.value">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.XmlconSensor.value">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the float value of a direct child *tag* of the sensor element.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tag : str</span>
+<span class="sd">            The child element name, e.g. ``"Slope"``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The parsed value.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            If the sensor element has no such child.</span>
+<span class="sd">        """</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="si">}</span><span class="s2"> (index </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="si">}</span><span class="s2">) has no &lt;</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">&gt;"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XmlconSensor.text">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.XmlconSensor.text">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the stripped text of a direct child *tag*, or ``None`` if absent.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tag : str</span>
+<span class="sd">            The child element name.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str or None</span>
+<span class="sd">            The text, or ``None`` when the element has no such child.</span>
+<span class="sd">        """</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="XmlconInstrument">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.XmlconInstrument">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">XmlconInstrument</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The parsed ``&lt;Instrument&gt;`` of an ``.xmlcon``."""</span>
+
+    <span class="c1">#: The instrument name, e.g. ``"SBE 911plus/917plus CTD"``.</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: Sea-Bird's ``Instrument Type`` code (8 is the 911plus).</span>
+    <span class="n">instrument_type</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: Number of frequency channels suppressed (0–2).</span>
+    <span class="n">frequency_channels_suppressed</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: Number of voltage words suppressed (0–4); each word is two channels.</span>
+    <span class="n">voltage_words_suppressed</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: Scans averaged by the deck unit.</span>
+    <span class="n">scans_to_average</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: Whether the deck unit appends the ship's NMEA position to each scan.</span>
+    <span class="n">nmea_position_added</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="c1">#: Whether the deck unit appends the ship's NMEA time to each scan.</span>
+    <span class="n">nmea_time_added</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="c1">#: Whether the deck unit appends the ship's NMEA depth to each scan.</span>
+    <span class="n">nmea_depth_added</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="c1">#: Whether the PC's scan time is appended to each scan.</span>
+    <span class="n">scan_time_added</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="c1">#: Whether a surface PAR voltage is appended to each scan.</span>
+    <span class="n">surface_par_added</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="c1">#: The sensors, in index order.</span>
+    <span class="n">sensors</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">XmlconSensor</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_frequency</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Number of frequency channels present (5 minus those suppressed)."""</span>
+        <span class="k">return</span> <span class="n">N_FREQUENCY_CHANNELS</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_channels_suppressed</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Number of voltage channels present (8 minus two per suppressed word)."""</span>
+        <span class="k">return</span> <span class="n">N_VOLTAGE_CHANNELS</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">voltage_words_suppressed</span>
+
+<div class="viewcode-block" id="XmlconInstrument.by_element">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.XmlconInstrument.by_element">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">by_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">XmlconSensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Return the sensors with element tag *element*, in index order.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        element : str</span>
+<span class="sd">            The element tag, e.g. ``"ConductivitySensor"``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of XmlconSensor</span>
+<span class="sd">            Possibly empty.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensors</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">element</span> <span class="o">==</span> <span class="n">element</span><span class="p">]</span></div>
+</div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_int</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">else</span> <span class="n">default</span>
+
+
+<div class="viewcode-block" id="parse_xmlcon">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.parse_xmlcon">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_xmlcon</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XmlconInstrument</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Parse the text of an SBE 911plus ``.xmlcon``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    text : str</span>
+<span class="sd">        The whole file, already decoded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    XmlconInstrument</span>
+<span class="sd">        The instrument settings and its sensors.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the file has no ``&lt;Instrument&gt;`` or ``&lt;SensorArray&gt;``, or if the number of</span>
+<span class="sd">        sensors does not match the channels the suppression settings leave: a layout ctdcast</span>
+<span class="sd">        would otherwise read into the wrong channels.</span>
+<span class="sd">    """</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\r\n</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\r</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">_RE_DECLARATION</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">inst</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"Instrument"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">inst</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">".xmlcon has no &lt;Instrument&gt; element"</span><span class="p">)</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">inst</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"SensorArray"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">".xmlcon has no &lt;SensorArray&gt; element"</span><span class="p">)</span>
+
+    <span class="n">fsup</span> <span class="o">=</span> <span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"FrequencyChannelsSuppressed"</span><span class="p">)</span>
+    <span class="n">vsup</span> <span class="o">=</span> <span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"VoltageWordsSuppressed"</span><span class="p">)</span>
+    <span class="n">n_freq</span> <span class="o">=</span> <span class="n">N_FREQUENCY_CHANNELS</span> <span class="o">-</span> <span class="n">fsup</span>
+    <span class="n">n_expected</span> <span class="o">=</span> <span class="n">n_freq</span> <span class="o">+</span> <span class="n">N_VOLTAGE_CHANNELS</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">vsup</span>
+    <span class="n">size_attr</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Size"</span><span class="p">)</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_expected</span> <span class="ow">or</span> <span class="p">(</span>
+        <span class="n">size_attr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">size_attr</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_expected</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">".xmlcon lists </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span><span class="si">}</span><span class="s2"> sensors (Size=</span><span class="si">{</span><span class="n">size_attr</span><span class="si">}</span><span class="s2">), but "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">fsup</span><span class="si">}</span><span class="s2"> suppressed frequency channel(s) and </span><span class="si">{</span><span class="n">vsup</span><span class="si">}</span><span class="s2"> suppressed voltage word(s) "</span>
+            <span class="sa">f</span><span class="s2">"leave </span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> channels"</span>
+        <span class="p">)</span>
+
+    <span class="n">bodies</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)):</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_RE_SENSOR_SPAN</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">text</span><span class="p">)}</span>
+    <span class="n">seen</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">sensors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">XmlconSensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">wrapper</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">wrapper</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"index"</span><span class="p">,</span> <span class="s2">"-1"</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wrapper</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">".xmlcon &lt;Sensor index=</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&gt; must hold exactly one element"</span>
+            <span class="p">)</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="n">wrapper</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">element</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">tag</span>
+        <span class="n">seen</span><span class="p">[</span><span class="n">element</span><span class="p">]</span> <span class="o">=</span> <span class="n">seen</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">comment</span> <span class="o">=</span> <span class="n">_COMMENT_FOR_ELEMENT</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">element</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">_INDEXED_ELEMENTS</span> <span class="ow">and</span> <span class="n">seen</span><span class="p">[</span><span class="n">element</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">comment</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">comment</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">seen</span><span class="p">[</span><span class="n">element</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">kind</span><span class="p">,</span> <span class="n">number</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"frequency"</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span> <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="n">n_freq</span> <span class="k">else</span> <span class="p">(</span><span class="s2">"voltage"</span><span class="p">,</span> <span class="n">index</span> <span class="o">-</span> <span class="n">n_freq</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">sensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">XmlconSensor</span><span class="p">(</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                <span class="n">element</span><span class="o">=</span><span class="n">element</span><span class="p">,</span>
+                <span class="n">sensor_id</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"SensorID"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="n">serial</span><span class="o">=</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s2">"SerialNumber"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                <span class="n">calibration_date</span><span class="o">=</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s2">"CalibrationDate"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span>
+                <span class="n">number</span><span class="o">=</span><span class="n">number</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">,</span>
+                <span class="n">body</span><span class="o">=</span><span class="n">bodies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="n">node</span><span class="o">=</span><span class="n">node</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sensors</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">".xmlcon sensor indices are not 0..N-1 in order"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">XmlconInstrument</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="p">(</span><span class="n">inst</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s2">"Name"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+        <span class="n">instrument_type</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">inst</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Type"</span><span class="p">,</span> <span class="s2">"-1"</span><span class="p">)),</span>
+        <span class="n">frequency_channels_suppressed</span><span class="o">=</span><span class="n">fsup</span><span class="p">,</span>
+        <span class="n">voltage_words_suppressed</span><span class="o">=</span><span class="n">vsup</span><span class="p">,</span>
+        <span class="n">scans_to_average</span><span class="o">=</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"ScansToAverage"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">nmea_position_added</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"NmeaPositionDataAdded"</span><span class="p">)),</span>
+        <span class="n">nmea_time_added</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"NmeaTimeAdded"</span><span class="p">)),</span>
+        <span class="n">nmea_depth_added</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"NmeaDepthDataAdded"</span><span class="p">)),</span>
+        <span class="n">scan_time_added</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"ScanTimeAdded"</span><span class="p">)),</span>
+        <span class="n">surface_par_added</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">_int</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="s2">"SurfaceParVoltageAdded"</span><span class="p">)),</span>
+        <span class="n">sensors</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">sensors</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="read_xmlcon">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.read_xmlcon">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_xmlcon</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">XmlconInstrument</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Read and parse an ``.xmlcon`` file.</span>
+
+<span class="sd">    The file is decoded as Latin-1, deliberately rather than UTF-8: Seasave writes text in the</span>
+<span class="sd">    Windows code page, and Latin-1 decodes every byte without raising.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : pathlib.Path or str</span>
+<span class="sd">        The ``.xmlcon`` file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (XmlconInstrument, str)</span>
+<span class="sd">        The parsed instrument and the file's text, verbatim (for ``raw_metadata``).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        See :func:`parse_xmlcon`.</span>
+<span class="sd">    """</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"latin-1"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parse_xmlcon</span><span class="p">(</span><span class="n">text</span><span class="p">),</span> <span class="n">text</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cnv_block</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Rebuild the ``&lt;sensor Channel=…&gt;`` block a CNV header embeds for *sensor*.</span>
+
+<span class="sd">    The CNV block indents the sensor element two spaces deeper than ``&lt;sensor&gt;``, which sits</span>
+<span class="sd">    two in from ``&lt;Sensors&gt;``; the ``.xmlcon`` element sits eight in.  Dedenting by four and</span>
+<span class="sd">    adding the channel comment reproduces the CNV text.  An unused (``NotInUse``) slot is</span>
+<span class="sd">    written as the comment alone, as DatCnv writes it.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">element</span> <span class="o">==</span> <span class="s2">"NotInUse"</span><span class="p">:</span>
+        <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ln</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span> <span class="k">if</span> <span class="n">ln</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"    "</span><span class="p">)</span> <span class="k">else</span> <span class="n">ln</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="n">sensor</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">"Frequency"</span> <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"frequency"</span> <span class="k">else</span> <span class="s2">"A/D voltage"</span>
+    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="sa">f</span><span class="s1">'&lt;sensor Channel="</span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">" &gt;'</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"    &lt;!-- </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">number</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">comment</span><span class="si">}</span><span class="s2"> --&gt;"</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">lines</span><span class="p">,</span>
+            <span class="s2">"  &lt;/sensor&gt;"</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="sensor_records">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.sensor_records">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sensor_records</span><span class="p">(</span><span class="n">instrument</span><span class="p">:</span> <span class="n">XmlconInstrument</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return one raw record per sensor, shaped like ``parse_sensor_block``'s.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    instrument : XmlconInstrument</span>
+<span class="sd">        A parsed ``.xmlcon``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of dict</span>
+<span class="sd">        Keys ``channel`` (1-based), ``element``, ``sensor_id``, ``serial``,</span>
+<span class="sd">        ``calibration_date``, ``slope``, ``offset`` (``"1.0"`` / ``"0.0"`` when absent),</span>
+<span class="sd">        ``comment`` and ``raw_block``, as</span>
+<span class="sd">        :func:`ctdcast.config.cnv_header.parse_sensor_block` returns them for a CNV header.</span>
+<span class="sd">    """</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">instrument</span><span class="o">.</span><span class="n">sensors</span><span class="p">:</span>
+        <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Slope"</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">)</span>
+        <span class="n">unused</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">element</span> <span class="o">==</span> <span class="s2">"NotInUse"</span>  <span class="c1"># DatCnv writes an unused slot with no element</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"channel"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">"element"</span><span class="p">:</span> <span class="s2">""</span> <span class="k">if</span> <span class="n">unused</span> <span class="k">else</span> <span class="n">s</span><span class="o">.</span><span class="n">element</span><span class="p">,</span>
+                <span class="s2">"sensor_id"</span><span class="p">:</span> <span class="s2">""</span> <span class="k">if</span> <span class="n">unused</span> <span class="k">else</span> <span class="n">s</span><span class="o">.</span><span class="n">sensor_id</span><span class="p">,</span>
+                <span class="s2">"serial"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">serial</span><span class="p">,</span>
+                <span class="s2">"calibration_date"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">calibration_date</span><span class="p">,</span>
+                <span class="s2">"slope"</span><span class="p">:</span> <span class="n">slope</span> <span class="k">if</span> <span class="n">slope</span> <span class="k">else</span> <span class="s2">"1.0"</span><span class="p">,</span>
+                <span class="s2">"offset"</span><span class="p">:</span> <span class="n">offset</span> <span class="k">if</span> <span class="n">offset</span> <span class="k">else</span> <span class="s2">"0.0"</span><span class="p">,</span>
+                <span class="s2">"comment"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span>
+                <span class="s2">"raw_block"</span><span class="p">:</span> <span class="n">_cnv_block</span><span class="p">(</span><span class="n">s</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">records</span></div>
+
+
+
+<span class="c1"># --- seabirdscientific coefficient objects -------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="temperature_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.temperature_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">temperature_coefficients</span><span class="p">(</span>
+    <span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">TemperatureFrequencyCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the frequency-temperature coefficients (G, H, I, J, F0) of *sensor*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        A ``TemperatureSensor`` with ``UseG_J = 1``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.TemperatureFrequencyCoefficients</span>
+<span class="sd">        Slope and Offset are not part of it; the reader applies them.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the sensor uses the older A–D equation (``UseG_J = 0``), which ctdcast does not</span>
+<span class="sd">        convert.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"UseG_J"</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"1"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"temperature sensor </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: only the G-J equation is supported"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">TemperatureFrequencyCoefficients</span><span class="p">(</span>
+        <span class="n">g</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"G"</span><span class="p">),</span>
+        <span class="n">h</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"H"</span><span class="p">),</span>
+        <span class="n">i</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"I"</span><span class="p">),</span>
+        <span class="n">j</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"J"</span><span class="p">),</span>
+        <span class="n">f0</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"F0"</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="conductivity_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.conductivity_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">conductivity_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">ConductivityCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the conductivity coefficients (equation 1: G, H, I, J, CPcor, CTcor, WBOTC).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        A ``ConductivitySensor`` with ``UseG_J = 1``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.ConductivityCoefficients</span>
+<span class="sd">        Slope and Offset are not part of it; the reader applies them.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the sensor uses the older equation or has no equation-1 coefficients.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"UseG_J"</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"1"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"conductivity sensor </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: only the G-J equation is supported"</span>
+        <span class="p">)</span>
+    <span class="n">eq</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"Coefficients[@equation='1']"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">eq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"conductivity sensor </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: no equation-1 coefficients"</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">v</span><span class="p">(</span><span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">eq</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"nan"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">ConductivityCoefficients</span><span class="p">(</span>
+        <span class="n">g</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"G"</span><span class="p">),</span>
+        <span class="n">h</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"H"</span><span class="p">),</span>
+        <span class="n">i</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"I"</span><span class="p">),</span>
+        <span class="n">j</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"J"</span><span class="p">),</span>
+        <span class="n">cpcor</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"CPcor"</span><span class="p">),</span>
+        <span class="n">ctcor</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"CTcor"</span><span class="p">),</span>
+        <span class="n">wbotc</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"WBOTC"</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="pressure_digiquartz_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.pressure_digiquartz_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pressure_digiquartz_coefficients</span><span class="p">(</span>
+    <span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">PressureDigiquartzCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the Digiquartz pressure coefficients, including Slope, Offset and AD590M/B.</span>
+
+<span class="sd">    seabirdscientific's Digiquartz converter applies the Slope and Offset itself (in dbar),</span>
+<span class="sd">    so they belong in the coefficient object, and the reader must not apply them again.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        A ``PressureSensor`` (Digiquartz with temperature compensation).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.PressureDigiquartzCoefficients</span>
+<span class="sd">        The coefficients.</span>
+<span class="sd">    """</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">value</span>
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">PressureDigiquartzCoefficients</span><span class="p">(</span>
+        <span class="n">c1</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"C1"</span><span class="p">),</span> <span class="n">c2</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"C2"</span><span class="p">),</span> <span class="n">c3</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"C3"</span><span class="p">),</span> <span class="n">d1</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"D1"</span><span class="p">),</span> <span class="n">d2</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"D2"</span><span class="p">),</span>
+        <span class="n">t1</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"T1"</span><span class="p">),</span> <span class="n">t2</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"T2"</span><span class="p">),</span> <span class="n">t3</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"T3"</span><span class="p">),</span> <span class="n">t4</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"T4"</span><span class="p">),</span> <span class="n">t5</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"T5"</span><span class="p">),</span>
+        <span class="n">ad590m</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"AD590M"</span><span class="p">),</span> <span class="n">ad590b</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"AD590B"</span><span class="p">),</span>
+        <span class="n">slope</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"Slope"</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">),</span>
+    <span class="p">)</span>  <span class="c1"># fmt: skip</span></div>
+
+
+
+<div class="viewcode-block" id="oxygen43_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.oxygen43_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">oxygen43_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">Oxygen43Coefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the SBE 43 coefficients of the Sea-Bird (2007 and later) equation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        An ``OxygenSensor`` with ``Use2007Equation = 1``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.Oxygen43Coefficients</span>
+<span class="sd">        The coefficients.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the sensor uses the Owens-Millard equation, which ctdcast does not convert.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Use2007Equation"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"1"</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"oxygen sensor </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: only the 2007 Sea-Bird equation is supported"</span>
+        <span class="p">)</span>
+    <span class="n">eq</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"CalibrationCoefficients[@equation='1']"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">eq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"oxygen sensor </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: no equation-1 coefficients"</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">v</span><span class="p">(</span><span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">((</span><span class="n">eq</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"nan"</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">Oxygen43Coefficients</span><span class="p">(</span>
+        <span class="n">soc</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"Soc"</span><span class="p">),</span> <span class="n">v_offset</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"offset"</span><span class="p">),</span> <span class="n">tau_20</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"Tau20"</span><span class="p">),</span>
+        <span class="n">a</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"A"</span><span class="p">),</span> <span class="n">b</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"B"</span><span class="p">),</span> <span class="n">c</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"C"</span><span class="p">),</span> <span class="n">e</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"E"</span><span class="p">),</span>
+        <span class="n">d0</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"D0"</span><span class="p">),</span> <span class="n">d1</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"D1"</span><span class="p">),</span> <span class="n">d2</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"D2"</span><span class="p">),</span>
+        <span class="n">h1</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"H1"</span><span class="p">),</span> <span class="n">h2</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"H2"</span><span class="p">),</span> <span class="n">h3</span><span class="o">=</span><span class="n">v</span><span class="p">(</span><span class="s2">"H3"</span><span class="p">),</span>
+    <span class="p">)</span>  <span class="c1"># fmt: skip</span></div>
+
+
+
+<div class="viewcode-block" id="eco_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.eco_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">eco_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">ECOCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ECO coefficients (scale factor and dark output) for a fluorometer or turbidity meter.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        A ``FluoroWetlabECO_AFL_FL_Sensor`` (dark output ``Vblank``) or ``TurbidityMeter``</span>
+<span class="sd">        (dark output ``DarkVoltage``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.ECOCoefficients</span>
+<span class="sd">        ``slope`` = ScaleFactor and ``offset`` = the dark voltage, as</span>
+<span class="sd">        ``convert_eco`` computes ``slope * (V - offset)``.</span>
+<span class="sd">    """</span>
+    <span class="n">dark</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Vblank"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dark</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dark</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"DarkVoltage"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dark</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">element</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2">: no dark output (Vblank/DarkVoltage)"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">ECOCoefficients</span><span class="p">(</span><span class="n">slope</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"ScaleFactor"</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">dark</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="altimeter_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.altimeter_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">altimeter_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">AltimeterCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return altimeter coefficients (ScaleFactor as ``slope``, Offset).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        An ``AltimeterSensor``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.AltimeterCoefficients</span>
+<span class="sd">        The coefficients.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">AltimeterCoefficients</span><span class="p">(</span>
+        <span class="n">slope</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"ScaleFactor"</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="cstar_coefficients">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.xmlcon.cstar_coefficients">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cstar_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cc</span><span class="o">.</span><span class="n">CstarCoefficients</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return WET Labs C-Star coefficients (M, B, path length in m).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sensor : XmlconSensor</span>
+<span class="sd">        A ``WET_LabsCStar``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    seabirdscientific.cal_coefficients.CstarCoefficients</span>
+<span class="sd">        The coefficients.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">cc</span><span class="o">.</span><span class="n">CstarCoefficients</span><span class="p">(</span>
+        <span class="n">m</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"M"</span><span class="p">),</span> <span class="n">b</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"B"</span><span class="p">),</span> <span class="n">path_length</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="s2">"PathLength"</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

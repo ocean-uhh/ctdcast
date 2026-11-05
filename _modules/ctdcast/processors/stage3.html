@@ -1,0 +1,763 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.stage3 &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.stage3</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.stage3</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Stage 3 — QC, calibration, and derived-variable orchestrator.</span>
+
+<span class="sd">Stage3 is iterative: re-run it as calibration improves.  Each run applies the</span>
+<span class="sd">per-sensor conductivity slope and offset and the processing steps configured for the</span>
+<span class="sd">cruise (``data_processing:``), re-derives salinity, derives SBE 43 oxygen from the</span>
+<span class="sd">voltage where a cast carries it, and then runs gross-range and spike QC on the</span>
+<span class="sd">corrected values.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.derive</span><span class="w"> </span><span class="kn">import</span> <span class="n">derive_salinity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.preferred_sensors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">GROUPS</span><span class="p">,</span>
+    <span class="n">SensorGroup</span><span class="p">,</span>
+    <span class="n">has_choice</span><span class="p">,</span>
+    <span class="n">has_use</span><span class="p">,</span>
+    <span class="n">index_of</span><span class="p">,</span>
+    <span class="n">preferred_sensor_names</span><span class="p">,</span>
+    <span class="n">resolve_preferred</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">qc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.corrections</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">derive_oxygen</span><span class="p">,</span>
+    <span class="n">flag_missing</span><span class="p">,</span>
+    <span class="n">resolve_slope_offset</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PL_CALIBRATED</span><span class="p">,</span>
+    <span class="n">add_processing_level</span><span class="p">,</span>
+    <span class="n">append_history</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.products</span><span class="w"> </span><span class="kn">import</span> <span class="n">describe_product_steps</span><span class="p">,</span> <span class="n">make_product</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.sensor_catalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_cast_sensor_catalog</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">group_by_cast</span><span class="p">,</span>
+    <span class="n">is_up_to_date</span><span class="p">,</span>
+    <span class="n">matches_tags</span><span class="p">,</span>
+    <span class="n">parse_stage</span><span class="p">,</span>
+    <span class="n">stage_path</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.steps</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">STEPS</span><span class="p">,</span>
+    <span class="n">StepContext</span><span class="p">,</span>
+    <span class="n">iter_steps</span><span class="p">,</span>
+    <span class="n">validate_data_processing</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_widened</span><span class="p">,</span> <span class="n">widen_floats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.netcdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">write</span> <span class="k">as</span> <span class="n">_write_nc</span>
+
+
+<div class="viewcode-block" id="stage3">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage3.stage3">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stage3</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"?"</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="n">StepContext</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply the configured processing steps, derived variables and QC to a per-cast Dataset.</span>
+
+<span class="sd">    Applies, in order:</span>
+
+<span class="sd">    1. The per-sensor conductivity slope and offset (``data_processing.slope_offset``), as</span>
+<span class="sd">       Sea-Bird applies them when it converts the raw counts.</span>
+<span class="sd">    2. ``data_processing.steps``, in the order listed: ``wildedit``</span>
+<span class="sd">       and ``loopedit`` (:mod:`ctdcast.processors.editing`), ``filter`` and ``window_filter``</span>
+<span class="sd">       (:mod:`ctdcast.processors.filtering`), ``alignctd`` and ``celltm``</span>
+<span class="sd">       (:func:`ctdcast.processors.corrections.apply_corrections`), from</span>
+<span class="sd">       :data:`ctdcast.processors.steps.STEPS`.  A step ctdcast does not apply yet is skipped</span>
+<span class="sd">       (``run`` refuses it unless ``data_processing.allow_unapplied``), with a warning and a</span>
+<span class="sd">       ``history`` note.  The order they ran in is written to the ``data_processing_steps``</span>
+<span class="sd">       attribute.</span>
+<span class="sd">    3. Re-derives practical salinity whenever a step changed conductivity, temperature or</span>
+<span class="sd">       pressure.</span>
+<span class="sd">    4. Derives ``ctd_oxygen`` from the SBE 43 voltage on a cast that carries ``oxygen_raw_&lt;N&gt;``</span>
+<span class="sd">       and no converted oxygen (:func:`ctdcast.processors.corrections.derive_oxygen`), with the</span>
+<span class="sd">       window in ``data_processing.oxygen``.</span>
+<span class="sd">    5. Two-tier gross-range QC and the QARTOD spike test, on the corrected values, using the</span>
+<span class="sd">       package defaults merged with ``qc.gross_range`` / ``qc.spike``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        Per-cast Dataset (dim=time), already through stage1 and stage2.</span>
+<span class="sd">    cruise_cfg : dict or None</span>
+<span class="sd">        The settings from :func:`ctdcast.config.layout.processing_view`: ``data_processing``</span>
+<span class="sd">        and ``qc`` are read here.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number, for per-cast-range values.</span>
+<span class="sd">    cast_label : str</span>
+<span class="sd">        How the cast is named in warnings (e.g. ``"011"``).</span>
+<span class="sd">    context : StepContext, optional</span>
+<span class="sd">        Filled in as the steps run (Wild Edit's marks, Loop Edit's scans), for the products</span>
+<span class="sd">        made from this cast in the same run.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        New Dataset; input is not mutated.  Values read from a file (stored float32) are</span>
+<span class="sd">        computed on in float64.</span>
+<span class="sd">    """</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">widen_floats</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">dp</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_processing"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="c1"># Step 1: per-sensor slope and offset, before anything else (Sea-Bird applies them at datcnv).</span>
+    <span class="n">ds</span><span class="p">,</span> <span class="n">calibrated</span> <span class="o">=</span> <span class="n">_apply_slope_offset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"slope_offset"</span><span class="p">),</span> <span class="n">cast_number</span><span class="p">)</span>
+
+    <span class="c1"># Step 2: the listed steps, in order (validated by run(), before any cast).</span>
+    <span class="n">ctx</span> <span class="o">=</span> <span class="n">context</span> <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">StepContext</span><span class="p">()</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">cast_number</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span> <span class="o">=</span> <span class="n">cast_number</span><span class="p">,</span> <span class="n">cast_label</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">calibrated</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">calibrated</span><span class="p">:</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">applied</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"slope_offset"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">iter_steps</span><span class="p">(</span><span class="n">dp</span><span class="p">):</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">STEPS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">apply</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Recorded where it falls in the order, so history reads as the steps ran.</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">applied</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> (not applied)"</span><span class="p">)</span>
+            <span class="n">append_history</span><span class="p">(</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: not yet applied by ctdcast, skipped"</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">applied</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">skipped</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" "</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">applied</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"(not applied)"</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">skipped</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">"data_processing step(s) not yet applied by ctdcast, skipped: "</span>
+            <span class="o">+</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">skipped</span><span class="p">)),</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">changed</span><span class="p">,</span> <span class="n">edge_masks</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">changed</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">edge_masks</span>
+
+    <span class="c1"># Step 3: re-derive salinity whenever conductivity, temperature or pressure changed.</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"ctd_temperature"</span><span class="p">))</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">==</span> <span class="s2">"pressure"</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">changed</span>
+    <span class="p">):</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">derive_salinity</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">edge_masks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"conductivity"</span><span class="p">):</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="n">var</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">sal</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"ctd_salinity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"ctd_salinity"</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">sal</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                        <span class="n">flag_missing</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">sal</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+                        <span class="k">break</span>
+        <span class="k">if</span> <span class="n">calibrated</span><span class="p">:</span>
+            <span class="c1"># Salinity now embodies the calibration, but keeps no conversion value: it was</span>
+            <span class="c1"># computed, never instrument data.</span>
+            <span class="k">for</span> <span class="n">_sal</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"ctd_salinity_1"</span><span class="p">,</span> <span class="s2">"ctd_salinity_2"</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">_sal</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                    <span class="n">add_processing_level</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">_sal</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">PL_CALIBRATED</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+            <span class="s2">"salinity re-derived from "</span>
+            <span class="o">+</span> <span class="p">(</span><span class="s2">"calibrated and corrected"</span> <span class="k">if</span> <span class="n">calibrated</span> <span class="k">else</span> <span class="s2">"corrected"</span><span class="p">)</span>
+            <span class="o">+</span> <span class="s2">" conductivity"</span><span class="p">,</span>
+            <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Step 4: oxygen from the SBE 43 voltage (hex casts; a CNV's own oxygen is left alone).</span>
+    <span class="n">ds</span><span class="p">,</span> <span class="n">_oxygen</span> <span class="o">=</span> <span class="n">derive_oxygen</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">dp</span><span class="p">,</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">cast_label</span><span class="p">,</span> <span class="n">marked</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">applied</span><span class="p">:</span>
+        <span class="c1"># The order the steps ran in, for the file and for the cast page's corrections table.</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"data_processing_steps"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">applied</span><span class="p">)</span>
+
+    <span class="c1"># Step 5: gross-range + spike QC, judging the corrected values.</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">apply_gross_range</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"qc"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"gross_range"</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">qc</span><span class="o">.</span><span class="n">apply_spike_test</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"qc"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"spike"</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="product_path">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage3.product_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">product_path</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return where a cast's product is written: ``&lt;root&gt;/products/&lt;name&gt;/&lt;stem&gt;_&lt;name&gt;.nc``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : pathlib.Path</span>
+<span class="sd">        The CTD stage root (``ctd_root``).</span>
+<span class="sd">    stem : str</span>
+<span class="sd">        The cast's file stem (``MIXSED2_050``).</span>
+<span class="sd">    name : str</span>
+<span class="sd">        The product's name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pathlib.Path</span>
+<span class="sd">        The product file's path.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">"products"</span> <span class="o">/</span> <span class="n">name</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.nc"</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_products</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">products</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span>
+    <span class="n">cast_id</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+    <span class="n">marked</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Make each configured product of one cast in memory; a failure names the product only."""</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="o">*</span><span class="n">cast_id</span><span class="p">)</span>
+    <span class="n">made</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">make_product</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">cast_number</span><span class="o">=</span><span class="n">cast_id</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">marked</span><span class="o">=</span><span class="n">marked</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  FAILED product </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2"> of cast </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">  "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">made</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">product</span><span class="p">,</span> <span class="n">out</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">made</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stamp_product_divergence</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">made</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Record on the stage-3 file the products made, and each Bin Average that kept part of a flagged scan.</span>
+
+<span class="sd">    ``products_made`` names every product made and its steps, so the cast's processing record</span>
+<span class="sd">    lists the product whether or not anything was flagged.  The cast page reads the partly</span>
+<span class="sd">    flagged count (the products themselves are separate files), so the divergence from</span>
+<span class="sd">    seabirdscientific is shown where the cast's processing is.</span>
+<span class="sd">    """</span>
+    <span class="n">made_lines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">describe_product_steps</span><span class="p">(</span><span class="n">product</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'steps'</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">for</span> <span class="n">product</span><span class="p">,</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">made</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">made_lines</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"products_made"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">" | "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">made_lines</span><span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">'bin_average_partly_flagged'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">for</span> <span class="n">product</span><span class="p">,</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">made</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bin_average_partly_flagged_scans"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"products_bin_average_partly_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">" | "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_products</span><span class="p">(</span>
+    <span class="n">made</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]],</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Write the products made by :func:`_make_products`; return how many failed (made or written)."""</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">product</span><span class="p">,</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">made</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">failed</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">product_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">stem</span><span class="p">,</span> <span class="n">product</span><span class="p">[</span><span class="s2">"name"</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_write_nc</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ok: </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="c1"># One product failing to write names that product only; the stage-3 file and the</span>
+            <span class="c1"># other products stand.  A file from an earlier run may still be there.</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  FAILED writing product </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">  "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">); any older </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is stale"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">failed</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_slope_offset</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Apply ``C' = slope * C + offset`` to each conductivity sensor configured for this cast.</span>
+
+<span class="sd">    Returns the new dataset (the input is not mutated) and the variables changed.  Each changed</span>
+<span class="sd">    variable records its slope, offset and the config entry they came from.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+    <span class="n">done</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">hit</span> <span class="o">=</span> <span class="n">resolve_slope_offset</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">hit</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">*</span> <span class="n">slope</span> <span class="o">+</span> <span class="n">offset</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"calibration_slope"</span><span class="p">]</span> <span class="o">=</span> <span class="n">slope</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"calibration_offset"</span><span class="p">]</span> <span class="o">=</span> <span class="n">offset</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"calibration_config"</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"calibration_note"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"conductivity = </span><span class="si">{</span><span class="n">slope</span><span class="si">:</span><span class="s2">.8g</span><span class="si">}</span><span class="s2"> * conductivity + </span><span class="si">{</span><span class="n">offset</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+        <span class="n">add_processing_level</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">PL_CALIBRATED</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">attrs</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"slope_offset: </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> slope=</span><span class="si">{</span><span class="n">slope</span><span class="si">:</span><span class="s2">.8g</span><span class="si">}</span><span class="s2"> offset=</span><span class="si">{</span><span class="n">offset</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">done</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">done</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_preferred_use</span><span class="p">(</span>
+    <span class="n">group</span><span class="p">:</span> <span class="n">SensorGroup</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the use (``primary`` / ``secondary``) that applies to this cast, or None.</span>
+
+<span class="sd">    The shared gate for both the attribute stamp and the composite build, so the two cannot</span>
+<span class="sd">    diverge.  Returns None when the group is undeclared for this cast, or when the cast has</span>
+<span class="sd">    no genuine primary-vs-secondary choice (single-sensor for this group — its one sensor is</span>
+<span class="sd">    already the plain composite).  Raises only when an **explicit range** names the channel a</span>
+<span class="sd">    single-sensor cast lacks.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On a malformed declaration / out-of-set value / conflicting overlap (via</span>
+<span class="sd">        :func:`resolve_preferred`), or an explicit range naming a channel the cast lacks.</span>
+<span class="sd">    """</span>
+    <span class="n">use</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">resolve_preferred</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_choice</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="o">==</span> <span class="s2">"range"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_use</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">use</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2">: cast </span><span class="si">{</span><span class="n">cast_number</span><span class="si">}</span><span class="s2"> is declared </span><span class="si">{</span><span class="n">use</span><span class="si">!r}</span><span class="s2"> by an "</span>
+                <span class="sa">f</span><span class="s2">"explicit range, but it has no </span><span class="si">{</span><span class="n">use</span><span class="si">}</span><span class="s2"> sensor for "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">preferred_roles</span><span class="p">)</span><span class="si">}</span><span class="s2"> (a single-sensor cast)."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">use</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stamp_preferred_sensors</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Stamp the per-cast preferred-sensor choice onto *ds* in place (stage 3 only).</span>
+
+<span class="sd">    For each sensor group with a genuine choice on this cast, record both the choice word</span>
+<span class="sd">    (``preferred_pair`` / ``preferred_oxygen``) and the resolved physical sensors as</span>
+<span class="sd">    ``sensor_&lt;role&gt;_preferred`` — the ``SENSOR_*`` catalog variable names.  Holding the</span>
+<span class="sd">    catalog names (rather than bare serials) lets a consumer verify, at read time, that the</span>
+<span class="sd">    named channel still carries the expected serial.  Groups with no choice (single-sensor)</span>
+<span class="sd">    or no declaration leave no attribute — never the string ``"undeclared"``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        The stage-3 dataset, carrying the ``SENSOR_*`` catalog stage 1 built; mutated in</span>
+<span class="sd">        place.</span>
+<span class="sd">    cruise_cfg:</span>
+<span class="sd">        The settings from :func:`ctdcast.config.layout.processing_view` (``cruise_cfg[group.config_key]`` is the nested</span>
+<span class="sd">        declaration, or absent).</span>
+<span class="sd">    cast_number:</span>
+<span class="sd">        The cast's integer number; a lettered cast resolves by its number.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On a declaration that is not a mapping, a range missing its ``casts`` key, a config</span>
+<span class="sd">        value outside the closed set, conflicting overlapping ranges, or an explicit range</span>
+<span class="sd">        naming a channel the cast lacks.</span>
+<span class="sd">    """</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">GROUPS</span><span class="p">:</span>
+        <span class="n">use</span> <span class="o">=</span> <span class="n">_preferred_use</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># Names come from this cast's own catalog records, so each is a SENSOR_* variable</span>
+        <span class="c1"># present in ds by construction — no re-check needed here; the read-time check is</span>
+        <span class="c1"># the consumer's (a stamped name whose channel serial later disagrees = corruption).</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">use</span>
+        <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">catalog_name</span> <span class="ow">in</span> <span class="n">preferred_sensor_names</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">use</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="sa">f</span><span class="s2">"sensor_</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">_preferred"</span><span class="p">]</span> <span class="o">=</span> <span class="n">catalog_name</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_preferred_composites</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Build the plain composite variables from each group's preferred channel, in place.</span>
+
+<span class="sd">    For a cast with a genuine choice, copies the preferred indexed channel to the plain</span>
+<span class="sd">    (unsuffixed) name for every group member — ``ctd_temperature_&lt;idx&gt;`` → ``ctd_temperature``,</span>
+<span class="sd">    and likewise ``ctd_salinity``, ``conductivity``, ``ctd_oxygen`` — carrying the channel's</span>
+<span class="sd">    ``{var}_qc`` companion so QC propagates.  The composite is a **per-cast selection, never a</span>
+<span class="sd">    blend**; an undeclared dual cast gets no composite (so downstream it is absent, never a</span>
+<span class="sd">    silent ``_1`` fallback).  A single-sensor cast has no choice and is left untouched: its</span>
+<span class="sd">    T/S/O already carry the plain name (stage-1 promotion), while conductivity keeps</span>
+<span class="sd">    ``conductivity_1`` (stage 1 does not promote it), so such a cast has no plain</span>
+<span class="sd">    ``conductivity``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        The stage-3 dataset; mutated in place.</span>
+<span class="sd">    cruise_cfg:</span>
+<span class="sd">        The settings from :func:`ctdcast.config.layout.processing_view`.</span>
+<span class="sd">    cast_number:</span>
+<span class="sd">        The cast's integer number.</span>
+<span class="sd">    """</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">GROUPS</span><span class="p">:</span>
+        <span class="n">use</span> <span class="o">=</span> <span class="n">_preferred_use</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">index_of</span><span class="p">(</span><span class="n">use</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">members</span><span class="p">:</span>
+            <span class="n">src</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="n">src</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">da</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">src</span><span class="p">]</span>
+            <span class="c1"># Carry the source channel's attrs (units, standard_name, calibration provenance,</span>
+            <span class="c1"># processing_level) so the composite is self-describing before the writer runs.</span>
+            <span class="c1"># But a composite is a per-cast *selection* of one channel, not a renamed source</span>
+            <span class="c1"># column, so drop the source-name attrs: `original_name` (and the pre-0.4.0</span>
+            <span class="c1"># `cnv_original_name` / `source_variable`) are the rename-table keys</span>
+            <span class="c1"># (readers.metadata.source_to_canonical) and would collide with the indexed</span>
+            <span class="c1"># channel's own entry, mislabeling which CNV column became which variable. Drop</span>
+            <span class="c1"># long_name too, so the writer sets the composite's own ("… (preferred pair)"),</span>
+            <span class="c1"># and add the selection provenance.</span>
+            <span class="n">_drop</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">"long_name"</span><span class="p">,</span>
+                <span class="s2">"original_name"</span><span class="p">,</span>
+                <span class="s2">"cnv_original_name"</span><span class="p">,</span>
+                <span class="s2">"source_variable"</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">da</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_drop</span><span class="p">}</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"preferred </span><span class="si">{</span><span class="n">use</span><span class="si">}</span><span class="s2"> channel; copied from </span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2"> per </span><span class="si">{</span><span class="n">group</span><span class="o">.</span><span class="n">config_key</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">member</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">da</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">qc_src</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2">_qc"</span>
+            <span class="k">if</span> <span class="n">qc_src</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="c1"># Drop the source's long_name ("Quality flag for conductivity_1") so the</span>
+                <span class="c1"># writer sets the composite's ("Quality flag for conductivity").</span>
+                <span class="n">qc_attrs</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc_src</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"long_name"</span>
+                <span class="p">}</span>
+                <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                    <span class="n">ds</span><span class="p">[</span><span class="n">qc_src</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">ds</span><span class="p">[</span><span class="n">qc_src</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">qc_attrs</span>
+                <span class="p">)</span>
+
+
+<div class="viewcode-block" id="run">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.stage3.run">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply stage 3 (QC + calibration) across the casts under *root*.</span>
+
+<span class="sd">    Reads each cast's **stage-2** file, applies :func:`stage3`, and writes a new</span>
+<span class="sd">    ``stage3/&lt;stem&gt;_stage3.nc`` — never in place.  Reads are strict: a cast with</span>
+<span class="sd">    no stage-2 file is skipped with a warning (its soak/deck flags were never</span>
+<span class="sd">    applied, so QC'ing it would manufacture a product whose filename lies).</span>
+<span class="sd">    Called by :func:`ctdcast.processors.process` with ``stage=3``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root:</span>
+<span class="sd">        The CTD stage root (``ctd_root``).  Stage files live under</span>
+<span class="sd">        ``root/stage2/`` … ``root/stage3/``.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Rewrite the stage-3 file even when it already exists.  Without ``force``,</span>
+<span class="sd">        a cast whose ``stage3/&lt;stem&gt;_stage3.nc`` exists is skipped.</span>
+<span class="sd">    dry_run:</span>
+<span class="sd">        Print what would be processed without writing any output.</span>
+<span class="sd">    cast_tags:</span>
+<span class="sd">        If given, process only casts selected by these zero-padded tags</span>
+<span class="sd">        (e.g. ``{"042"}``), matched on the parsed cast identity.</span>
+<span class="sd">    cruise_info:</span>
+<span class="sd">        The config ``cruise_info:`` block.  When it declares ``data_mode: D``,</span>
+<span class="sd">        each stage-3 file is stamped ``data_mode = "D"``; if no calibration was</span>
+<span class="sd">        actually applied the delayed-mode claim is unsupported, so the cast is</span>
+<span class="sd">        named in a warning and the gap recorded in ``history``.</span>
+<span class="sd">    **kw:</span>
+<span class="sd">        Passed to :func:`stage3` (e.g. ``cruise_cfg``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Number of stage-3 files written (0 for dry_run).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    FileNotFoundError</span>
+<span class="sd">        If *root* does not exist or is not a directory.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"stage root not found: </span><span class="si">{</span><span class="n">root</span><span class="si">}</span><span class="s2">. Stage 1 creates it from the raw input, so run "</span>
+            <span class="s2">"--stage 1 first and check that the config's data: block sets cnv_dir or hex_dir."</span>
+        <span class="p">)</span>
+
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cruise_cfg"</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+    <span class="c1"># A declared ``D`` is a human claim about a finished cruise (OceanSITES table 4), not</span>
+    <span class="c1"># something stage 3 can infer from having applied a slope; stamp it per cast, and warn</span>
+    <span class="c1"># (naming the cast) when nothing in the config backs the claim.</span>
+    <span class="n">declare_delayed</span> <span class="o">=</span> <span class="nb">str</span><span class="p">((</span><span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_mode"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"D"</span>
+
+    <span class="c1"># A malformed correction block fails once, here, not as one error per cast.</span>
+    <span class="n">validate_data_processing</span><span class="p">((</span><span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_processing"</span><span class="p">))</span>
+    <span class="n">products</span> <span class="o">=</span> <span class="p">((</span><span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_processing"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"products"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">n_skipped</span> <span class="o">=</span> <span class="n">n_failed</span> <span class="o">=</span> <span class="n">n_products_failed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">cast_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">groups</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cast_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">matches_tags</span><span class="p">(</span><span class="n">cast_id</span><span class="p">,</span> <span class="n">cast_tags</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">input_path</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">cast_id</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># strict: stage 3 reads stage 2</span>
+        <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">num</span><span class="p">,</span> <span class="n">suffix</span> <span class="o">=</span> <span class="n">cast_id</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  skip (no stage 2): cast </span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">n_skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_stage</span><span class="p">(</span><span class="n">input_path</span><span class="p">)</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="n">parsed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">parsed</span> <span class="k">else</span> <span class="n">input_path</span><span class="o">.</span><span class="n">stem</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">stage_path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">stem</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="n">is_up_to_date</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">[</span><span class="n">input_path</span><span class="p">]):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  skip (up to date): </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">n_skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  [dry-run] stage 3 would process: </span><span class="si">{</span><span class="n">input_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">open_widened</span><span class="p">(</span><span class="n">input_path</span><span class="p">)</span>
+            <span class="n">steps_ctx</span> <span class="o">=</span> <span class="n">StepContext</span><span class="p">()</span>
+            <span class="n">ds_out</span> <span class="o">=</span> <span class="n">stage3</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cruise_cfg</span><span class="o">=</span><span class="n">cruise_cfg</span><span class="p">,</span>
+                <span class="n">cast_number</span><span class="o">=</span><span class="n">cast_id</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">cast_label</span><span class="o">=</span><span class="n">format_cast_id</span><span class="p">(</span><span class="o">*</span><span class="n">cast_id</span><span class="p">),</span>
+                <span class="n">context</span><span class="o">=</span><span class="n">steps_ctx</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Lineage: record the stage-2 file's id before the writer stamps ds_out's own</span>
+            <span class="c1"># fresh tracking_id (empty on a legacy stage-2 file that predates the id).</span>
+            <span class="n">_src_id</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tracking_id"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">_src_id</span><span class="p">:</span>
+                <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"source_tracking_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_src_id</span>
+            <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"processing_stage"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+            <span class="n">_stamp_preferred_sensors</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">,</span> <span class="n">cast_id</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">_build_preferred_composites</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">,</span> <span class="n">cast_id</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">declare_delayed</span><span class="p">:</span>
+                <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"data_mode"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"D"</span>
+                <span class="c1"># The claim is backed only if a calibration was actually applied — detected by</span>
+                <span class="c1"># the PL_CALIBRATED processing_level stage3 stamps when it calibrates, not by</span>
+                <span class="c1"># the presence of a config key that may carry no usable slope.</span>
+                <span class="n">calibrated</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
+                    <span class="n">PL_CALIBRATED</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds_out</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"processing_level"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds_out</span><span class="o">.</span><span class="n">data_vars</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">calibrated</span><span class="p">:</span>
+                    <span class="n">num</span><span class="p">,</span> <span class="n">suffix</span> <span class="o">=</span> <span class="n">cast_id</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">format_cast_id</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: data_mode 'D' declared but no calibration was "</span>
+                        <span class="s2">"applied; the delayed-mode claim is unsupported by anything in "</span>
+                        <span class="s2">"the file."</span><span class="p">,</span>
+                        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">append_history</span><span class="p">(</span>
+                        <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+                        <span class="s2">"data_mode=D declared but no calibration applied; "</span>
+                        <span class="s2">"delayed-mode claim unsupported"</span><span class="p">,</span>
+                        <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+                    <span class="p">)</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># prevent double-close in finally; file released before write</span>
+            <span class="n">made</span> <span class="o">=</span> <span class="n">_make_products</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">products</span><span class="p">,</span> <span class="n">cast_id</span><span class="p">,</span> <span class="n">steps_ctx</span><span class="o">.</span><span class="n">marked</span><span class="p">)</span>
+            <span class="n">_stamp_product_divergence</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">made</span><span class="p">)</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_write_nc</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ok: </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">n_products_failed</span> <span class="o">+=</span> <span class="n">_write_products</span><span class="p">(</span><span class="n">made</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">stem</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  FAILED: </span><span class="si">{</span><span class="n">input_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">n_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> written"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_skipped</span><span class="si">}</span><span class="s2"> skipped"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">n_failed</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_failed</span><span class="si">}</span><span class="s2"> FAILED"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_products_failed</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_products_failed</span><span class="si">}</span><span class="s2"> product file(s) FAILED"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"stage 3: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

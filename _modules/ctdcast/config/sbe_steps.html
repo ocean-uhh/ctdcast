@@ -1,0 +1,497 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.sbe_steps &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.sbe_steps</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.sbe_steps</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Translate a CNV header's SBE Data Processing steps into ctdcast ``data_processing`` steps.</span>
+
+<span class="sd">A Sea-Bird CNV records every module that ran on it (``# wildedit_date``, ``# filter_low_pass_tc_A``,</span>
+<span class="sd">…).  :func:`processing_steps` turns that record into the list of steps ctdcast's stage 3 understands, in</span>
+<span class="sd">the order the modules ran, with the parameters each used and SBE channel names replaced by</span>
+<span class="sd">ctdcast's variable names.  It is how a cruise's own processing is reproduced from the ``.hex``: read</span>
+<span class="sd">the CNV the cruise made, write the equivalent ``data_processing:`` block, run it, compare.</span>
+
+<span class="sd">Each step is a one-key mapping ``{module: parameters}``; a module that ran twice gives two steps.</span>
+<span class="sd">Sea-Bird's Filter, which applies two time constants (A and B) in one run, becomes two ``filter``</span>
+<span class="sd">steps.  Modules that are not steps in ctdcast are reported in ``skipped`` with the reason:</span>
+<span class="sd">``datcnv`` (stage 1), ``Derive`` (ctdcast derives salinity, density and oxygen itself), ``strip``</span>
+<span class="sd">(a product's variable list) and ``bottlesum`` (bottle files).  One CNV header shows only the processing</span>
+<span class="sd">that produced that file; a cruise's other products have their own headers.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_adv_items</span><span class="p">,</span>
+    <span class="n">_canonical_var</span><span class="p">,</span>
+    <span class="n">_filter_groups</span><span class="p">,</span>
+    <span class="n">_wfilter_actions</span><span class="p">,</span>
+    <span class="n">parse_processing_chain</span><span class="p">,</span>
+    <span class="n">stacked_advances</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1">#: SBE modules with no ctdcast step, and why.</span>
+<span class="n">SKIPPED_MODULES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"datcnv"</span><span class="p">:</span> <span class="s2">"conversion to engineering units: stage 1"</span><span class="p">,</span>
+    <span class="s2">"derive"</span><span class="p">:</span> <span class="s2">"ctdcast derives salinity, density and oxygen itself after every change"</span><span class="p">,</span>
+    <span class="s2">"strip"</span><span class="p">:</span> <span class="s2">"a product's variable list, not a processing step"</span><span class="p">,</span>
+    <span class="s2">"bottlesum"</span><span class="p">:</span> <span class="s2">"bottle files, not the profile"</span><span class="p">,</span>
+    <span class="s2">"rossum"</span><span class="p">:</span> <span class="s2">"bottle files, not the profile"</span><span class="p">,</span>
+    <span class="s2">"seaplot"</span><span class="p">:</span> <span class="s2">"plotting only"</span><span class="p">,</span>
+    <span class="s2">"asciiout"</span><span class="p">:</span> <span class="s2">"file format only"</span><span class="p">,</span>
+    <span class="s2">"translate"</span><span class="p">:</span> <span class="s2">"file format only"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_yes</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"yes"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_num</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">","</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">is_integer</span><span class="p">()</span> <span class="ow">and</span> <span class="s2">"."</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="n">v</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_vars</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">_canonical_var</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_kv_tail</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Parse ``a = 1, b = 2`` (the tail SBE writes after a first ``=``) into a dict."""</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">):</span>
+        <span class="n">k</span><span class="p">,</span> <span class="n">sep</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"="</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sep</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_wildedit</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"pass1_nstd"</span><span class="p">,</span> <span class="s2">"pass1_nstd"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"pass2_nstd"</span><span class="p">,</span> <span class="s2">"pass2_nstd"</span><span class="p">),</span>
+                      <span class="p">(</span><span class="s2">"pass2_mindelta"</span><span class="p">,</span> <span class="s2">"mindelta"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"npoint"</span><span class="p">,</span> <span class="s2">"scans_per_block"</span><span class="p">)):</span>  <span class="c1"># fmt: skip</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">"excl_bad_scans"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">step</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_yes</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"excl_bad_scans"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">"vars"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">step</span><span class="p">[</span><span class="s2">"variables"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_vars</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"vars"</span><span class="p">],</span> <span class="n">rn</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"wildedit"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_wfilter</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""One ``window_filter`` step per distinct (type, width), in first-seen order."""</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">width</span> <span class="ow">in</span> <span class="n">_wfilter_actions</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">((</span><span class="n">kind</span><span class="p">,</span> <span class="n">width</span><span class="p">),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_canonical_var</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">rn</span><span class="p">))</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">width</span><span class="p">),</span> <span class="n">variables</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">step</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="n">kind</span><span class="p">,</span> <span class="s2">"variables"</span><span class="p">:</span> <span class="n">variables</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">width</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"width"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"excl_bad_scans"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_yes</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"excl_bad_scans"</span><span class="p">])</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"window_filter"</span><span class="p">:</span> <span class="n">step</span><span class="p">})</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_filter</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Sea-Bird's Filter A and B as two ``filter`` steps (A first, as Sea-Bird runs them)."""</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ab</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">_tc</span> <span class="ow">in</span> <span class="n">_filter_groups</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">"low_pass_tc_</span><span class="si">{</span><span class="n">ab</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"filter"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"time_constant"</span><span class="p">:</span> <span class="n">_num</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="sa">f</span><span class="s2">"low_pass_tc_</span><span class="si">{</span><span class="n">ab</span><span class="si">}</span><span class="s2">"</span><span class="p">]),</span>
+                        <span class="s2">"variables"</span><span class="p">:</span> <span class="p">[</span><span class="n">_canonical_var</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">rn</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">],</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_alignctd</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">seconds</span> <span class="ow">in</span> <span class="n">_adv_items</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">seconds</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="n">_canonical_var</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">rn</span><span class="p">)]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">seconds</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"alignctd"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span> <span class="k">if</span> <span class="n">step</span> <span class="k">else</span> <span class="p">[]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_celltm</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">_rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""``alpha``/``tau`` are ``primary, secondary`` pairs; a single value applies to the primary."""</span>
+    <span class="n">alphas</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"alpha"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+    <span class="n">taus</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tau"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">alphas</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">taus</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"celltm: the header lists </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">alphas</span><span class="p">)</span><span class="si">}</span><span class="s2"> alpha value(s) and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">taus</span><span class="p">)</span><span class="si">}</span><span class="s2"> tau value(s); "</span>
+            <span class="s2">"expected one pair per conductivity sensor"</span>
+        <span class="p">)</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">alphas</span><span class="p">,</span> <span class="n">taus</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+        <span class="n">step</span><span class="p">[</span><span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"alpha"</span><span class="p">:</span> <span class="n">_num</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="s2">"tau"</span><span class="p">:</span> <span class="n">_num</span><span class="p">(</span><span class="n">t</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"celltm"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span> <span class="k">if</span> <span class="n">step</span> <span class="k">else</span> <span class="p">[]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_loopedit</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">_rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">"minvelocity"</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"min_velocity"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"percent"</span><span class="p">):</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"min_velocity_percent"</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"surfacesoak"</span><span class="p">):</span>
+            <span class="c1"># "surfaceSoak: minDepth" = "5.0, maxDepth = 20, useDeckPress = 1"</span>
+            <span class="n">first</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">rest</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span>
+            <span class="n">tail</span> <span class="o">=</span> <span class="n">_kv_tail</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span>
+            <span class="n">soak</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"min_depth"</span><span class="p">:</span> <span class="n">_num</span><span class="p">(</span><span class="n">first</span><span class="p">)}</span>
+            <span class="k">if</span> <span class="s2">"maxDepth"</span> <span class="ow">in</span> <span class="n">tail</span><span class="p">:</span>
+                <span class="n">soak</span><span class="p">[</span><span class="s2">"max_depth"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">tail</span><span class="p">[</span><span class="s2">"maxDepth"</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s2">"useDeckPress"</span> <span class="ow">in</span> <span class="n">tail</span><span class="p">:</span>
+                <span class="n">soak</span><span class="p">[</span><span class="s2">"deck_pressure"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tail</span><span class="p">[</span><span class="s2">"useDeckPress"</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"1"</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"surface_soak"</span><span class="p">]</span> <span class="o">=</span> <span class="n">soak</span>
+        <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">"excl_bad_scans"</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_yes</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"loopedit"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_binavg</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">_rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s2">"bintype"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">step</span><span class="p">[</span><span class="s2">"bin"</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">"bintype"</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">"binsize"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">step</span><span class="p">[</span><span class="s2">"size"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"binsize"</span><span class="p">])</span>
+    <span class="c1"># ctdcast always leaves flagged scans out of a bin; a header that kept them gets a</span>
+    <span class="c1"># ``# check:`` line instead (see processing_yaml).</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"min_scans_bin"</span><span class="p">,</span> <span class="s2">"min_scans"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"max_scans_bin"</span><span class="p">,</span> <span class="s2">"max_scans"</span><span class="p">),</span>
+                      <span class="p">(</span><span class="s2">"skipover"</span><span class="p">,</span> <span class="s2">"skip_over"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"omit"</span><span class="p">,</span> <span class="s2">"omit"</span><span class="p">)):</span>  <span class="c1"># fmt: skip</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_num</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">"surface_bin"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">flag</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">rest</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">"surface_bin"</span><span class="p">]</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_yes</span><span class="p">(</span><span class="n">flag</span><span class="p">):</span>
+            <span class="n">tail</span> <span class="o">=</span> <span class="n">_kv_tail</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"surface_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">_num</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tail</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">step</span><span class="p">[</span><span class="s2">"surface_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"binavg"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_split</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">_rn</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s2">"excl_bad_scans"</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">step</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_yes</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"excl_bad_scans"</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"split"</span><span class="p">:</span> <span class="n">step</span><span class="p">}]</span>
+
+
+<span class="n">_TRANSLATORS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"wildedit"</span><span class="p">:</span> <span class="n">_wildedit</span><span class="p">,</span>
+    <span class="s2">"wfilter"</span><span class="p">:</span> <span class="n">_wfilter</span><span class="p">,</span>
+    <span class="s2">"filter"</span><span class="p">:</span> <span class="n">_filter</span><span class="p">,</span>
+    <span class="s2">"alignctd"</span><span class="p">:</span> <span class="n">_alignctd</span><span class="p">,</span>
+    <span class="s2">"celltm"</span><span class="p">:</span> <span class="n">_celltm</span><span class="p">,</span>
+    <span class="s2">"loopedit"</span><span class="p">:</span> <span class="n">_loopedit</span><span class="p">,</span>
+    <span class="s2">"binavg"</span><span class="p">:</span> <span class="n">_binavg</span><span class="p">,</span>
+    <span class="s2">"split"</span><span class="p">:</span> <span class="n">_split</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="processing_steps">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sbe_steps.processing_steps">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">processing_steps</span><span class="p">(</span>
+    <span class="n">header_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the ctdcast processing steps equivalent to a CNV header's SBE Data Processing steps.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header_text : str</span>
+<span class="sd">        The CNV header (everything up to ``*END*``).</span>
+<span class="sd">    rename_map : dict of str to str, optional</span>
+<span class="sd">        ``{sbe_column_name: variable_name}`` for this file, when known; otherwise the static</span>
+<span class="sd">        aliases are used and an unmapped channel keeps its SBE name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{"steps": [...], "products": [{"name": ..., "steps": [...]}, ...], "skipped": [...]}``:</span>
+<span class="sd">        the steps in run order up to the file's first Split or Bin Average, the rest as a product</span>
+<span class="sd">        (two, one per leg, after a Split), and the modules that are not steps, each</span>
+<span class="sd">        ``{"module": ..., "reason": ...}``.  An SBE module ctdcast has no translation for is listed in ``skipped`` with</span>
+<span class="sd">        the reason ``"not translated"``.</span>
+<span class="sd">    """</span>
+    <span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">skipped</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">parse_processing_chain</span><span class="p">(</span><span class="n">header_text</span><span class="p">)</span><span class="o">.</span><span class="n">steps</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_TRANSLATORS</span><span class="p">:</span>
+            <span class="n">steps</span> <span class="o">+=</span> <span class="n">_TRANSLATORS</span><span class="p">[</span><span class="n">name</span><span class="p">](</span><span class="n">step</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"module"</span><span class="p">:</span> <span class="n">step</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
+                    <span class="s2">"reason"</span><span class="p">:</span> <span class="n">SKIPPED_MODULES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">"not translated"</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+    <span class="n">trunk</span><span class="p">,</span> <span class="n">products</span> <span class="o">=</span> <span class="n">_as_products</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"steps"</span><span class="p">:</span> <span class="n">trunk</span><span class="p">,</span> <span class="s2">"products"</span><span class="p">:</span> <span class="n">products</span><span class="p">,</span> <span class="s2">"skipped"</span><span class="p">:</span> <span class="n">skipped</span><span class="p">}</span></div>
+
+
+
+<span class="n">_BIN_SUFFIX</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"decibars"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span> <span class="s2">"seconds"</span><span class="p">:</span> <span class="s2">"sec"</span><span class="p">,</span> <span class="s2">"scans"</span><span class="p">:</span> <span class="s2">"scans"</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_as_products</span><span class="p">(</span><span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Split the steps where the file stops keeping every scan, at its first Split or Bin Average.</span>
+
+<span class="sd">    What comes before is the stage-3 file's steps; the rest becomes a product.  A Split becomes two</span>
+<span class="sd">    products, one per leg, since Sea-Bird's Split writes both and one header cannot say which this</span>
+<span class="sd">    file is.</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">]</span>
+    <span class="n">cut</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"split"</span><span class="p">,</span> <span class="s2">"binavg"</span><span class="p">)),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cut</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">steps</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="n">trunk</span><span class="p">,</span> <span class="n">tail</span> <span class="o">=</span> <span class="n">steps</span><span class="p">[:</span><span class="n">cut</span><span class="p">],</span> <span class="n">steps</span><span class="p">[</span><span class="n">cut</span><span class="p">:]</span>
+    <span class="n">binavg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">s</span><span class="p">[</span><span class="s2">"binavg"</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tail</span> <span class="k">if</span> <span class="s2">"binavg"</span> <span class="ow">in</span> <span class="n">s</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">binavg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'size'</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">}{</span><span class="n">_BIN_SUFFIX</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">binavg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'bin'</span><span class="p">),</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">if</span> <span class="n">binavg</span>
+        <span class="k">else</span> <span class="s2">"split"</span>
+    <span class="p">)</span>
+    <span class="n">rest</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tail</span> <span class="k">if</span> <span class="s2">"split"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s2">"split"</span> <span class="ow">in</span> <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tail</span><span class="p">):</span>
+        <span class="n">products</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">leg</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"steps"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"split"</span><span class="p">:</span> <span class="n">leg</span><span class="p">},</span> <span class="o">*</span><span class="n">rest</span><span class="p">]}</span>
+            <span class="k">for</span> <span class="n">leg</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"down"</span><span class="p">,</span> <span class="s2">"up"</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">products</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">base</span><span class="p">,</span> <span class="s2">"steps"</span><span class="p">:</span> <span class="n">rest</span><span class="p">}]</span>
+    <span class="k">return</span> <span class="n">trunk</span><span class="p">,</span> <span class="n">products</span>
+
+
+<div class="viewcode-block" id="processing_yaml">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sbe_steps.processing_yaml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">processing_yaml</span><span class="p">(</span><span class="n">header_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return :func:`processing_steps` as a paste-ready ``data_processing:`` YAML block.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header_text : str</span>
+<span class="sd">        The CNV header.</span>
+<span class="sd">    rename_map : dict of str to str, optional</span>
+<span class="sd">        As for :func:`processing_steps`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        YAML with the steps under ``data_processing.steps``, the skipped modules as comments.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">_Dumper</span><span class="p">(</span><span class="n">yaml</span><span class="o">.</span><span class="n">SafeDumper</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_list</span><span class="p">(</span><span class="n">dumper</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeDumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Node</span><span class="p">:</span>
+        <span class="c1"># A list of names on one line; the list of steps stays one step per line.</span>
+        <span class="n">flat</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_sequence</span><span class="p">(</span><span class="s2">"tag:yaml.org,2002:seq"</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">flow_style</span><span class="o">=</span><span class="n">flat</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dict</span><span class="p">(</span><span class="n">dumper</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeDumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Node</span><span class="p">:</span>
+        <span class="c1"># A small mapping of plain values ({alpha: 0.03, tau: 7.0}) reads best on one line.</span>
+        <span class="n">small</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">3</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span><span class="s2">"tag:yaml.org,2002:map"</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">flow_style</span><span class="o">=</span><span class="n">small</span><span class="p">)</span>
+
+    <span class="n">_Dumper</span><span class="o">.</span><span class="n">add_representer</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">_list</span><span class="p">)</span>
+    <span class="n">_Dumper</span><span class="o">.</span><span class="n">add_representer</span><span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="n">_dict</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">processing_steps</span><span class="p">(</span><span class="n">header_text</span><span class="p">,</span> <span class="n">rename_map</span><span class="p">)</span>
+    <span class="n">block</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"steps"</span><span class="p">:</span> <span class="n">result</span><span class="p">[</span><span class="s2">"steps"</span><span class="p">]}</span>
+    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">"products"</span><span class="p">]:</span>
+        <span class="n">block</span><span class="p">[</span><span class="s2">"products"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"products"</span><span class="p">]</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">"data_processing"</span><span class="p">:</span> <span class="n">block</span><span class="p">},</span>
+        <span class="n">Dumper</span><span class="o">=</span><span class="n">_Dumper</span><span class="p">,</span>
+        <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">width</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"# not a step: </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">'module'</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">'reason'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">"skipped"</span><span class="p">]]</span>
+    <span class="n">notes</span> <span class="o">+=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">"# check: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">sentence</span><span class="p">()</span><span class="si">}</span><span class="s2"> The deck unit's advance is already in the raw scans."</span>
+        <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">stacked_advances</span><span class="p">(</span><span class="n">header_text</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="n">step</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"binavg"</span>
+        <span class="ow">and</span> <span class="s2">"excl_bad_scans"</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">params</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="n">_yes</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">"excl_bad_scans"</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">parse_processing_chain</span><span class="p">(</span><span class="n">header_text</span><span class="p">)</span><span class="o">.</span><span class="n">steps</span>
+    <span class="p">):</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">"# check: this file's Bin Average kept scans marked bad (excl_bad_scans = no); "</span>
+            <span class="s2">"ctdcast always leaves them out of a bin."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="o">*</span><span class="n">notes</span><span class="p">,</span> <span class="n">body</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()])</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span></div>
+
+
+
+<div class="viewcode-block" id="header_text_of">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sbe_steps.header_text_of">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">header_text_of</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a CNV file's header, everything before ``*END*``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : str or os.PathLike</span>
+<span class="sd">        The CNV file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The header lines, joined.</span>
+<span class="sd">    """</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"latin-1"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"*END*"</span><span class="p">):</span>
+                <span class="k">break</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">))</span>
+    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

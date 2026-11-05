@@ -1,0 +1,504 @@
+.. _processing_framework:
+
+============================
+ctdcast processing framework
+============================
+
+This page describes **what each processing stage does and why**, as distinct from
+:doc:`cli_reference`, which describes how to invoke them. It is the ctdcast
+counterpart to oceanarray's processing framework: where oceanarray moves
+instrument → mooring → array, ctdcast moves **cast → cruise**.
+
+Those two levels are not an informal grouping — they are the ``scope`` field on
+every row of the stage registry (``ctdcast.processors.STAGES``), which is the
+single source of truth for execution order, the ``--stage`` choices, and the
+re-run rule. A ``"cast"`` stage runs once per cast; a ``"cruise"`` stage runs once
+per compiled product.
+
+**Principles**
+
+- **Modular** — each stage has defined inputs and outputs, and one job.
+- **Cruise-ready** — usable for quick-look processing at sea, with enough
+  structure to carry into scientific analysis afterwards.
+- **Reproducible** — every transformation records itself in ``history`` with the
+  parameters it used, not merely its name.
+- **Incremental** — a stage's output is storable and reloadable, so processing can
+  stop and resume rather than being one long run.
+
+Output files use CF-netCDF conventions with ACDD discovery metadata.  The cruise's
+``expocode`` is a global attribute of every file: it names the one cruise every profile
+belongs to, so it indexes nothing.
+
+----
+
+The stages
+----------
+
+Two rules govern what may be a *stage* rather than a *product*:
+
+**Monotone in corrections.** Each stage adds information — flags, calibrations,
+derived variables — and removes none. Stage 2 marks the soak; it does not delete
+those scans. This is why a later stage can always be re-run from an earlier one,
+and why the lineage on disk is meaningful rather than lossy.
+
+A sharper form of the same rule is worth stating, because it says exactly where
+numbers start moving: **stages 1 and 2 change no measured value.**
+Stage 1 renames and normalises units; stage 2 selects and flags. Neither alters a
+temperature, a conductivity or a pressure. **Stage 3 is the first stage where a
+measured value changes** — calibration adjusts conductivity, and salinity is
+re-derived from it. (Trimming a moored record does shift the ``time`` *coordinate*
+under a clock correction, which is why the rule is about measured values rather
+than about all numbers.) So a disagreement between two people's stage-2 output is
+a disagreement about *selection*; a disagreement at stage 3 is a disagreement
+about *calibration*, and the two are diagnosed differently.
+
+**Constant in representation.** A stage leaves the sampling representation
+untouched: same scans, same vertical axis. Anything that *changes* the
+representation — binning to a pressure grid, splitting into downcast and upcast
+halves, stacking casts into one array — is a **terminal product**, not a stage.
+
+**Parameters are found outside the stages and applied inside them.** A stage never
+derives its own correction coefficients. For ctdcast they come from two places:
+
+- the **conductivity slope**, from comparing CTD conductivity against **bottle
+  salinities** analysed from the rosette samples;
+- the **align lags** and **cell-thermal-mass coefficients**, from a finder
+  (``ctdcast fit``) that uses nothing but the CTD data itself.
+
+Both are recorded in config and *applied* at stage 3. A **clock offset** is found
+one stage earlier: ``ctdcast clock`` compares each cast's acquisition (System) clock
+against its GPS (NMEA) clock across the whole cruise, classifies the error
+(constant, step, or drift), and generates a paste-ready ``clock`` block.
+Because a clock correction moves the ``time`` coordinate and no measured value,
+stage 2 is where it *belongs* — the exception noted above. ``ctdcast clock`` finds and
+suggests the offset; stage 2 applies it (``clock``) where the ``time``
+coordinate is on the System clock — a cruise already anchored to GPS is refused. (oceanarray finds the
+analogous offset for a moored instrument at recovery instead; calibration-dip
+processing — `caldip <https://github.com/ocean-uhh/caldip>`_ — is its route for
+moored instruments, and is not part of the CTD workflow.)
+
+The align and cell-thermal-mass finders are the interesting case, because they
+read the very data the stage is processing — so why not derive them inside the
+stage? Three reasons the separation is structural rather than incidental:
+
+- **the scopes differ.** A finder examines *many casts* to settle one coefficient
+  for the cruise; the applier then uses it on *one cast*. A cast-scope stage
+  cannot see what a cruise-scope determination needs;
+- **judgement.** The result is inspected and chosen, once, not re-decided
+  silently on every run;
+- **reproducibility.** A stage that re-derived its own parameters could give a
+  different answer from the same input as the surrounding casts change, which is
+  exactly what these rules exist to prevent.
+
+The slope has a fourth, simpler reason: bottle salinities are analysed data the
+stage has never seen.
+
+That second rule is what makes ``profiles.nc`` a product rather than "stage 4".
+It grids to 1 dbar and splits each cast into two profiles, so it cannot be an
+input to further per-cast processing. Terminal products sit beside the stage
+directories, not inside them.
+
+----
+
+What Sea-Bird has already done to the file
+------------------------------------------
+
+ctdcast reads the 24 Hz ``.hex`` directly (through ``seabirdscientific``) and runs
+Sea-Bird's processing chain itself: Wild Edit, Filter, Window Filter, Align CTD, Cell
+Thermal Mass and Loop Edit at stage 3, Split and Bin Average in the products.  The other
+input, a Sea-Bird CNV, has usually been through two rounds of processing before ctdcast
+opens it, and **neither of them announces itself in a way the stages can see**:
+
+- the **deck unit**, at acquisition, in hardware;
+- **SBE Data Processing**, ashore or at sea, as a chain of modules.
+
+Both are recorded in the CNV header, in two different namespaces:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 16 44 40
+
+   * - Lines
+     - What they hold
+     - Example
+
+   * - ``*``
+     - Seasave and deck-unit acquisition settings — **including the conductivity
+       time alignment**, the system/NMEA clock pair, and the scan-averaging factor
+     - ``* advance primary conductivity  0.073 seconds``
+
+   * - ``* <Sensors>``
+     - Sensor serials and calibration coefficients (kept verbatim as
+       ``raw_metadata``)
+     - ``* <sensor Channel="1" >``
+
+   * - ``#``
+     - The SBE Data Processing module chain, in execution order, with the
+       parameters each module used
+     - ``# celltm_alpha = 0.0300, 0.0300``
+
+   * - ``**``
+     - Free-text user header written on the ship
+     - ``**  Station:  004``
+
+Why the ``*`` block matters more than it looks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The SBE 11plus deck unit is factory-set to advance primary conductivity by 1.75
+scans — at 24 Hz, 0.073 s — which is exactly the typical lag of conductivity behind
+temperature for a 9plus with a TC duct and a 3000 rpm pump. The Sea-Bird manual is
+explicit that this *"eliminates the need to run Align CTD"*.
+
+So a cast whose ``#`` chain shows no ``alignctd`` module may nonetheless be fully
+aligned. Applying an alignment on top of it does not fail loudly — it produces
+plausible, wrong numbers. This is the reason ctdcast reads the header at all, and
+the reason a stage may never assume that a correction absent from the module chain
+was not applied.
+
+Two consequences follow for the alignment specifically:
+
+- **The 0.073 s figure is a configuration value, not a constant.** The lag is
+  dominated by water transit through the pumped plumbing, so a faster pump or a
+  shorter tube shortens it. This is why the align lag is *found* from the data
+  (see the stage rules above) rather than read from a table — the table value is
+  the fallback and the sanity bound.
+- **The advance is recorded per channel**, and older deck units do not always set
+  the two conductivity channels alike. Where they differ, the secondary channel
+  carries a residual the primary does not, and salinity computed from it will
+  show spiking the primary does not.
+
+The correction ledger
+~~~~~~~~~~~~~~~~~~~~~
+
+Stage 1 parses both namespaces and records what it finds as a **ledger** of
+corrections already applied — see :ref:`data_files` for the attributes. The unit of
+record is the *correction* rather than the module, because the most consequential
+one — the deck-unit alignment — is not a module and lives in the other namespace
+entirely. Every module in the chain then contributes an entry of its own, and the
+order they ran in is recorded explicitly, since the deck-unit alignment carries no
+timestamp and some writers give their modules none either.
+
+The ledger is read, never merged. Config states what ctdcast *intends*; the header
+states what is *already irreversibly true*. A later stage reconciles the two and
+declines to act where they conflict — it does not combine them into one effective
+parameter set, which would let a config value look applied when it was not. In
+practice that means a stage **skips** work already done upstream rather than doing
+it and undoing it later, which is also what keeps the QC flags monotone.
+
+Where a file enters the sequence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``binavg`` module is the one that decides this, and its ``bintype`` matters
+more than its size:
+
+- ``bintype = seconds`` — the file is still a time series, decimated. It enters at
+  stage 1 and every stage applies.
+- ``bintype = decibars`` — the file has already been gridded onto a pressure axis.
+  Its sampling representation has changed, which by the second rule above makes it
+  a **terminal product** rather than a stage. Time-domain corrections cannot be
+  applied to it: Sea-Bird states plainly that Align CTD *"cannot be run on files
+  that have been averaged into pressure or depth bins"*, and Loop Edit needs three
+  successive scans to compute velocity, which a 1 dbar grid has destroyed.
+
+ctdcast still reports on such a file — it simply cannot offer it the corrections
+that require a time axis, and says so rather than pretending.
+
+Sea-Bird's own recommendation, for comparison
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ledger says what *was* done. To judge whether that is ordinary, the useful
+comparison is against Sea-Bird's **published recommendation for the instrument** —
+short, specific and citable, where a list of everything *not* done would be
+unbounded and mostly uninteresting. For an SBE 9plus with a TC duct and a 3000 rpm
+pump (manual rev 7.26.8):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 34 40
+
+   * - Module
+     - Recommended for a 9plus
+     - Reference
+
+   * - Sequence
+     - Data Conversion → Filter → Align CTD → Cell Thermal Mass → Loop Edit →
+       Derive → Bin Average. Wild Edit is deliberately absent and may run at any
+       point.
+     - p.20
+
+   * - Filter
+     - pressure **0.15 s**; temperature and conductivity **not filtered** (the
+       table gives no value for a 9plus). The pressure constant is four times the
+       scan interval, and exists to feed Loop Edit.
+     - p.100
+
+   * - Align CTD
+     - temperature **0**; conductivity **0**, because the deck unit already
+       advances it; oxygen **+2 to +5 s** for an SBE 43.
+     - pp.84–86
+
+   * - Cell Thermal Mass
+     - alpha **0.03**, 1/beta **7.0**
+     - p.92
+
+A departure is **not an error.** Sea-Bird gives these as *typical* values and says
+plainly that judgement is required — a different pump, a different duct, or a
+deliberate choice all produce legitimate departures. What the table is good for is
+reading a cast's provenance by hand: it tells you which of the values in front of
+you are the usual ones, and which were chosen.
+
+Two limits are worth knowing when using it that way. The recommendation is
+**instrument-specific** — a 19plus or a 25 has different values — so it applies
+only once the header has identified the instrument. And it says nothing about
+Window Filter: smoothing temperature and conductivity with ``wfilter`` instead of
+``filter`` is a legitimate alternative the manual neither recommends nor warns
+against.
+
+A worked example
+~~~~~~~~~~~~~~~~
+
+Upstream pipelines commonly **fork**, and which prong ctdcast is pointed at
+determines what work is left to do. A typical shipboard chain runs
+``datcnv → wildedit → filter → celltm → Derive`` at full rate, then splits:
+
+- one prong bin-averages to **1 second** — still a time series, all casts;
+- the other splits into downcast and upcast, runs **Loop Edit**, then bin-averages
+  to **1 dbar**.
+
+Pointed at the first prong, ctdcast receives a file that has *not* been loop-edited,
+so ship-heave reversals are still present and its own compiled product will carry
+them unless it removes them itself. Pointed at the second, it receives a finished
+gridded product and the stages have nothing left to add. Neither is wrong — but the
+difference is invisible without reading the header, which is the point.
+
+----
+
+Cast-level processing
+---------------------
+
+One cast in, one cast out, once per cast.
+
+- **Stage 0 — the raw files.** The ``.hex`` + ``.xmlcon`` from the deck unit, or a CNV.
+  ctdcast reads raw ``.hex`` at stage 1 (conversion to engineering units through
+  ``seabirdscientific``) and runs Sea-Bird's processing chain at stage 3, with the
+  parameters in its own config (``data_processing``), so a cruise need not start from a
+  processed CNV.  A CNV made by SBE Data Processing, or by a tool such as
+  `ctdam <https://github.com/ocean-uhh/ctdam>`_, is the other entry point.
+
+  .. important::
+
+     **A processed CNV is not raw.** ``datcnv`` is conversion — hex to engineering units —
+     which is stage-1 work. But ``wildedit`` (despike), ``wfilter`` (median filter),
+     ``filter`` (low-pass), ``alignctd`` (sensor time alignment) and ``celltm`` (cell
+     thermal mass) all **change measured values**, which by the second rule above makes
+     them **stage-3-class corrections applied upstream**, with their parameters recorded
+     only in the CNV header::
+
+         # wfilter_action t090C = median, 10
+         # filter_low_pass_tc_A = 0.030
+         # filter_low_pass_A_vars = altM flECO-AFL turbWETntu0 …
+
+     Two consequences follow:
+
+     - **Re-run scope is asymmetric.** Changing a ctdcast stage-3 parameter invalidates
+       stage 3. Changing a parameter of the tool that made the CNV regenerates the CNV and
+       invalidates every ctdcast stage **from stage 1**, because the corrections sit below
+       it.  Starting from ``.hex`` avoids this: every correction is a stage-3 step.
+     - **Stage 3 must know what was already done.** Applying a cell-thermal-mass correction
+       or a time alignment twice is a silent error that produces plausible numbers.  Stage
+       3 reads the upstream chain and skips a step Sea-Bird already ran (with a warning);
+       ``ctdcast inspect cast.cnv`` prints that chain as a ``data_processing`` block, to
+       reproduce it from the ``.hex``.
+
+  .. important::
+
+     **A CNV entry point should come without ``binavg`` and without
+     ``downcast_only``.** Both are legitimate in Sea-Bird's own terms, but a CNV
+     produced with either is **already a terminal product** by this framework's
+     second rule — ctdcast would be splitting downcast from upcast on a file that
+     has neither, or re-binning binned data. Those two jobs belong to stage 2 and
+     to the ``profiles`` compile, where they are reversible and recorded. A CNV
+     arriving at stage 1 carries every scan of the full cast.
+- **Stage 1 — standardisation.** Convert the raw ``.hex`` or the CNV to CF-netCDF,
+  faithfully: no trimming, no QC, and no channel dropped — every column reaches the stage-1
+  file, with Sea-Bird-derived channels (density, depth, flags) kept under an
+  ``sbe_`` prefix rather than discarded. Canonical variable names, unit
+  normalisation (conductivity to mS/cm, pressure to dbar), and single-sensor
+  renaming — ``ctd_temperature_1`` becomes ``ctd_temperature`` when there is no
+  second sensor to distinguish it from. Raw ``.hex`` + ``.xmlcon`` are read directly
+  through ``seabirdscientific``; calibrated ``.cnv`` through ``seasenselib`` (the
+  pluggable ``CtdBackend``).
+- **Stage 2 — trim.** Decide which scans belong to the real cast: soak detection at
+  the start and back-on-deck detection at the end. It does **not** split the cast
+  into downcast and upcast — splitting changes the sampling representation, so by
+  the second rule above it belongs to a terminal product, and it happens in the
+  ``profiles`` compile. This
+  is the profile analogue of trimming a moored record to its deployment window —
+  same stage, same question, different domain (see the note below).
+  QARTOD flag 4 is set on soak and post-recovery records — **marked, not deleted**,
+  per the monotonicity rule — and the detection parameters are recorded in
+  ``history``. A curated drop step then removes the ``sbe_`` diagnostic channels
+  stage 1 preserved (all of them by default, configurable via
+  ``processing.trim.drop_sbe``) — the one place columns are dropped, done
+  explicitly and recorded in ``history`` and ``dropped_channels``.
+- **Stage 3 — corrections, calibration and QC.** First the per-sensor conductivity slope
+  and offset (``data_processing.slope_offset``), where Sea-Bird applies them; then the
+  processing steps listed in ``data_processing.steps``, in that order, at the cast's native
+  scan rate — Wild Edit, Window Filter, Filter, Align CTD, Cell Thermal Mass and Loop Edit,
+  each with ``seabirdscientific``, Sea-Bird's Python package (the alignment and
+  cell-thermal-mass parameters are what ``ctdcast fit`` suggests); then salinity re-derived,
+  then — on a ``.hex`` cast carrying the SBE 43 voltage — ``ctd_oxygen`` derived from the
+  aligned voltage. Gross-range and spike QC run **last**, judging the corrected values. Edits
+  mark values in ``_qc`` and keep them; Loop Edit's whole-scan marks are also kept as
+  ``loop_edit_flag``. The stage-3 file keeps every scan; Split and Bin Average make
+  **products** beside it (``data_processing.products``: a 1 dbar downcast, a 1 s series), each
+  its own file under ``<ctd_root>/products/``. A cast not at its native scan rate, or one
+  Sea-Bird already processed the same way, skips the native-rate steps with a warning and still
+  gets the calibration, salinity and QC. ``seabirdscientific`` is meant to match SBE Data
+  Processing, Sea-Bird's Windows program, and mostly does; where it appears not to, ctdcast
+  records which it followed (:ref:`sbe_differences`). Deliberately
+  **iterative**: re-run it as calibration improves, which is why it
+  must not consume its own output.
+
+LADCP has a single cast-level stage: the LDEO ``.mat`` solution is converted to
+per-cast netCDF. Its upstream processing happens outside ctdcast.
+
+.. _sbe_differences:
+
+Where ctdcast differs from Sea-Bird's software
+----------------------------------------------
+
+ctdcast applies Sea-Bird's processing steps with ``seabirdscientific``, Sea-Bird's Python
+package, which is meant to reproduce SBE Data Processing, Sea-Bird's Windows program. Where the
+two appear to differ, or where ctdcast chooses differently from both, it is listed here, recorded
+in the output file, and shown on the cast page.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 40 42
+
+   * - Step
+     - Sea-Bird
+     - ctdcast
+   * - **Bin Average** (products)
+     - ``seabirdscientific`` drops the **whole scan** when any one value in it carries the bad
+       flag (a Wild Edit mark), so one bad sensor — an oxygen voltage, a fluorometer — removes
+       every other sensor's good value from the bin, without saying so.
+     - **Deliberately different.** Only the flagged value leaves its bin; the scan's other
+       values stay. Loop Edit's scans, and scans flagged in every variable (the stage-2 soak
+       and deck), still leave whole, as in Sea-Bird. Every product records how many of the
+       scans entering its bins had a flagged value beside good ones — the scans
+       seabirdscientific's rule would have dropped whole — by variable
+       (``bin_average_partly_flagged``); the run warns; the cast page shows an amber *binavg*
+       row.
+   * - **SBE 43 oxygen** (stage 3)
+     - ``seabirdscientific`` 3.1.1 feeds the corrected previous voltage back into the
+       hysteresis correction; Application Note 64-3 uses the uncorrected one.
+     - Follows the application note (``oxygen_hysteresis_method`` on each oxygen variable).
+   * - **Wild Edit** (stage 3)
+     - On a block where a channel sits at one or two A/D levels, SBE Data Processing marks the
+       whole block when ``mindelta`` is 0; ``seabirdscientific`` marks only the values off the
+       block's main level.
+     - Follows ``seabirdscientific``. A ``mindelta`` of a few A/D steps avoids both.
+   * - **Loop Edit** (stage 3)
+     - ``deck_pressure: true`` offsets the surface-soak window by the first scan's depth in
+       ``seabirdscientific``; on OdB's recordings, which start in the water, SBE Data
+       Processing matched no offset.
+     - Follows ``seabirdscientific``; ``deck_pressure: 0`` reproduces the Windows program.
+
+----
+
+Cruise-level processing
+-----------------------
+
+Many casts in, one file out, once per product.
+
+- **profiles** — compile the per-cast files into ``profiles.nc``: each cast split
+  into downcast and upcast, binned to a common pressure grid, and stacked on an
+  ``N_PROF`` dimension. The pressure coordinate is the **bin centre**, so a binned
+  value sits at the mean depth of the samples it averages.
+- **ladcp_profiles** — the LADCP equivalent, gridded on depth in metres rather
+  than pressure.
+
+Both carry the cruise-level metadata: ACDD discovery fields, derived spatiotemporal
+coverage, the ``expocode`` attribute, and — when ``cruise_info`` supplies them —
+contributors and institutions with their controlled-vocabulary roles, licence and
+embargo.
+
+----
+
+Summary table
+-------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Step
+     - Scope
+     - Name
+     - Description
+   * - 0
+     - cast
+     - Raw files
+     - ``.hex`` + ``.xmlcon`` from the deck unit, or a Sea-Bird CNV
+   * - 1
+     - cast
+     - Standardisation
+     - ``.hex`` or CNV to CF-netCDF; canonical names and units; values preserved as-is
+   * - 2
+     - cast
+     - Trim
+     - Soak and back-on-deck flagged (not removed); clock offset; no splitting
+   * - 3
+     - cast
+     - Corrections, calibration and QC
+     - Conductivity slope and offset; Sea-Bird's steps (Wild Edit, filters, alignment,
+       cell thermal mass, Loop Edit); salinity re-derived; SBE 43 oxygen; gross-range and
+       spike QC
+   * - products
+     - cast
+     - Products
+     - Further steps on the stage-3 data, e.g. split and Bin Average to a 1 dbar downcast
+   * - profiles
+     - cruise
+     - Compile (CTD)
+     - Bin to a pressure grid, stack on ``N_PROF``, attach cruise metadata
+   * - profiles
+     - cruise
+     - Compile (LADCP)
+     - As above, gridded on depth
+
+.. note::
+
+   **The stages line up with oceanarray's**, which processes moored time series
+   rather than profiles:
+
+   .. list-table::
+      :header-rows: 1
+
+      * - Stage
+        - Both packages
+        - ctdcast (a profile)
+        - oceanarray (a moored record)
+      * - 1
+        - Standardisation — raw to CF-netCDF, values preserved
+        - ``.hex`` or CNV to netCDF
+        - ``.cnv``/``.rsk``/``.aqd`` to netCDF
+      * - 2
+        - **Trim** — decide which records belong to the real measurement
+        - soak and back-on-deck
+        - deployment window, plus clock offset/drift
+      * - 3
+        - QC and derived variables
+        - Sea-Bird's corrections, conductivity calibration, salinity, oxygen, QC
+        - QARTOD QC, pressure interpolation, salinity, velocity rotation
+
+   The alignment is not a coincidence of numbering: each stage is a *kind* of
+   transformation, so the same three appear whether the thing being processed is
+   a cast or a mooring record. What differs is the domain — a cast's "real
+   measurement" begins after the soak, a mooring's after deployment — and
+   therefore the specific operations, not the intent of the stage.
+
+   What genuinely does not transfer is the level above: oceanarray continues to
+   mooring- and array-level steps (stack, grid, concatenate, boundary merge)
+   where ctdcast has a single cruise level.

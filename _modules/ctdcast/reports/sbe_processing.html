@@ -1,0 +1,223 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports.sbe_processing &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports.sbe_processing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports.sbe_processing</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""A page showing a CNV's SBE Data Processing steps and the equivalent ``data_processing:`` block.</span>
+
+<span class="sd">Written by ``ctdcast inspect &lt;file&gt;.cnv -o page.html``: the modules in the order they ran, each</span>
+<span class="sd">with the parameters the header records, and the block to paste into the config, with a copy</span>
+<span class="sd">button.  Self-contained, like every ctdcast page.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_module_date_parts</span><span class="p">,</span>
+    <span class="n">parse_processing_chain</span><span class="p">,</span>
+    <span class="n">stacked_advances</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.sbe_steps</span><span class="w"> </span><span class="kn">import</span> <span class="n">header_text_of</span><span class="p">,</span> <span class="n">processing_yaml</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports</span><span class="w"> </span><span class="kn">import</span> <span class="n">design</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._env</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._format</span><span class="w"> </span><span class="kn">import</span> <span class="n">report_generated_at</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"generate_sbe_processing_page"</span><span class="p">]</span>
+
+<span class="c1"># Fields that say where a module read its input, not how it processed it.</span>
+<span class="n">_NOT_PARAMETERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"date"</span><span class="p">,</span> <span class="s2">"in"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="generate_sbe_processing_page">
+<a class="viewcode-back" href="../../../api.html#ctdcast.reports.sbe_processing.generate_sbe_processing_page">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_sbe_processing_page</span><span class="p">(</span>
+    <span class="n">cnv_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">out_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">generated_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Render a CNV's SBE Data Processing steps and its ``data_processing:`` block to *out_path*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cnv_path : pathlib.Path</span>
+<span class="sd">        The Sea-Bird CNV.</span>
+<span class="sd">    out_path : pathlib.Path</span>
+<span class="sd">        Destination HTML path (parent directories are created).</span>
+<span class="sd">    title : str, optional</span>
+<span class="sd">        Page title; defaults to the file name.</span>
+<span class="sd">    generated_at : str, optional</span>
+<span class="sd">        Page build stamp; ``None`` uses the current UTC time.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pathlib.Path</span>
+<span class="sd">        The written *out_path*.</span>
+<span class="sd">    """</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">header_text_of</span><span class="p">(</span><span class="n">cnv_path</span><span class="p">)</span>
+    <span class="n">stacked</span> <span class="o">=</span> <span class="n">stacked_advances</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">"module"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">module</span><span class="p">,</span>
+            <span class="s2">"run"</span><span class="p">:</span> <span class="n">_module_date_parts</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">params</span><span class="p">),</span>
+            <span class="s2">"amber"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"alignctd"</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">stacked</span><span class="p">),</span>
+            <span class="s2">"params"</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_NOT_PARAMETERS</span>
+            <span class="p">],</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">parse_processing_chain</span><span class="p">(</span><span class="n">header</span><span class="p">)</span><span class="o">.</span><span class="n">steps</span>
+    <span class="p">]</span>
+    <span class="n">html</span> <span class="o">=</span> <span class="n">get_template</span><span class="p">(</span><span class="s2">"sbe_processing.html"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="n">page_title</span><span class="o">=</span><span class="n">title</span> <span class="ow">or</span> <span class="n">cnv_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="n">cnv_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">steps</span><span class="o">=</span><span class="n">steps</span><span class="p">,</span>
+        <span class="n">stacked</span><span class="o">=</span><span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">sentence</span><span class="p">()</span> <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">stacked</span><span class="p">],</span>
+        <span class="n">yaml</span><span class="o">=</span><span class="n">processing_yaml</span><span class="p">(</span><span class="n">header</span><span class="p">),</span>
+        <span class="n">cruise</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+        <span class="n">css</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">SHARED_CSS</span><span class="p">,</span>
+        <span class="n">js_top_links</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">_JS_TOP_LINKS</span><span class="p">,</span>
+        <span class="n">nav_prefix</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+        <span class="n">nav</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">masthead_role</span><span class="o">=</span><span class="s2">"component"</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="n">_VERSION</span><span class="p">,</span>
+        <span class="n">generated_at</span><span class="o">=</span><span class="n">report_generated_at</span><span class="p">(</span><span class="n">generated_at</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">out_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">out_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out_path</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quickstart guide &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="About the demo report" href="demo.html" />
+    <link rel="prev" title="ctdcast: processing and reports for shipboard CTD and LADCP data" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-look-no-config-file-needed">Quick look (no config file needed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-workflow-prerequisites">Full workflow prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prepare-your-input-files">Prepare your input files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#edit-config-yaml">Edit config.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#define-your-sections">Define your sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#process-and-report">Process and report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#open-the-report">Open the report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#updating-mid-cruise">Updating mid-cruise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Quickstart guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/quickstart.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quickstart-guide">
+<span id="quickstart"></span><h1>Quickstart guide<a class="headerlink" href="#quickstart-guide" title="Link to this heading"></a></h1>
+<p>This guide takes a cruise’s CTD data from the raw files to a report.
+Two workflows are available: a quick look that needs only CNV files and no configuration,
+and the full workflow — raw <code class="docutils literal notranslate"><span class="pre">.hex</span></code> or <code class="docutils literal notranslate"><span class="pre">.cnv</span></code> through every processing stage, with
+sections, time series, LADCP panels and the processing record.</p>
+<hr class="docutils" />
+<section id="quick-look-no-config-file-needed">
+<h2>Quick look (no config file needed)<a class="headerlink" href="#quick-look-no-config-file-needed" title="Link to this heading"></a></h2>
+<p>If you have SBE CNV files and want cast pages, an index and a map immediately:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="s2">"ctdcast[cnv]"</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span>                         <span class="c1"># output → ./ctd_draft/</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span> <span class="o">./</span><span class="n">out</span><span class="o">/</span> <span class="o">--</span><span class="n">cruise</span> <span class="n">odb2026</span> <span class="c1"># with cruise ID and output dir</span>
+<span class="n">ctdcast</span> <span class="n">draft</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">cnv</span><span class="o">/</span> <span class="o">--</span><span class="n">dry</span><span class="o">-</span><span class="n">run</span>               <span class="c1"># preview without writing</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">draft</span></code> reads the CNV files to netCDF (stage 1), compiles <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> and
+builds the cast pages, the index, the map, the sensors page and the processing page in one
+step.  No <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> is needed.  It builds no section or time-series pages (their index
+pages are empty): those need a groupings file that says which casts belong together; for
+those, use the full workflow below.</p>
+</section>
+<hr class="docutils" />
+<section id="full-workflow-prerequisites">
+<h2>Full workflow prerequisites<a class="headerlink" href="#full-workflow-prerequisites" title="Link to this heading"></a></h2>
+<p>Python 3.11–3.14 is required.  Install from PyPI into a virtual environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate<span class="w">        </span><span class="c1"># macOS / Linux</span>
+pip<span class="w"> </span>install<span class="w"> </span>ctdcast<span class="w">             </span><span class="c1"># reads .hex; add [cnv] to read .cnv</span>
+</pre></div>
+</div>
+<p>or from source, which also gives you the demo:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ocean-uhh/ctdcast
+<span class="nb">cd</span><span class="w"> </span>ctdcast
+python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate<span class="w">        </span><span class="c1"># macOS / Linux</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+<p>Land coastlines on the interactive maps need the optional <code class="docutils literal notranslate"><span class="pre">maps</span></code> extra (cartopy and
+shapely): <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[maps]&quot;</span></code>.  Without it the maps draw over a lat/lon graticule.</p>
+<p>To check a source checkout, build a demo report from the committed fixture casts.  They are
+stage-1 files: <code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">profiles</span></code> compiles and reports them without running stages 2 and 3
+(which would write into the fixtures), and the compiled file goes to a work folder
+(<code class="docutils literal notranslate"><span class="pre">demo_work/</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>run<span class="w"> </span>config_demo.yaml<span class="w"> </span>--stage<span class="w"> </span>profiles
+</pre></div>
+</div>
+<p>Then open <code class="docutils literal notranslate"><span class="pre">demo_report/index.html</span></code> in a browser.
+See <a class="reference internal" href="demo.html#demo"><span class="std std-ref">About the demo report</span></a> for a preview of what the output looks like.</p>
+</section>
+<hr class="docutils" />
+<section id="prepare-your-input-files">
+<h2>Prepare your input files<a class="headerlink" href="#prepare-your-input-files" title="Link to this heading"></a></h2>
+<p>ctdcast starts from the raw files, one per cast: Sea-Bird <code class="docutils literal notranslate"><span class="pre">.hex</span></code> files with the
+<code class="docutils literal notranslate"><span class="pre">.xmlcon</span></code> beside each (<code class="docutils literal notranslate"><span class="pre">hex_dir</span></code>), or <code class="docutils literal notranslate"><span class="pre">.cnv</span></code> files (<code class="docutils literal notranslate"><span class="pre">cnv_dir</span></code>).  It never writes
+there.  LADCP profiles come as processed <code class="docutils literal notranslate"><span class="pre">.mat</span></code> files, one per cast (<code class="docutils literal notranslate"><span class="pre">ladcp_dir</span></code>).</p>
+<p>Each instrument gets one <strong>root</strong> that ctdcast owns and fills.  Inside it, one directory per
+processing stage, products, and the compiled file at the top:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>/data/cruise/CTD/ctd_nc/          # ctd_root
+    stage1/
+        MIXSED2_001_stage1.nc     # the raw file read to netCDF (named after it)
+        MIXSED2_002_stage1.nc
+    stage2/
+        MIXSED2_001_stage2.nc     # + soak / back-on-deck flags
+    stage3/
+        MIXSED2_001_stage3.nc     # + Sea-Bird's steps, calibration and QC
+    products/
+        1dbar_down/
+            MIXSED2_001_1dbar_down.nc   # a product, as configured
+    profiles.nc                   # the compiled casts
+
+/data/cruise/LADCP/ladcp_nc/      # ladcp_root
+    stage1/
+    ladcp_profiles.nc
+</pre></div>
+</div>
+<p>A directory of unsuffixed per-cast files written before the stage layout is still
+read, as stage 1.</p>
+<p>See <a class="reference internal" href="data_files.html"><span class="doc">Data files (netCDF)</span></a> for what each file contains.</p>
+</section>
+<hr class="docutils" />
+<section id="edit-config-yaml">
+<h2>Edit config.yaml<a class="headerlink" href="#edit-config-yaml" title="Link to this heading"></a></h2>
+<p>Generate a template with <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">init</span></code> (it writes a commented <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> in
+the current directory), then adjust the paths:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ctd_root</span><span class="p">:</span><span class="w">     </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/CTD/ctd_nc</span><span class="w">     </span><span class="c1"># ctdcast's; profiles.nc goes at its top</span>
+<span class="w">  </span><span class="nt">hex_dir</span><span class="p">:</span><span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/CTD/raw</span><span class="w">        </span><span class="c1"># .hex + .xmlcon, read only</span>
+<span class="w">  </span><span class="c1"># cnv_dir:    /data/cruise/CTD/cnv        # or .cnv instead (needs ctdcast[cnv])</span>
+<span class="w">  </span><span class="nt">groupings_yaml</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/config/ctd_groupings.yaml</span>
+<span class="w">  </span><span class="nt">gebco_nc</span><span class="p">:</span><span class="w">     </span><span class="l l-Scalar l-Scalar-Plain">/data/GEBCO_2025.nc</span><span class="w">         </span><span class="c1"># optional</span>
+
+<span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/cruise/report</span>
+
+<span class="nt">generate</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">stations</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">sections</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># requires profiles.nc and groupings_yaml</span>
+<span class="w">  </span><span class="nt">timeseries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># requires profiles.nc</span>
+</pre></div>
+</div>
+<p>Leave <code class="docutils literal notranslate"><span class="pre">gebco_nc</span></code> blank or omit it entirely if you do not have a GEBCO file — maps will
+render without bathymetry.  Sea-Bird’s processing steps (Wild Edit, filters, alignment, cell
+thermal mass, Loop Edit) and the products go in a <code class="docutils literal notranslate"><span class="pre">data_processing</span></code> block;
+<code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">inspect</span> <span class="pre">cast.cnv</span></code> prints that block from a CNV’s own header, so you can start from
+the steps used at sea.  See <a class="reference internal" href="config_yaml.html"><span class="doc">config.yaml</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="define-your-sections">
+<h2>Define your sections<a class="headerlink" href="#define-your-sections" title="Link to this heading"></a></h2>
+<p>If <code class="docutils literal notranslate"><span class="pre">generate.sections</span></code> is <code class="docutils literal notranslate"><span class="pre">true</span></code>, create a <code class="docutils literal notranslate"><span class="pre">ctd_groupings.yaml</span></code> file that groups
+casts into named transects:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sections</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">KTout</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Kögur</span><span class="nv"> </span><span class="s">Transect</span><span class="nv"> </span><span class="s">outflow"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#e41a1c"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="nv">15</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># ranges and/or individual cast numbers</span>
+<span class="w">  </span><span class="nt">FARDWO</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"FARDWO</span><span class="nv"> </span><span class="s">mooring</span><span class="nv"> </span><span class="s">array"</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#377eb8"</span>
+<span class="w">    </span><span class="nt">cast_numbers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">20</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">35</span><span class="p p-Indicator">]]</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="ctd_groupings.html"><span class="doc">ctd_groupings.yaml</span></a> for the full groupings YAML specification.</p>
+</section>
+<hr class="docutils" />
+<section id="process-and-report">
+<h2>Process and report<a class="headerlink" href="#process-and-report" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>run<span class="w"> </span>config.yaml
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">run</span></code> runs every stage from the raw files (1, 2, 3, then the compile) and builds the
+report.  To work a step at a time, use <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">process</span> <span class="pre">config.yaml</span> <span class="pre">--stage</span> <span class="pre">…</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">report</span> <span class="pre">config.yaml</span></code> (see <a class="reference internal" href="cli_reference.html"><span class="doc">CLI reference</span></a>).</p>
+<p>To force every stage and page to be rebuilt (including ones that are up to date):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>run<span class="w"> </span>config.yaml<span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="open-the-report">
+<h2>Open the report<a class="headerlink" href="#open-the-report" title="Link to this heading"></a></h2>
+<p>Open <code class="docutils literal notranslate"><span class="pre">&lt;output.dir&gt;/index.html</span></code> in any browser.  The file is fully self-contained —
+copy the entire output directory anywhere and it works offline.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;output.dir&gt;/
+    index.html              summary — map, overview panels, navigation
+    casts.html              map and sortable table of all casts
+    sections.html           section cards with links
+    timeseries.html         time-series groups with links
+    leaflet.html            interactive map
+    sbe_sensors.html        sensors by cast and device
+    processing.html         every processing step, by run of casts
+    profiles_inventory.html variables and attributes of profiles.nc
+    casts/
+        cast_001.html
+        ...
+    sections/
+        section_KTout.html
+        ...
+    timeseries/
+        timeseries_&lt;name&gt;.html
+        ...
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="report_output.html"><span class="doc">Report output</span></a> for a description of what each page contains.</p>
+</section>
+<hr class="docutils" />
+<section id="updating-mid-cruise">
+<h2>Updating mid-cruise<a class="headerlink" href="#updating-mid-cruise" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">run</span></code> is incremental.  A stage-1 file is read only when it is missing (<code class="docutils literal notranslate"><span class="pre">--force</span></code> reads
+a replaced raw file again); a stage-2 or stage-3 file is rebuilt when its input is newer;
+<code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> when a cast file is newer; a cast, section or time-series page when the files
+it is drawn from are newer.  The cruise-wide pages (summary, casts, sensors, processing, …)
+are rebuilt on every run.  After new casts arrive, run it again:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ctdcast<span class="w"> </span>run<span class="w"> </span>config.yaml
+</pre></div>
+</div>
+<p>The new casts are processed and get their pages; <code class="docutils literal notranslate"><span class="pre">profiles.nc</span></code> is recompiled, so the
+section, time series and summary pages are rebuilt with them.  A config change is not a newer
+file: after changing the processing steps or thresholds, add <code class="docutils literal notranslate"><span class="pre">--force</span></code> (with <code class="docutils literal notranslate"><span class="pre">--only</span></code> to
+limit it to a few casts).</p>
+</section>
+<hr class="docutils" />
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="config_yaml.html"><span class="doc">config.yaml</span></a> — every <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> field.</p></li>
+<li><p><a class="reference internal" href="processing_framework.html"><span class="doc">ctdcast processing framework</span></a> — the stages and what each one does.</p></li>
+<li><p><a class="reference internal" href="cruise_metadata.html"><span class="doc">Cruise metadata (cruise_info)</span></a> — the <code class="docutils literal notranslate"><span class="pre">cruise_info</span></code> block: identity, platform, people, embargo.</p></li>
+<li><p><a class="reference internal" href="ctd_groupings.html"><span class="doc">ctd_groupings.yaml</span></a> — every <code class="docutils literal notranslate"><span class="pre">ctd_groupings.yaml</span></code> field.</p></li>
+<li><p><a class="reference internal" href="data_files.html"><span class="doc">Data files (netCDF)</span></a> — the netCDF files ctdcast reads and writes.</p></li>
+<li><p><a class="reference internal" href="report_output.html"><span class="doc">Report output</span></a> — what each report page contains.</p></li>
+<li><p><a class="reference internal" href="api.html"><span class="doc">Python API</span></a> — Python API for calling ctdcast from your own scripts.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="ctdcast: processing and reports for shipboard CTD and LADCP data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demo.html" class="btn btn-neutral float-right" title="About the demo report" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

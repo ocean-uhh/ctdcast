@@ -1,0 +1,935 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.analysis.fits &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.analysis.fits</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.analysis.fits</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Fit conductivity alignment and cell thermal mass parameters from a cruise's casts.</span>
+
+<span class="sd">Two cost functions on one cast at its native scan rate, and the arithmetic that combines them</span>
+<span class="sd">over many casts.  They suggest the ``processing.alignctd`` and ``processing.celltm`` values that</span>
+<span class="sd">stage 3 applies; they never change data.</span>
+
+<span class="sd">- **Alignment** (:func:`alignment_cost`): the mean square of high-passed practical salinity in the</span>
+<span class="sd">  thermocline, as a function of the conductivity advance on top of what the data already carry</span>
+<span class="sd">  (the deck unit's).  A misalignment makes salinity spike where temperature changes fast; too</span>
+<span class="sd">  much advance reverses the spikes, so the cost has a minimum.  Down and up are scored separately;</span>
+<span class="sd">  the downcast is the one to fit (the upcast passes through the rosette's wake), the upcast is</span>
+<span class="sd">  shown beside it.  Scans near the surface and scans where the package is barely moving along the</span>
+<span class="sd">  leg (ship heave) are left out.</span>
+<span class="sd">- **Cell thermal mass** (:func:`ctm_cost`): the down–up difference of practical salinity in</span>
+<span class="sd">  temperature bins below a window top (default 200 dbar), each bin weighted towards the time the</span>
+<span class="sd">  two legs passed it, as a function of ``(alpha, tau)``.  Each grid point is scored through</span>
+<span class="sd">  seabirdscientific's ``cell_thermal_mass``, the correction stage 3 applies.</span>
+
+<span class="sd">Over a cruise (:func:`cruise_surface`), each cast's cost is divided by its value with no</span>
+<span class="sd">correction and the casts are averaged: the cruise optimum is the minimum of that average, not the</span>
+<span class="sd">average of per-cast optima.  For alignment (:func:`median_curve`) each cast's cost is divided by</span>
+<span class="sd">its own minimum and the cruise curve is the median across casts.  ``alpha`` and ``tau`` trade off along a valley, so</span>
+<span class="sd">:func:`one_parameter_fits` also fits one with the other held at Sea-Bird's default, the stable</span>
+<span class="sd">quantity for comparing casts and blocks of casts.</span>
+
+<span class="sd">Original author of the cell thermal mass cost (down/up salinity in temperature bins, grid search</span>
+<span class="sd">through Sea-Bird's ``cell_thermal_mass``): Joel Bracamontes Ramirez, ctdproc</span>
+<span class="sd">``processing.find_opt_alp_tat_fast``.  The alignment cost, the time weighting, the window and the</span>
+<span class="sd">cruise aggregation are not from ctdproc.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gsw</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">median_filter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">lfilter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal.windows</span><span class="w"> </span><span class="kn">import</span> <span class="n">tukey</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">processing</span> <span class="k">as</span> <span class="n">sbs_processing</span>
+
+<span class="c1">#: Residual conductivity advance searched by :func:`alignment_cost`, seconds on top of the data's.</span>
+<span class="n">DEFAULT_RESIDUALS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.15</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">,</span> <span class="mf">0.0025</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+<span class="c1">#: Cell thermal mass grid searched by :func:`ctm_cost`, around Sea-Bird's (0.03, 7 s).</span>
+<span class="n">DEFAULT_ALPHA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.08</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">,</span> <span class="mf">0.0025</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">DEFAULT_TAU</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">16.0</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+<span class="c1">#: Sea-Bird's defaults for a TC duct and 3000-rpm pump (SBE manual p.92).</span>
+<span class="n">DEFAULT_ALPHA_SBE</span> <span class="o">=</span> <span class="mf">0.03</span>
+<span class="n">DEFAULT_TAU_SBE</span> <span class="o">=</span> <span class="mf">7.0</span>
+<span class="c1">#: Thermocline threshold for the alignment cost: |dT/dp| in °C per dbar, on 2-dbar bins.</span>
+<span class="n">DEFAULT_GRADIENT</span> <span class="o">=</span> <span class="mf">0.02</span>
+<span class="c1">#: Alignment cost: scans shallower than this (dbar) are left out.</span>
+<span class="n">DEFAULT_ALIGN_PMIN</span> <span class="o">=</span> <span class="mf">20.0</span>
+<span class="c1">#: Alignment cost: scans moving along the leg slower than this (dbar/s) are left out (heave).</span>
+<span class="n">DEFAULT_MIN_SPEED</span> <span class="o">=</span> <span class="mf">0.25</span>
+<span class="c1">#: Largest *min_speed* accepted: above it a slow winch would leave too few scans.</span>
+<span class="n">MAX_MIN_SPEED</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="c1">#: Time constant (s) of the low-pass applied to pressure before the speed is taken: SBE Data</span>
+<span class="c1">#: Processing's Filter default for pressure (SBE manual p.20).</span>
+<span class="n">PRESSURE_FILTER_SECONDS</span> <span class="o">=</span> <span class="mf">0.15</span>
+<span class="c1">#: Tukey taper of the 1-s high-pass window in the alignment cost.</span>
+<span class="n">TUKEY_ALPHA</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="c1">#: Top of the cell thermal mass window (dbar): the near-surface water changes between legs.</span>
+<span class="n">DEFAULT_CTM_PMIN</span> <span class="o">=</span> <span class="mf">200.0</span>
+<span class="c1">#: Time scale (s) of the down/up weighting: weight = 1 / (gap + this).</span>
+<span class="n">DEFAULT_GAP_SCALE</span> <span class="o">=</span> <span class="mf">300.0</span>
+<span class="c1">#: Temperature bins in the cell thermal mass cost.</span>
+<span class="n">DEFAULT_TEMPERATURE_BINS</span> <span class="o">=</span> <span class="mi">40</span>
+<span class="c1">#: A cast's down/up difference within this fraction of the cruise minimum is "in the valley".</span>
+<span class="n">VALLEY_FRACTION</span> <span class="o">=</span> <span class="mf">0.05</span>
+<span class="c1">#: An alignment cost counts only if it rises to this multiple of its minimum within the search:</span>
+<span class="c1">#: a dead or noisy line gives a cost that wobbles scan by scan with no well.</span>
+<span class="n">WELL_DEPTH</span> <span class="o">=</span> <span class="mf">2.0</span>
+
+
+<div class="viewcode-block" id="Cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.Cast">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Cast</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One cast's native-rate arrays for one conductivity line.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Pressure (dbar); NaN where a scan is not usable.</span>
+<span class="sd">    temperature : numpy.ndarray</span>
+<span class="sd">        ITS-90 temperature (°C) of the line.</span>
+<span class="sd">    conductivity : numpy.ndarray</span>
+<span class="sd">        Conductivity (mS/cm) of the line, as stage 2 carries it.</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Time between scans (s).</span>
+<span class="sd">    """</span>
+
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">conductivity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turnaround</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Index of the last scan within 2 dbar of the cast's maximum pressure."""</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pressure</span>
+        <span class="n">pmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">p</span> <span class="o">&gt;=</span> <span class="n">pmax</span> <span class="o">-</span> <span class="mf">2.0</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pmax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""The cast's maximum pressure (dbar)."""</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pressure</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="despike_pressure">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.despike_pressure">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">despike_pressure</span><span class="p">(</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">49</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *pressure* with spikes and impossible values set NaN.</span>
+
+<span class="sd">    A scan is a spike when it departs from the running median of *window* scans by more than</span>
+<span class="sd">    *limit* dbar, or lies outside −5…7000 dbar.  The 911plus occasionally records single-scan</span>
+<span class="sd">    pressure spikes of thousands of dbar, which would otherwise set the cast's maximum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Pressure (dbar).</span>
+<span class="sd">    window : int, optional</span>
+<span class="sd">        Running-median length, in scans.</span>
+<span class="sd">    limit : float, optional</span>
+<span class="sd">        Departure from the running median (dbar) that marks a spike.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        A float64 copy with spikes as NaN.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">bad</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">p</span> <span class="o">&gt;</span> <span class="mf">7000.0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">p</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">5.0</span><span class="p">)</span>
+    <span class="n">fill</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bad</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="o">~</span><span class="n">bad</span><span class="p">])</span> <span class="k">if</span> <span class="p">(</span><span class="o">~</span><span class="n">bad</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="n">bad</span> <span class="o">|=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">median_filter</span><span class="p">(</span><span class="n">fill</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">window</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">limit</span>
+    <span class="n">p</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">p</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fill</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Linear interpolation across NaN, so a recursive filter can run through a short gap."""</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ok</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">x</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">idx</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bin_mean</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Mean of *value* in bins of *key*, and the count per bin."""</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">minlength</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">minlength</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">divide</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">s</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="n">n</span>
+
+
+<div class="viewcode-block" id="window_delta_t">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.window_delta_t">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">window_delta_t</span><span class="p">(</span><span class="n">cast</span><span class="p">:</span> <span class="n">Cast</span><span class="p">,</span> <span class="n">pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_CTM_PMIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return |T(bottom) − T(pmin)| on the downcast and the upcast.</span>
+
+<span class="sd">    The temperature change across the cell thermal mass window: where it is small the window</span>
+<span class="sd">    carries no gradient and the fit learns nothing from the cast.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast : Cast</span>
+<span class="sd">        The cast.</span>
+<span class="sd">    pmin : float, optional</span>
+<span class="sd">        Top of the window (dbar).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of float</span>
+<span class="sd">        ``(down, up)`` in °C; NaN when the cast does not reach 60 dbar below *pmin*.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">cast</span><span class="o">.</span><span class="n">pmax</span> <span class="o">&lt;</span> <span class="n">pmin</span> <span class="o">+</span> <span class="mf">60.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">turnaround</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">pmax</span> <span class="o">+</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+        <span class="n">m</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pressure</span><span class="p">[</span><span class="n">sl</span><span class="p">],</span> <span class="n">cast</span><span class="o">.</span><span class="n">temperature</span><span class="p">[</span><span class="n">sl</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="nb">abs</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pmax</span> <span class="o">-</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">pc</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+                    <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">pmin</span><span class="p">,</span> <span class="n">pc</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="sbe_lowpass">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.sbe_lowpass">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sbe_lowpass</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">time_constant</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Low-pass *x* the way SBE Data Processing's Filter does.</span>
+
+<span class="sd">    A single-pole filter with the given time constant, run forward and then backward so the</span>
+<span class="sd">    result has no phase shift (SBE manual p.101).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        The series, without NaN (fill gaps first).</span>
+<span class="sd">    time_constant : float</span>
+<span class="sd">        Filter time constant (s).</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Time between scans (s).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        The filtered series, same length.</span>
+<span class="sd">    """</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">time_constant</span> <span class="o">/</span> <span class="n">interval</span>
+    <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">k</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">k</span><span class="p">)]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">lfilter</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">lfilter</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">y</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="leg_speed">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.leg_speed">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">leg_speed</span><span class="p">(</span><span class="n">cast</span><span class="p">:</span> <span class="n">Cast</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the package's speed along its leg (dbar/s), positive when moving the leg's way.</span>
+
+<span class="sd">    Positive descending on the downcast and ascending on the upcast; heave shows as speeds near</span>
+<span class="sd">    zero or negative.  Pressure is low-passed with :func:`sbe_lowpass` at</span>
+<span class="sd">    :data:`PRESSURE_FILTER_SECONDS` first.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast : Cast</span>
+<span class="sd">        The cast.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        One value per scan.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">sbe_lowpass</span><span class="p">(</span><span class="n">_fill</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pressure</span><span class="p">),</span> <span class="n">PRESSURE_FILTER_SECONDS</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">cast</span><span class="o">.</span><span class="n">turnaround</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">/</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span> <span class="o">*</span> <span class="n">sign</span></div>
+
+
+
+<div class="viewcode-block" id="median_speeds">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.median_speeds">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">median_speeds</span><span class="p">(</span><span class="n">cast</span><span class="p">:</span> <span class="n">Cast</span><span class="p">,</span> <span class="n">pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_ALIGN_PMIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the median lowering and hauling speeds (dbar/s) below *pmin*.</span>
+
+<span class="sd">    Only scans moving the leg's way are counted, so a stop at a bottle does not pull the median</span>
+<span class="sd">    down.  The figure to set *min_speed* against.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast : Cast</span>
+<span class="sd">        The cast.</span>
+<span class="sd">    pmin : float, optional</span>
+<span class="sd">        Scans shallower than this (dbar) are not counted.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of float</span>
+<span class="sd">        ``(down, up)``; NaN for a leg with no such scans.</span>
+<span class="sd">    """</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">leg_speed</span><span class="p">(</span><span class="n">cast</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">turnaround</span>
+    <span class="n">deep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pressure</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pressure</span> <span class="o">&gt;</span> <span class="n">pmin</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">sl</span><span class="p">][</span><span class="n">deep</span><span class="p">[</span><span class="n">sl</span><span class="p">]]</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">size</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="alignment_cost">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.alignment_cost">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">alignment_cost</span><span class="p">(</span>
+    <span class="n">cast</span><span class="p">:</span> <span class="n">Cast</span><span class="p">,</span>
+    <span class="n">residuals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_RESIDUALS</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">gradient</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_GRADIENT</span><span class="p">,</span>
+    <span class="n">pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_ALIGN_PMIN</span><span class="p">,</span>
+    <span class="n">min_speed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_MIN_SPEED</span><span class="p">,</span>
+    <span class="n">sharpest</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the salinity spike cost of each residual advance, downcast and upcast.</span>
+
+<span class="sd">    For each advance, conductivity is advanced with seabirdscientific's ``align_ctd``, practical</span>
+<span class="sd">    salinity is derived, and the cost is the mean square of salinity minus its 1-s running mean</span>
+<span class="sd">    (a Tukey window, taper :data:`TUKEY_ALPHA`), over scans in 2-dbar bins whose downcast |dT/dp|</span>
+<span class="sd">    exceeds *gradient*, deeper than *pmin*, and moving along the leg faster than *min_speed*.</span>
+<span class="sd">    Every advance is scored on the same scans (those usable for all of them), so shifting data off</span>
+<span class="sd">    the ends of the record cannot change the cost.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast : Cast</span>
+<span class="sd">        The cast, at its native scan rate.</span>
+<span class="sd">    residuals : numpy.ndarray, optional</span>
+<span class="sd">        Advances (s) to try, on top of whatever the data already carry.</span>
+<span class="sd">    gradient : float, optional</span>
+<span class="sd">        Thermocline threshold, °C per dbar.</span>
+<span class="sd">    pmin : float, optional</span>
+<span class="sd">        Scans shallower than this (dbar) are left out.</span>
+<span class="sd">    min_speed : float, optional</span>
+<span class="sd">        Scans moving along the leg slower than this (dbar/s, see :func:`leg_speed`) are left out:</span>
+<span class="sd">        ship heave stops or reverses the package, and the water around the sensors is then not</span>
+<span class="sd">        the water the pump drew in.  0 keeps every scan; at most :data:`MAX_MIN_SPEED`.</span>
+<span class="sd">    sharpest : float, optional</span>
+<span class="sd">        Keep only this fraction (0–1) of the remaining scans per leg, those with the largest</span>
+<span class="sd">        |dT/dt|.  Off by default: on the OdB cruise it lost casts and changed nothing.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray or None</span>
+<span class="sd">        Shape ``(2, len(residuals))``: row 0 the downcast, row 1 the upcast; NaN where a leg has</span>
+<span class="sd">        under 200 thermocline scans.  None when the cast has no thermocline at all.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If *min_speed* is outside 0–:data:`MAX_MIN_SPEED` or *sharpest* outside (0, 1].</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">min_speed</span> <span class="o">&lt;=</span> <span class="n">MAX_MIN_SPEED</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"min_speed: expected 0–</span><span class="si">{</span><span class="n">MAX_MIN_SPEED</span><span class="si">}</span><span class="s2"> dbar/s, got </span><span class="si">{</span><span class="n">min_speed</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">sharpest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">sharpest</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sharpest: expected a fraction in (0, 1], got </span><span class="si">{</span><span class="n">sharpest</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">p</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">pressure</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">temperature</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">turnaround</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">pmax</span> <span class="o">+</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">tm</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">p</span><span class="p">[:</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">T</span><span class="p">[:</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">steep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">tm</span><span class="p">,</span> <span class="n">pc</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">gradient</span>
+    <span class="k">if</span> <span class="n">steep</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">in_tc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="n">ok_b</span> <span class="o">=</span> <span class="p">(</span><span class="n">b</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">b</span> <span class="o">&lt;</span> <span class="n">steep</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">in_tc</span><span class="p">[</span><span class="n">ok_b</span><span class="p">]</span> <span class="o">=</span> <span class="n">steep</span><span class="p">[</span><span class="n">b</span><span class="p">[</span><span class="n">ok_b</span><span class="p">]]</span>
+    <span class="n">usable</span> <span class="o">=</span> <span class="n">in_tc</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">T</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">conductivity</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">usable</span> <span class="o">&amp;=</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="n">pmin</span>
+        <span class="k">if</span> <span class="n">min_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">usable</span> <span class="o">&amp;=</span> <span class="n">leg_speed</span><span class="p">(</span><span class="n">cast</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">min_speed</span>
+    <span class="k">if</span> <span class="n">sharpest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dtdt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">_fill</span><span class="p">(</span><span class="n">T</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">dtdt</span><span class="p">[</span><span class="n">sl</span><span class="p">][</span><span class="n">usable</span><span class="p">[</span><span class="n">sl</span><span class="p">]]</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">usable</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span> <span class="o">&amp;=</span> <span class="n">dtdt</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">sharpest</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">_fill</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">conductivity</span><span class="p">)</span>
+    <span class="n">p_f</span> <span class="o">=</span> <span class="n">_fill</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="c1"># Odd length, so np.convolve(..., mode="same") is centred: the 1-s running mean and the</span>
+    <span class="c1"># NaN margin below both stay symmetric around each scan (an even window shifts them by one).</span>
+    <span class="n">n_avg</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span><span class="p">))</span>
+    <span class="n">n_avg</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">n_avg</span> <span class="o">%</span> <span class="mi">2</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">tukey</span><span class="p">(</span><span class="n">n_avg</span><span class="p">,</span> <span class="n">TUKEY_ALPHA</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">/=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">hps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">residuals</span><span class="p">:</span>
+        <span class="n">ca</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">align_ctd</span><span class="p">(</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span><span class="p">,</span> <span class="n">flag_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SP_from_C</span><span class="p">(</span><span class="n">ca</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">p_f</span><span class="p">)</span>
+        <span class="n">hps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">s</span>
+            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">s</span><span class="p">))),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"same"</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">hp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">hps</span><span class="p">)</span>
+    <span class="c1"># Every advance is scored on the same scans: a scan pushed off either end by any advance in</span>
+    <span class="c1"># the search is dropped for all of them, so the cost cannot fall just because bad scans at an</span>
+    <span class="c1"># end of the record leave it as the advance grows.  The 1-s running mean is unreliable within</span>
+    <span class="c1"># a second of a NaN, so that margin goes too — around the NaN only, not around scans the</span>
+    <span class="c1"># selection left out, or a scattered selection would erode to nothing.</span>
+    <span class="n">finite</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hp</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">finite</span> <span class="o">&amp;=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">((</span><span class="o">~</span><span class="n">finite</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_avg</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"same"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="n">common</span> <span class="o">=</span> <span class="n">usable</span> <span class="o">&amp;</span> <span class="n">finite</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">leg</span><span class="p">,</span> <span class="n">sl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">))):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">common</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">leg</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">hp</span><span class="p">[:,</span> <span class="n">sl</span><span class="p">][:,</span> <span class="n">m</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="ctm_cost">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.ctm_cost">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ctm_cost</span><span class="p">(</span>
+    <span class="n">cast</span><span class="p">:</span> <span class="n">Cast</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_ALPHA</span><span class="p">,</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_TAU</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_CTM_PMIN</span><span class="p">,</span>
+    <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_TEMPERATURE_BINS</span><span class="p">,</span>
+    <span class="n">gap_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_GAP_SCALE</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the down/up salinity mismatch below *pmin* for each ``(alpha, tau)``.</span>
+
+<span class="sd">    Conductivity is corrected over the whole cast (the filter needs the history), then practical</span>
+<span class="sd">    salinity below *pmin* is averaged in *n_bins* temperature bins on each leg.  The cost is the</span>
+<span class="sd">    weighted mean of (down − up)², each bin weighted by ``1 / (gap + gap_scale)`` where *gap* is the</span>
+<span class="sd">    time between the two legs passing it, so the bottom of the cast, where the water has had least</span>
+<span class="sd">    time to change, counts most.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast : Cast</span>
+<span class="sd">        The cast, at its native scan rate, conductivity already aligned.</span>
+<span class="sd">    alpha, tau : numpy.ndarray, optional</span>
+<span class="sd">        The grid (``tau`` in seconds).</span>
+<span class="sd">    pmin : float, optional</span>
+<span class="sd">        Top of the window (dbar).</span>
+<span class="sd">    n_bins : int, optional</span>
+<span class="sd">        Temperature bins across the 1st–99th percentile of the window.</span>
+<span class="sd">    gap_scale : float, optional</span>
+<span class="sd">        Weighting time scale (s).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray or None</span>
+<span class="sd">        Shape ``(len(alpha), len(tau))``; ``alpha == 0`` is no correction.  None when the cast</span>
+<span class="sd">        does not reach 60 dbar below *pmin*, has under 98% finite scans, spans under 0.1 °C in</span>
+<span class="sd">        the window, or has fewer than 5 bins seen by both legs.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">cast</span><span class="o">.</span><span class="n">pmax</span> <span class="o">&lt;</span> <span class="n">pmin</span> <span class="o">+</span> <span class="mf">60.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">T0</span><span class="p">,</span> <span class="n">C0</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">conductivity</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">T0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">C0</span><span class="p">))</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.98</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">T</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">_fill</span><span class="p">(</span><span class="n">T0</span><span class="p">),</span> <span class="n">_fill</span><span class="p">(</span><span class="n">C0</span><span class="p">),</span> <span class="n">cast</span><span class="o">.</span><span class="n">pressure</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">turnaround</span>
+    <span class="n">t_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span>
+    <span class="n">deep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">p</span> <span class="o">&gt;</span> <span class="n">pmin</span><span class="p">)</span>
+    <span class="n">tlo</span><span class="p">,</span> <span class="n">thi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">deep</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">thi</span> <span class="o">-</span> <span class="n">tlo</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">tlo</span><span class="p">,</span> <span class="n">thi</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="n">sel</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">deep</span><span class="p">[</span><span class="n">sl</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">sl</span><span class="o">.</span><span class="n">start</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="n">legs</span><span class="p">]</span>
+    <span class="n">t_dn</span><span class="p">,</span> <span class="n">n_dn</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">sel</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">t_s</span><span class="p">[</span><span class="n">sel</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">edges</span><span class="p">)</span>
+    <span class="n">t_up</span><span class="p">,</span> <span class="n">n_up</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">sel</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">t_s</span><span class="p">[</span><span class="n">sel</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">edges</span><span class="p">)</span>
+    <span class="n">min_n</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span>
+        <span class="mf">1.0</span> <span class="o">/</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span>
+    <span class="p">)</span>  <span class="c1"># at least a second of scans in a bin on each leg</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">n_dn</span> <span class="o">&gt;=</span> <span class="n">min_n</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">n_up</span> <span class="o">&gt;=</span> <span class="n">min_n</span><span class="p">),</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_up</span> <span class="o">-</span> <span class="n">t_dn</span><span class="p">)</span> <span class="o">+</span> <span class="n">gap_scale</span><span class="p">),</span> <span class="mf">0.0</span>
+    <span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span>
+    <span class="n">p_w</span><span class="p">,</span> <span class="n">T_w</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">T</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="n">n0</span> <span class="o">=</span> <span class="n">sel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tau</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">alpha</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">tc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tau</span><span class="p">):</span>
+            <span class="n">cc</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">C</span>
+                <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mf">0.0</span>
+                <span class="k">else</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">cell_thermal_mass</span><span class="p">(</span>
+                    <span class="n">T</span><span class="p">,</span> <span class="n">C</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">tc</span><span class="p">),</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span>
+                <span class="p">)</span>
+                <span class="o">*</span> <span class="mf">10.0</span>
+            <span class="p">)</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SP_from_C</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">T_w</span><span class="p">,</span> <span class="n">p_w</span><span class="p">)</span>
+            <span class="n">s_dn</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">T_w</span><span class="p">[:</span><span class="n">n0</span><span class="p">],</span> <span class="n">s</span><span class="p">[:</span><span class="n">n0</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span>
+            <span class="n">s_up</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_bin_mean</span><span class="p">(</span><span class="n">T_w</span><span class="p">[</span><span class="n">n0</span><span class="p">:],</span> <span class="n">s</span><span class="p">[</span><span class="n">n0</span><span class="p">:],</span> <span class="n">edges</span><span class="p">)</span>
+            <span class="n">d2</span> <span class="o">=</span> <span class="p">(</span><span class="n">s_dn</span> <span class="o">-</span> <span class="n">s_up</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">*</span> <span class="n">d2</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">ok</span><span class="p">]))</span> <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="snap_to_default">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.snap_to_default">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">snap_to_default</span><span class="p">(</span>
+    <span class="n">surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_ALPHA</span><span class="p">,</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_TAU</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">alpha_default</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span>
+    <span class="n">tau_default</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span>
+    <span class="n">alpha_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">tau_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the ``(alpha, tau)`` within *tolerance* of the cost minimum closest to the default.</span>
+
+<span class="sd">    Any grid point whose cost is within ``tolerance`` of the minimum is treated as equally good;</span>
+<span class="sd">    among those the one nearest Sea-Bird's default is returned, distance measured in ``alpha_scale``</span>
+<span class="sd">    / ``tau_scale`` units (a step of ``tau_scale`` in tau counts as much as ``alpha_scale`` in</span>
+<span class="sd">    alpha).  The default itself is returned when it falls inside the region.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    surface : numpy.ndarray</span>
+<span class="sd">        A cruise cost surface on the ``(alpha, tau)`` grid.</span>
+<span class="sd">    alpha, tau : numpy.ndarray, optional</span>
+<span class="sd">        The grid.</span>
+<span class="sd">    tolerance : float, optional</span>
+<span class="sd">        The acceptability fraction above the minimum (``0.02`` = 2%).</span>
+<span class="sd">    alpha_default, tau_default : float, optional</span>
+<span class="sd">        The point to stay close to.</span>
+<span class="sd">    alpha_scale, tau_scale : float, optional</span>
+<span class="sd">        The per-axis distance units.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of float</span>
+<span class="sd">        ``(alpha, tau)``; ``(nan, nan)`` when the surface has no usable minimum.</span>
+<span class="sd">    """</span>
+    <span class="n">smin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">surface</span><span class="p">))</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">surface</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">smin</span><span class="p">)</span> <span class="ow">or</span> <span class="n">smin</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">ii</span><span class="p">,</span> <span class="n">jj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">surface</span> <span class="o">&lt;=</span> <span class="n">smin</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tolerance</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">ii</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">da</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">alpha</span><span class="p">)[</span><span class="n">ii</span><span class="p">]</span> <span class="o">-</span> <span class="n">alpha_default</span><span class="p">)</span> <span class="o">/</span> <span class="n">alpha_scale</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau</span><span class="p">)[</span><span class="n">jj</span><span class="p">]</span> <span class="o">-</span> <span class="n">tau_default</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau_scale</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">da</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dt</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="p">[</span><span class="n">ii</span><span class="p">[</span><span class="n">k</span><span class="p">]]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">tau</span><span class="p">[</span><span class="n">jj</span><span class="p">[</span><span class="n">k</span><span class="p">]]))</span></div>
+
+
+
+<div class="viewcode-block" id="has_interior_minimum">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.has_interior_minimum">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_interior_minimum</span><span class="p">(</span><span class="n">cost</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether a 1-D cost has its minimum strictly inside the search.</span>
+
+<span class="sd">    A cost whose minimum is its first or last value is still falling at the end of the search:</span>
+<span class="sd">    it gives no estimate, and averaged with other casts it would pull the result to that end.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cost : numpy.ndarray</span>
+<span class="sd">        One cast's cost over the searched values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True when the minimum is neither the first nor the last finite-searched value.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">cost</span><span class="p">))</span>
+    <span class="k">return</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">cost</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span></div>
+
+
+
+<div class="viewcode-block" id="has_well">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.has_well">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_well</span><span class="p">(</span><span class="n">cost</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">WELL_DEPTH</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether a 1-D alignment cost has a minimum inside the search and a real well.</span>
+
+<span class="sd">    Besides :func:`has_interior_minimum`, the cost must rise to *depth* times its minimum</span>
+<span class="sd">    somewhere in the search.  On the OdB cruise every working line rose at least 2.4-fold; the</span>
+<span class="sd">    few that did not (a line with a fault) oscillated scan by scan with no single minimum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cost : numpy.ndarray</span>
+<span class="sd">        One leg's alignment cost over the searched advances.</span>
+<span class="sd">    depth : float, optional</span>
+<span class="sd">        Required ratio of the maximum to the minimum.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True when the cost has both.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_interior_minimum</span><span class="p">(</span><span class="n">cost</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">cost</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">lo</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">cost</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">depth</span> <span class="o">*</span> <span class="n">lo</span></div>
+
+
+
+<div class="viewcode-block" id="normalise">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.normalise">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalise</span><span class="p">(</span><span class="n">cost</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Divide *cost* by its value at *reference* (no correction), or None if that is not usable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cost : numpy.ndarray</span>
+<span class="sd">        A one-leg alignment cost or a ``(alpha, tau)`` cell-thermal-mass cost surface.</span>
+<span class="sd">    reference : tuple of int</span>
+<span class="sd">        The index of the no-correction value.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray or None</span>
+<span class="sd">        The normalised cost, or None when the reference is NaN or not positive.</span>
+<span class="sd">    """</span>
+    <span class="n">ref</span> <span class="o">=</span> <span class="n">cost</span><span class="p">[</span><span class="n">reference</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ref</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">cost</span> <span class="o">/</span> <span class="n">ref</span></div>
+
+
+
+<div class="viewcode-block" id="CruiseFit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.CruiseFit">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CruiseFit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The cruise-average cost and where it is lowest.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    surface : numpy.ndarray</span>
+<span class="sd">        The average of the casts' normalised costs.</span>
+<span class="sd">    index : tuple of int</span>
+<span class="sd">        Index of the minimum.</span>
+<span class="sd">    valley : numpy.ndarray</span>
+<span class="sd">        Boolean mask of the points within :data:`VALLEY_FRACTION` of the minimum.</span>
+<span class="sd">    n_casts : int</span>
+<span class="sd">        How many casts went into the average.</span>
+<span class="sd">    """</span>
+
+    <span class="n">surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">valley</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">n_casts</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="cruise_surface">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.cruise_surface">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cruise_surface</span><span class="p">(</span>
+    <span class="n">costs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">weights</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CruiseFit</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Average normalised per-cast costs and find the minimum and the valley.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    costs : sequence of numpy.ndarray</span>
+<span class="sd">        Normalised costs (from :func:`normalise`), all the same shape.</span>
+<span class="sd">    weights : sequence of float, optional</span>
+<span class="sd">        A weight per cast (e.g. its |ΔT| over the window); equal when omitted.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    CruiseFit or None</span>
+<span class="sd">        None when *costs* is empty.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">costs</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">costs</span><span class="p">)</span>
+    <span class="n">wts</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">costs</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">wts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">wts</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">wts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">),</span> <span class="n">wts</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">wts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">wts</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">ndim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">surface</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">stack</span> <span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">surface</span><span class="p">)),</span> <span class="n">surface</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">valley</span> <span class="o">=</span> <span class="n">surface</span> <span class="o">&lt;=</span> <span class="n">surface</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">VALLEY_FRACTION</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">CruiseFit</span><span class="p">(</span>
+        <span class="n">surface</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">),</span> <span class="n">valley</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">wts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MedianCurve">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.MedianCurve">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MedianCurve</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The median across casts of 1-D costs, each divided by its own minimum.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    median : numpy.ndarray</span>
+<span class="sd">        The median curve (1 at a cast's own minimum).</span>
+<span class="sd">    lower, upper : numpy.ndarray</span>
+<span class="sd">        The 25th and 75th percentiles.</span>
+<span class="sd">    index : int</span>
+<span class="sd">        Index of the median curve's minimum.</span>
+<span class="sd">    n_casts : int</span>
+<span class="sd">        How many casts went in.</span>
+<span class="sd">    """</span>
+
+    <span class="n">median</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">lower</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">upper</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">n_casts</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="median_curve">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.median_curve">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">median_curve</span><span class="p">(</span><span class="n">costs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">MedianCurve</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cruise alignment curve: the median of the casts' costs over their own minima.</span>
+
+<span class="sd">    Casts without a minimum inside the search and a real well (:func:`has_well`) are left out.  The</span>
+<span class="sd">    median, not the mean: a few casts rise steeply away from their minimum and would pull a mean</span>
+<span class="sd">    outside the middle half of casts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    costs : sequence of numpy.ndarray</span>
+<span class="sd">        One leg's alignment cost per cast, all the same length.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    MedianCurve or None</span>
+<span class="sd">        None when no cast has an interior minimum.</span>
+<span class="sd">    """</span>
+    <span class="n">curves</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">costs</span> <span class="k">if</span> <span class="n">has_well</span><span class="p">(</span><span class="n">c</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">curves</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">curves</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+        <span class="n">med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">75</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MedianCurve</span><span class="p">(</span><span class="n">med</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">med</span><span class="p">)),</span> <span class="nb">len</span><span class="p">(</span><span class="n">curves</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="one_parameter_fits">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.fits.one_parameter_fits">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">one_parameter_fits</span><span class="p">(</span>
+    <span class="n">surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_ALPHA</span><span class="p">,</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">DEFAULT_TAU</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">alpha_fixed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span>
+    <span class="n">tau_fixed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return alpha with tau held at *tau_fixed*, and tau with alpha held at *alpha_fixed*.</span>
+
+<span class="sd">    ``alpha`` and ``tau`` trade off along a valley, so the two-parameter minimum of one cast or a</span>
+<span class="sd">    few casts wanders; with one held at Sea-Bird's default the other is well defined.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    surface : numpy.ndarray</span>
+<span class="sd">        A cost surface on the ``(alpha, tau)`` grid.</span>
+<span class="sd">    alpha, tau : numpy.ndarray, optional</span>
+<span class="sd">        The grid.</span>
+<span class="sd">    alpha_fixed, tau_fixed : float, optional</span>
+<span class="sd">        The values held fixed.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of float</span>
+<span class="sd">        ``(alpha at tau_fixed, tau at alpha_fixed)``; NaN where the row or column is all NaN.</span>
+<span class="sd">    """</span>
+    <span class="n">jt</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_fixed</span><span class="p">)))</span>
+    <span class="n">ia</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span> <span class="o">-</span> <span class="n">alpha_fixed</span><span class="p">)))</span>
+    <span class="n">col</span><span class="p">,</span> <span class="n">row</span> <span class="o">=</span> <span class="n">surface</span><span class="p">[:,</span> <span class="n">jt</span><span class="p">],</span> <span class="n">surface</span><span class="p">[</span><span class="n">ia</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">col</span><span class="p">))])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tau</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">row</span><span class="p">))])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span> <span class="n">t</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

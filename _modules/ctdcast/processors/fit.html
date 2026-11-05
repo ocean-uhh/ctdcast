@@ -1,0 +1,905 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.fit &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.fit</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.fit</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""``ctdcast fit``: fit alignment and cell thermal mass over a cruise and record the results.</span>
+
+<span class="sd">Reads every stage-2 cast at its native scan rate, scores each conductivity line with the cost</span>
+<span class="sd">functions in :mod:`ctdcast.analysis.fits`, and writes the **per-cast** cost surfaces to</span>
+<span class="sd">``&lt;ctd_root&gt;/fits.nc``.  The cruise and per-block averages are not stored — :func:`summarise`</span>
+<span class="sd">computes them from the per-cast costs at report time.  The report draws the corrections page from</span>
+<span class="sd">that file.  Nothing here changes a stage file: the values reach stage 3 only through the config.</span>
+
+<span class="sd">Two passes: alignment first, over every cast; then cell thermal mass on conductivity advanced by</span>
+<span class="sd">the cruise's fitted (downcast) alignment for that line, because a misaligned line fits the wrong ``(alpha,</span>
+<span class="sd">tau)``.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">processing</span> <span class="k">as</span> <span class="n">sbs_processing</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="n">applied_sbe_corrections</span><span class="p">,</span> <span class="n">header_from_raw_metadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.preferred_sensors</span><span class="w"> </span><span class="kn">import</span> <span class="n">PREFERRED_PAIR</span><span class="p">,</span> <span class="n">segment_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.corrections</span><span class="w"> </span><span class="kn">import</span> <span class="n">native_interval</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.sensor_catalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_cast_sensor_catalog</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">group_by_cast</span><span class="p">,</span> <span class="n">matches_tags</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">widen_floats</span>
+
+<span class="c1">#: Lines fitted, as (line number, conductivity variable, temperature variable).</span>
+<span class="n">_LINES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"ctd_temperature_1"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">,</span> <span class="s2">"ctd_temperature_2"</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1">#: The file ``fit`` writes and ``report`` reads, under the CTD root.</span>
+<span class="n">FITS_FILENAME</span> <span class="o">=</span> <span class="s2">"fits.nc"</span>
+
+<span class="c1">#: Default number of consecutive casts per block.</span>
+<span class="n">DEFAULT_BLOCK</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<div class="viewcode-block" id="FitSettings">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.FitSettings">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FitSettings</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The choices a fit was made with; recorded in ``fits.nc``.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ctm_pmin : float</span>
+<span class="sd">        Top of the cell thermal mass window (dbar).</span>
+<span class="sd">    gradient : float</span>
+<span class="sd">        Thermocline threshold for the alignment cost (°C per dbar).</span>
+<span class="sd">    align_pmin : float</span>
+<span class="sd">        Alignment cost: scans shallower than this (dbar) are left out.</span>
+<span class="sd">    min_speed : float</span>
+<span class="sd">        Alignment cost: scans moving along the leg slower than this (dbar/s) are left out; 0 keeps</span>
+<span class="sd">        every scan.</span>
+<span class="sd">    gap_seconds : float</span>
+<span class="sd">        Down/up weighting time scale (s).</span>
+<span class="sd">    ctm_tolerance : float</span>
+<span class="sd">        Acceptability fraction above the cost minimum for the recommended (alpha, tau): any point</span>
+<span class="sd">        within it is treated as equally good (0.02 = 2%).</span>
+<span class="sd">    block : int</span>
+<span class="sd">        Consecutive casts per block.</span>
+<span class="sd">    residuals, alpha, tau : numpy.ndarray</span>
+<span class="sd">        The grids searched.</span>
+<span class="sd">    """</span>
+
+    <span class="n">ctm_pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_CTM_PMIN</span>
+    <span class="n">gradient</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_GRADIENT</span>
+    <span class="n">align_pmin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALIGN_PMIN</span>
+    <span class="n">min_speed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_MIN_SPEED</span>
+    <span class="n">gap_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_GAP_SCALE</span>
+    <span class="n">ctm_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>
+    <span class="n">block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_BLOCK</span>
+    <span class="n">residuals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_RESIDUALS</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+
+<div class="viewcode-block" id="FitSettings.from_config">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.FitSettings.from_config">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">processing</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FitSettings</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Build settings from the ``fit`` block, defaults for anything missing.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        processing : dict or None</span>
+<span class="sd">            The settings from :func:`ctdcast.config.layout.processing_view` (its ``fit``).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        FitSettings</span>
+<span class="sd">            The settings.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            On an unknown key, a value that is not a positive number, or a ``min_speed`` outside</span>
+<span class="sd">            0–0.5 dbar/s.</span>
+<span class="sd">        """</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">processing</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fit"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"fit: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">known</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"ctm_pmin"</span><span class="p">,</span>
+            <span class="s2">"gradient"</span><span class="p">,</span>
+            <span class="s2">"align_pmin"</span><span class="p">,</span>
+            <span class="s2">"min_speed"</span><span class="p">,</span>
+            <span class="s2">"gap_seconds"</span><span class="p">,</span>
+            <span class="s2">"ctm_tolerance"</span><span class="p">,</span>
+            <span class="s2">"block"</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="n">known</span>
+        <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"fit: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">; use </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">known</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">known</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">block</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">"min_speed"</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">F</span><span class="o">.</span><span class="n">MAX_MIN_SPEED</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"fit.min_speed: expected 0–</span><span class="si">{</span><span class="n">F</span><span class="o">.</span><span class="n">MAX_MIN_SPEED</span><span class="si">}</span><span class="s2"> dbar/s, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span>
+                    <span class="p">)</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">min_speed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+                <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"fit.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: expected a positive number, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span>
+                <span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">"block"</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">out</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="cast_arrays">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.cast_arrays">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cast_arrays</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">F</span><span class="o">.</span><span class="n">Cast</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return one line of a stage-2 cast as :class:`~ctdcast.analysis.fits.Cast`, or None.</span>
+
+<span class="sd">    Scans stage 2 flagged (soak, on deck) are excluded, the record is trimmed to the first and</span>
+<span class="sd">    last usable scan, and pressure spikes are set NaN.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-2 cast.</span>
+<span class="sd">    line : int</span>
+<span class="sd">        1 or 2.</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        The native scan interval (s).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Cast or None</span>
+<span class="sd">        None when the line's temperature or conductivity is absent, or no scan is usable.</span>
+<span class="sd">    """</span>
+    <span class="n">c_var</span><span class="p">,</span> <span class="n">t_var</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"ctd_temperature_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">c_var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">or</span> <span class="n">t_var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">good</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"time"</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">t_var</span><span class="p">,</span> <span class="n">c_var</span><span class="p">,</span> <span class="s2">"pressure"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">_qc"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">good</span> <span class="o">&amp;=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">good</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">i0</span><span class="p">,</span> <span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">good</span><span class="p">)[[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">sl</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i0</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">i1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">despike_pressure</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">sl</span><span class="p">])</span>
+    <span class="n">p</span><span class="p">[</span><span class="o">~</span><span class="n">good</span><span class="p">[</span><span class="n">sl</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">t_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">c_var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">t</span><span class="p">[</span><span class="o">~</span><span class="n">good</span><span class="p">[</span><span class="n">sl</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">c</span><span class="p">[</span><span class="o">~</span><span class="n">good</span><span class="p">[</span><span class="n">sl</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">Cast</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_CastRecord</span><span class="p">:</span>
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">pmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">delta_t</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">speed</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">skipped</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">sbe_aligned</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">)</span>
+    <span class="n">sbe_celltm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">casts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">Cast</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">align</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">ctm</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="cruise_advance">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.cruise_advance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cruise_advance</span><span class="p">(</span><span class="n">costs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">residuals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the residual advance at the minimum of a line's cruise downcast curve.</span>
+
+<span class="sd">    The one function both the fit pass and :func:`summarise` use, so the advance the cell</span>
+<span class="sd">    thermal mass fit runs on and the advance the report suggests cannot diverge.  Each cost is</span>
+<span class="sd">    evaluated at the float32 precision ``fits.nc`` stores, so the result is the same whether the</span>
+<span class="sd">    costs come straight from the fit (float64) or are read back from the file (float32).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    costs : list of numpy.ndarray</span>
+<span class="sd">        One downcast alignment cost per cast (the ``leg = 0`` row of ``alignment_cost``).</span>
+<span class="sd">    residuals : numpy.ndarray</span>
+<span class="sd">        The residual-advance grid the costs were scored on.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float or None</span>
+<span class="sd">        The advance (s) at the cruise minimum, or None when no cast has a well.</span>
+<span class="sd">    """</span>
+    <span class="n">fit</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">median_curve</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">costs</span><span class="p">])</span>
+    <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">fit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">residuals</span><span class="p">[</span><span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="p">])</span></div>
+
+
+
+<span class="c1">#: Conductivity line names used in the progress lines.</span>
+<span class="n">_LINE_NAME</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="s2">"primary"</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">"secondary"</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_align_line</span><span class="p">(</span><span class="n">rec</span><span class="p">:</span> <span class="n">_CastRecord</span><span class="p">,</span> <span class="n">residuals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One alignment progress line: per line, the residual advance at the downcast minimum.</span>
+
+<span class="sd">    ``–`` for a line whose downcast cost has no well, ``&lt;line&gt; Sea-Bird aligned`` for a line</span>
+<span class="sd">    Sea-Bird already aligned, ``skipped: &lt;reason&gt;`` for a skipped cast, ``no thermocline`` when no</span>
+<span class="sd">    line scored a cost.</span>
+<span class="sd">    """</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"  alignment: cast </span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">skipped</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}</span><span class="s2"> skipped: </span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">skipped</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rec</span><span class="o">.</span><span class="n">align</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">rec</span><span class="o">.</span><span class="n">sbe_aligned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}</span><span class="s2"> no thermocline"</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">head</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">sbe_aligned</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_LINE_NAME</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="si">}</span><span class="s2"> Sea-Bird aligned"</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">down</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">residuals</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">down</span><span class="p">))]</span><span class="si">:</span><span class="s2">+.4f</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">F</span><span class="o">.</span><span class="n">has_well</span><span class="p">(</span><span class="n">down</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"–"</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_LINE_NAME</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="si">}</span><span class="s2"> down </span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2"> s"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ctm_line</span><span class="p">(</span><span class="n">rec</span><span class="p">:</span> <span class="n">_CastRecord</span><span class="p">,</span> <span class="n">settings</span><span class="p">:</span> <span class="n">FitSettings</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One cell-thermal-mass progress line: |ΔT| down/up, then each line's one-parameter fits.</span>
+
+<span class="sd">    ``Sea-Bird celltm applied`` when Sea-Bird already ran it; ``not fitted (window below</span>
+<span class="sd">    &lt;ctm_pmin&gt; dbar, both legs needed)`` when no line scored a cost.</span>
+<span class="sd">    """</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"  cell thermal mass: cast </span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">sbe_celltm</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}</span><span class="s2"> Sea-Bird celltm applied"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rec</span><span class="o">.</span><span class="n">ctm</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}</span><span class="s2"> not fitted "</span>
+            <span class="sa">f</span><span class="s2">"(window below </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">ctm_pmin</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> dbar, both legs needed)"</span>
+        <span class="p">)</span>
+    <span class="n">down</span><span class="p">,</span> <span class="n">up</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">delta_t</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">head</span><span class="si">}</span><span class="s2"> |ΔT| down/up </span><span class="si">{</span><span class="n">down</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">up</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> °C"</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">:</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">ctm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalise</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">a1</span><span class="p">,</span> <span class="n">t1</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">one_parameter_fits</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">tau</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_LINE_NAME</span><span class="p">[</span><span class="n">line</span><span class="p">]</span><span class="si">}</span><span class="s2"> α </span><span class="si">{</span><span class="n">a1</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> at τ </span><span class="si">{</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU_SBE</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, "</span>
+            <span class="sa">f</span><span class="s2">"τ </span><span class="si">{</span><span class="n">t1</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> s at α </span><span class="si">{</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA_SBE</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="fit_cruise">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.fit_cruise">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_cruise</span><span class="p">(</span>
+    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">settings</span><span class="p">:</span> <span class="n">FitSettings</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Fit every native-rate stage-2 cast under *root* and return the ``fits.nc`` dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    root : pathlib.Path</span>
+<span class="sd">        The CTD root (``data.ctd_root``).</span>
+<span class="sd">    settings : FitSettings</span>
+<span class="sd">        The window, threshold and grids.</span>
+<span class="sd">    cast_tags : set of str, optional</span>
+<span class="sd">        Restrict to these zero-padded cast numbers (``--only``).</span>
+<span class="sd">    progress : bool, optional</span>
+<span class="sd">        Print one line per cast.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        Per-cast costs, |ΔT|, maximum pressure and skip reasons, and the alignment each line's</span>
+<span class="sd">        cell thermal mass was fitted on.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    FileNotFoundError</span>
+<span class="sd">        If *root* has no stage-2 files.</span>
+<span class="sd">    """</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">group_by_cast</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">cid</span>
+        <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">if</span> <span class="mi">2</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cast_tags</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">matches_tags</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="n">cast_tags</span><span class="p">))</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ids</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no stage-2 files under </span><span class="si">{</span><span class="n">root</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_CastRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">deck</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">scan_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">:</span>
+        <span class="n">rec</span> <span class="o">=</span> <span class="n">_CastRecord</span><span class="p">(</span><span class="n">format_cast_id</span><span class="p">(</span><span class="o">*</span><span class="n">cid</span><span class="p">))</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span>
+            <span class="n">groups</span><span class="p">[</span><span class="n">cid</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">,</span> <span class="n">decode_timedelta</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="c1"># The cast's T/C hardware key (the preferred-pair segment serials): a change between</span>
+            <span class="c1"># consecutive casts marks a hardware swap, drawn on the figures.  The same key</span>
+            <span class="c1"># config.preferred_sensors.derive_segments breaks segments on, so the two agree.</span>
+            <span class="n">rec</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="s2">"|"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="s2">""</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">name</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">segment_key</span><span class="p">(</span><span class="n">PREFERRED_PAIR</span><span class="p">,</span> <span class="n">read_cast_sensor_catalog</span><span class="p">(</span><span class="n">ds</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">interval</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">rec</span><span class="o">.</span><span class="n">skipped</span> <span class="o">=</span> <span class="n">reason</span> <span class="ow">or</span> <span class="s2">"not at the native scan rate"</span>
+                <span class="k">continue</span>
+            <span class="n">scan_interval</span> <span class="o">=</span> <span class="n">scan_interval</span> <span class="ow">or</span> <span class="n">interval</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">widen_floats</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">load</span><span class="p">())</span>
+            <span class="c1"># Read every cast's header (not just the first) and apply the stage-3 refusals: do not</span>
+            <span class="c1"># fit alignment for a line Sea-Bird already aligned, nor cell thermal mass if its celltm</span>
+            <span class="c1"># ran, so the finder never fits a correction on top of one already applied.</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+            <span class="n">applied</span> <span class="o">=</span> <span class="n">applied_sbe_corrections</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">deck</span><span class="p">:</span>
+                <span class="n">adv</span> <span class="o">=</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"primary conductivity"</span><span class="p">),</span>
+                    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">"secondary conductivity"</span><span class="p">),</span>
+                <span class="p">):</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">adv</span><span class="p">:</span>
+                        <span class="n">deck</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">adv</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+            <span class="n">aligned_vars</span> <span class="o">=</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"aligned"</span><span class="p">]</span>
+            <span class="n">any_align</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">applied</span><span class="p">[</span><span class="s2">"align_unparsed"</span><span class="p">])</span>
+            <span class="n">rec</span><span class="o">.</span><span class="n">sbe_aligned</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+                <span class="n">line</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">any_align</span>
+                <span class="ow">or</span> <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">aligned_vars</span>
+                <span class="ow">or</span> <span class="sa">f</span><span class="s2">"temperature_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">aligned_vars</span>
+            <span class="p">)</span>
+            <span class="n">rec</span><span class="o">.</span><span class="n">sbe_celltm</span> <span class="o">=</span> <span class="s2">"celltm"</span> <span class="ow">in</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"modules"</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">:</span>
+                <span class="n">cast</span> <span class="o">=</span> <span class="n">cast_arrays</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">cast</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="p">:</span>
+            <span class="n">rec</span><span class="o">.</span><span class="n">skipped</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">skipped</span> <span class="ow">or</span> <span class="s2">"no usable temperature/conductivity line"</span>
+            <span class="k">continue</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">rec</span><span class="o">.</span><span class="n">pmax</span> <span class="o">=</span> <span class="n">first</span><span class="o">.</span><span class="n">pmax</span>
+        <span class="n">rec</span><span class="o">.</span><span class="n">delta_t</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">window_delta_t</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">ctm_pmin</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+            <span class="n">rec</span><span class="o">.</span><span class="n">speed</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">median_speeds</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">align_pmin</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">cast</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">sbe_aligned</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">alignment_cost</span><span class="p">(</span>
+                    <span class="n">cast</span><span class="p">,</span>
+                    <span class="n">settings</span><span class="o">.</span><span class="n">residuals</span><span class="p">,</span>
+                    <span class="n">gradient</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+                    <span class="n">pmin</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">align_pmin</span><span class="p">,</span>
+                    <span class="n">min_speed</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">min_speed</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+        <span class="k">if</span> <span class="n">progress</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">_align_line</span><span class="p">(</span><span class="n">rec</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">residuals</span><span class="p">))</span>
+
+    <span class="n">align_used</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">cruise_advance</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="p">],</span>
+            <span class="n">settings</span><span class="o">.</span><span class="n">residuals</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">align_used</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+
+    <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">cast</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">sbe_celltm</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">cast</span><span class="o">.</span><span class="n">conductivity</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">align_used</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">r</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="n">sbs_processing</span><span class="o">.</span><span class="n">align_ctd</span><span class="p">(</span>
+                            <span class="n">F</span><span class="o">.</span><span class="n">_fill</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">r</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span><span class="p">,</span> <span class="n">flag_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                        <span class="p">),</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="c1"># Put the original gaps back: aligning fills them first, so without this the</span>
+                    <span class="c1"># CTM gap check would depend on whether an alignment was applied.</span>
+                    <span class="n">c</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">conductivity</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">m</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">ctm_cost</span><span class="p">(</span>
+                    <span class="n">F</span><span class="o">.</span><span class="n">Cast</span><span class="p">(</span><span class="n">cast</span><span class="o">.</span><span class="n">pressure</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">cast</span><span class="o">.</span><span class="n">interval</span><span class="p">),</span>
+                    <span class="n">settings</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+                    <span class="n">settings</span><span class="o">.</span><span class="n">tau</span><span class="p">,</span>
+                    <span class="n">pmin</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">ctm_pmin</span><span class="p">,</span>
+                    <span class="n">gap_scale</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">gap_seconds</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">rec</span><span class="o">.</span><span class="n">ctm</span><span class="p">[</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="n">rec</span><span class="o">.</span><span class="n">casts</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">progress</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">_ctm_line</span><span class="p">(</span><span class="n">rec</span><span class="p">,</span> <span class="n">settings</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">_to_dataset</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">settings</span><span class="p">,</span> <span class="n">align_used</span><span class="p">,</span> <span class="n">deck</span><span class="p">,</span> <span class="n">scan_interval</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_to_dataset</span><span class="p">(</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_CastRecord</span><span class="p">],</span>
+    <span class="n">settings</span><span class="p">:</span> <span class="n">FitSettings</span><span class="p">,</span>
+    <span class="n">align_used</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="n">deck</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="n">scan_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">nl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">_LINES</span><span class="p">)</span>
+    <span class="n">nr</span><span class="p">,</span> <span class="n">na</span><span class="p">,</span> <span class="n">nt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">residuals</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">alpha</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">tau</span><span class="p">)</span>
+    <span class="n">align</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">nl</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">nr</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">ctm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">nl</span><span class="p">,</span> <span class="n">na</span><span class="p">,</span> <span class="n">nt</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rec</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">records</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_LINES</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="p">:</span>
+                <span class="n">align</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">li</span><span class="p">]</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">align</span><span class="p">[</span><span class="n">line</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">ctm</span><span class="p">:</span>
+                <span class="n">ctm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">li</span><span class="p">]</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">ctm</span><span class="p">[</span><span class="n">line</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"cast_id"</span><span class="p">:</span> <span class="p">((</span><span class="s2">"cast"</span><span class="p">,),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">label</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)),</span>
+            <span class="s2">"pmax"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">pmax</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span><span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar"</span><span class="p">,</span> <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"maximum pressure"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"delta_t"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"leg"</span><span class="p">),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">delta_t</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degree_Celsius"</span><span class="p">,</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"|T(bottom) - T(ctm_pmin)| across the cell thermal mass window"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"speed"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"leg"</span><span class="p">),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">speed</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"dbar s-1"</span><span class="p">,</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"median speed along the leg below alignment_pmin (lowering, hauling)"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"skipped"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">skipped</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">"sbe_aligned"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"line"</span><span class="p">),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="p">[</span><span class="n">line</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">sbe_aligned</span> <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span>
+                    <span class="p">],</span>
+                    <span class="nb">bool</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Sea-Bird already aligned this conductivity line, so the finder did not fit alignment"</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"sbe_celltm"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">sbe_celltm</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="nb">bool</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Sea-Bird's cell thermal mass ran, so the finder did not fit it"</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"sensor_config"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">config</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"T/C hardware key (preferred-pair segment serials); a change marks a hardware swap"</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"alignment_cost"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"line"</span><span class="p">,</span> <span class="s2">"leg"</span><span class="p">,</span> <span class="s2">"residual"</span><span class="p">),</span>
+                <span class="n">align</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"mean square of high-passed practical salinity in the thermocline"</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"ctm_cost"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"line"</span><span class="p">,</span> <span class="s2">"alpha"</span><span class="p">,</span> <span class="s2">"tau"</span><span class="p">),</span>
+                <span class="n">ctm</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"time-weighted mean square down-up practical salinity in temperature bins below ctm_pmin"</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"deck_advance"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"line"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">deck</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+                <span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"s"</span><span class="p">,</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"conductivity advance applied by the deck unit, already in the data"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"ctm_alignment"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="s2">"line"</span><span class="p">,),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">align_used</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">],</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"s"</span><span class="p">,</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"residual advance applied before the cell thermal mass fit (downcast fit)"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"line"</span><span class="p">:</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_c</span><span class="p">,</span> <span class="n">_t</span> <span class="ow">in</span> <span class="n">_LINES</span><span class="p">],</span>
+            <span class="s2">"leg"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"down"</span><span class="p">,</span> <span class="s2">"up"</span><span class="p">],</span>
+            <span class="s2">"residual"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"residual"</span><span class="p">,</span>
+                <span class="n">settings</span><span class="o">.</span><span class="n">residuals</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"s"</span><span class="p">,</span>
+                    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"conductivity advance on top of the data's"</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"alpha"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"alpha"</span><span class="p">,</span>
+                <span class="n">settings</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"cell thermal mass amplitude"</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">"tau"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">"tau"</span><span class="p">,</span>
+                <span class="n">settings</span><span class="o">.</span><span class="n">tau</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="p">{</span><span class="s2">"units"</span><span class="p">:</span> <span class="s2">"s"</span><span class="p">,</span> <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"cell thermal mass time constant"</span><span class="p">},</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"ctdcast fit: alignment and cell thermal mass cost surfaces"</span><span class="p">,</span>
+            <span class="s2">"ctdcast_version"</span><span class="p">:</span> <span class="n">__version__</span><span class="p">,</span>
+            <span class="s2">"date_created"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span><span class="p">),</span>
+            <span class="s2">"ctm_pmin_dbar"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">ctm_pmin</span><span class="p">,</span>
+            <span class="s2">"alignment_gradient_degC_per_dbar"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+            <span class="s2">"alignment_pmin_dbar"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">align_pmin</span><span class="p">,</span>
+            <span class="s2">"alignment_min_speed_dbar_per_s"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">min_speed</span><span class="p">,</span>
+            <span class="s2">"alignment_highpass"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"salinity minus its 1-s running mean, Tukey window (taper </span><span class="si">{</span><span class="n">F</span><span class="o">.</span><span class="n">TUKEY_ALPHA</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="s2">"alignment_speed_filter_seconds"</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">PRESSURE_FILTER_SECONDS</span><span class="p">,</span>
+            <span class="s2">"ctm_gap_seconds"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">gap_seconds</span><span class="p">,</span>
+            <span class="s2">"ctm_tolerance"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">ctm_tolerance</span><span class="p">,</span>
+            <span class="s2">"block"</span><span class="p">:</span> <span class="n">settings</span><span class="o">.</span><span class="n">block</span><span class="p">,</span>
+            <span class="s2">"scan_interval_s"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">if</span> <span class="n">scan_interval</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">scan_interval</span><span class="p">),</span>
+            <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"see ctdcast.analysis.fits"</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="LineSummary">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.LineSummary">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LineSummary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""What the fits say for one conductivity line.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    line : int</span>
+<span class="sd">        1 (primary) or 2 (secondary).</span>
+<span class="sd">    residual : float</span>
+<span class="sd">        Cruise residual advance (s) on top of the data's: the minimum of the downcast's median</span>
+<span class="sd">        curve, the value suggested.</span>
+<span class="sd">    alignment_n : int</span>
+<span class="sd">        Casts in the downcast curve.</span>
+<span class="sd">    residual_up : float</span>
+<span class="sd">        The same for the upcast, shown beside it.</span>
+<span class="sd">    alignment_n_up : int</span>
+<span class="sd">        Casts in the upcast curve.</span>
+<span class="sd">    alpha_rec, tau_rec : float</span>
+<span class="sd">        The recommended (alpha, tau): the point within ``ctm_tolerance`` of the cost minimum</span>
+<span class="sd">        closest to Sea-Bird's default. The value suggested in the YAML.</span>
+<span class="sd">    alpha_at_tau, tau_at_alpha : float</span>
+<span class="sd">        One-parameter fits at Sea-Bird's default for the other.</span>
+<span class="sd">    ctm_n : int</span>
+<span class="sd">        Casts in the cell thermal mass average.</span>
+<span class="sd">    """</span>
+
+    <span class="n">line</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">residual</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">alignment_n</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">residual_up</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">alignment_n_up</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">alpha_rec</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">tau_rec</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">alpha_at_tau</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">tau_at_alpha</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ctm_n</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="summarise">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.summarise">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">summarise</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">casts</span><span class="p">:</span> <span class="nb">slice</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">LineSummary</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Cruise (or block) fits per line from a ``fits.nc`` dataset.</span>
+
+<span class="sd">    Cell thermal mass costs are weighted by each cast's |ΔT| across the window, so a cast with no</span>
+<span class="sd">    gradient there contributes nothing.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        From :func:`fit_cruise` or ``fits.nc``.</span>
+<span class="sd">    casts : slice, optional</span>
+<span class="sd">        Restrict to these casts (a block).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of LineSummary</span>
+<span class="sd">        One per line with any usable cast.</span>
+<span class="sd">    """</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">fits</span> <span class="k">if</span> <span class="n">casts</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">fits</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">cast</span><span class="o">=</span><span class="n">casts</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"residual"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">al</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"alpha"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctm_tolerance"</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">))</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">acost</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="s2">"alignment_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">afit</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">median_curve</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">acost</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]))</span>
+        <span class="n">ufit</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">median_curve</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">acost</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="n">costs</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">sub</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">],</span> <span class="n">sub</span><span class="p">[</span><span class="s2">"delta_t"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalise</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">costs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">cfit</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">cruise_surface</span><span class="p">(</span><span class="n">costs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">afit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cfit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">a1</span><span class="p">,</span> <span class="n">t1</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cfit</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">F</span><span class="o">.</span><span class="n">one_parameter_fits</span><span class="p">(</span><span class="n">cfit</span><span class="o">.</span><span class="n">surface</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">ta</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">a_rec</span><span class="p">,</span> <span class="n">t_rec</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cfit</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">F</span><span class="o">.</span><span class="n">snap_to_default</span><span class="p">(</span><span class="n">cfit</span><span class="o">.</span><span class="n">surface</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">ta</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">tol</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># The suggested advance, via the same cruise_advance the fit ran on the data it stored, so</span>
+        <span class="c1"># the fitted-on and the suggested value cannot diverge.  Blocks compute their own the same way.</span>
+        <span class="n">advance</span> <span class="o">=</span> <span class="n">cruise_advance</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">acost</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">res</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">LineSummary</span><span class="p">(</span>
+                <span class="n">line</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">),</span>
+                <span class="n">residual</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">if</span> <span class="n">advance</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">advance</span><span class="p">,</span>
+                <span class="n">alignment_n</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">afit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">afit</span><span class="o">.</span><span class="n">n_casts</span><span class="p">,</span>
+                <span class="n">residual_up</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">if</span> <span class="n">ufit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">ufit</span><span class="o">.</span><span class="n">index</span><span class="p">]),</span>
+                <span class="n">alignment_n_up</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">ufit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ufit</span><span class="o">.</span><span class="n">n_casts</span><span class="p">,</span>
+                <span class="n">alpha_rec</span><span class="o">=</span><span class="n">a_rec</span><span class="p">,</span>
+                <span class="n">tau_rec</span><span class="o">=</span><span class="n">t_rec</span><span class="p">,</span>
+                <span class="n">alpha_at_tau</span><span class="o">=</span><span class="n">a1</span><span class="p">,</span>
+                <span class="n">tau_at_alpha</span><span class="o">=</span><span class="n">t1</span><span class="p">,</span>
+                <span class="n">ctm_n</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">cfit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cfit</span><span class="o">.</span><span class="n">n_casts</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="suggested_yaml">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.fit.suggested_yaml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">suggested_yaml</span><span class="p">(</span><span class="n">summaries</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LineSummary</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a paste-ready ``data_processing:`` snippet from the cruise summaries.</span>
+
+<span class="sd">    Built as a dict and serialised with :func:`yaml.safe_dump`, so the snippet parses back to the</span>
+<span class="sd">    same values the resolvers read: an ``alignctd`` step per line (the downcast residual) and a</span>
+<span class="sd">    ``celltm`` step (the recommended alpha/tau), in Sea-Bird's order.  Values are rounded to the grids' resolution (advance and alpha</span>
+<span class="sd">    to 4 dp, tau to 2 dp).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    summaries : list of LineSummary</span>
+<span class="sd">        From :func:`summarise` over the whole cruise.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The YAML text; ``""`` when nothing was fitted.</span>
+<span class="sd">    """</span>
+    <span class="n">align</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">residual</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">summaries</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">residual</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">ctm</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"alpha"</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">alpha_rec</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="s2">"tau"</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">tau_rec</span><span class="p">),</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">summaries</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">alpha_rec</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">align</span><span class="p">:</span>
+        <span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"alignctd"</span><span class="p">:</span> <span class="n">align</span><span class="p">})</span>
+    <span class="k">if</span> <span class="n">ctm</span><span class="p">:</span>
+        <span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"celltm"</span><span class="p">:</span> <span class="n">ctm</span><span class="p">})</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">steps</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">""</span>
+    <span class="k">return</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_dump</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">"data_processing"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"steps"</span><span class="p">:</span> <span class="n">steps</span><span class="p">}},</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

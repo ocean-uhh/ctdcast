@@ -1,0 +1,840 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.readers.hex &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.readers.hex</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.readers.hex</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Reader for Sea-Bird SBE 911plus ``.hex`` files, on seabirdscientific directly.</span>
+
+<span class="sd">A ``.hex`` holds one line of hexadecimal per scan at the instrument's native rate (24 Hz on a</span>
+<span class="sd">911plus), after a ``*``-prefixed header that ends at ``*END*``.  Reading it takes the matching</span>
+<span class="sd">``.xmlcon`` (:mod:`ctdcast.readers.xmlcon`) for the channel layout and the calibration</span>
+<span class="sd">coefficients.</span>
+
+<span class="sd">What :func:`read_hex` returns, at the native rate and with nothing removed:</span>
+
+<span class="sd">- ``pressure``, ``ctd_temperature_1/2``, ``conductivity_1/2`` in mS/cm, each with the</span>
+<span class="sd">  ``.xmlcon`` Slope and Offset applied as Sea-Bird's DatCnv does;</span>
+<span class="sd">- every voltage channel as raw volts (``volt&lt;N&gt;_raw``; an SBE 43 channel as ``oxygen_raw_&lt;N&gt;``),</span>
+<span class="sd">  plus the engineering value for each sensor seabirdscientific converts (fluorescence,</span>
+<span class="sd">  turbidity, altimeter, beam transmission) and a quick-look SBE 43 oxygen;</span>
+<span class="sd">- the deck unit's per-scan status bits and data-integrity counter;</span>
+<span class="sd">- ``time``, ``latitude``, ``longitude`` coordinates.</span>
+
+<span class="sd">The time axis is built forward from the first scan: scan *k* is at ``T0 + k × interval``.</span>
+<span class="sd">``T0`` is the header's ``NMEA UTC (Time)`` (GPS time when acquisition started) when present and</span>
+<span class="sd">sane, else the header's ``System UpLoad Time`` (the PC clock at the first scan), uncorrected and</span>
+<span class="sd">labelled as the System clock so the stage-2 clock correction can apply to it.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib.metadata</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gsw</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">conversion</span> <span class="k">as</span> <span class="n">cv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">instrument_data</span> <span class="k">as</span> <span class="n">idt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_star_block</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.xmlcon</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">XmlconInstrument</span><span class="p">,</span>
+    <span class="n">XmlconSensor</span><span class="p">,</span>
+    <span class="n">altimeter_coefficients</span><span class="p">,</span>
+    <span class="n">conductivity_coefficients</span><span class="p">,</span>
+    <span class="n">cstar_coefficients</span><span class="p">,</span>
+    <span class="n">eco_coefficients</span><span class="p">,</span>
+    <span class="n">oxygen43_coefficients</span><span class="p">,</span>
+    <span class="n">pressure_digiquartz_coefficients</span><span class="p">,</span>
+    <span class="n">read_xmlcon</span><span class="p">,</span>
+    <span class="n">temperature_coefficients</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1">#: The 911plus's native scan rate.</span>
+<span class="n">SBE911_SCAN_RATE_HZ</span> <span class="o">=</span> <span class="mf">24.0</span>
+
+<span class="c1">#: Schema tag of the ``raw_metadata`` envelope a ``.hex`` cast carries.</span>
+<span class="n">RAW_METADATA_SCHEMA</span> <span class="o">=</span> <span class="s2">"ctdcast-raw-metadata/1"</span>
+
+<span class="c1">#: Default limit on how far the NMEA header time may sit from the PC upload time before it is</span>
+<span class="c1">#: distrusted (a GPS receiver with no date set reports year 2000).</span>
+<span class="n">DEFAULT_NMEA_TOLERANCE_SECONDS</span> <span class="o">=</span> <span class="mf">3600.0</span>
+
+<span class="n">_INSTRUMENT_TYPE_911</span> <span class="o">=</span> <span class="mi">8</span>
+
+<span class="n">_RE_BYTES_PER_SCAN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^\*\s*Number of Bytes Per Scan\s*=\s*(\d+)\s*$"</span><span class="p">)</span>
+<span class="n">_RE_VOLTAGE_WORDS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^\*\s*Number of Voltage Words\s*=\s*(\d+)\s*$"</span><span class="p">)</span>
+<span class="n">_RE_BOTTLE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^\s*(\d+),\s*(\d+),\s*(.+?),\s*(\d+),\s*(\d+)\s*$"</span><span class="p">)</span>
+
+<span class="c1"># seabirdscientific's decoder keys for the raw words.</span>
+<span class="n">_K_T1</span><span class="p">,</span> <span class="n">_K_C1</span><span class="p">,</span> <span class="n">_K_P</span> <span class="o">=</span> <span class="s2">"temperature"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"digiquartz pressure"</span>
+<span class="n">_K_T2</span><span class="p">,</span> <span class="n">_K_C2</span> <span class="o">=</span> <span class="s2">"secondary temperature"</span><span class="p">,</span> <span class="s2">"secondary conductivity"</span>
+<span class="n">_K_TCOMP</span> <span class="o">=</span> <span class="s2">"temperature compensation"</span>
+
+<span class="c1"># Status words the deck unit adds to every scan -&gt; stage-1 name and long_name.</span>
+<span class="n">_STATUS_VARS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"SBE911 pump status"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"pump_status"</span><span class="p">,</span> <span class="s2">"SBE 911plus pump status (1 = on)"</span><span class="p">),</span>
+    <span class="s2">"SBE911 bottom contact status"</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">"bottom_contact_status"</span><span class="p">,</span>
+        <span class="s2">"SBE 911plus bottom contact status (1 = no contact)"</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">"SBE911 confirm status"</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">"bottle_confirm_status"</span><span class="p">,</span>
+        <span class="s2">"SBE 911plus bottle-fire confirm status (1 = confirm detected)"</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">"SBE911 modem status"</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">"modem_status"</span><span class="p">,</span>
+        <span class="s2">"SBE 911plus modem status (0 = carrier detected)"</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">"data integrity"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"data_integrity"</span><span class="p">,</span> <span class="s2">"SBE 911plus data-integrity counter"</span><span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="HexFile">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.HexFile">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HexFile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A ``.hex`` split into its header and scan lines."""</span>
+
+    <span class="c1">#: The ``*`` header lines up to and including ``*END*``, Unix newlines.</span>
+    <span class="n">header</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: One hexadecimal string per scan, stripped.</span>
+    <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="read_hex_lines">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.read_hex_lines">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_hex_lines</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HexFile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Split a ``.hex`` into its header and its scan lines.</span>
+
+<span class="sd">    The file is decoded as Latin-1, deliberately rather than UTF-8: Seasave writes the header in</span>
+<span class="sd">    the Windows code page (``** Ship: Odón de Buen`` is the single byte 0xF3), and Latin-1</span>
+<span class="sd">    decodes every byte without raising.  The scan lines are plain ASCII either way.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : pathlib.Path or str</span>
+<span class="sd">        The ``.hex`` file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    HexFile</span>
+<span class="sd">        The header and the scan lines.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the file has no ``*END*`` line.</span>
+<span class="sd">    """</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"latin-1"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\r\n</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\r</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">head</span><span class="p">,</span> <span class="n">sep</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"*END*"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sep</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: no *END* line, not a Sea-Bird .hex"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">HexFile</span><span class="p">(</span>
+        <span class="n">header</span><span class="o">=</span><span class="n">head</span> <span class="o">+</span> <span class="s2">"*END*"</span><span class="p">,</span>
+        <span class="n">lines</span><span class="o">=</span><span class="p">[</span><span class="n">ln</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="n">body</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span> <span class="k">if</span> <span class="n">ln</span><span class="o">.</span><span class="n">strip</span><span class="p">()],</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_header_int</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">header</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">m</span> <span class="o">:=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="enabled_sensors">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.enabled_sensors">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">enabled_sensors</span><span class="p">(</span><span class="n">instrument</span><span class="p">:</span> <span class="n">XmlconInstrument</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">idt</span><span class="o">.</span><span class="n">Sensors</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the seabirdscientific ``Sensors`` list that decodes this instrument's scans.</span>
+
+<span class="sd">    Every voltage channel present is enabled, used or not, so each scan's voltage words are</span>
+<span class="sd">    all read and kept as raw volts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    instrument : XmlconInstrument</span>
+<span class="sd">        The parsed ``.xmlcon``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of seabirdscientific.instrument_data.Sensors</span>
+<span class="sd">        The sensors to pass to ``read_sbe911plus_data``.</span>
+<span class="sd">    """</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">idt</span><span class="o">.</span><span class="n">Sensors</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">idt</span><span class="o">.</span><span class="n">Sensors</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">n_frequency</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">SecondaryTemperature</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">n_frequency</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">SecondaryConductivity</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"ExtVolt</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">instrument</span><span class="o">.</span><span class="n">n_voltage</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">surface_par_added</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">SPAR</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">nmea_position_added</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">nmeaLocation</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">nmea_depth_added</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">nmeaDepth</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">nmea_time_added</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">nmeaTime</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">scan_time_added</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">SystemTime</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_layout</span><span class="p">(</span><span class="n">hexfile</span><span class="p">:</span> <span class="n">HexFile</span><span class="p">,</span> <span class="n">instrument</span><span class="p">:</span> <span class="n">XmlconInstrument</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Refuse a ``.hex`` whose scan layout disagrees with its header or ``.xmlcon``.</span>
+
+<span class="sd">    seabirdscientific already raises when a line's length does not match the enabled sensors;</span>
+<span class="sd">    these checks name the cause, and catch a header/``.xmlcon`` mismatch before decoding.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">instrument</span><span class="o">.</span><span class="n">instrument_type</span> <span class="o">!=</span> <span class="n">_INSTRUMENT_TYPE_911</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: .xmlcon instrument type </span><span class="si">{</span><span class="n">instrument</span><span class="o">.</span><span class="n">instrument_type</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">instrument</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">); only the SBE 911plus (type 8) is supported"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">hexfile</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: no scans after *END*"</span><span class="p">)</span>
+    <span class="n">nbytes</span> <span class="o">=</span> <span class="n">_header_int</span><span class="p">(</span><span class="n">hexfile</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">_RE_BYTES_PER_SCAN</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nbytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="p">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ln</span><span class="p">)</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="n">hexfile</span><span class="o">.</span><span class="n">lines</span><span class="p">}</span> <span class="o">-</span> <span class="p">{</span><span class="mi">2</span> <span class="o">*</span> <span class="n">nbytes</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: header says </span><span class="si">{</span><span class="n">nbytes</span><span class="si">}</span><span class="s2"> bytes per scan (</span><span class="si">{</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">nbytes</span><span class="si">}</span><span class="s2"> hex characters), "</span>
+                <span class="sa">f</span><span class="s2">"but scan lines have lengths </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">bad</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+    <span class="n">nwords</span> <span class="o">=</span> <span class="n">_header_int</span><span class="p">(</span><span class="n">hexfile</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">_RE_VOLTAGE_WORDS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nwords</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">nwords</span> <span class="o">!=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">n_voltage</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: header says </span><span class="si">{</span><span class="n">nwords</span><span class="si">}</span><span class="s2"> voltage words, the .xmlcon leaves "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">instrument</span><span class="o">.</span><span class="n">n_voltage</span><span class="si">}</span><span class="s2"> voltage channels"</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_decode</span><span class="p">(</span><span class="n">hexfile</span><span class="p">:</span> <span class="n">HexFile</span><span class="p">,</span> <span class="n">instrument</span><span class="p">:</span> <span class="n">XmlconInstrument</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="n">sensors</span> <span class="o">=</span> <span class="n">enabled_sensors</span><span class="p">(</span><span class="n">instrument</span><span class="p">)</span>
+    <span class="n">cols</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hexfile</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+        <span class="n">rec</span> <span class="o">=</span> <span class="n">idt</span><span class="o">.</span><span class="n">read_sbe911plus_data</span><span class="p">(</span>
+            <span class="n">line</span><span class="p">,</span>
+            <span class="n">sensors</span><span class="p">,</span>
+            <span class="n">instrument</span><span class="o">.</span><span class="n">frequency_channels_suppressed</span><span class="p">,</span>
+            <span class="n">instrument</span><span class="o">.</span><span class="n">voltage_words_suppressed</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">rec</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">cols</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_slope_offset</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Slope"</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">values</span> <span class="o">*</span> <span class="n">slope</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span> <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cal_attrs</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"conversion_method"</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
+        <span class="s2">"sensor_serial_number"</span><span class="p">:</span> <span class="n">sensor</span><span class="o">.</span><span class="n">serial</span> <span class="ow">or</span> <span class="s2">"UNK"</span><span class="p">,</span>
+        <span class="s2">"sbe_xmlcon_index"</span><span class="p">:</span> <span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">attrs</span>
+
+
+<div class="viewcode-block" id="TimeAnchor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.TimeAnchor">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TimeAnchor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The time of a cast's first scan and where it came from."""</span>
+
+    <span class="c1">#: Time of the first scan (naive, UTC or PC clock as ``source`` says).</span>
+    <span class="n">t0</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="c1">#: The ``time_coordinate_source`` wording, in Sea-Bird's bracket vocabulary: ``"NMEA time,</span>
+    <span class="c1">#: header"`` or ``"System UTC, first data scan"``.</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: Why this anchor was chosen, for ``history``.</span>
+    <span class="n">note</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="time_anchor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.time_anchor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">time_anchor</span><span class="p">(</span>
+    <span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">nmea_tolerance_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_NMEA_TOLERANCE_SECONDS</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TimeAnchor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Choose the time of the first scan from a ``.hex`` header.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header : str</span>
+<span class="sd">        The ``.hex`` header text.</span>
+<span class="sd">    nmea_tolerance_seconds : float, optional</span>
+<span class="sd">        The largest acceptable difference between the NMEA header time and the PC upload time;</span>
+<span class="sd">        beyond it the NMEA time is distrusted (default 1 h).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    TimeAnchor</span>
+<span class="sd">        The NMEA header time when present and within tolerance, else the PC upload time.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the header has neither a ``System UpLoad Time`` nor an ``NMEA UTC (Time)``.</span>
+
+<span class="sd">    Warns</span>
+<span class="sd">    -----</span>
+<span class="sd">    UserWarning</span>
+<span class="sd">        When the PC clock is used, so a cast without GPS time is never silent.</span>
+<span class="sd">    """</span>
+    <span class="n">clocks</span> <span class="o">=</span> <span class="n">parse_star_block</span><span class="p">(</span><span class="n">header</span><span class="p">)</span><span class="o">.</span><span class="n">clocks</span>
+    <span class="n">upload</span><span class="p">,</span> <span class="n">nmea</span> <span class="o">=</span> <span class="n">clocks</span><span class="o">.</span><span class="n">system_upload_dt</span><span class="p">,</span> <span class="n">clocks</span><span class="o">.</span><span class="n">nmea_dt</span>
+    <span class="k">if</span> <span class="n">nmea</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+        <span class="n">upload</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">abs</span><span class="p">((</span><span class="n">nmea</span> <span class="o">-</span> <span class="n">upload</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="n">nmea_tolerance_seconds</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">TimeAnchor</span><span class="p">(</span>
+            <span class="n">nmea</span><span class="p">,</span> <span class="s2">"NMEA time, header"</span><span class="p">,</span> <span class="s2">"T0 = NMEA UTC (Time) from the .hex header"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">upload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">".hex header has neither System UpLoad Time nor NMEA UTC (Time)"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">nmea</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">why</span> <span class="o">=</span> <span class="s2">"no NMEA UTC (Time) in the header"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">why</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"NMEA UTC (Time) </span><span class="si">{</span><span class="n">nmea</span><span class="si">:</span><span class="s2">%Y-%m-%d %H:%M:%S</span><span class="si">}</span><span class="s2"> is "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">(</span><span class="n">nmea</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">upload</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span><span class="si">:</span><span class="s2">+.0f</span><span class="si">}</span><span class="s2"> s from the upload time, beyond "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">nmea_tolerance_seconds</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> s"</span>
+        <span class="p">)</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"time from the PC clock (System UpLoad Time), uncorrected: </span><span class="si">{</span><span class="n">why</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">TimeAnchor</span><span class="p">(</span>
+        <span class="n">upload</span><span class="p">,</span>
+        <span class="s2">"System UTC, first data scan"</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"T0 = System UpLoad Time (PC clock, uncorrected): </span><span class="si">{</span><span class="n">why</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BottleCheck">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.BottleCheck">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BottleCheck</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Result of checking bottle-fire times against bottle-fire scan numbers."""</span>
+
+    <span class="c1">#: Number of bottle lines read.</span>
+    <span class="n">n_bottles</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="c1">#: Largest ``|fire time − (upload time + scan × interval)|``, in seconds.</span>
+    <span class="n">max_deviation_seconds</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="c1">#: Whether every bottle is within the tolerance.</span>
+    <span class="n">passed</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="check_bottle_log">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.check_bottle_log">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_bottle_log</span><span class="p">(</span>
+    <span class="n">bl_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">upload_time</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span>
+    <span class="n">interval_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tolerance_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BottleCheck</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Check a ``.bl`` bottle log against the scan clock.</span>
+
+<span class="sd">    Each ``.bl`` line holds a bottle's fire time (PC clock, whole seconds) and the scan range it</span>
+<span class="sd">    covers.  If the upload time is the first scan and scans are evenly spaced, every fire time</span>
+<span class="sd">    equals ``upload_time + first_scan × interval`` to within a second.  A wrong anchor or a file</span>
+<span class="sd">    with dropped scans fails.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bl_path : pathlib.Path or str</span>
+<span class="sd">        The ``.bl`` file.</span>
+<span class="sd">    upload_time : datetime</span>
+<span class="sd">        The header's ``System UpLoad Time`` (the same PC clock as the fire times).</span>
+<span class="sd">    interval_seconds : float</span>
+<span class="sd">        Time between scans.</span>
+<span class="sd">    tolerance_seconds : float, optional</span>
+<span class="sd">        Allowed deviation; the fire times have one-second resolution (default 1 s).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    BottleCheck</span>
+<span class="sd">        The comparison.</span>
+<span class="sd">    """</span>
+    <span class="n">devs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">bl_path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"latin-1"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">_RE_BOTTLE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">fired</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()),</span> <span class="s2">"%b </span><span class="si">%d</span><span class="s2"> %Y %H:%M:%S"</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="p">(</span><span class="n">fired</span> <span class="o">-</span> <span class="n">upload_time</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+        <span class="n">devs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">expected</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span> <span class="o">*</span> <span class="n">interval_seconds</span><span class="p">))</span>
+    <span class="n">worst</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">devs</span><span class="p">)</span> <span class="k">if</span> <span class="n">devs</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="n">BottleCheck</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">devs</span><span class="p">),</span> <span class="n">worst</span><span class="p">,</span> <span class="n">worst</span> <span class="o">&lt;=</span> <span class="n">tolerance_seconds</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_raw_metadata</span><span class="p">(</span>
+    <span class="n">hex_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">xmlcon_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">xmlcon_text</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"schema"</span><span class="p">:</span> <span class="n">RAW_METADATA_SCHEMA</span><span class="p">,</span>
+            <span class="s2">"raw_format"</span><span class="p">:</span> <span class="s2">"sbe-hex"</span><span class="p">,</span>
+            <span class="s2">"source_files"</span><span class="p">:</span> <span class="p">[</span><span class="n">hex_name</span><span class="p">,</span> <span class="n">xmlcon_name</span><span class="p">],</span>
+            <span class="s2">"blocks"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"header"</span><span class="p">:</span> <span class="n">header</span><span class="p">,</span> <span class="s2">"xmlcon"</span><span class="p">:</span> <span class="n">xmlcon_text</span><span class="p">},</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="read_hex">
+<a class="viewcode-back" href="../../../api.html#ctdcast.readers.hex.read_hex">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_hex</span><span class="p">(</span>
+    <span class="n">hex_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">xmlcon_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">nmea_tolerance_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_NMEA_TOLERANCE_SECONDS</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Read an SBE 911plus ``.hex`` with its ``.xmlcon`` into a native-rate Dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hex_path : pathlib.Path or str</span>
+<span class="sd">        The ``.hex`` file.</span>
+<span class="sd">    xmlcon_path : pathlib.Path or str</span>
+<span class="sd">        The ``.xmlcon`` holding the calibration coefficients to convert with.</span>
+<span class="sd">    nmea_tolerance_seconds : float, optional</span>
+<span class="sd">        See :func:`time_anchor`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        Dimension ``time`` (one entry per scan); variables and coordinates as described in</span>
+<span class="sd">        the module docstring.  Global attributes include ``raw_metadata`` (the header and the</span>
+<span class="sd">        ``.xmlcon`` verbatim), ``input_format = "hex"``, ``sample_interval_seconds``,</span>
+<span class="sd">        ``time_coordinate_source`` and ``seabirdscientific_version``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the layout checks fail, the instrument is not a 911plus, or the header carries no</span>
+<span class="sd">        usable time.</span>
+<span class="sd">    """</span>
+    <span class="n">hex_path</span><span class="p">,</span> <span class="n">xmlcon_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">hex_path</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">xmlcon_path</span><span class="p">)</span>
+    <span class="n">hexfile</span> <span class="o">=</span> <span class="n">read_hex_lines</span><span class="p">(</span><span class="n">hex_path</span><span class="p">)</span>
+    <span class="n">instrument</span><span class="p">,</span> <span class="n">xmlcon_text</span> <span class="o">=</span> <span class="n">read_xmlcon</span><span class="p">(</span><span class="n">xmlcon_path</span><span class="p">)</span>
+    <span class="n">_check_layout</span><span class="p">(</span><span class="n">hexfile</span><span class="p">,</span> <span class="n">instrument</span><span class="p">,</span> <span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="n">acq</span> <span class="o">=</span> <span class="n">parse_star_block</span><span class="p">(</span><span class="n">hexfile</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">averaged</span> <span class="o">=</span> <span class="n">acq</span><span class="o">.</span><span class="n">deck_unit</span><span class="o">.</span><span class="n">scans_averaged</span> <span class="ow">or</span> <span class="n">instrument</span><span class="o">.</span><span class="n">scans_to_average</span> <span class="ow">or</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">acq</span><span class="o">.</span><span class="n">deck_unit</span><span class="o">.</span><span class="n">scans_averaged</span>
+        <span class="ow">and</span> <span class="n">acq</span><span class="o">.</span><span class="n">deck_unit</span><span class="o">.</span><span class="n">scans_averaged</span> <span class="o">!=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">scans_to_average</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: header says </span><span class="si">{</span><span class="n">acq</span><span class="o">.</span><span class="n">deck_unit</span><span class="o">.</span><span class="n">scans_averaged</span><span class="si">}</span><span class="s2"> scans averaged, "</span>
+            <span class="sa">f</span><span class="s2">"the .xmlcon </span><span class="si">{</span><span class="n">instrument</span><span class="o">.</span><span class="n">scans_to_average</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="n">interval</span> <span class="o">=</span> <span class="n">averaged</span> <span class="o">/</span> <span class="n">SBE911_SCAN_RATE_HZ</span>
+
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">_decode</span><span class="p">(</span><span class="n">hexfile</span><span class="p">,</span> <span class="n">instrument</span><span class="p">)</span>
+    <span class="n">sensors</span> <span class="o">=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">sensors</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sensors</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"frequency"</span><span class="p">]</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">p_sensor</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_pressure_digiquartz</span><span class="p">(</span>
+        <span class="n">cols</span><span class="p">[</span><span class="n">_K_P</span><span class="p">],</span>
+        <span class="n">cols</span><span class="p">[</span><span class="n">_K_TCOMP</span><span class="p">],</span>
+        <span class="n">pressure_digiquartz_coefficients</span><span class="p">(</span><span class="n">p_sensor</span><span class="p">),</span>
+        <span class="s2">"dbar"</span><span class="p">,</span>
+        <span class="n">interval</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">data</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">p</span><span class="p">,</span>
+        <span class="n">_cal_attrs</span><span class="p">(</span>
+            <span class="n">p_sensor</span><span class="p">,</span>
+            <span class="s2">"seabirdscientific convert_pressure_digiquartz"</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">"dbar"</span><span class="p">,</span>
+            <span class="n">xmlcon_slope</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">p_sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Slope"</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="n">xmlcon_offset</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">p_sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">comment</span><span class="o">=</span><span class="s2">"xmlcon Slope and Offset (dbar) applied inside convert_pressure_digiquartz"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">temps</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">line_no</span><span class="p">,</span> <span class="n">t_sensor</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">_K_T1</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">freq</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">_K_T2</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">t_sensor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">t_raw</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_temperature_frequency</span><span class="p">(</span>
+            <span class="n">cols</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">temperature_coefficients</span><span class="p">(</span><span class="n">t_sensor</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">t</span><span class="p">,</span> <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">_slope_offset</span><span class="p">(</span><span class="n">t_raw</span><span class="p">,</span> <span class="n">t_sensor</span><span class="p">)</span>
+        <span class="n">temps</span><span class="p">[</span><span class="n">line_no</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">"ctd_temperature_</span><span class="si">{</span><span class="n">line_no</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">t</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span>
+                <span class="n">t_sensor</span><span class="p">,</span>
+                <span class="s2">"seabirdscientific convert_temperature_frequency"</span><span class="p">,</span>
+                <span class="n">units</span><span class="o">=</span><span class="s2">"degree_Celsius"</span><span class="p">,</span>
+                <span class="n">xmlcon_slope</span><span class="o">=</span><span class="n">slope</span><span class="p">,</span>
+                <span class="n">xmlcon_offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="s2">"xmlcon Slope and Offset (degC, ITS-90) applied after conversion"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">line_no</span><span class="p">,</span> <span class="n">c_sensor</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">_K_C1</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">freq</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">4</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">_K_C2</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">c_sensor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">c_sensor</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Offset"</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="c1"># Sea-Bird's conductivity offset is taken to be in S/m; not yet checked against</span>
+            <span class="c1"># Sea-Bird's documentation, so a nonzero one is refused rather than guessed.</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: conductivity sensor </span><span class="si">{</span><span class="n">c_sensor</span><span class="o">.</span><span class="n">serial</span><span class="si">}</span><span class="s2"> has a nonzero .xmlcon "</span>
+                <span class="sa">f</span><span class="s2">"Offset (</span><span class="si">{</span><span class="n">offset</span><span class="si">}</span><span class="s2">); its unit is not yet confirmed, so it is not applied"</span>
+            <span class="p">)</span>
+        <span class="n">c_si</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_conductivity</span><span class="p">(</span>
+            <span class="n">cols</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+            <span class="n">temps</span><span class="p">[</span><span class="n">line_no</span><span class="p">],</span>
+            <span class="n">p</span><span class="p">,</span>
+            <span class="n">conductivity_coefficients</span><span class="p">(</span><span class="n">c_sensor</span><span class="p">),</span>
+            <span class="n">idt</span><span class="o">.</span><span class="n">InstrumentType</span><span class="o">.</span><span class="n">SBE911Plus</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">"S/m"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">c_si</span><span class="p">,</span> <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">_slope_offset</span><span class="p">(</span><span class="n">c_si</span><span class="p">,</span> <span class="n">c_sensor</span><span class="p">)</span>  <span class="c1"># in S/m, before the x10</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_conductivity_units</span><span class="p">(</span><span class="n">c_si</span><span class="p">,</span> <span class="s2">"S/m"</span><span class="p">,</span> <span class="s2">"mS/cm"</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line_no</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">c</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span>
+                <span class="n">c_sensor</span><span class="p">,</span>
+                <span class="s2">"seabirdscientific convert_conductivity"</span><span class="p">,</span>
+                <span class="n">units</span><span class="o">=</span><span class="s2">"mS cm-1"</span><span class="p">,</span>
+                <span class="n">xmlcon_slope</span><span class="o">=</span><span class="n">slope</span><span class="p">,</span>
+                <span class="n">xmlcon_offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="s2">"xmlcon Slope and Offset applied in S m-1, then converted to mS cm-1"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Voltage channels: every one kept as raw volts; SBE 43 channels under the oxygen name.</span>
+    <span class="n">n_oxygen</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sensors</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"voltage"</span><span class="p">):</span>
+        <span class="n">volts</span> <span class="o">=</span> <span class="n">cols</span><span class="p">[</span><span class="sa">f</span><span class="s2">"volt </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">number</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">element</span> <span class="o">==</span> <span class="s2">"OxygenSensor"</span><span class="p">:</span>
+            <span class="n">n_oxygen</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"oxygen_raw_</span><span class="si">{</span><span class="n">n_oxygen</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"volt</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">number</span><span class="si">}</span><span class="s2">_raw"</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">volts</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"V"</span><span class="p">,</span>
+                <span class="s2">"sbe_xmlcon_index"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                <span class="s2">"sbe_sensor_element"</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">element</span> <span class="ow">or</span> <span class="s2">"NotInUse"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">conv</span> <span class="o">=</span> <span class="n">_convert_voltage</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">volts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cname</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">attrs</span> <span class="o">=</span> <span class="n">conv</span>
+            <span class="k">if</span> <span class="n">cname</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: a second </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">element</span><span class="si">}</span><span class="s2"> kept only as </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">cname</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+    <span class="c1"># Quick-look oxygen: SBE 43 voltage converted with the uncorrected T/S of its line, no tau</span>
+    <span class="c1"># or hysteresis correction.  The real ctd_oxygen is derived at stage 3, after alignment and CTM.</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">ox</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">instrument</span><span class="o">.</span><span class="n">by_element</span><span class="p">(</span><span class="s2">"OxygenSensor"</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">line_no</span> <span class="o">=</span> <span class="n">k</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">temps</span> <span class="ow">and</span> <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">SP_from_C</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line_no</span><span class="si">}</span><span class="s2">"</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">temps</span><span class="p">[</span><span class="n">line_no</span><span class="p">],</span> <span class="n">p</span><span class="p">)</span>
+        <span class="n">o2</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_sbe43_oxygen</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">"oxygen_raw_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">temps</span><span class="p">[</span><span class="n">line_no</span><span class="p">],</span>
+            <span class="n">p</span><span class="p">,</span>
+            <span class="n">sp</span><span class="p">,</span>
+            <span class="n">oxygen43_coefficients</span><span class="p">(</span><span class="n">ox</span><span class="p">),</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">"umol/kg"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">"sbe_oxygen_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">o2</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span>
+                <span class="n">ox</span><span class="p">,</span>
+                <span class="s2">"seabirdscientific convert_sbe43_oxygen (no tau or hysteresis correction)"</span><span class="p">,</span>
+                <span class="n">units</span><span class="o">=</span><span class="s2">"umol kg-1"</span><span class="p">,</span>
+                <span class="n">long_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"SBE 43 oxygen, quick-look, sensor </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Converted at read time by ctdcast, with Sea-Bird's seabirdscientific toolkit "</span>
+                    <span class="sa">f</span><span class="s2">"(not SBE Data Processing), from oxygen_raw_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> and the uncorrected "</span>
+                    <span class="sa">f</span><span class="s2">"temperature and practical salinity of line </span><span class="si">{</span><span class="n">line_no</span><span class="si">}</span><span class="s2"> (no alignment, no cell "</span>
+                    <span class="s2">"thermal mass, tau or hysteresis correction). Not the stage-3 ctd_oxygen."</span>
+                <span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">long_name</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_STATUS_VARS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="c1"># int16: the integrity counter runs 0-255, beyond int8.</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cols</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">),</span>
+                <span class="p">{</span><span class="s2">"units"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">,</span> <span class="s2">"long_name"</span><span class="p">:</span> <span class="n">long_name</span><span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="n">anchor</span> <span class="o">=</span> <span class="n">time_anchor</span><span class="p">(</span><span class="n">hexfile</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">nmea_tolerance_seconds</span><span class="o">=</span><span class="n">nmea_tolerance_seconds</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hexfile</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span>
+    <span class="n">offsets_ns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="n">interval</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"int64"</span><span class="p">)</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">(</span><span class="n">anchor</span><span class="o">.</span><span class="n">t0</span><span class="p">,</span> <span class="s2">"ns"</span><span class="p">)</span> <span class="o">+</span> <span class="n">offsets_ns</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"timedelta64[ns]"</span><span class="p">)</span>
+
+    <span class="n">coords</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"time"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="p">{</span><span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"time"</span><span class="p">,</span> <span class="s2">"axis"</span><span class="p">:</span> <span class="s2">"T"</span><span class="p">})</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="s2">"NMEA Latitude"</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+        <span class="n">coords</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"time"</span><span class="p">,</span>
+            <span class="n">cols</span><span class="p">[</span><span class="s2">"NMEA Latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_north"</span><span class="p">,</span>
+                <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"latitude"</span><span class="p">,</span>
+                <span class="s2">"source"</span><span class="p">:</span> <span class="s2">"NMEA position appended to each scan"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">coords</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"time"</span><span class="p">,</span>
+            <span class="n">cols</span><span class="p">[</span><span class="s2">"NMEA Longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span>
+            <span class="p">{</span>
+                <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"degrees_east"</span><span class="p">,</span>
+                <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"longitude"</span><span class="p">,</span>
+                <span class="s2">"source"</span><span class="p">:</span> <span class="s2">"NMEA position appended to each scan"</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">attrs</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">},</span>
+        <span class="n">coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">stat</span> <span class="o">=</span> <span class="n">hex_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"raw_metadata"</span><span class="p">:</span> <span class="n">_raw_metadata</span><span class="p">(</span>
+                <span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">hexfile</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">xmlcon_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">xmlcon_text</span>
+            <span class="p">),</span>
+            <span class="s2">"raw_filename"</span><span class="p">:</span> <span class="n">hex_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">"raw_filesize_bytes"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">st_size</span><span class="p">),</span>
+            <span class="s2">"raw_mtime_utc"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">tz</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span>
+                <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span>
+            <span class="p">),</span>
+            <span class="s2">"input_format"</span><span class="p">:</span> <span class="s2">"hex"</span><span class="p">,</span>
+            <span class="s2">"source_xmlcon"</span><span class="p">:</span> <span class="n">xmlcon_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">"sample_interval_seconds"</span><span class="p">:</span> <span class="n">interval</span><span class="p">,</span>
+            <span class="s2">"sample_interval_kind"</span><span class="p">:</span> <span class="s2">"seconds"</span><span class="p">,</span>
+            <span class="s2">"time_coordinate_source"</span><span class="p">:</span> <span class="n">anchor</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+            <span class="s2">"time_anchor_note"</span><span class="p">:</span> <span class="n">anchor</span><span class="o">.</span><span class="n">note</span><span class="p">,</span>
+            <span class="s2">"seabirdscientific_version"</span><span class="p">:</span> <span class="n">importlib</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">version</span><span class="p">(</span>
+                <span class="s2">"seabirdscientific"</span>
+            <span class="p">),</span>
+            <span class="s2">"sbe_n_scans"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_convert_voltage</span><span class="p">(</span>
+    <span class="n">sensor</span><span class="p">:</span> <span class="n">XmlconSensor</span><span class="p">,</span> <span class="n">volts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Engineering value for a voltage sensor seabirdscientific converts, or None."""</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">element</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">==</span> <span class="s2">"FluoroWetlabECO_AFL_FL_Sensor"</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_eco</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">eco_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">"ctd_fluor"</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span> <span class="s2">"seabirdscientific convert_eco"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"mg m-3"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">==</span> <span class="s2">"TurbidityMeter"</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_eco</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">eco_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">"ctd_turbidity"</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span> <span class="s2">"seabirdscientific convert_eco"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"1"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">==</span> <span class="s2">"AltimeterSensor"</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_altimeter</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">altimeter_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">"ctd_altimeter"</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span> <span class="s2">"seabirdscientific convert_altimeter"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"m"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">==</span> <span class="s2">"WET_LabsCStar"</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">convert_cstar_transmittance</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">cstar_coefficients</span><span class="p">(</span><span class="n">sensor</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">"transmissometer"</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">_cal_attrs</span><span class="p">(</span>
+                <span class="n">sensor</span><span class="p">,</span> <span class="s2">"seabirdscientific convert_cstar_transmittance"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"percent"</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

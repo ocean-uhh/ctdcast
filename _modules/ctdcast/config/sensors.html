@@ -1,0 +1,561 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.config.sensors &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.config.sensors</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.config.sensors</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Sensor-provenance registry and per-cruise override resolution.</span>
+
+<span class="sd">Records each CTD sensor's identity — model, maker, serial, calibration date,</span>
+<span class="sd">controlled-vocabulary URIs — so a cruise's sensor configuration is</span>
+<span class="sd">reconstructable from the output alone.  Attribute *names* follow the</span>
+<span class="sd">OceanGliders OG1 conventions where they apply (``sensor_model``,</span>
+<span class="sd">``sensor_maker``, the L05/L22/L35 vocabularies, the ``SENSOR_*`` variable form)</span>
+<span class="sd">for interoperability, but this is shipboard CTD data, not a glider mission: the</span>
+<span class="sd">per-profile sensor linkage ctdcast adds has no OG1 equivalent, and nothing here</span>
+<span class="sd">claims OG1 conformance.</span>
+
+<span class="sd">Two layers feed a sensor's attributes:</span>
+
+<span class="sd">1. The **universal** ``sbe_sensors.yaml`` shipped in this package, keyed on the</span>
+<span class="sd">   numeric SeaBird ``SensorID`` from the CNV header (:class:`SensorRegistry`).</span>
+<span class="sd">2. The operator's **cruise** ``config.yaml`` ``sensors:`` block, keyed on role,</span>
+<span class="sd">   supplying what the header cannot — sensors the header can't identify</span>
+<span class="sd">   (altimeter, user-polynomial channels) and model refinements</span>
+<span class="sd">   (:class:`SensorOverrides`).</span>
+
+<span class="sd">:func:`resolve_sensor` merges them in the fixed order *SensorID default -&gt; role</span>
+<span class="sd">override -&gt; serial alias* and never invents a model: an unresolved sensor is</span>
+<span class="sd">recorded as ``UNK`` with an actionable warning, or (``strict=True``) raises.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hashable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="c1">#: Sensor attribute fields a resolved sensor carries, in write order (names</span>
+<span class="c1">#: follow OG1 conventions for interoperability).</span>
+<span class="n">SENSOR_ATTR_FIELDS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"long_name"</span><span class="p">,</span>
+    <span class="s2">"sensor_type"</span><span class="p">,</span>
+    <span class="s2">"sensor_type_vocabulary"</span><span class="p">,</span>
+    <span class="s2">"sensor_model"</span><span class="p">,</span>
+    <span class="s2">"sensor_model_vocabulary"</span><span class="p">,</span>
+    <span class="s2">"sensor_maker"</span><span class="p">,</span>
+    <span class="s2">"sensor_maker_vocabulary"</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Canonical sensor roles — the single source of truth for the role vocabulary.</span>
+<span class="c1"># The reader (readers/metadata.py) maps CNV comment words to roles with</span>
+<span class="c1"># ROLE_QUANTITY/INDEXED_ROLES; the report (reports/_sensors.py) orders and</span>
+<span class="c1"># labels them with ROLE_ORDER/role_sort_key/role_label.  Add a new sensor role</span>
+<span class="c1"># here and both consumers pick it up.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Canonical sensor roles in display order (roles not listed sort last).</span>
+<span class="n">ROLE_ORDER</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"temperature_1"</span><span class="p">,</span>
+    <span class="s2">"temperature_2"</span><span class="p">,</span>
+    <span class="s2">"conductivity_1"</span><span class="p">,</span>
+    <span class="s2">"conductivity_2"</span><span class="p">,</span>
+    <span class="s2">"oxygen_1"</span><span class="p">,</span>
+    <span class="s2">"oxygen_2"</span><span class="p">,</span>
+    <span class="s2">"pressure"</span><span class="p">,</span>
+    <span class="s2">"fluorometer"</span><span class="p">,</span>
+    <span class="s2">"turbidity"</span><span class="p">,</span>
+    <span class="s2">"transmissometer"</span><span class="p">,</span>
+    <span class="s2">"ph"</span><span class="p">,</span>
+    <span class="s2">"altimeter"</span><span class="p">,</span>
+    <span class="s2">"spar"</span><span class="p">,</span>
+    <span class="s2">"par"</span><span class="p">,</span>
+    <span class="s2">"user_polynomial"</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1">#: Roles that carry a primary/secondary index (dual sensors); others are bare.</span>
+<span class="n">INDEXED_ROLES</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"temperature"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"oxygen"</span><span class="p">})</span>
+
+<span class="c1">#: CNV sensor-block comment quantity word -&gt; canonical role base.  The comment</span>
+<span class="c1">#: is the authoritative per-channel role statement (see readers/metadata.py).</span>
+<span class="n">ROLE_QUANTITY</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"Temperature"</span><span class="p">:</span> <span class="s2">"temperature"</span><span class="p">,</span>
+    <span class="s2">"Conductivity"</span><span class="p">:</span> <span class="s2">"conductivity"</span><span class="p">,</span>
+    <span class="s2">"Pressure"</span><span class="p">:</span> <span class="s2">"pressure"</span><span class="p">,</span>
+    <span class="s2">"Oxygen"</span><span class="p">:</span> <span class="s2">"oxygen"</span><span class="p">,</span>
+    <span class="s2">"Altimeter"</span><span class="p">:</span> <span class="s2">"altimeter"</span><span class="p">,</span>
+    <span class="s2">"Fluorometer"</span><span class="p">:</span> <span class="s2">"fluorometer"</span><span class="p">,</span>
+    <span class="s2">"Turbidity Meter"</span><span class="p">:</span> <span class="s2">"turbidity"</span><span class="p">,</span>
+    <span class="s2">"Transmissometer"</span><span class="p">:</span> <span class="s2">"transmissometer"</span><span class="p">,</span>
+    <span class="s2">"pH"</span><span class="p">:</span> <span class="s2">"ph"</span><span class="p">,</span>
+    <span class="s2">"SPAR"</span><span class="p">:</span> <span class="s2">"spar"</span><span class="p">,</span>
+    <span class="s2">"PAR"</span><span class="p">:</span> <span class="s2">"par"</span><span class="p">,</span>
+    <span class="s2">"User Polynomial"</span><span class="p">:</span> <span class="s2">"user_polynomial"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="c1">#: Role base -&gt; the canonical data-variable base it measures.  Roles are the header's</span>
+<span class="c1">#: vocabulary (a device's job); variables are ctdcast's (a stored quantity), so the two</span>
+<span class="c1">#: legitimately differ -- ``fluorometer`` is the instrument, ``ctd_fluor`` the fluorescence.</span>
+<span class="c1">#: A role absent here (transmissometer, pH, SPAR/PAR, a user polynomial today) still gets a</span>
+<span class="c1">#: catalog entry.  On a ``.hex`` cast it links by ``.xmlcon`` channel instead: to the converted</span>
+<span class="c1">#: variable the reader made from that channel (``transmissometer``), else its raw voltage.  A CNV</span>
+<span class="c1">#: cast has no channel tags, so such a role stays unlinked, silently.  The single source of truth for the</span>
+<span class="c1">#: sensor-&gt;variable join; nothing else re-derives a variable name from a role.</span>
+<span class="n">ROLE_VARIABLE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"temperature"</span><span class="p">:</span> <span class="s2">"ctd_temperature"</span><span class="p">,</span>
+    <span class="s2">"conductivity"</span><span class="p">:</span> <span class="s2">"conductivity"</span><span class="p">,</span>  <span class="c1"># no ctd_ prefix -- see VARIABLES / CCHDO naming</span>
+    <span class="s2">"pressure"</span><span class="p">:</span> <span class="s2">"pressure"</span><span class="p">,</span>
+    <span class="s2">"oxygen"</span><span class="p">:</span> <span class="s2">"ctd_oxygen"</span><span class="p">,</span>
+    <span class="s2">"fluorometer"</span><span class="p">:</span> <span class="s2">"ctd_fluor"</span><span class="p">,</span>
+    <span class="s2">"turbidity"</span><span class="p">:</span> <span class="s2">"ctd_turbidity"</span><span class="p">,</span>
+    <span class="s2">"altimeter"</span><span class="p">:</span> <span class="s2">"ctd_altimeter"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Role base -&gt; the raw-signal variable base to link when the role's measured variable is</span>
+<span class="c1">#: absent: a cast read from a ``.hex`` carries the SBE 43 voltage (``oxygen_raw_N``) at stage 1,</span>
+<span class="c1">#: and ``ctd_oxygen`` only once stage 3 derives it.</span>
+<span class="n">ROLE_RAW_VARIABLE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"oxygen"</span><span class="p">:</span> <span class="s2">"oxygen_raw"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Frequency-sensor role bases: their datcnv Slope/Offset is a drift knob applied to the</span>
+<span class="c1">#: derived value, so they carry ``sensor_calibration_slope``/``_offset``.  Voltage sensors</span>
+<span class="c1">#: (oxygen, fluorometer, …) have a native Slope/Offset that is not a drift knob and is</span>
+<span class="c1">#: excluded (see :func:`ctdcast.config.cnv_header.sensor_calibrations`).</span>
+<span class="n">FREQUENCY_ROLES</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"temperature"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"pressure"</span><span class="p">})</span>
+
+
+<div class="viewcode-block" id="is_sensor_catalog_var">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.is_sensor_catalog_var">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_sensor_catalog_var</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="n">Hashable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether *name* is a sensor-catalog entry (``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;``).</span>
+
+<span class="sd">    The catalog entries are the uppercase dimensionless ``SENSOR_*`` scalars.  A</span>
+<span class="sd">    ``SENSOR_*_qc`` companion is not an entry, and neither are the lowercase</span>
+<span class="sd">    ``sensor_&lt;role&gt;`` linkage or ``sensor_channel_&lt;role&gt;`` variables.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : hashable</span>
+<span class="sd">        The variable name, as ``Dataset.variables`` yields it.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        ``True`` when *name* starts with ``SENSOR_`` and does not end with ``_qc``.</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"SENSOR_"</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="role_base">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.role_base">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_base</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Strip a dual-sensor index from *role* (``temperature_1`` -&gt; ``temperature``).</span>
+
+<span class="sd">    Only an :data:`INDEXED_ROLES` role carries the index, so a non-indexed role</span>
+<span class="sd">    (``pressure``, ``user_polynomial``) is returned unchanged.</span>
+<span class="sd">    """</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_\d+$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">role</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">base</span> <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">INDEXED_ROLES</span> <span class="k">else</span> <span class="n">role</span></div>
+
+
+
+<div class="viewcode-block" id="role_sort_key">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.role_sort_key">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_sort_key</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Sort roles by :data:`ROLE_ORDER`, unlisted ones last (alphabetical)."""</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">ROLE_ORDER</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">role</span><span class="p">)</span> <span class="k">if</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">ROLE_ORDER</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">ROLE_ORDER</span><span class="p">),</span> <span class="n">role</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="role_label">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.role_label">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_label</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Render a role as a short human label (``temperature_1`` -&gt; ``Temperature 1``)."""</span>
+    <span class="k">return</span> <span class="n">role</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">()</span></div>
+
+
+
+<span class="c1">#: Attributes filled for a SensorID the registry does not know at all.</span>
+<span class="n">_UNKNOWN_DEFAULT</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"unknown sensor"</span><span class="p">,</span>
+    <span class="s2">"sensor_type"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="s2">"sensor_type_vocabulary"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="s2">"sensor_model"</span><span class="p">:</span> <span class="s2">"UNK"</span><span class="p">,</span>
+    <span class="s2">"sensor_model_vocabulary"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="s2">"sensor_maker"</span><span class="p">:</span> <span class="s2">"UNK"</span><span class="p">,</span>
+    <span class="s2">"sensor_maker_vocabulary"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="s2">"model_source"</span><span class="p">:</span> <span class="s2">"UNK"</span><span class="p">,</span>
+    <span class="s2">"element"</span><span class="p">:</span> <span class="s2">""</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="SensorRegistry">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorRegistry">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SensorRegistry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Universal SensorID -&gt; sensor attribute table, from the package YAML."""</span>
+
+    <span class="n">by_sensor_id</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SensorRegistry.load">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorRegistry.load">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SensorRegistry</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Load the registry from ``sbe_sensors.yaml`` (package default if None)."""</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">"sbe_sensors.yaml"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yaml</span>
+
+        <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_yaml</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensors"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="c1"># SensorID keys are strings ("55"); coerce any int that slipped through.</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">):</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">by_sensor_id</span><span class="o">=</span><span class="n">table</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SensorRegistry.default_for">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorRegistry.default_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sensor_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return a copy of the registry entry for ``sensor_id``, or None."""</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">by_sensor_id</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">sensor_id</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SensorOverrides">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorOverrides">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SensorOverrides</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Cruise-level, role-keyed sensor overrides and serial aliases.</span>
+
+<span class="sd">    ``overrides`` is keyed by role (``"altimeter"``) or, to disambiguate two</span>
+<span class="sd">    different-model devices in one role, ``"role:serial"`` (``"altimeter:42299"``).</span>
+<span class="sd">    ``aliases`` maps a serial spelling to its canonical form so one physical</span>
+<span class="sd">    device recorded two ways yields one catalog entry.</span>
+<span class="sd">    """</span>
+
+    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">aliases</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SensorOverrides.from_cruise_config">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorOverrides.from_cruise_config">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_cruise_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SensorOverrides</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Build from a cruise ``config.yaml`` mapping (its ``sensors:`` block)."""</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensors"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">overrides</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">):</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"overrides"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">aliases</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">):</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"aliases"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">overrides</span><span class="o">=</span><span class="n">overrides</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="n">aliases</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SensorOverrides.canonical_serial">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorOverrides.canonical_serial">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canonical_serial</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the canonical spelling of ``serial`` after alias resolution."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">serial</span><span class="p">,</span> <span class="n">serial</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SensorOverrides.for_role">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.SensorOverrides.for_role">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">for_role</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Return the override for ``role``, most specific first, or ``{}``.</span>
+
+<span class="sd">        Tries ``role:serial`` (raw then canonical), then bare ``role``.</span>
+<span class="sd">        """</span>
+        <span class="n">canon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_serial</span><span class="p">(</span><span class="n">serial</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">canon</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">role</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">overrides</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">overrides</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">{}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="serial_slug">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.serial_slug">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">serial_slug</span><span class="p">(</span><span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply OG1's rule — non-alphanumerics become underscores — to ``serial``."""</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[^0-9A-Za-z]"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">,</span> <span class="n">serial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sanitize_serial">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.sanitize_serial">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sanitize_serial</span><span class="p">(</span><span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return :func:`serial_slug` of ``serial``; deprecated alias, removed in 0.5.0.</span>
+
+<span class="sd">    ``sanitize``/``sanitise`` is a British/American variant word, so the family uses one</span>
+<span class="sd">    spelling-neutral name (``serial_slug``) for the filename/variable-safe form.</span>
+<span class="sd">    """</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">"sanitize_serial is deprecated and will be removed in 0.5.0; use serial_slug."</span><span class="p">,</span>
+        <span class="ne">DeprecationWarning</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">serial_slug</span><span class="p">(</span><span class="n">serial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="catalog_var_name">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.catalog_var_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">catalog_var_name</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the sensor-catalog variable name ``SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;``.</span>
+
+<span class="sd">    ``role`` is a canonical ctdcast role (``temperature_1``, ``fluorometer``); any</span>
+<span class="sd">    trailing primary/secondary index (``_1``/``_2``) is dropped, because the</span>
+<span class="sd">    serial alone identifies the physical device.  Primary-vs-secondary is a</span>
+<span class="sd">    *role* fact carried by the linkage variables, not a hardware fact — so one</span>
+<span class="sd">    device serving two roles of the same type (e.g. a conductivity cell used as</span>
+<span class="sd">    primary on some casts and secondary on others) is a single catalog entry.</span>
+<span class="sd">    """</span>
+    <span class="n">sensor_type</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_\d+$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">role</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"SENSOR_</span><span class="si">{</span><span class="n">sensor_type</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">serial_slug</span><span class="p">(</span><span class="n">serial</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_unresolved</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return True if the model was not determined (UNK or empty)."""</span>
+    <span class="k">return</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model_source"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"UNK"</span> <span class="ow">or</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensor_model"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"UNK"</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="resolve_sensor">
+<a class="viewcode-back" href="../../../api.html#ctdcast.config.sensors.resolve_sensor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_sensor</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">sensor_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">calibration_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">element</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="n">SensorRegistry</span><span class="p">,</span>
+    <span class="n">overrides</span><span class="p">:</span> <span class="n">SensorOverrides</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Resolve one sensor's attributes: SensorID default -&gt; override -&gt; alias.</span>
+
+<span class="sd">    ``sensor_id`` is the numeric SeaBird SensorID (as a string); ``serial`` the</span>
+<span class="sd">    verbatim serial number (a string — leading zeros are significant); ``role``</span>
+<span class="sd">    a canonical ctdcast role; ``element`` the CNV element name for cross-checking</span>
+<span class="sd">    against the registry; ``cast`` an optional label used only in warnings.</span>
+
+<span class="sd">    Returns a dict of sensor attributes plus provenance (``sensor_serial_number``,</span>
+<span class="sd">    ``sensor_calibration_date``, ``sbe_sensor_id``, ``sbe_sensor_element``,</span>
+<span class="sd">    ``model_source``).  Never invents a model: an unresolved sensor is returned</span>
+<span class="sd">    with ``sensor_model="UNK"`` and a loud, actionable warning; with</span>
+<span class="sd">    ``strict=True`` it raises :class:`ValueError` instead.</span>
+
+<span class="sd">    :raises TypeError: if ``serial`` is not a ``str`` (guards YAML octal coercion</span>
+<span class="sd">        of leading-zero serials).</span>
+<span class="sd">    :raises ValueError: if ``strict`` and the model cannot be resolved.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">serial</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"serial must be a str (got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">serial</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">serial</span><span class="si">!r}</span><span class="s2">); "</span>
+            <span class="s2">"leading zeros are significant and must never pass through int()."</span>
+        <span class="p">)</span>
+
+    <span class="n">base</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">default_for</span><span class="p">(</span><span class="n">sensor_id</span><span class="p">)</span>
+    <span class="n">unknown_id</span> <span class="o">=</span> <span class="n">base</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">unknown_id</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">_UNKNOWN_DEFAULT</span><span class="p">)</span>
+
+    <span class="n">reg_element</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"element"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">element</span> <span class="ow">and</span> <span class="n">reg_element</span> <span class="ow">and</span> <span class="n">element</span> <span class="o">!=</span> <span class="n">reg_element</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"CNV element </span><span class="si">{</span><span class="n">element</span><span class="si">!r}</span><span class="s2"> disagrees with registry element </span><span class="si">{</span><span class="n">reg_element</span><span class="si">!r}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"for SensorID </span><span class="si">{</span><span class="n">sensor_id</span><span class="si">!r}</span><span class="s2"> (role </span><span class="si">{</span><span class="n">role</span><span class="si">!r}</span><span class="s2">, serial </span><span class="si">{</span><span class="n">serial</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_cast_suffix</span><span class="p">(</span><span class="n">cast</span><span class="p">)</span><span class="si">}</span><span class="s2">); using the registry entry."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># A cruise role override merges over the default (or the UNK stub), so it can</span>
+    <span class="c1"># fill any gap — including a SensorID the package table does not know.</span>
+    <span class="k">if</span> <span class="n">overrides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">over</span> <span class="o">=</span> <span class="n">overrides</span><span class="o">.</span><span class="n">for_role</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="n">serial</span><span class="p">)</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">over</span><span class="p">)</span>
+        <span class="c1"># An override that supplies a model is operator-sourced by definition;</span>
+        <span class="c1"># don't leave a stale UNK/assumed model_source it did not set itself.</span>
+        <span class="k">if</span> <span class="n">over</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sensor_model"</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"model_source"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">over</span><span class="p">:</span>
+            <span class="n">base</span><span class="p">[</span><span class="s2">"model_source"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"operator"</span>
+
+    <span class="c1"># Warn only if still unresolved AFTER the override, so a filled gap is silent.</span>
+    <span class="k">if</span> <span class="n">_is_unresolved</span><span class="p">(</span><span class="n">base</span><span class="p">):</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Unknown SeaBird SensorID </span><span class="si">{</span><span class="n">sensor_id</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="n">unknown_id</span>
+            <span class="k">else</span> <span class="sa">f</span><span class="s2">"SensorID </span><span class="si">{</span><span class="n">sensor_id</span><span class="si">!r}</span><span class="s2"> carries no model default"</span>
+        <span class="p">)</span>
+        <span class="n">fix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Add sensors.overrides.</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> to the cruise config.yaml"</span>
+        <span class="k">if</span> <span class="n">unknown_id</span><span class="p">:</span>
+            <span class="n">fix</span> <span class="o">+=</span> <span class="s2">" (or a row to ctdcast/config/sbe_sensors.yaml if universal)"</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">: model not resolved for role </span><span class="si">{</span><span class="n">role</span><span class="si">!r}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"(serial </span><span class="si">{</span><span class="n">serial</span><span class="si">!r}{</span><span class="n">_cast_suffix</span><span class="p">(</span><span class="n">cast</span><span class="p">)</span><span class="si">}</span><span class="s2">).  </span><span class="si">{</span><span class="n">fix</span><span class="si">}</span><span class="s2">."</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"model_source"</span><span class="p">,</span> <span class="s2">"UNK"</span><span class="p">)</span>
+
+    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">SENSOR_ATTR_FIELDS</span><span class="p">}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"model_source"</span><span class="p">]</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model_source"</span><span class="p">,</span> <span class="s2">"UNK"</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"sensor_serial_number"</span><span class="p">]</span> <span class="o">=</span> <span class="n">serial</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"sensor_calibration_date"</span><span class="p">]</span> <span class="o">=</span> <span class="n">calibration_date</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"sbe_sensor_id"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">sensor_id</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"sbe_sensor_element"</span><span class="p">]</span> <span class="o">=</span> <span class="n">reg_element</span> <span class="ow">or</span> <span class="n">element</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cast_suffix</span><span class="p">(</span><span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a ``", cast NNN"`` fragment for warnings, or empty if no cast."""</span>
+    <span class="k">if</span> <span class="n">cast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">", cast </span><span class="si">{</span><span class="n">cast</span><span class="si">}</span><span class="s2">"</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

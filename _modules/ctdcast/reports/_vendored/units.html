@@ -1,0 +1,505 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.reports._vendored.units &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.reports._vendored.units</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.reports._vendored.units</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Shared units machinery — resolve a reader spelling, merge a package's view, label a unit.</span>
+
+<span class="sd">Package-neutral and vendored byte-identical across the packages that share the report design</span>
+<span class="sd">layer (see ``MANIFEST.txt``); the data it reads live beside it in</span>
+<span class="sd">:mod:`ctdcast.reports._vendored.units_tables`.  Stdlib-only (no numpy, no xarray — nothing</span>
+<span class="sd">here touches a dataset), so it imports with no third-party dependency and the import-purity</span>
+<span class="sd">test guards it.</span>
+
+<span class="sd">Three functions, over a frozen :class:`Tables`:</span>
+
+<span class="sd">:func:`resolve_units`</span>
+<span class="sd">    ``(units, standard_name) -&gt; (canonical, factor)`` — what a reader spelling *is* (its</span>
+<span class="sd">    stored spelling) and *by how much* it must be scaled to become that spelling.  The</span>
+<span class="sd">    storage pass (each writing package's own ``to_canonical_units``) is a loop over this; it</span>
+<span class="sd">    is kept out of here so a display-only consumer need not carry it.</span>
+<span class="sd">:func:`merge_tables`</span>
+<span class="sd">    a package's (or a user's) view layered over a base :class:`Tables` — the same fold at</span>
+<span class="sd">    every layer.  A redundant override warns; a factor conflict raises.</span>
+<span class="sd">:func:`format_units`</span>
+<span class="sd">    the display label for a units string: it resolves first and labels the canonical for a</span>
+<span class="sd">    ``×1`` spelling (so ``degC`` on a foreign file reads ``°C``), labels the string as given</span>
+<span class="sd">    for a factor ``≠ 1`` spelling (``S/m`` stays ``S/m`` — the values it labels are still</span>
+<span class="sd">    S/m), and never raises (a label must not crash a report).</span>
+
+<span class="sd">:data:`DEFAULT_TABLES` is the family view, before any package override.  A package reads it</span>
+<span class="sd">beside its own ``TABLES`` (``merge_tables(DEFAULT_TABLES, ...)``); the reserved user layer is</span>
+<span class="sd">one more ``merge_tables`` over that.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">units_tables</span> <span class="k">as</span> <span class="n">_t</span>
+
+<span class="c1">#: Digits 0-9 mapped to their Unicode superscripts, for the exponent rule.</span>
+<span class="n">_SUPERSCRIPT_DIGITS</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">"0123456789"</span><span class="p">,</span> <span class="s2">"⁰¹²³⁴⁵⁶⁷⁸⁹"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="UnitsError">
+<a class="viewcode-back" href="../../../../api.html#ctdcast.processors.units.UnitsError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UnitsError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A units string cannot be related to a canonical spelling.</span>
+
+<span class="sd">    Raised by :func:`resolve_units` for a *present* spelling that is not a recognised member</span>
+<span class="sd">    of its canonical's alias group, and by :func:`merge_tables` for an alias factor that</span>
+<span class="sd">    disagrees with the base.  A dedicated :class:`ValueError` subclass so a caller can catch</span>
+<span class="sd">    *this* specifically without swallowing unrelated ``ValueError`` exceptions.</span>
+<span class="sd">    """</span></div>
+
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Tables</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A resolved view of the units tables: the family defaults, or a package's over them.</span>
+
+<span class="sd">    Immutable so a view can be shared without a caller mutating a shared dict.  Built from</span>
+<span class="sd">    :mod:`ctdcast.reports._vendored.units_tables` for :data:`DEFAULT_TABLES`, or returned by</span>
+<span class="sd">    :func:`merge_tables` for a package or user view.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    canonical : dict of str to str</span>
+<span class="sd">        CF ``standard_name`` → stored spelling.</span>
+<span class="sd">    aliases : dict of str to (dict of str to float)</span>
+<span class="sd">        canonical spelling → ``{reader spelling: factor}``.</span>
+<span class="sd">    scoped : dict of str to (dict of str to float)</span>
+<span class="sd">        CF ``standard_name`` → ``{spelling: factor}`` for a quantity-specific spelling.</span>
+<span class="sd">    labels : dict of str to str</span>
+<span class="sd">        whole units string → display symbol.</span>
+<span class="sd">    labels_by_standard_name : dict of str to str</span>
+<span class="sd">        CF ``standard_name`` → fixed scale label.</span>
+<span class="sd">    tokens : dict of str to str</span>
+<span class="sd">        substring substitutions applied before the exponent rule.</span>
+<span class="sd">    """</span>
+
+    <span class="n">canonical</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="n">aliases</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span>
+    <span class="n">scoped</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span>
+    <span class="n">labels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="n">labels_by_standard_name</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="n">tokens</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+
+
+<span class="c1">#: The family view, before any package override.  A package builds its own ``TABLES`` with</span>
+<span class="c1">#: :func:`merge_tables` over this; a display-only consumer uses it directly.</span>
+<span class="n">DEFAULT_TABLES</span> <span class="o">=</span> <span class="n">Tables</span><span class="p">(</span>
+    <span class="n">canonical</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">CANONICAL</span><span class="p">,</span>
+    <span class="n">aliases</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">ALIASES</span><span class="p">,</span>
+    <span class="n">scoped</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">SCOPED_ALIASES</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">LABELS</span><span class="p">,</span>
+    <span class="n">labels_by_standard_name</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">LABELS_BY_STANDARD_NAME</span><span class="p">,</span>
+    <span class="n">tokens</span><span class="o">=</span><span class="n">_t</span><span class="o">.</span><span class="n">TOKENS</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">merge_tables</span><span class="p">(</span>
+    <span class="n">base</span><span class="p">:</span> <span class="n">Tables</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">canonical</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">aliases</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">scoped</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">labels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tables</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *base* with a package's (or a user's) overrides folded in.</span>
+
+<span class="sd">    The same fold at every layer, with four rules: an override entry identical to the base is</span>
+<span class="sd">    a no-op and warns (a restatement that would silently shadow a future base change — remove</span>
+<span class="sd">    it); a *different* canonical for a quantity the base has is a deliberate override and is</span>
+<span class="sd">    accepted; an alias **factor** that disagrees with the base for the same spelling raises</span>
+<span class="sd">    :class:`UnitsError` (a factor conflict is a bug, never a preference); a canonical, alias</span>
+<span class="sd">    group, scoped group or label the base lacks is added.  Alias and scoped groups merge per</span>
+<span class="sd">    key, so a package adds one spelling without restating the family's.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    base : Tables</span>
+<span class="sd">        The view to layer over (:data:`DEFAULT_TABLES`, or a package's ``TABLES``).</span>
+<span class="sd">    canonical : dict of str to str, optional</span>
+<span class="sd">        Stored-spelling overrides, keyed by CF ``standard_name``.</span>
+<span class="sd">    aliases : dict of str to (dict of str to float), optional</span>
+<span class="sd">        Extra reader spellings, keyed by canonical spelling.</span>
+<span class="sd">    scoped : dict of str to (dict of str to float), optional</span>
+<span class="sd">        Extra quantity-specific spellings, keyed by CF ``standard_name``.</span>
+<span class="sd">    labels : dict of str to str, optional</span>
+<span class="sd">        Display-label overrides, keyed by units string.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Tables</span>
+<span class="sd">        A new frozen view; *base* is not mutated.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    UnitsError</span>
+<span class="sd">        If an override alias or scoped entry gives a factor that disagrees with the base for</span>
+<span class="sd">        the same spelling.</span>
+<span class="sd">    """</span>
+    <span class="n">new_canonical</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">canonical</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">sn</span><span class="p">,</span> <span class="n">spelling</span> <span class="ow">in</span> <span class="p">(</span><span class="n">canonical</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">canonical</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sn</span><span class="p">)</span> <span class="o">==</span> <span class="n">spelling</span><span class="p">:</span>
+            <span class="n">_warn_redundant</span><span class="p">(</span><span class="s2">"canonical"</span><span class="p">,</span> <span class="n">sn</span><span class="p">)</span>
+        <span class="n">new_canonical</span><span class="p">[</span><span class="n">sn</span><span class="p">]</span> <span class="o">=</span> <span class="n">spelling</span>
+
+    <span class="n">new_labels</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">units_str</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">(</span><span class="n">labels</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">units_str</span><span class="p">)</span> <span class="o">==</span> <span class="n">label</span><span class="p">:</span>
+            <span class="n">_warn_redundant</span><span class="p">(</span><span class="s2">"label"</span><span class="p">,</span> <span class="n">units_str</span><span class="p">)</span>
+        <span class="n">new_labels</span><span class="p">[</span><span class="n">units_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+
+    <span class="n">new_aliases</span> <span class="o">=</span> <span class="n">_merge_factor_groups</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">aliases</span><span class="p">,</span> <span class="n">aliases</span><span class="p">,</span> <span class="s2">"alias"</span><span class="p">)</span>
+    <span class="n">new_scoped</span> <span class="o">=</span> <span class="n">_merge_factor_groups</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">scoped</span><span class="p">,</span> <span class="n">scoped</span><span class="p">,</span> <span class="s2">"scoped"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Tables</span><span class="p">(</span>
+        <span class="n">canonical</span><span class="o">=</span><span class="n">new_canonical</span><span class="p">,</span>
+        <span class="n">aliases</span><span class="o">=</span><span class="n">new_aliases</span><span class="p">,</span>
+        <span class="n">scoped</span><span class="o">=</span><span class="n">new_scoped</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="n">new_labels</span><span class="p">,</span>
+        <span class="n">labels_by_standard_name</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">labels_by_standard_name</span><span class="p">),</span>
+        <span class="n">tokens</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">tokens</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_merge_factor_groups</span><span class="p">(</span>
+    <span class="n">base</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+    <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Merge ``{key: {spelling: factor}}`` *extra* over *base*, per spelling.</span>
+
+<span class="sd">    A spelling already in the base with the same factor warns (redundant); with a different</span>
+<span class="sd">    factor raises :class:`UnitsError`; a new spelling is added.  *kind* names the group in the</span>
+<span class="sd">    messages (``"alias"`` or ``"scoped"``).</span>
+<span class="sd">    """</span>
+    <span class="n">merged</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="p">(</span><span class="n">extra</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">merged</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">for</span> <span class="n">spelling</span><span class="p">,</span> <span class="n">factor</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">spelling</span> <span class="ow">in</span> <span class="n">target</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">target</span><span class="p">[</span><span class="n">spelling</span><span class="p">]</span> <span class="o">!=</span> <span class="n">factor</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">UnitsError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2"> factor conflict for </span><span class="si">{</span><span class="n">spelling</span><span class="si">!r}</span><span class="s2"> under </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2">: "</span>
+                        <span class="sa">f</span><span class="s2">"base </span><span class="si">{</span><span class="n">target</span><span class="p">[</span><span class="n">spelling</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> vs override </span><span class="si">{</span><span class="n">factor</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">; a factor is a "</span>
+                        <span class="sa">f</span><span class="s2">"physical fact, not a package preference."</span>
+                    <span class="p">)</span>
+                <span class="n">_warn_redundant</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">spelling</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">target</span><span class="p">[</span><span class="n">spelling</span><span class="p">]</span> <span class="o">=</span> <span class="n">factor</span>
+    <span class="k">return</span> <span class="n">merged</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_warn_redundant</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Warn that an override restates the base and will shadow a future base change."""</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"redundant </span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2"> override </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2">: it restates the base value and will silently "</span>
+        <span class="sa">f</span><span class="s2">"shadow a future change to it — remove it from the package tables."</span><span class="p">,</span>
+        <span class="ne">UserWarning</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_units</span><span class="p">(</span>
+    <span class="n">units</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">standard_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">Tables</span> <span class="o">=</span> <span class="n">DEFAULT_TABLES</span><span class="p">,</span>
+    <span class="n">canonical</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(canonical spelling, factor)`` for a reader *units* string.</span>
+
+<span class="sd">    The canonical is *canonical* when given (the storage pass supplies the registry spelling</span>
+<span class="sd">    for a variable, which is known before a ``standard_name`` attribute is stamped), else</span>
+<span class="sd">    ``tables.canonical[standard_name]`` when the quantity is known, else — for display of an</span>
+<span class="sd">    arbitrary string — the string is matched back against the alias groups so a bare ``degC``</span>
+<span class="sd">    resolves to ``degree_Celsius``, and failing that is returned unchanged as a</span>
+<span class="sd">    package-decided unit.  The accepted group for a known canonical is the canonical (``×1``)</span>
+<span class="sd">    plus :data:`Tables.aliases` for it plus :data:`Tables.scoped` for *standard_name*; a</span>
+<span class="sd">    *units* string outside that group raises.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    units : str</span>
+<span class="sd">        The reader's units string.  An empty string raises :class:`UnitsError`.</span>
+<span class="sd">    standard_name : str or None, optional</span>
+<span class="sd">        CF standard name, used to find the canonical and the scoped group.</span>
+<span class="sd">    tables : Tables, optional</span>
+<span class="sd">        The view to resolve against; defaults to :data:`DEFAULT_TABLES`.</span>
+<span class="sd">    canonical : str or None, optional</span>
+<span class="sd">        The canonical spelling when the caller already knows it (by variable name); skips the</span>
+<span class="sd">        ``standard_name`` lookup.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (str, float)</span>
+<span class="sd">        The canonical spelling and the factor by which *units* values must be multiplied to</span>
+<span class="sd">        reach it (``1.0`` for a pure spelling rewrite).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    UnitsError</span>
+<span class="sd">        If *units* is empty, or is a present spelling that is not a member of its canonical's</span>
+<span class="sd">        accepted group (only when the canonical is known by *canonical* or *standard_name*).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">units</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">UnitsError</span><span class="p">(</span><span class="s2">"empty units string cannot be resolved"</span><span class="p">)</span>
+
+    <span class="n">canon</span> <span class="o">=</span> <span class="n">canonical</span>
+    <span class="k">if</span> <span class="n">canon</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">standard_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">canon</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">canonical</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">standard_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">canon</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># No canonical known (display of an arbitrary string): recover it from the alias</span>
+        <span class="c1"># groups so `degC` reads as `degree_Celsius`; otherwise the string is its own</span>
+        <span class="c1"># canonical (a package-decided unit) and nothing is refused.</span>
+        <span class="k">for</span> <span class="n">base_canon</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">aliases</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">units</span> <span class="o">==</span> <span class="n">base_canon</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">base_canon</span><span class="p">,</span> <span class="mf">1.0</span>
+            <span class="k">if</span> <span class="n">units</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">base_canon</span><span class="p">,</span> <span class="n">group</span><span class="p">[</span><span class="n">units</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">units</span><span class="p">,</span> <span class="mf">1.0</span>
+
+    <span class="n">group</span> <span class="o">=</span> <span class="p">{</span><span class="n">canon</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">**</span><span class="n">tables</span><span class="o">.</span><span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">canon</span><span class="p">,</span> <span class="p">{})}</span>
+    <span class="k">if</span> <span class="n">standard_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tables</span><span class="o">.</span><span class="n">scoped</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">standard_name</span><span class="p">,</span> <span class="p">{}))</span>
+    <span class="k">if</span> <span class="n">units</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">UnitsError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"units </span><span class="si">{</span><span class="n">units</span><span class="si">!r}</span><span class="s2"> is not a recognised spelling of </span><span class="si">{</span><span class="n">canon</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">" (standard_name </span><span class="si">{</span><span class="n">standard_name</span><span class="si">!r}</span><span class="s2">)"</span> <span class="k">if</span> <span class="n">standard_name</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+            <span class="o">+</span> <span class="s2">"; add it to the alias tables with a verified factor or fix the reader "</span>
+            <span class="s2">"— no silent pass-through."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">canon</span><span class="p">,</span> <span class="n">group</span><span class="p">[</span><span class="n">units</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_superscript_term</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Superscript a single UDUNITS term's exponent in place.</span>
+
+<span class="sd">    ``m-2`` → ``m⁻²``, ``rad2`` → ``rad²``; a bare ``m`` or ``µmol`` is returned unchanged.</span>
+<span class="sd">    Used for a multi-denominator unit, where the single ``X/Y`` slash form does not apply.</span>
+<span class="sd">    """</span>
+    <span class="n">neg</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">"([A-Za-z]+)-(\d+)"</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">neg</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"⁻"</span> <span class="o">+</span> <span class="n">neg</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_DIGITS</span><span class="p">)</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">"([A-Za-z]+)([2-9])"</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pos</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pos</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">pos</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_DIGITS</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">term</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">format_units</span><span class="p">(</span>
+    <span class="n">units</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">standard_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">Tables</span> <span class="o">=</span> <span class="n">DEFAULT_TABLES</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the display label for a CF/UDUNITS *units* string.</span>
+
+<span class="sd">    The string is resolved first (:func:`resolve_units`): a ``×1`` spelling is labelled by its</span>
+<span class="sd">    *canonical* (so a foreign file's ``degC`` reads ``°C``), a factor ``≠ 1`` spelling is</span>
+<span class="sd">    labelled as given (``S/m`` stays ``S/m`` — the values it labels have not been scaled), and</span>
+<span class="sd">    an unknown string is labelled as it stands (resolution never crashes a label).  The label</span>
+<span class="sd">    itself is then: the ``standard_name`` scale label (:data:`Tables.labels_by_standard_name`),</span>
+<span class="sd">    then the whole-string :data:`Tables.labels`, then the token substitutions and the exponent</span>
+<span class="sd">    rule — ``X Y-1`` → ``X/Y``, ``X Y-n`` → ``X/Yⁿ``, a bare ``Y-n`` → ``Y⁻ⁿ``, a trailing</span>
+<span class="sd">    power concatenated on a letter numerator token superscripted (``rad2 s-2`` → ``rad²/s²``),</span>
+<span class="sd">    and every term superscripted in place for a two-or-more-denominator unit (``umol m-2 s-1``</span>
+<span class="sd">    → ``µmol m⁻² s⁻¹``).  A time-coordinate encoding (``days since 1970-01-01``) and any</span>
+<span class="sd">    string the rule does not match are returned unchanged.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    units : str</span>
+<span class="sd">        CF/UDUNITS units string (e.g. ``"mS cm-1"``).  An empty string returns ``""``.</span>
+<span class="sd">    standard_name : str or None, optional</span>
+<span class="sd">        CF standard name, used for the dimensionless turbidity / practical salinity labels and</span>
+<span class="sd">        to resolve a scoped spelling.</span>
+<span class="sd">    tables : Tables, optional</span>
+<span class="sd">        The view to label against; defaults to :data:`DEFAULT_TABLES`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The display units string; ``""`` when *units* is empty.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">units</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">canonical</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="n">resolve_units</span><span class="p">(</span><span class="n">units</span><span class="p">,</span> <span class="n">standard_name</span><span class="p">,</span> <span class="n">tables</span><span class="o">=</span><span class="n">tables</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">UnitsError</span><span class="p">:</span>
+        <span class="n">canonical</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="n">units</span><span class="p">,</span> <span class="mf">1.0</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">canonical</span> <span class="k">if</span> <span class="n">factor</span> <span class="o">==</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="n">units</span>
+    <span class="c1"># The standard_name scale label names the canonical scale (turbidity NTU, dimensionless</span>
+    <span class="c1"># salinity PSU); it does not apply to a not-yet-scaled factor != 1 spelling.</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">factor</span> <span class="o">==</span> <span class="mf">1.0</span>
+        <span class="ow">and</span> <span class="n">standard_name</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">labels_by_standard_name</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="s2">"1"</span> <span class="ow">or</span> <span class="n">standard_name</span> <span class="o">==</span> <span class="s2">"sea_water_turbidity"</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">tables</span><span class="o">.</span><span class="n">labels_by_standard_name</span><span class="p">[</span><span class="n">standard_name</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">labels</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tables</span><span class="o">.</span><span class="n">labels</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">token</span><span class="p">,</span> <span class="n">display</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">tokens</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">display</span><span class="p">)</span>
+    <span class="c1"># A time-coordinate encoding ("&lt;unit&gt; since &lt;epoch&gt;") is not a scale unit; the exponent</span>
+    <span class="c1"># rule would mangle the date, so leave it untouched.</span>
+    <span class="k">if</span> <span class="s2">" since "</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">s</span>
+    <span class="c1"># Two or more denominator terms (e.g. `umol m-2 s-1`) cannot be written as a single</span>
+    <span class="c1"># `X/Y`; the single-denominator regex below would match greedily and half-convert it, so</span>
+    <span class="c1"># superscript every term in place instead (`µmol m⁻² s⁻¹`).</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">([</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\S+?-\d+"</span><span class="p">,</span> <span class="n">t</span><span class="p">)])</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_superscript_term</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^(?:(.+?)\s+)?(\S+?)-(\d+)$"</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">m</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">s</span>
+    <span class="n">num</span><span class="p">,</span> <span class="n">den</span><span class="p">,</span> <span class="n">exp</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># A positive power is written concatenated in UDUNITS (`rad2` = rad²), so superscript a</span>
+    <span class="c1"># trailing single digit on a letter-only numerator token — the same rule the denominator</span>
+    <span class="c1"># exponent gets.  Restricted to `[A-Za-z]+[2-9]` so a bare number or `m` is untouched.</span>
+    <span class="k">if</span> <span class="n">num</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[A-Za-z]+[2-9]"</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">num</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">num</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_DIGITS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">num</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">den</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="n">exp</span> <span class="o">==</span> <span class="s2">"1"</span>
+            <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">num</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">den</span><span class="si">}{</span><span class="n">exp</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_DIGITS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">den</span><span class="si">}</span><span class="s2">⁻</span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT_DIGITS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

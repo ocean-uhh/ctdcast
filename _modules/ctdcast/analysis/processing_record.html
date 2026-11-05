@@ -1,0 +1,742 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.analysis.processing_record &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.analysis.processing_record</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.analysis.processing_record</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""What was done to one cast, step by step, as plain rows: the cast's processing record.</span>
+
+<span class="sd">One list per cast, in the order the steps ran: how stage 1 read the raw file, the Sea-Bird steps</span>
+<span class="sd">recorded in its header (the deck unit's advance and each SBE Data Processing module, with the</span>
+<span class="sd">conformance check against SBE's documented values), stage 2's soak and deck rule, and ctdcast's</span>
+<span class="sd">stage-3 steps and products.  Each row separates the *setting* (what was configured, the same on</span>
+<span class="sd">every cast processed alike) from the *outcome* (what the step did on this cast, such as how many</span>
+<span class="sd">values Wild Edit marked), so casts can be compared on their settings.</span>
+
+<span class="sd">The cast page draws a cast's rows; the profiles compile stores every cast's rows in</span>
+<span class="sd">``profiles.nc`` (:func:`record_json`), and the cruise processing page draws them as runs of casts.</span>
+<span class="sd">Everything is read from the stage file alone.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CONFORMANCE_DIFFER</span><span class="p">,</span>
+    <span class="n">CONFORMANCE_NO_REFERENCE</span><span class="p">,</span>
+    <span class="n">ConformanceTick</span><span class="p">,</span>
+    <span class="n">Correction</span><span class="p">,</span>
+    <span class="n">celltm_reference_tick</span><span class="p">,</span>
+    <span class="n">conductivity_advance_reference_tick</span><span class="p">,</span>
+    <span class="n">conformance_ticks</span><span class="p">,</span>
+    <span class="n">correction_records</span><span class="p">,</span>
+    <span class="n">header_from_raw_metadata</span><span class="p">,</span>
+    <span class="n">no_reference_tick</span><span class="p">,</span>
+    <span class="n">pressure_filter_reference_tick</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">source_to_canonical</span>
+
+<span class="c1">#: The stages a row can belong to, in the order they run.</span>
+<span class="n">STAGES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"stage 1"</span><span class="p">,</span>
+    <span class="s2">"Sea-Bird"</span><span class="p">,</span>
+    <span class="s2">"stage 2"</span><span class="p">,</span>
+    <span class="s2">"stage 3"</span><span class="p">,</span>
+    <span class="s2">"product"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ProcessingRow">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.ProcessingRow">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProcessingRow</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One step applied to a cast.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stage : str</span>
+<span class="sd">        One of :data:`STAGES`.</span>
+<span class="sd">    step : str</span>
+<span class="sd">        The step's name (``wildedit``, ``alignctd``, ``celltm``, ``binavg (1dbar_down)``…).</span>
+<span class="sd">    producer : str</span>
+<span class="sd">        What applied it (Sea-Bird's software, or ctdcast and the seabirdscientific function).</span>
+<span class="sd">    version : str</span>
+<span class="sd">        The producer's version, when the file records it.</span>
+<span class="sd">    setting : str</span>
+<span class="sd">        What was configured; casts processed alike have the same setting.</span>
+<span class="sd">    outcome : str</span>
+<span class="sd">        What the step did on this cast (counts), not compared across casts.</span>
+<span class="sd">    variables : str</span>
+<span class="sd">        The variables the step changed or marked.</span>
+<span class="sd">    state : str</span>
+<span class="sd">        The conformance check: ``match``, ``differ`` or ``no_reference``.</span>
+<span class="sd">    reference : str</span>
+<span class="sd">        The documented value checked against, when there is one.</span>
+<span class="sd">    source : str</span>
+<span class="sd">        Where that value comes from.</span>
+<span class="sd">    exception : str</span>
+<span class="sd">        How the step ran differently from its setting on this cast, as a fixed phrase that reads</span>
+<span class="sd">        the same on every cast it applies to (``""`` when it ran as set).  Not part of the</span>
+<span class="sd">        setting, so it does not split casts into runs; the processing page lists it apart.</span>
+<span class="sd">    """</span>
+
+    <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">step</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">producer</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">setting</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">outcome</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">CONFORMANCE_NO_REFERENCE</span>
+    <span class="n">reference</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">exception</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span></div>
+
+
+
+<span class="c1">#: The exception a product's Bin Average records on a cast where it kept part of a flagged scan.</span>
+<span class="n">BINAVG_KEPT_PARTLY_FLAGGED</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"kept the good values of scans with a flagged value; seabirdscientific's bin_average "</span>
+    <span class="s2">"drops such a scan whole"</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_exception_of</span><span class="p">(</span><span class="n">step</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">outcome</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the fixed phrase for how *step* ran differently from its setting, from *outcome*."""</span>
+    <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="s2">"loopedit"</span><span class="p">:</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"surface soak not applied: [^(;]*"</span><span class="p">,</span> <span class="n">outcome</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">found</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">found</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"binavg ("</span><span class="p">)</span> <span class="ow">and</span> <span class="n">outcome</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" "</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">BINAVG_KEPT_PARTLY_FLAGGED</span>
+    <span class="k">return</span> <span class="s2">""</span>
+
+
+<div class="viewcode-block" id="ctdcast_versions">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.ctdcast_versions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ctdcast_versions</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``"ctdcast X, seabirdscientific Y"`` for a stage-3 step, from the file alone."""</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"ctdcast (\S+) stage3:"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)))</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"ctdcast </span><span class="si">{</span><span class="n">found</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">if</span> <span class="n">found</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">sbs</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"seabirdscientific (\S+)"</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sbs</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">sbs</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stage3_rows</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Correction</span><span class="p">,</span> <span class="n">ConformanceTick</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ctdcast's own stage-3 corrections as ``(record, tick, setting, outcome)``, in order.</span>
+
+<span class="sd">    *setting* is what was configured (the same on every cast processed alike); *outcome* is what</span>
+<span class="sd">    the step did on this cast (Wild Edit's and Loop Edit's counts).  The record's parameters are</span>
+<span class="sd">    the two joined, as the cast page shows them.</span>
+
+<span class="sd">    Read from the variables' attributes and put in the order stage 3 applied them, which it</span>
+<span class="sd">    records in the file's ``data_processing_steps`` attribute (the configured steps can come in</span>
+<span class="sd">    any order); without it, the rows keep the order they are read in.  Each row</span>
+<span class="sd">    carries a conformance tick against the same SBE references as the rows above it: cell</span>
+<span class="sd">    thermal mass against (0.03, 7), alignment by the channel's total advance (deck unit +</span>
+<span class="sd">    ctdcast) against 0.073 s; the slope, Wild Edit and the oxygen conversion have no reference</span>
+<span class="sd">    and show a dash.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Correction</span><span class="p">,</span> <span class="n">ConformanceTick</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># A preferred-sensor composite copies its source channel's attrs; listing it would show</span>
+    <span class="c1"># each correction twice.</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"comment"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"preferred "</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">ran</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_processing_steps"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">";"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="p">]</span>
+    <span class="n">order</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span>
+        <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">producer</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">params</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">tick_of</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ConformanceTick</span><span class="p">],</span>
+        <span class="n">outcome</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"ctdcast_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">Correction</span><span class="p">(</span>
+                    <span class="n">label</span><span class="p">,</span>
+                    <span class="n">key</span><span class="p">,</span>
+                    <span class="n">producer</span><span class="p">,</span>
+                    <span class="n">ctdcast_versions</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">method</span><span class="p">),</span>
+                    <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">part</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">outcome</span><span class="p">)</span> <span class="k">if</span> <span class="n">part</span><span class="p">),</span>
+                <span class="p">),</span>
+                <span class="n">tick_of</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                <span class="n">params</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># The SBE 43 oxygen is derived after every step; anything not in the record keeps its place.</span>
+        <span class="n">order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ran</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="k">if</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">ran</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">ran</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="k">if</span> <span class="s2">"calibration_slope"</span> <span class="ow">in</span> <span class="n">a</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"× </span><span class="si">{</span><span class="n">a</span><span class="p">[</span><span class="s1">'calibration_slope'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"calibration_offset"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">):</span>
+                <span class="n">params</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s1">'calibration_offset'</span><span class="p">])</span><span class="si">:</span><span class="s2">+g</span><span class="si">}</span><span class="s2">"</span>
+            <span class="n">add</span><span class="p">(</span>
+                <span class="s2">"slope_offset"</span><span class="p">,</span>
+                <span class="s2">"ctdcast stage 3"</span><span class="p">,</span>
+                <span class="s2">""</span><span class="p">,</span>
+                <span class="n">params</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"slope_offset"</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span>
+            <span class="p">)</span>
+    <span class="n">edited</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="s2">"wild_edit"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">edited</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">edited</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"wild_edit_marked"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">edited</span><span class="p">}</span>
+        <span class="n">marked</span> <span class="o">=</span> <span class="p">(</span><span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">n</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"none"</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span>
+            <span class="s2">"; none in the others"</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">else</span> <span class="s2">""</span>
+        <span class="p">)</span>
+        <span class="n">edited_names</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">edited</span><span class="p">)</span>
+        <span class="n">add</span><span class="p">(</span>
+            <span class="s2">"wildedit"</span><span class="p">,</span>
+            <span class="s2">"ctdcast stage 3 (seabirdscientific wild_edit)"</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"wild_edit_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"wild_edit"</span><span class="p">]),</span>
+            <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">vs</span><span class="o">=</span><span class="n">edited_names</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"wildedit"</span><span class="p">,</span> <span class="n">vs</span><span class="p">),</span>
+            <span class="n">outcome</span><span class="o">=</span><span class="sa">f</span><span class="s2">"values marked (QARTOD 4, kept): </span><span class="si">{</span><span class="n">marked</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Filters: one row per filter, naming every variable it changed, in the order applied.</span>
+    <span class="n">by_filter</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filters"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">";"</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="n">by_filter</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">history_text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ran_at</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="c1"># Each filter's history line, e.g. "filter: low-pass time constant 0.03 s on ...".</span>
+        <span class="n">phrase</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"low-pass "</span><span class="p">,</span> <span class="s2">"low-pass time constant "</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s2">"window "</span><span class="p">,</span> <span class="s2">"window_filter: "</span><span class="p">,</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">at</span> <span class="o">=</span> <span class="n">history_text</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">phrase</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">at</span> <span class="k">if</span> <span class="n">at</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">history_text</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">text</span><span class="p">,</span> <span class="n">variables</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">by_filter</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="n">_ran_at</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s2">"window_filter"</span> <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"window"</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"filter"</span>
+        <span class="n">tc</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"low-pass ([0-9.eE+-]+) s"</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">joined</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">variables</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tc</span> <span class="ow">and</span> <span class="s2">"pressure"</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+            <span class="n">tc_seconds</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">tc_seconds</span><span class="p">,</span> <span class="n">vs</span><span class="o">=</span><span class="n">joined</span><span class="p">:</span> <span class="p">(</span>  <span class="c1"># noqa: E731</span>
+                <span class="n">pressure_filter_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"filter"</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">vs</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">lab</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">vs</span><span class="o">=</span><span class="n">joined</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">vs</span><span class="p">)</span>  <span class="c1"># noqa: E731</span>
+        <span class="n">add</span><span class="p">(</span>
+            <span class="n">label</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"ctdcast stage 3 (seabirdscientific </span><span class="si">{</span><span class="s1">'window_filter'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s1">'window_filter'</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'low_pass_filter'</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">variables</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filters_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+            <span class="n">text</span><span class="p">,</span>
+            <span class="n">tick_of</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"loop_edit_flag"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"loop_edit_flag"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="n">n_marked</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"loop_edit_flag"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">add</span><span class="p">(</span>
+            <span class="s2">"loopedit"</span><span class="p">,</span>
+            <span class="s2">"ctdcast stage 3 (seabirdscientific loop_edit)"</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"loop_edit_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"loop_edit"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+            <span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"loopedit"</span><span class="p">,</span> <span class="s2">"all channels (whole scans)"</span><span class="p">),</span>
+            <span class="n">outcome</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_marked</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">ds</span><span class="p">[</span><span class="s1">'loop_edit_flag'</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> scans marked (QARTOD 4, kept)"</span>
+            <span class="o">+</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"; </span><span class="si">{</span><span class="n">a</span><span class="p">[</span><span class="s1">'loop_edit_soak_not_applied'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"loop_edit_soak_not_applied"</span><span class="p">)</span>
+                <span class="k">else</span> <span class="s2">""</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="k">if</span> <span class="s2">"alignment_offset_seconds"</span> <span class="ow">in</span> <span class="n">a</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"alignment_offset_seconds"</span><span class="p">])</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"advance </span><span class="si">{</span><span class="n">offset</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2"> s"</span>
+            <span class="n">deck</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"alignment_deck_unit_advance_seconds"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">deck</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">params</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" (deck unit's </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">)</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2"> s already in the data)"</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"conductivity"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">deck</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">total</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">)</span>
+                <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">total</span><span class="p">:</span> <span class="n">conductivity_advance_reference_tick</span><span class="p">(</span>  <span class="c1"># noqa: E731</span>
+                    <span class="n">k</span><span class="p">,</span> <span class="s2">"alignctd"</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"alignctd"</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>  <span class="c1"># noqa: E731</span>
+            <span class="n">add</span><span class="p">(</span>
+                <span class="s2">"alignctd"</span><span class="p">,</span>
+                <span class="s2">"ctdcast stage 3 (seabirdscientific align_ctd)"</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"alignment_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+                <span class="n">params</span><span class="p">,</span>
+                <span class="n">tick_of</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="k">if</span> <span class="s2">"cell_thermal_mass_alpha"</span> <span class="ow">in</span> <span class="n">a</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"cell_thermal_mass_alpha"</span><span class="p">])</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="s2">"cell_thermal_mass_tau_seconds"</span><span class="p">])</span>
+            <span class="n">add</span><span class="p">(</span>
+                <span class="s2">"celltm"</span><span class="p">,</span>
+                <span class="s2">"ctdcast stage 3 (seabirdscientific cell_thermal_mass)"</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cell_thermal_mass_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+                <span class="sa">f</span><span class="s2">"alpha=</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> tau=</span><span class="si">{</span><span class="n">tau</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s, with </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'cell_thermal_mass_temperature'</span><span class="p">,</span><span class="w"> </span><span class="s1">'?'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">al</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">ta</span><span class="o">=</span><span class="n">tau</span><span class="p">:</span> <span class="n">celltm_reference_tick</span><span class="p">(</span>
+                    <span class="n">k</span><span class="p">,</span> <span class="s2">"celltm"</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">ta</span><span class="p">,</span> <span class="n">v</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"oxygen_tau_correction"</span><span class="p">):</span>
+            <span class="n">add</span><span class="p">(</span>
+                <span class="s2">"SBE 43 oxygen"</span><span class="p">,</span>
+                <span class="s2">"ctdcast stage 3 (tau, Application Note 64-3 hysteresis; "</span>
+                <span class="s2">"seabirdscientific convert_sbe43_oxygen)"</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"conversion_method"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+                <span class="sa">f</span><span class="s2">"tau window </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'oxygen_tau_window_seconds'</span><span class="p">,</span><span class="w"> </span><span class="s1">'?'</span><span class="p">)</span><span class="si">}</span><span class="s2"> s; "</span>
+                <span class="sa">f</span><span class="s2">"from </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'derived_from'</span><span class="p">,</span><span class="w"> </span><span class="s1">'?'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s2">"SBE 43 oxygen"</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span>
+            <span class="p">)</span>
+
+    <span class="c1"># A product's Bin Average that kept part of a flagged scan: where ctdcast parts ways with</span>
+    <span class="c1"># seabirdscientific, which would drop the whole scan.  Products come after stage 3.</span>
+    <span class="c1"># ``products_made`` lists every product with its steps; a file written before it existed</span>
+    <span class="c1"># names only the products that met a partly flagged scan.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_by_name</span><span class="p">(</span><span class="n">attr</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" | "</span><span class="p">):</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">": "</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">text</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="n">partly</span> <span class="o">=</span> <span class="n">_by_name</span><span class="p">(</span><span class="s2">"products_bin_average_partly_flagged"</span><span class="p">)</span>
+    <span class="n">made</span> <span class="o">=</span> <span class="n">_by_name</span><span class="p">(</span><span class="s2">"products_made"</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">partly</span><span class="p">,</span> <span class="s2">"binavg"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">steps</span> <span class="ow">in</span> <span class="n">made</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="s2">"binavg"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+            <span class="c1"># A product with no Bin Average (a split leg, a filtered copy): named for what it is.</span>
+            <span class="n">add</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"product (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"ctdcast product </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="s2">""</span><span class="p">,</span>
+                <span class="n">steps</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"product (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">partly</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">text</span><span class="p">:</span>
+            <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">:</span> <span class="n">ConformanceTick</span><span class="p">(</span>  <span class="c1"># noqa: E731</span>
+                <span class="n">k</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"binavg (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">CONFORMANCE_DIFFER</span><span class="p">,</span>
+                <span class="s2">"a scan with any flagged value is dropped whole"</span><span class="p">,</span>
+                <span class="s2">"seabirdscientific processing.bin_average"</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">";"</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s2">""</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tick_of</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">k</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">:</span> <span class="n">no_reference_tick</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"binavg (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>  <span class="c1"># noqa: E731</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="s2">"no scan entering the bins had a flagged value beside good ones"</span>
+        <span class="n">add</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"binavg (</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"ctdcast product </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> (seabirdscientific bin_average)"</span><span class="p">,</span>
+            <span class="s2">""</span><span class="p">,</span>
+            <span class="n">steps</span><span class="p">,</span>
+            <span class="n">tick_of</span><span class="p">,</span>
+            <span class="n">outcome</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">ranked</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">))</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ranked</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">rec</span><span class="p">,</span> <span class="n">tick</span><span class="p">,</span> <span class="n">setting</span><span class="p">,</span> <span class="n">outcome</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"ctdcast_</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">Correction</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">producer</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">parameters</span><span class="p">),</span>
+                <span class="n">ConformanceTick</span><span class="p">(</span>
+                    <span class="n">key</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">reference</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span>
+                    <span class="n">tick</span><span class="o">.</span><span class="n">variables</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">setting</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<div class="viewcode-block" id="ctdcast_correction_rows">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.ctdcast_correction_rows">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ctdcast_correction_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Correction</span><span class="p">,</span> <span class="n">ConformanceTick</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ctdcast's stage-3 corrections as the cast page's ``(record, tick)`` rows.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-3 cast file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of tuple</span>
+<span class="sd">        ``(Correction, ConformanceTick)`` per step, in the order stage 3 applied them; the</span>
+<span class="sd">        record's parameters are the setting and the outcome joined.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="n">rec</span><span class="p">,</span> <span class="n">tick</span><span class="p">)</span> <span class="k">for</span> <span class="n">rec</span><span class="p">,</span> <span class="n">tick</span><span class="p">,</span> <span class="n">_setting</span><span class="p">,</span> <span class="n">_outcome</span> <span class="ow">in</span> <span class="n">_stage3_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_history_line</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the cast's ``history`` lines written by *stage* (``stage1``, ``stage2``)."""</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">line</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">: "</span> <span class="ow">in</span> <span class="n">line</span>
+    <span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stage1_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProcessingRow</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return how stage 1 read the raw file: the reader and its settings, not the file name."""</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">_history_line</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"stage1"</span><span class="p">):</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"ctdcast (\S+) stage1:"</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"stage1: "</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">read</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"read \S+(?: \+ \S+)? (with .*)"</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">read</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"normalise"</span><span class="p">):</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_cnv_read_row</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">text</span><span class="p">))</span>
+            <span class="k">continue</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ProcessingRow</span><span class="p">(</span>
+                <span class="n">stage</span><span class="o">=</span><span class="s2">"stage 1"</span><span class="p">,</span>
+                <span class="n">step</span><span class="o">=</span><span class="s2">"read"</span><span class="p">,</span>
+                <span class="n">producer</span><span class="o">=</span><span class="s2">"ctdcast stage 1"</span><span class="p">,</span>
+                <span class="n">version</span><span class="o">=</span><span class="sa">f</span><span class="s2">"ctdcast </span><span class="si">{</span><span class="n">version</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">version</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="n">setting</span><span class="o">=</span><span class="n">read</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">outcome</span><span class="o">=</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" with "</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"read "</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cnv_read_row</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">version</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Match</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessingRow</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return stage 1's row for a CNV, read by SeaSenseLib and renamed to ctdcast's names."""</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"history"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+    <span class="n">reader</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"SeaSenseLib v(\S+); Reader: (\w+)"</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"Source file: ([^;]+)"</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
+    <span class="n">setting</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"with SeaSenseLib </span><span class="si">{</span><span class="n">reader</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">reader</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">); </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">if</span> <span class="n">reader</span>
+        <span class="k">else</span> <span class="n">text</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ProcessingRow</span><span class="p">(</span>
+        <span class="n">stage</span><span class="o">=</span><span class="s2">"stage 1"</span><span class="p">,</span>
+        <span class="n">step</span><span class="o">=</span><span class="s2">"read"</span><span class="p">,</span>
+        <span class="n">producer</span><span class="o">=</span><span class="s2">"ctdcast stage 1"</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="sa">f</span><span class="s2">"ctdcast </span><span class="si">{</span><span class="n">version</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">version</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="n">setting</span><span class="o">=</span><span class="n">setting</span><span class="p">,</span>
+        <span class="n">outcome</span><span class="o">=</span><span class="n">source</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">source</span>
+        <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"source_cnv"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stage2_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProcessingRow</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return stage 2's soak/deck rule: its settings, and how many scans it flagged."""</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">_history_line</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"stage2"</span><span class="p">):</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"ctdcast (\S+) stage2:"</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"stage2: "</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"soak/deck"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">counts</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">setting</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s2">"; "</span><span class="p">)</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\((\d+) flagged\)"</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+        <span class="n">outcome</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> soak and </span><span class="si">{</span><span class="n">found</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> deck scans flagged (QARTOD 4, kept)"</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="k">else</span> <span class="s2">""</span>
+        <span class="p">)</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ProcessingRow</span><span class="p">(</span>
+                <span class="n">stage</span><span class="o">=</span><span class="s2">"stage 2"</span><span class="p">,</span>
+                <span class="n">step</span><span class="o">=</span><span class="s2">"trim (soak/deck)"</span><span class="p">,</span>
+                <span class="n">producer</span><span class="o">=</span><span class="s2">"ctdcast stage 2"</span><span class="p">,</span>
+                <span class="n">version</span><span class="o">=</span><span class="sa">f</span><span class="s2">"ctdcast </span><span class="si">{</span><span class="n">version</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">version</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="n">setting</span><span class="o">=</span><span class="n">setting</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="o">=</span><span class="n">outcome</span><span class="p">,</span>
+                <span class="n">variables</span><span class="o">=</span><span class="s2">"every variable with a _qc"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_sea_bird_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProcessingRow</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the Sea-Bird steps recorded in the raw header, one row per conformance tick."""</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">header</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">correction_records</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">by_key</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ConformanceTick</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">tick</span> <span class="ow">in</span> <span class="n">conformance_ticks</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">source_to_canonical</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">lower_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+        <span class="n">by_key</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">tick</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tick</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+        <span class="n">ticks</span> <span class="o">=</span> <span class="n">by_key</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">key</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+        <span class="n">split</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ticks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">tick</span> <span class="ow">in</span> <span class="n">ticks</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ProcessingRow</span><span class="p">(</span>
+                    <span class="n">stage</span><span class="o">=</span><span class="s2">"Sea-Bird"</span><span class="p">,</span>
+                    <span class="n">step</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">label</span> <span class="k">if</span> <span class="n">tick</span> <span class="k">else</span> <span class="n">rec</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">producer</span><span class="o">=</span><span class="n">rec</span><span class="o">.</span><span class="n">producer</span><span class="p">,</span>
+                    <span class="n">version</span><span class="o">=</span><span class="n">rec</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                    <span class="n">setting</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">detail</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">split</span> <span class="ow">and</span> <span class="n">tick</span> <span class="ow">and</span> <span class="n">tick</span><span class="o">.</span><span class="n">detail</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="n">rec</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                    <span class="n">variables</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">variables</span> <span class="k">if</span> <span class="n">tick</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                    <span class="n">state</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">state</span> <span class="k">if</span> <span class="n">tick</span> <span class="k">else</span> <span class="n">CONFORMANCE_NO_REFERENCE</span><span class="p">,</span>
+                    <span class="n">reference</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">reference</span> <span class="k">if</span> <span class="n">tick</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                    <span class="n">source</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">source</span> <span class="k">if</span> <span class="n">tick</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span>
+
+
+<div class="viewcode-block" id="processing_rows">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.processing_rows">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">processing_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProcessingRow</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return every step applied to a cast, in the order they ran.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A cast's stage file (any stage; a stage-1 file has only the stage-1 and Sea-Bird rows).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of ProcessingRow</span>
+<span class="sd">        Stage 1, the Sea-Bird header's steps, stage 2, stage 3 and products.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">_stage1_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span> <span class="o">+</span> <span class="n">_sea_bird_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span> <span class="o">+</span> <span class="n">_stage2_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">rec</span><span class="p">,</span> <span class="n">tick</span><span class="p">,</span> <span class="n">setting</span><span class="p">,</span> <span class="n">outcome</span> <span class="ow">in</span> <span class="n">_stage3_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">label</span> <span class="k">if</span> <span class="n">tick</span><span class="o">.</span><span class="n">label</span> <span class="o">==</span> <span class="n">rec</span><span class="o">.</span><span class="n">label</span> <span class="k">else</span> <span class="n">tick</span><span class="o">.</span><span class="n">label</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="n">rec</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"binavg ("</span><span class="p">,</span> <span class="s2">"product ("</span><span class="p">))</span>
+        <span class="n">exception</span> <span class="o">=</span> <span class="n">_exception_of</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">outcome</span><span class="p">)</span>
+        <span class="c1"># Bin Average's divergence from seabirdscientific is what it did on this cast (an</span>
+        <span class="c1"># exception), not its setting, so across casts it is compared as unreferenced.</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">CONFORMANCE_NO_REFERENCE</span>
+            <span class="k">if</span> <span class="n">exception</span> <span class="o">==</span> <span class="n">BINAVG_KEPT_PARTLY_FLAGGED</span>
+            <span class="k">else</span> <span class="n">tick</span><span class="o">.</span><span class="n">state</span>
+        <span class="p">)</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">ProcessingRow</span><span class="p">(</span>
+                <span class="n">stage</span><span class="o">=</span><span class="s2">"product"</span> <span class="k">if</span> <span class="n">product</span> <span class="k">else</span> <span class="s2">"stage 3"</span><span class="p">,</span>
+                <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span>
+                <span class="n">producer</span><span class="o">=</span><span class="n">rec</span><span class="o">.</span><span class="n">producer</span><span class="p">,</span>
+                <span class="n">version</span><span class="o">=</span><span class="n">rec</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                <span class="n">setting</span><span class="o">=</span><span class="n">setting</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="o">=</span><span class="n">outcome</span><span class="p">,</span>
+                <span class="n">variables</span><span class="o">=</span><span class="n">tick</span><span class="o">.</span><span class="n">variables</span><span class="p">,</span>
+                <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span>
+                <span class="n">reference</span><span class="o">=</span><span class="s2">""</span> <span class="k">if</span> <span class="n">state</span> <span class="o">!=</span> <span class="n">tick</span><span class="o">.</span><span class="n">state</span> <span class="k">else</span> <span class="n">tick</span><span class="o">.</span><span class="n">reference</span><span class="p">,</span>
+                <span class="n">source</span><span class="o">=</span><span class="s2">""</span> <span class="k">if</span> <span class="n">state</span> <span class="o">!=</span> <span class="n">tick</span><span class="o">.</span><span class="n">state</span> <span class="k">else</span> <span class="n">tick</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+                <span class="n">exception</span><span class="o">=</span><span class="n">exception</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span></div>
+
+
+
+<div class="viewcode-block" id="record_json">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.record_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_json</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return :func:`processing_rows` as one JSON string, for a per-profile variable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A cast's stage file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        A JSON list of row objects (the :class:`ProcessingRow` fields).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="n">asdict</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">processing_rows</span><span class="p">(</span><span class="n">ds</span><span class="p">)],</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="rows_from_json">
+<a class="viewcode-back" href="../../../api.html#ctdcast.analysis.processing_record.rows_from_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rows_from_json</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ProcessingRow</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the rows of a :func:`record_json` string; an empty string gives no rows.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    text : str</span>
+<span class="sd">        The stored JSON.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of ProcessingRow</span>
+<span class="sd">        The cast's rows.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ProcessingRow</span><span class="p">(</span><span class="o">**</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">text</span><span class="p">)]</span> <span class="k">if</span> <span class="n">text</span> <span class="k">else</span> <span class="p">[]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

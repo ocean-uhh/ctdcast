@@ -1,0 +1,505 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.steps &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.steps</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.steps</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""The processing steps ``data_processing.steps`` may list: one table, used by stage 3 and the checks.</span>
+
+<span class="sd">Each :class:`Step` names a Sea-Bird module, says whether stage 3 applies it yet, how it is</span>
+<span class="sd">applied, and how its parameters are checked before any cast is processed.  :data:`STEPS` is the</span>
+<span class="sd">single list: adding a step is one row here; stage 3, :func:`iter_steps` and</span>
+<span class="sd">:func:`validate_data_processing` all read it.</span>
+
+<span class="sd">A step listed in the config but not yet applied is refused unless the config says</span>
+<span class="sd">``allow_unapplied: true`` beside ``steps``: the steps after it would otherwise run on data the</span>
+<span class="sd">config meant to be changed first, and the stage-3 file would look complete.  With the switch, the</span>
+<span class="sd">step is skipped, named in a warning, in ``history`` and in the file's ``data_processing_steps``</span>
+<span class="sd">attribute.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">expand_cast_numbers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">corrections</span> <span class="k">as</span> <span class="n">C</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.editing</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">apply_loop_edit</span><span class="p">,</span>
+    <span class="n">apply_wild_edit</span><span class="p">,</span>
+    <span class="n">resolve_loop_edit</span><span class="p">,</span>
+    <span class="n">resolve_wild_edit</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.filtering</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">apply_filter</span><span class="p">,</span>
+    <span class="n">apply_window_filter</span><span class="p">,</span>
+    <span class="n">check_filter</span><span class="p">,</span>
+    <span class="n">check_window_filter</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">append_history</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.products</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_binavg</span><span class="p">,</span> <span class="n">check_products</span><span class="p">,</span> <span class="n">check_split</span>
+
+
+<div class="viewcode-block" id="StepContext">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.steps.StepContext">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StepContext</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""What one cast's steps share as they run, in order.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number, for per-cast-range values.</span>
+<span class="sd">    cast_label : str</span>
+<span class="sd">        How the cast is named in warnings.</span>
+<span class="sd">    excluded : numpy.ndarray or None</span>
+<span class="sd">        Scans an earlier Loop Edit marked, for a later Wild Edit's or Window Filter's</span>
+<span class="sd">        ``exclude_flagged``.</span>
+<span class="sd">    marked : dict</span>
+<span class="sd">        ``{variable: mask}`` of values an earlier Wild Edit marked, which later filters leave out.</span>
+<span class="sd">    changed : set of str</span>
+<span class="sd">        Variables whose values a step changed.</span>
+<span class="sd">    edge_masks : dict</span>
+<span class="sd">        ``{variable: mask}`` of scans an alignment set NaN.</span>
+<span class="sd">    applied : list of str</span>
+<span class="sd">        What ran, in order, one entry per step (``"filter (not applied)"`` for one skipped).</span>
+<span class="sd">    """</span>
+
+    <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"?"</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">marked</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">changed</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">set</span><span class="p">)</span>
+    <span class="n">edge_masks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">applied</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_wildedit</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">StepContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+    <span class="n">ds</span><span class="p">,</span> <span class="n">marks</span> <span class="o">=</span> <span class="n">apply_wild_edit</span><span class="p">(</span>
+        <span class="n">ds</span><span class="p">,</span> <span class="p">{</span><span class="s2">"wildedit"</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">excluded</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span><span class="p">,</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">marks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">))</span> <span class="o">|</span> <span class="n">mask</span>
+    <span class="k">return</span> <span class="n">ds</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_skip_reason</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Why a scan-by-scan step cannot run on this cast, or None when it can."""</span>
+    <span class="n">interval</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">reason</span> <span class="ow">or</span> <span class="s2">"not at the native scan rate"</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">C</span><span class="o">.</span><span class="n">applied_sbe_corrections</span><span class="p">(</span><span class="n">header</span><span class="p">)[</span><span class="s2">"modules"</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Sea-Bird </span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2"> already ran"</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_filtering</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">StepContext</span><span class="p">],</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">StepContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="n">_skip_reason</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> skipped: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ds</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"filter"</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">done</span> <span class="o">=</span> <span class="n">apply_filter</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">marked</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">done</span> <span class="o">=</span> <span class="n">apply_window_filter</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">marked</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span>
+            <span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">done</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span>
+
+    <span class="k">return</span> <span class="n">run</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_correction</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">StepContext</span><span class="p">],</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">StepContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+        <span class="n">ds</span><span class="p">,</span> <span class="n">record</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">apply_corrections</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">ctx</span><span class="o">.</span><span class="n">cast_number</span><span class="p">,</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span>
+        <span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">edge_masks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">edge_masks</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span>
+
+    <span class="k">return</span> <span class="n">run</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ranges_casts</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>  <span class="c1"># noqa: ANN401  # a config value of any shape</span>
+<span class="w">    </span><span class="sd">"""Every cast number named in a ``ranges:`` anywhere in a step's parameters."""</span>
+    <span class="n">found</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">rng</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ranges"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"casts"</span> <span class="ow">in</span> <span class="n">rng</span><span class="p">:</span>
+                <span class="n">found</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">rng</span><span class="p">[</span><span class="s2">"casts"</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">found</span> <span class="o">|=</span> <span class="n">_ranges_casts</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_alignctd</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">C</span><span class="o">.</span><span class="n">_ALIGN_TARGETS</span><span class="p">:</span>
+        <span class="n">C</span><span class="o">.</span><span class="n">resolve_alignment</span><span class="p">({</span><span class="s2">"alignctd"</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_celltm</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">):</span>
+        <span class="n">C</span><span class="o">.</span><span class="n">resolve_cell_thermal_mass</span><span class="p">({</span><span class="s2">"celltm"</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_wildedit</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ARG001  # one signature for every check</span>
+    <span class="n">resolve_wild_edit</span><span class="p">({</span><span class="s2">"wildedit"</span><span class="p">:</span> <span class="n">params</span><span class="p">})</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_loopedit</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">StepContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+    <span class="n">reason</span> <span class="o">=</span> <span class="n">_skip_reason</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"loopedit"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"loopedit skipped: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span>
+    <span class="n">interval</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">ds</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">apply_loop_edit</span><span class="p">(</span>
+        <span class="n">ds</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span><span class="p">,</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">cast_label</span>
+    <span class="p">)</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span> <span class="o">=</span> <span class="n">mask</span> <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span> <span class="o">|</span> <span class="n">mask</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_loopedit</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # one signature for every check</span>
+    <span class="n">resolve_loop_edit</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_filter</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # one signature for every check</span>
+    <span class="n">check_filter</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_window_filter</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # one signature for every check</span>
+    <span class="n">check_window_filter</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_split</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # one signature for every check</span>
+    <span class="n">check_split</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_binavg</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # one signature for every check</span>
+    <span class="n">check_binavg</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_mapping</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ANN401, ARG001  # not applied yet: shape only</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"expected a mapping of parameters, got </span><span class="si">{</span><span class="n">params</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Step">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.steps.Step">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Step</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One processing step stage 3 knows.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        The step's name in ``data_processing.steps``, as Sea-Bird names the module.</span>
+<span class="sd">    apply : callable or None</span>
+<span class="sd">        ``apply(ds, params, ctx) -&gt; ds``; None while stage 3 does not apply it yet.</span>
+<span class="sd">    check : callable</span>
+<span class="sd">        ``check(params, cast)``: raises ValueError on a malformed entry for that cast.</span>
+<span class="sd">    """</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">apply</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">StepContext</span><span class="p">],</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">check</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span></div>
+
+
+
+<span class="c1">#: Steps that change which scans there are: allowed only in ``data_processing.products``.</span>
+<span class="n">PRODUCT_ONLY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"split"</span><span class="p">,</span> <span class="s2">"binavg"</span><span class="p">)</span>
+
+<span class="c1">#: Every step ``data_processing.steps`` may list, in no particular order.</span>
+<span class="n">STEPS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Step</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">s</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"wildedit"</span><span class="p">,</span> <span class="n">_apply_wildedit</span><span class="p">,</span> <span class="n">_check_wildedit</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"alignctd"</span><span class="p">,</span> <span class="n">_apply_correction</span><span class="p">(</span><span class="s2">"alignctd"</span><span class="p">),</span> <span class="n">_check_alignctd</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"celltm"</span><span class="p">,</span> <span class="n">_apply_correction</span><span class="p">(</span><span class="s2">"celltm"</span><span class="p">),</span> <span class="n">_check_celltm</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span>
+            <span class="s2">"window_filter"</span><span class="p">,</span>
+            <span class="n">_apply_filtering</span><span class="p">(</span><span class="s2">"window_filter"</span><span class="p">,</span> <span class="s2">"wfilter"</span><span class="p">),</span>
+            <span class="n">_check_window_filter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"filter"</span><span class="p">,</span> <span class="n">_apply_filtering</span><span class="p">(</span><span class="s2">"filter"</span><span class="p">,</span> <span class="s2">"filter"</span><span class="p">),</span> <span class="n">_check_filter</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"loopedit"</span><span class="p">,</span> <span class="n">_apply_loopedit</span><span class="p">,</span> <span class="n">_check_loopedit</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"split"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">_check_split</span><span class="p">),</span>
+        <span class="n">Step</span><span class="p">(</span><span class="s2">"binavg"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">_check_binavg</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="iter_steps">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.steps.iter_steps">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">iter_steps</span><span class="p">(</span><span class="n">data_processing</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Return ``data_processing.steps`` as ``(name, parameters)`` pairs, in order.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_processing : dict or None</span>
+<span class="sd">        The ``data_processing:`` config block.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of (str, dict)</span>
+<span class="sd">        One pair per entry; a step may appear more than once.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        When an entry is not a one-key mapping or names an unknown step.</span>
+<span class="sd">    """</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_processing</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"steps"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"data_processing.steps: expected a list, got </span><span class="si">{</span><span class="n">steps</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"data_processing.steps[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: expected one step name with its parameters, "</span>
+                <span class="sa">f</span><span class="s2">"got </span><span class="si">{</span><span class="n">entry</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">params</span><span class="p">),)</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">STEPS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"data_processing.steps[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: unknown step </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; use one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">STEPS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}))</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="unapplied">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.steps.unapplied">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">unapplied</span><span class="p">(</span><span class="n">data_processing</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the listed steps stage 3 does not apply yet, in order, each once.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_processing : dict or None</span>
+<span class="sd">        The ``data_processing:`` config block.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of str</span>
+<span class="sd">        Step names.</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">n</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">iter_steps</span><span class="p">(</span><span class="n">data_processing</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">STEPS</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">PRODUCT_ONLY</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">names</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="validate_data_processing">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.steps.validate_data_processing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_data_processing</span><span class="p">(</span><span class="n">data_processing</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Check the ``data_processing:`` block before any cast is processed.</span>
+
+<span class="sd">    Every step's values are resolved for the default and for every cast named in a range, so a</span>
+<span class="sd">    typo or a non-numeric value fails once, up front.  A listed step stage 3 does not apply yet</span>
+<span class="sd">    is refused unless ``allow_unapplied: true``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_processing : dict or None</span>
+<span class="sd">        The ``data_processing:`` config block.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On the first malformed entry, naming it; or on a step not yet applied, without</span>
+<span class="sd">        ``allow_unapplied``.</span>
+<span class="sd">    """</span>
+    <span class="n">dp</span> <span class="o">=</span> <span class="n">data_processing</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span>
+        <span class="s2">"steps"</span><span class="p">,</span>
+        <span class="s2">"products"</span><span class="p">,</span>
+        <span class="s2">"slope_offset"</span><span class="p">,</span>
+        <span class="s2">"oxygen"</span><span class="p">,</span>
+        <span class="s2">"allow_unapplied"</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"data_processing: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="n">iter_steps</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">_params</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">PRODUCT_ONLY</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"data_processing.steps[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> changes which scans there are; the "</span>
+                <span class="s2">"stage-3 file keeps every scan, so put it in a product "</span>
+                <span class="s2">"(data_processing.products)"</span>
+            <span class="p">)</span>
+    <span class="n">check_products</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"products"</span><span class="p">))</span>
+    <span class="n">casts</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="kc">None</span><span class="p">}</span> <span class="o">|</span> <span class="n">_ranges_casts</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"slope_offset"</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">_name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+        <span class="n">casts</span> <span class="o">|=</span> <span class="n">_ranges_casts</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">cast</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">casts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">c</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">STEPS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">cast</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"data_processing.steps[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">for</span> <span class="n">cast</span> <span class="ow">in</span> <span class="n">casts</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">):</span>
+            <span class="n">C</span><span class="o">.</span><span class="n">resolve_slope_offset</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"slope_offset"</span><span class="p">),</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast</span><span class="p">)</span>
+    <span class="n">C</span><span class="o">.</span><span class="n">resolve_oxygen_window</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span>
+    <span class="n">pending</span> <span class="o">=</span> <span class="n">unapplied</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pending</span> <span class="ow">and</span> <span class="n">dp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"allow_unapplied"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"data_processing.steps lists </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pending</span><span class="p">)</span><span class="si">}</span><span class="s2">, which stage 3 does not apply "</span>
+            <span class="s2">"yet; the steps after it would run on data it was meant to change first. Remove it, "</span>
+            <span class="s2">"or set data_processing.allow_unapplied: true to run without it."</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

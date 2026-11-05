@@ -1,0 +1,346 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.writers.netcdf &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.writers.netcdf</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.writers.netcdf</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""CF-compliant netCDF writer for per-cast Datasets.</span>
+
+<span class="sd">Augments the variable attributes produced by seasenselib with proper CF</span>
+<span class="sd">metadata from ``ctdcast.config.parameters.VARIABLES`` and writes QARTOD flag</span>
+<span class="sd">variables with the CF flag_values / flag_meanings convention.  Writes</span>
+<span class="sd">atomically via a ``.nc.tmp`` intermediary.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_dt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.global_attrs</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_mode_with_meaning</span><span class="p">,</span> <span class="n">order_attrs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_output_dtypes</span>
+
+<span class="n">_QARTOD_FLAG_VALUES</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+<span class="n">_QARTOD_FLAG_MEANINGS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"pass not_evaluated suspect_or_of_high_interest fail missing_data"</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="write">
+<a class="viewcode-back" href="../../../api.html#ctdcast.writers.netcdf.write">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Write *ds* to *path* with CF-1.13 attributes and QARTOD flag metadata.</span>
+
+<span class="sd">    Each registered variable's ``units`` is first canonicalised to its CF spelling by</span>
+<span class="sd">    :func:`ctdcast.processors.units.to_canonical_units` (which raises</span>
+<span class="sd">    :class:`~ctdcast.processors.units.UnitsError` on a *present* unrecognised spelling —</span>
+<span class="sd">    the write is aborted, nothing is left on disk — and fills a *missing* units attribute</span>
+<span class="sd">    from the registry).  Then, for each variable present in both</span>
+<span class="sd">    *ds* and ``VARIABLES`` — including coordinates such as ``latitude``/``longitude`` —</span>
+<span class="sd">    applies ``long_name``, ``standard_name``, and ``comment`` (when defined).  For each</span>
+<span class="sd">    ``{var}_qc`` variable, generates complete CF flag attributes.  Sets</span>
+<span class="sd">    ``Conventions = "CF-1.13"`` unless the caller already declared one (a richer value such</span>
+<span class="sd">    as ``"CF-1.13, ACDD-1.3"`` is preserved).</span>
+
+<span class="sd">    Writes atomically: writes to ``path.with_suffix(".nc.tmp")`` then</span>
+<span class="sd">    replaces *path* so a failed write never leaves a partial file.</span>
+
+<span class="sd">    Every numeric variable with at least one dimension (coordinates included)</span>
+<span class="sd">    is written with lossless zlib compression at level 4.  The shuffle filter is</span>
+<span class="sd">    applied to all of them except ``float64``, where it was measured to enlarge</span>
+<span class="sd">    ctdcast's science columns.  Compression is transparent on read and changes</span>
+<span class="sd">    no stored values; a caller-supplied ``encoding`` for a variable is left</span>
+<span class="sd">    untouched.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds:</span>
+<span class="sd">        Dataset to write (per-cast, dim=time, or profiles N_PROF×pressure).</span>
+<span class="sd">    path:</span>
+<span class="sd">        Output netCDF path.</span>
+<span class="sd">    encoding:</span>
+<span class="sd">        Optional xarray encoding dict passed through to ``to_netcdf``.</span>
+<span class="sd">    """</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Canonicalise units at this write boundary: rewrite each registered variable's units to</span>
+    <span class="c1"># its canonical spelling (converting the values on a factor != 1), and refuse an</span>
+    <span class="c1"># unrecognised or missing spelling rather than silently stamping the registry value over</span>
+    <span class="c1"># it.  Lazy import — the stage modules import this writer, so a module-level import of the</span>
+    <span class="c1"># processors package would form a cycle.</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnitsError</span><span class="p">,</span> <span class="n">to_canonical_units</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">to_canonical_units</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">UnitsError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">UnitsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2"> [writing </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="c1"># Storage dtypes at this one seam, so every file (stage files, products, profiles.nc,</span>
+    <span class="c1"># LADCP) gets them: science values float32, flags int8, time and position float64.</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">cast_output_dtypes</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+
+    <span class="c1"># Apply CF metadata from VARIABLES for each known variable.  Units are already canonical</span>
+    <span class="c1"># (set above), so this pass only fills long_name / standard_name / comment.</span>
+    <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">meta</span> <span class="ow">in</span> <span class="n">VARIABLES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"long_name"</span><span class="p">):</span>
+            <span class="n">existing</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"long_name"</span><span class="p">,</span> <span class="n">meta</span><span class="p">[</span><span class="s2">"long_name"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">):</span>
+            <span class="n">existing</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">,</span> <span class="n">meta</span><span class="p">[</span><span class="s2">"standard_name"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"comment"</span><span class="p">):</span>
+            <span class="c1"># Free-text provenance (e.g. the oxygen line-plumbing assumption); kept if</span>
+            <span class="c1"># the variable already carries a more specific comment.</span>
+            <span class="n">existing</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"comment"</span><span class="p">,</span> <span class="n">meta</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">])</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">existing</span>
+
+    <span class="c1"># Apply CF flag metadata for QARTOD _qc variables.</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">var</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>  <span class="c1"># strip "_qc"</span>
+        <span class="n">standard_name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">VARIABLES</span> <span class="ow">and</span> <span class="n">VARIABLES</span><span class="p">[</span><span class="n">base</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">):</span>
+            <span class="n">standard_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">VARIABLES</span><span class="p">[</span><span class="n">base</span><span class="p">][</span><span class="s1">'standard_name'</span><span class="p">]</span><span class="si">}</span><span class="s2"> status_flag"</span>
+
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"flag_values"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_QARTOD_FLAG_VALUES</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"flag_meanings"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_QARTOD_FLAG_MEANINGS</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"conventions"</span><span class="p">,</span> <span class="s2">"QARTOD"</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"long_name"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Quality flag for </span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"valid_min"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"valid_max"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">standard_name</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"standard_name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">standard_name</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">attrs</span>
+
+    <span class="n">global_attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="c1"># Default to CF-1.13, but let a caller that has already declared a richer</span>
+    <span class="c1"># conformance (e.g. the compiled profiles builder writes "CF-1.13, ACDD-1.3")</span>
+    <span class="c1"># keep it rather than being silently downgraded here.</span>
+    <span class="n">global_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"Conventions"</span><span class="p">,</span> <span class="s2">"CF-1.13"</span><span class="p">)</span>
+    <span class="c1"># A fresh identity on *every* write (ACDD/OceanSITES ``tracking_id``, UUID4). This</span>
+    <span class="c1"># answers "which instance of this file is this" — NOT "did the content change": a</span>
+    <span class="c1"># content hash would answer a different question (and netCDF embeds write-time detail,</span>
+    <span class="c1"># so it would churn anyway).  Stability would be the bug — a stable id cannot detect a</span>
+    <span class="c1"># rewrite.  Written here, the single ``to_netcdf`` seam, so every stage file, the</span>
+    <span class="c1"># compiled ``profiles.nc`` and the LADCP files get one without per-module edits.  A</span>
+    <span class="c1"># writer overwrites any inbound ``tracking_id``; a stage that wants lineage must have</span>
+    <span class="c1"># already copied the file-it-read's id into ``source_tracking_id`` before calling write.</span>
+    <span class="n">global_attrs</span><span class="p">[</span><span class="s2">"tracking_id"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="c1"># ``date_modified`` moves on every write; ``date_created`` is set once (first write) and</span>
+    <span class="c1"># preserved on re-runs — a stage-3 rewrite records when it was rewritten without resetting</span>
+    <span class="c1"># the creation time. Same UTC form as ``global_attrs.provenance_attrs``.</span>
+    <span class="n">_stamp</span> <span class="o">=</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">_dt</span><span class="o">.</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span><span class="p">)</span>
+    <span class="n">global_attrs</span><span class="p">[</span><span class="s2">"date_modified"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_stamp</span>
+    <span class="n">global_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"date_created"</span><span class="p">,</span> <span class="n">_stamp</span><span class="p">)</span>
+    <span class="c1"># Every file carries a ``data_mode`` (OceanSITES reference table 4), so a consumer</span>
+    <span class="c1"># that reads a per-cast stage file via ``select_best_available`` — caldip does — can</span>
+    <span class="c1"># read its reference's mode without opening ``profiles.nc``.  Stage 1/2/3 files fall to</span>
+    <span class="c1"># ``P`` (provisional) here; the compiled builders and a declared ``D`` set the value on</span>
+    <span class="c1"># ``ds.attrs`` before calling write and keep it.  The mode and its meaning come from one</span>
+    <span class="c1"># helper so the pair can never drift, whoever set the mode (no warning at this last seam —</span>
+    <span class="c1"># an invalid mode was already warned about where it was declared).</span>
+    <span class="n">global_attrs</span><span class="p">[</span><span class="s2">"data_mode"</span><span class="p">],</span> <span class="n">global_attrs</span><span class="p">[</span><span class="s2">"data_mode_meaning"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">data_mode_with_meaning</span><span class="p">(</span><span class="n">global_attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data_mode"</span><span class="p">),</span> <span class="n">warn</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="c1"># Write the global attributes in the canonical order (identity → platform →</span>
+    <span class="c1"># coverage → people → rights → provenance); unnamed attrs keep their order and</span>
+    <span class="c1"># follow.  One source of truth with the inventory page's grouping.</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">order_attrs</span><span class="p">(</span><span class="n">global_attrs</span><span class="p">)</span>
+
+    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".nc.tmp"</span><span class="p">)</span>
+
+    <span class="c1"># Give every datetime variable an explicit CF time encoding.  Without it</span>
+    <span class="c1"># xarray guesses ``units="days since &lt;first timestamp&gt;"`` as int64, which</span>
+    <span class="c1"># cannot hold sub-day (second-resolution) cast times, so it warns and falls</span>
+    <span class="c1"># back to seconds.  Pinning a fixed epoch in float64 seconds is the CF-standard</span>
+    <span class="c1"># encoding, is faithful to sub-second precision, and silences the warning.</span>
+    <span class="c1"># (CF always stores time as a numeric count since an epoch; it decodes back to</span>
+    <span class="c1"># real datetimes on read — this is not "time as an integer".)</span>
+    <span class="c1"># Compression is applied at this single seam, so every stage file, the compiled</span>
+    <span class="c1"># profiles.nc and the LADCP outputs get it without per-module edits.  Lossless</span>
+    <span class="c1"># zlib on every numeric variable that has at least one dimension (coordinates</span>
+    <span class="c1"># included); netCDF4 cannot chunk a 0-d variable, and strings are left alone.</span>
+    <span class="c1"># shuffle helps integer and low-entropy data, but roughly doubles ctdcast's</span>
+    <span class="c1"># float64 science columns (measured 2026-09-21: temperature, salinity, fluor),</span>
+    <span class="c1"># so it is off for float64 and on for everything else.  Level 4: across 18 casts</span>
+    <span class="c1"># zlib 1/4/9 differed by under a point, so the cheapest useful level wins.</span>
+    <span class="n">enc</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">encoding</span> <span class="ow">or</span> <span class="p">{})</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># A caller-supplied encoding for this variable wins untouched.  No caller</span>
+        <span class="c1"># passes one today; this keeps that contract for future ones.</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">enc</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">entry</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">is_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_time</span><span class="p">:</span>
+            <span class="c1"># Explicit CF time encoding.  Without it xarray guesses</span>
+            <span class="c1"># ``units="days since &lt;first timestamp&gt;"`` as int64, which cannot hold</span>
+            <span class="c1"># sub-day cast times, so it warns and falls back to seconds.  Pinning a</span>
+            <span class="c1"># fixed epoch in float64 seconds is CF-standard and faithful to</span>
+            <span class="c1"># sub-second precision.  (CF stores time as a numeric count since an</span>
+            <span class="c1"># epoch and decodes it back to datetimes on read.)</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"seconds since 1970-01-01T00:00:00"</span><span class="p">,</span>
+                    <span class="s2">"dtype"</span><span class="p">:</span> <span class="s2">"float64"</span><span class="p">,</span>
+                    <span class="s2">"calendar"</span><span class="p">:</span> <span class="s2">"proleptic_gregorian"</span><span class="p">,</span>
+                    <span class="c1"># A NaT (e.g. an incomplete cast) would otherwise write as a bare</span>
+                    <span class="c1"># NaN a strict CF reader cannot flag as missing; declare it.</span>
+                    <span class="s2">"_FillValue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span><span class="n">is_time</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">)):</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">"zlib"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">"complevel"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4</span>
+            <span class="c1"># shuffle is a storage filter, so decide it from the on-disk dtype:</span>
+            <span class="c1"># a datetime variable is stored as float64 seconds (entry["dtype"]),</span>
+            <span class="c1"># so it falls under the float64 rule too, not its datetime64 in-memory</span>
+            <span class="c1"># dtype.</span>
+            <span class="n">on_disk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dtype"</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">"shuffle"</span><span class="p">]</span> <span class="o">=</span> <span class="n">on_disk</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s2">"float64"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="p">:</span>
+            <span class="n">enc</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+
+    <span class="n">kw</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"encoding"</span><span class="p">:</span> <span class="n">enc</span><span class="p">}</span> <span class="k">if</span> <span class="n">enc</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tmp</span><span class="p">),</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="n">tmp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

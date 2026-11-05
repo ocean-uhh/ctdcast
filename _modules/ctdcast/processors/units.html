@@ -1,0 +1,288 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.units &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.units</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.units</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Canonicalise variable units at each processing boundary.</span>
+
+<span class="sd">The units *knowledge* — which spelling is canonical per quantity, which reader spellings</span>
+<span class="sd">convert to it and with what factor — is the shared family data in</span>
+<span class="sd">:mod:`ctdcast.reports._vendored.units_tables`, read through</span>
+<span class="sd">:func:`ctdcast.reports._vendored.units.resolve_units`; ctdcast's view of it, with its own</span>
+<span class="sd">additions, is :data:`ctdcast.config.unit_tables.TABLES`.  This module holds only the transform that</span>
+<span class="sd">applies it, :func:`to_canonical_units` — a loop over ``resolve_units`` run at the netCDF write</span>
+<span class="sd">boundary (every stage persists through the writer, so each stage's output is canonicalised).</span>
+<span class="sd">Every written file carries one canonical spelling per quantity, a factor ``≠ 1`` spelling has</span>
+<span class="sd">its values converted, and an unrecognised spelling stops the run loudly rather than being</span>
+<span class="sd">silently overwritten.</span>
+
+<span class="sd">The display spelling (``mS cm-1`` → ``mS/cm``) is a separate concern, derived from the</span>
+<span class="sd">canonical string by :func:`ctdcast.config.unit_tables.unit_label`; it is never stored.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">parameters</span> <span class="k">as</span> <span class="n">params</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.unit_tables</span><span class="w"> </span><span class="kn">import</span> <span class="n">TABLES</span><span class="p">,</span> <span class="n">registry_standard_names</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnitsError</span><span class="p">,</span> <span class="n">resolve_units</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.units</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tables</span>
+
+<span class="c1"># Re-exported so existing callers keep importing it from the processing layer.</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"UnitsError"</span><span class="p">,</span> <span class="s2">"to_canonical_units"</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="to_canonical_units">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.units.to_canonical_units">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">to_canonical_units</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">Tables</span> <span class="o">=</span> <span class="n">TABLES</span><span class="p">,</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">log_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">stage</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Rewrite each registered variable's units to its canonical spelling.</span>
+
+<span class="sd">    The canonical for a variable is its registry ``units`` when the variable is registered</span>
+<span class="sd">    (known by name, which works before the writer stamps ``standard_name`` on the dataset),</span>
+<span class="sd">    else the canonical for its CF ``standard_name``.  The current ``units`` string is resolved</span>
+<span class="sd">    against that canonical's accepted group (the canonical ``×1`` plus the family aliases plus</span>
+<span class="sd">    the scoped spellings for the quantity); a factor ``≠ 1`` match multiplies the values and</span>
+<span class="sd">    drops any stale integer packing, a pure spelling rewrite leaves the values untouched.  The</span>
+<span class="sd">    conversion is *not* stamped on the variable — a factor ``≠ 1`` is reported through *log_fn*</span>
+<span class="sd">    at the boundary.  Temperature variables additionally get the CF-1.11</span>
+<span class="sd">    ``units_metadata = "temperature: on_scale"``.</span>
+
+<span class="sd">    A registered variable with *no* units attribute has its canonical filled from the registry</span>
+<span class="sd">    (ctdcast derives composites and carries channels whose units are supplied at the write</span>
+<span class="sd">    boundary, not by the reader) — a fill, not a conversion.  The pass is idempotent — a</span>
+<span class="sd">    variable already carrying its canonical string is left unchanged — so it runs at every</span>
+<span class="sd">    write without double-converting (stage 2/3 re-read an already-canonical stage-1 file).</span>
+<span class="sd">    Unregistered engineering variables (no registry entry and no matching ``standard_name``)</span>
+<span class="sd">    are left untouched.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        Dataset to canonicalise in place (also returned).</span>
+<span class="sd">    tables : Tables, optional</span>
+<span class="sd">        The units view to resolve against; defaults to :data:`ctdcast.config.unit_tables.TABLES`.</span>
+<span class="sd">    registry : dict of str to str, optional</span>
+<span class="sd">        ``{variable name: standard_name}`` map; defaults to</span>
+<span class="sd">        :func:`ctdcast.config.unit_tables.registry_standard_names`.  Used to find a variable's</span>
+<span class="sd">        ``standard_name`` (for the scoped spellings) before the writer stamps it on the</span>
+<span class="sd">        dataset.</span>
+<span class="sd">    log_fn : callable, optional</span>
+<span class="sd">        Called with one message per variable whose units string changed.</span>
+<span class="sd">    stage : int or str, optional</span>
+<span class="sd">        Processing stage, used only to annotate the log and error messages.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        The same dataset, with canonical units on every registered variable.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    UnitsError</span>
+<span class="sd">        If a registered variable carries a units string that is *present* but is not a</span>
+<span class="sd">        recognised spelling of its canonical.  The pass never guesses or silently passes an</span>
+<span class="sd">        unknown unit through; a missing units attribute is filled (see above), not raised.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">registry</span> <span class="o">=</span> <span class="n">registry_standard_names</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">):</span>
+        <span class="n">canonical</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">VARIABLES</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">)</span> <span class="k">if</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">VARIABLES</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">standard_name</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">standard_name</span><span class="p">:</span>
+            <span class="n">canonical</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">canonical</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">standard_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>  <span class="c1"># unregistered engineering channel — left untouched</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">" (stage </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">)"</span> <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">current</span><span class="p">:</span>
+            <span class="c1"># Registered variable with no units: fill the canonical from the registry.  ctdcast</span>
+            <span class="c1"># derives composites and carries channels whose units are supplied at the write</span>
+            <span class="c1"># boundary, not by the reader, so a missing units attribute is normal here — a</span>
+            <span class="c1"># fill, not a conversion.  A *present* unrecognised spelling is still refused below.</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">canonical</span>
+        <span class="k">elif</span> <span class="n">current</span> <span class="o">!=</span> <span class="n">canonical</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">resolved</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="n">resolve_units</span><span class="p">(</span>
+                    <span class="n">current</span><span class="p">,</span> <span class="n">standard_name</span><span class="p">,</span> <span class="n">tables</span><span class="o">=</span><span class="n">tables</span><span class="p">,</span> <span class="n">canonical</span><span class="o">=</span><span class="n">canonical</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">UnitsError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">UnitsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">!r}{</span><span class="n">where</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">if</span> <span class="n">factor</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">:</span>
+                <span class="n">converted</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span>
+                    <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">factor</span>
+                <span class="p">)</span>
+                <span class="c1"># The value scale changed, so any integer packing carried from the reader is no</span>
+                <span class="c1"># longer valid; drop it and let the writer re-encode.</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"dtype"</span><span class="p">,</span> <span class="s2">"scale_factor"</span><span class="p">,</span> <span class="s2">"add_offset"</span><span class="p">):</span>
+                    <span class="n">converted</span><span class="o">.</span><span class="n">encoding</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">converted</span>
+                <span class="c1"># A factor != 1 scales the values; announce it (never silent — provenance) even</span>
+                <span class="c1"># when no log_fn is wired, so the one caller that passes none (the writer) still</span>
+                <span class="c1"># surfaces the conversion.  Not stamped on the variable (branch ruling).</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">!r}</span><span class="s2">: values scaled x</span><span class="si">{</span><span class="n">factor</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> converting units "</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">current</span><span class="si">!r}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resolved</span><span class="si">!r}{</span><span class="n">where</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">resolved</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">attrs</span>
+            <span class="k">if</span> <span class="n">log_fn</span><span class="p">:</span>
+                <span class="n">log_fn</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">current</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resolved</span><span class="si">}</span><span class="s2"> (x</span><span class="si">{</span><span class="n">factor</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="c1"># CF 1.11: mark the temperature scale so a reader can tell a scale value from a</span>
+        <span class="c1"># difference.  Applied at every boundary like the units string itself.</span>
+        <span class="k">if</span> <span class="n">canonical</span> <span class="o">==</span> <span class="s2">"degree_Celsius"</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"units_metadata"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"temperature: on_scale"</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

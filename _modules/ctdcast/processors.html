@@ -1,0 +1,645 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""CTD processing pipeline — all stages in execution order.</span>
+
+<span class="sd">``STAGES`` is the single source of truth for :func:`process`, the CLI, and</span>
+<span class="sd">the re-run rule.  Each :class:`Stage` carries the stage name, an optional</span>
+<span class="sd">position number (for the numbered stages), the scope (per-cast or</span>
+<span class="sd">per-cruise), and a ``run`` callable.  Each stage's ``run`` signature</span>
+<span class="sd">takes explicit path arguments rather than a base directory.</span>
+
+<span class="sd">Usage::</span>
+
+<span class="sd">    import ctdcast</span>
+<span class="sd">    ctdcast.process(stage=1, cnv_dir="/data/cnv", nc_dir="/data/nc")</span>
+<span class="sd">    ctdcast.process(stage="profiles", nc_dir="/data/nc", profiles_path="/data/profiles.nc")</span>
+<span class="sd">    ctdcast.process(cnv_dir="/data/cnv", nc_dir="/data/nc", profiles_path="/data/profiles.nc")</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ladcp</span> <span class="k">as</span> <span class="n">_ladcp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">profiles</span> <span class="k">as</span> <span class="n">_profiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">stage1</span> <span class="k">as</span> <span class="n">_stage1</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">stage2</span> <span class="k">as</span> <span class="n">_stage2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors</span><span class="w"> </span><span class="kn">import</span> <span class="n">stage3</span> <span class="k">as</span> <span class="n">_stage3</span>
+
+<span class="n">Scope</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"cast"</span><span class="p">,</span> <span class="s2">"cruise"</span><span class="p">]</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StagePaths</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The full set of pipeline input/output paths, as resolved from config.</span>
+
+<span class="sd">    A single value threaded to every stage's normalised ``run`` so each stage</span>
+<span class="sd">    can pick the paths for whichever sources are configured (CTD, LADCP, …) and</span>
+<span class="sd">    ignore the rest.  Sources are inferred from which paths are present: a</span>
+<span class="sd">    ``None`` path means that source is not configured and its half of a stage is</span>
+<span class="sd">    silently skipped.</span>
+<span class="sd">    """</span>
+
+    <span class="n">cnv_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1">#: Raw SBE 911plus ``.hex`` + ``.xmlcon`` input, the alternative to ``cnv_dir``.</span>
+    <span class="n">hex_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1">#: Which raw CTD input stage 1 reads: ``"cnv"`` or ``"hex"``.  The two are mutually</span>
+    <span class="c1">#: exclusive for a cruise; only the named one is ever read.</span>
+    <span class="n">ctd_raw_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cnv"</span>
+    <span class="n">ctd_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ladcp_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1">#: Set only when the config names a compiled product explicitly; ``None``</span>
+    <span class="c1">#: means "derive it from the root", which is the normal case.</span>
+    <span class="n">profiles_override</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ladcp_profiles_override</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ctd_raw_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""The raw CTD input directory stage 1 reads: ``hex_dir`` or ``cnv_dir``, by format."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hex_dir</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctd_raw_format</span> <span class="o">==</span> <span class="s2">"hex"</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">cnv_dir</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">profiles_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Compiled CTD product: the explicit override, else ``&lt;ctd_root&gt;/profiles.nc``."""</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">profiles_override</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profiles_override</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctd_root</span> <span class="o">/</span> <span class="s2">"profiles.nc"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctd_root</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ladcp_profiles_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Compiled LADCP product: override, else ``&lt;ladcp_root&gt;/ladcp_profiles.nc``."""</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ladcp_profiles_override</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ladcp_profiles_override</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ladcp_root</span> <span class="o">/</span> <span class="s2">"ladcp_profiles.nc"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ladcp_root</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StagePaths</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Resolve a config ``data:`` block, applying the flat-layout shim.</span>
+
+<span class="sd">        The one place the ``nc_dir`` → ``ctd_root`` compatibility rule lives, so</span>
+<span class="sd">        no caller decides it twice.  A config predating the stage layout names</span>
+<span class="sd">        ``nc_dir``/``ladcp_nc``; those become the roots directly, and</span>
+<span class="sd">        :mod:`ctdcast.processors.stage_layout` recognises the unsuffixed files</span>
+<span class="sd">        under them as stage 1 — flatness is a *naming* variant, so it is detected</span>
+<span class="sd">        where naming lives rather than carried as a flag.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data : dict</span>
+<span class="sd">            The config's ``data:`` mapping.</span>
+
+<span class="sd">        The raw CTD format is ``data.ctd_raw_format`` (``cnv`` or ``hex``).  When it is absent</span>
+<span class="sd">        and only one of ``cnv_dir`` / ``hex_dir`` is set, that one is the format; with both set</span>
+<span class="sd">        it must be named, so a stray directory never decides what a cruise is read from.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        StagePaths</span>
+<span class="sd">            Paths for whichever sources are configured; ``None`` for the rest.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If ``ctd_raw_format`` is not ``cnv``/``hex``, names a directory that is not set, or</span>
+<span class="sd">            is absent while both ``cnv_dir`` and ``hex_dir`` are set.</span>
+<span class="sd">        """</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_p</span><span class="p">(</span><span class="o">*</span><span class="n">keys</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">cnv_dir</span><span class="p">,</span> <span class="n">hex_dir</span> <span class="o">=</span> <span class="n">_p</span><span class="p">(</span><span class="s2">"cnv_dir"</span><span class="p">),</span> <span class="n">_p</span><span class="p">(</span><span class="s2">"hex_dir"</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctd_raw_format"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cnv_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">hex_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">"data.cnv_dir and data.hex_dir are both set: name the one stage 1 reads "</span>
+                    <span class="s2">"with data.ctd_raw_format: cnv or hex."</span>
+                <span class="p">)</span>
+            <span class="n">fmt</span> <span class="o">=</span> <span class="s2">"hex"</span> <span class="k">if</span> <span class="n">hex_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"cnv"</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fmt</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"cnv"</span><span class="p">,</span> <span class="s2">"hex"</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"data.ctd_raw_format must be 'cnv' or 'hex', not </span><span class="si">{</span><span class="n">fmt</span><span class="si">!r}</span><span class="s2">."</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">"hex"</span> <span class="ow">and</span> <span class="n">hex_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"data.ctd_raw_format is 'hex' but data.hex_dir is not set."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">cnv_dir</span><span class="o">=</span><span class="n">cnv_dir</span><span class="p">,</span>
+            <span class="n">hex_dir</span><span class="o">=</span><span class="n">hex_dir</span><span class="p">,</span>
+            <span class="n">ctd_raw_format</span><span class="o">=</span><span class="n">fmt</span><span class="p">,</span>
+            <span class="n">ctd_root</span><span class="o">=</span><span class="n">_p</span><span class="p">(</span><span class="s2">"ctd_root"</span><span class="p">,</span> <span class="s2">"nc_dir"</span><span class="p">),</span>
+            <span class="n">ladcp_dir</span><span class="o">=</span><span class="n">_p</span><span class="p">(</span><span class="s2">"ladcp_dir"</span><span class="p">),</span>
+            <span class="n">ladcp_root</span><span class="o">=</span><span class="n">_p</span><span class="p">(</span><span class="s2">"ladcp_root"</span><span class="p">,</span> <span class="s2">"ladcp_nc"</span><span class="p">),</span>
+            <span class="n">profiles_override</span><span class="o">=</span><span class="n">_p</span><span class="p">(</span><span class="s2">"profiles_nc"</span><span class="p">),</span>
+            <span class="n">ladcp_profiles_override</span><span class="o">=</span><span class="n">_p</span><span class="p">(</span><span class="s2">"ladcp_profiles_nc"</span><span class="p">),</span>
+        <span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Stage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One pipeline stage — a row in the :data:`STAGES` single source of truth.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name:</span>
+<span class="sd">        Canonical stage name as used on the CLI and in log messages.</span>
+<span class="sd">    number:</span>
+<span class="sd">        Position for the numbered stages; ``None`` for named-only stages</span>
+<span class="sd">        (e.g. ``"profiles"``). This is what makes ``stage=1`` resolvable</span>
+<span class="sd">        and ``stage=4`` an error.</span>
+<span class="sd">    scope:</span>
+<span class="sd">        Whether the stage operates per-cast or per-cruise.</span>
+<span class="sd">    run:</span>
+<span class="sd">        Normalised entry point with the uniform signature</span>
+<span class="sd">        ``run(paths: StagePaths, *, force, dry_run, cast_tags, **kw) -&gt; object``.</span>
+<span class="sd">        The wrapper fans out over every configured source for that stage and</span>
+<span class="sd">        names only the tuning kwargs it uses (swallowing the rest via ``**_kw``),</span>
+<span class="sd">        so :func:`process` and the CLI dispatch identically for every stage.</span>
+<span class="sd">    """</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span>
+    <span class="n">run</span><span class="p">:</span> <span class="n">Callable</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Normalised stage wrappers — one per stage token.  Each takes the uniform</span>
+<span class="c1"># ``(paths, *, force, dry_run, cast_tags, **kw)`` signature, fans out over the</span>
+<span class="c1"># sources configured in *paths*, and names only the tuning kwargs it needs.</span>
+<span class="c1"># This is what lets the registry store a single callable per stage and dispatch</span>
+<span class="c1"># without any per-stage branching (mirrors oceanarray's normalised wrappers).</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_stage1</span><span class="p">(</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">StagePaths</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">backend</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"seasenselib"</span><span class="p">,</span>
+    <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"*.cnv"</span><span class="p">,</span>
+    <span class="n">ladcp_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">sensor_overrides</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">_kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Ingest raw files → per-cast netCDF for every configured source (CTD + LADCP).</span>
+
+<span class="sd">    ``cruise_info`` (the config ``cruise_info:`` block) is stamped as the cruise</span>
+<span class="sd">    identity on each per-cast file, so a stage-1 file is self-describing.</span>
+<span class="sd">    ``sensor_overrides`` (the config ``sensors:`` block) resolves each cast's</span>
+<span class="sd">    sensor catalog at stage 1.</span>
+<span class="sd">    """</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_raw_format</span> <span class="o">==</span> <span class="s2">"hex"</span><span class="p">:</span>
+        <span class="c1"># The format decides the reader; the .hex glob ignores case (Seasave writes both).</span>
+        <span class="n">backend</span><span class="p">,</span> <span class="n">pattern</span> <span class="o">=</span> <span class="s2">"hex"</span><span class="p">,</span> <span class="s2">"*.[hH][eE][xX]"</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_raw_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="n">_stage1</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">ctd_raw_dir</span><span class="p">,</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span><span class="p">,</span>
+                <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+                <span class="n">cast_tags</span><span class="o">=</span><span class="n">cast_tags</span><span class="p">,</span>
+                <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
+                <span class="n">pattern</span><span class="o">=</span><span class="n">pattern</span><span class="p">,</span>
+                <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+                <span class="n">sensor_overrides</span><span class="o">=</span><span class="n">sensor_overrides</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="ow">or</span> <span class="mi">0</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="n">_ladcp</span><span class="o">.</span><span class="n">run_convert</span><span class="p">(</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_dir</span><span class="p">,</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_root</span><span class="p">,</span>
+                <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+                <span class="n">cast_tags</span><span class="o">=</span><span class="n">cast_tags</span><span class="p">,</span>
+                <span class="n">ladcp_pattern</span><span class="o">=</span><span class="n">ladcp_pattern</span><span class="p">,</span>
+                <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="ow">or</span> <span class="mi">0</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">total</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_stage2</span><span class="p">(</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">StagePaths</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply soak/deck flagging and any configured clock offset (LADCP has no stage 2)."""</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="c1"># stage2.run filters kw to its own accepted keys, so forwarding the full tuning bag is safe;</span>
+    <span class="c1"># cruise_cfg carries clock for the clock applier.</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">_stage2</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span><span class="p">,</span>
+            <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+            <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+            <span class="n">cast_tags</span><span class="o">=</span><span class="n">cast_tags</span><span class="p">,</span>
+            <span class="n">cruise_cfg</span><span class="o">=</span><span class="n">cruise_cfg</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kw</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="ow">or</span> <span class="mi">0</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_stage3</span><span class="p">(</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">StagePaths</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">_kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Apply QC + calibration to per-cast CTD netCDF (LADCP has no stage 3)."""</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">_stage3</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span><span class="p">,</span>
+            <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+            <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+            <span class="n">cast_tags</span><span class="o">=</span><span class="n">cast_tags</span><span class="p">,</span>
+            <span class="n">cruise_cfg</span><span class="o">=</span><span class="n">cruise_cfg</span><span class="p">,</span>
+            <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="ow">or</span> <span class="mi">0</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_profiles</span><span class="p">(</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">StagePaths</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">gebco_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">profiles_dbar</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">_kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Compile per-cast netCDF → gridded products for every configured source.</span>
+
+<span class="sd">    Builds ``profiles.nc`` (CTD) and/or ``ladcp_profiles.nc`` (LADCP), returning</span>
+<span class="sd">    True if any product was written.  ``cruise_info`` (the config ``cruise_info:``</span>
+<span class="sd">    block) supplies the cruise id, discovery metadata, people, embargo, and the</span>
+<span class="sd">    ship/date from which the EXPOCODE is derived; it is threaded to both builders.</span>
+<span class="sd">    ``cruise_cfg`` (:func:`ctdcast.config.layout.processing_view`) is threaded to the CTD builder so the</span>
+<span class="sd">    preferred-sensor declaration can be reconciled against the per-cast serials.</span>
+
+<span class="sd">    Sensor provenance is resolved at stage 1, so ``sensor_overrides`` is not</span>
+<span class="sd">    forwarded here (it arrives in ``**_kw`` from the shared tuning bag and is</span>
+<span class="sd">    ignored).  ``build_profiles`` is called with ``refuse_catalog_less=True``: as</span>
+<span class="sd">    the pipeline driver, ``process``/``run`` refuse to compile a product from a</span>
+<span class="sd">    cast that predates the catalog rather than shipping it with a gap.</span>
+<span class="sd">    """</span>
+    <span class="n">wrote</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">paths</span><span class="o">.</span><span class="n">profiles_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">wrote</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">bool</span><span class="p">(</span>
+                <span class="n">_profiles</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">ctd_root</span><span class="p">,</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">profiles_path</span><span class="p">,</span>
+                    <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                    <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+                    <span class="n">gebco_path</span><span class="o">=</span><span class="n">gebco_path</span><span class="p">,</span>
+                    <span class="n">dbar</span><span class="o">=</span><span class="n">profiles_dbar</span><span class="p">,</span>
+                    <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+                    <span class="n">cruise_cfg</span><span class="o">=</span><span class="n">cruise_cfg</span><span class="p">,</span>
+                    <span class="n">refuse_catalog_less</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="ow">or</span> <span class="n">wrote</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_profiles_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">wrote</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">bool</span><span class="p">(</span>
+                <span class="n">_ladcp</span><span class="o">.</span><span class="n">run_compile</span><span class="p">(</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_root</span><span class="p">,</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">ladcp_profiles_path</span><span class="p">,</span>
+                    <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                    <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span>
+                    <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="ow">or</span> <span class="n">wrote</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrote</span>
+
+
+<span class="c1">#: Pipeline stages in execution order.  **Single source of truth** for</span>
+<span class="c1">#: :func:`process`, the CLI (``--stage`` choices, help, dispatch), and the</span>
+<span class="c1">#: re-run rule.  Adding a stage — a new CTD step, a cruise-level export, another</span>
+<span class="c1">#: source — is one row here; everything user-facing derives from this tuple.</span>
+<span class="c1">#: Each stage fans out over all configured sources inside its ``run`` wrapper,</span>
+<span class="c1">#: so there is no per-source token: ``--stage 1`` ingests CTD *and* LADCP,</span>
+<span class="c1">#: ``--stage profiles`` compiles both.</span>
+<span class="n">STAGES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Stage</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Stage</span><span class="p">(</span><span class="s2">"stage1"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"cast"</span><span class="p">,</span> <span class="n">_run_stage1</span><span class="p">),</span>
+    <span class="n">Stage</span><span class="p">(</span><span class="s2">"stage2"</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"cast"</span><span class="p">,</span> <span class="n">_run_stage2</span><span class="p">),</span>
+    <span class="n">Stage</span><span class="p">(</span><span class="s2">"stage3"</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"cast"</span><span class="p">,</span> <span class="n">_run_stage3</span><span class="p">),</span>
+    <span class="n">Stage</span><span class="p">(</span><span class="s2">"profiles"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"cruise"</span><span class="p">,</span> <span class="n">_run_profiles</span><span class="p">),</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Stage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the :class:`Stage` named or numbered by *stage*.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stage:</span>
+<span class="sd">        ``1``, ``2``, ``3``; or a name — ``"stage1"``, ``"stage2"``,</span>
+<span class="sd">        ``"stage3"``, ``"profiles"``.  Names are matched case-insensitively.</span>
+<span class="sd">        Numeric strings (``"1"``) resolve as the number.  Integers resolve only</span>
+<span class="sd">        to numbered stages: ``"profiles"`` has no number, so ``4`` is an error</span>
+<span class="sd">        rather than a guess.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If *stage* matches no entry in :data:`STAGES`.  The message lists</span>
+<span class="sd">        every valid value.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"stage must be a number or name, not None"</span><span class="p">)</span>
+    <span class="c1"># The CLI passes stage numbers as strings ("1"); accept those as the number.</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stage</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">stage</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="k">else</span> <span class="n">stage</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">STAGES</span><span class="p">:</span>
+        <span class="c1"># Guard bool before int: True == 1, so without this resolve_stage(True)</span>
+        <span class="c1"># would silently return stage1.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="n">key</span> <span class="o">==</span> <span class="n">s</span><span class="o">.</span><span class="n">number</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">s</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">number</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">STAGES</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="o">+</span> <span class="p">[</span><span class="nb">repr</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">STAGES</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown stage </span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">; expected one of: </span><span class="si">{</span><span class="n">valid</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">stages_for</span><span class="p">(</span><span class="n">stage</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Stage</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Resolve *stage* into the stages to run, always in :data:`STAGES` order.</span>
+
+<span class="sd">    ``None`` → every stage.  A list/tuple → that subset (deduplicated, canonical</span>
+<span class="sd">    order regardless of the order requested).  A scalar → that one stage.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">STAGES</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stage</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">requested</span> <span class="o">=</span> <span class="p">{</span><span class="n">resolve_stage</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stage</span><span class="p">}</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">STAGES</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">requested</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">resolve_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">),)</span>
+
+
+<div class="viewcode-block" id="process">
+<a class="viewcode-back" href="../../api.html#ctdcast.processors.process">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span>
+    <span class="n">stage</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cnv_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ctd_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">hex_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ctd_raw_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="c1"># Superseded by the roots above; still accepted so an existing caller keeps</span>
+    <span class="c1"># working until it migrates.</span>
+    <span class="n">nc_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">profiles_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_nc_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ladcp_profiles_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Run one or more pipeline stages across every configured source.</span>
+
+<span class="sd">    A stage runs for whichever sources are configured: with both CTD and LADCP</span>
+<span class="sd">    paths supplied, ``stage="stage1"`` ingests both, and ``stage="profiles"``</span>
+<span class="sd">    compiles both.  A source whose paths are absent is silently skipped, so a</span>
+<span class="sd">    cruise without LADCP is not an error.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stage:</span>
+<span class="sd">        Which stage(s) to run — ``1``, ``2``, ``3``, a name such as ``"stage1"``</span>
+<span class="sd">        or ``"profiles"``, or a list of these.  A list runs its subset in</span>
+<span class="sd">        :data:`STAGES` order regardless of the order requested.  ``None`` (the</span>
+<span class="sd">        default) runs every stage in order.</span>
+<span class="sd">    cnv_dir, ctd_root:</span>
+<span class="sd">        CTD pipeline paths.  ``cnv_dir`` is the external CNV input; ``ctd_root``</span>
+<span class="sd">        is the directory ctdcast owns, holding ``stage1/`` … ``stage3/`` and the</span>
+<span class="sd">        compiled product.  Present → CTD participates in the relevant stages.</span>
+<span class="sd">    hex_dir, ctd_raw_format:</span>
+<span class="sd">        Raw SBE 911plus ``.hex`` input and the switch between it and ``cnv_dir``</span>
+<span class="sd">        (``"cnv"`` or ``"hex"``; see :meth:`StagePaths.from_config`).</span>
+<span class="sd">    ladcp_dir, ladcp_root:</span>
+<span class="sd">        LADCP equivalents.  Present → LADCP participates in stage 1 (convert)</span>
+<span class="sd">        and ``profiles`` (compile).</span>
+<span class="sd">    nc_dir, profiles_path, ladcp_nc_dir, ladcp_profiles_path:</span>
+<span class="sd">        Superseded.  ``nc_dir``/``ladcp_nc_dir`` are read as the roots when the</span>
+<span class="sd">        root arguments are absent, and the two product paths as explicit</span>
+<span class="sd">        overrides of the derived ones.  Accepted so an existing caller keeps</span>
+<span class="sd">        working; prefer the roots.</span>
+<span class="sd">    force:</span>
+<span class="sd">        Re-run even when outputs already exist.</span>
+<span class="sd">    dry_run:</span>
+<span class="sd">        Print what would run without writing any files.</span>
+<span class="sd">    cast_tags:</span>
+<span class="sd">        If given, process only files whose stem contains one of the zero-padded</span>
+<span class="sd">        cast numbers (e.g. ``{"042", "043"}``).  Cruise-scope stages ignore it.</span>
+<span class="sd">    **kw:</span>
+<span class="sd">        Tuning forwarded to the stage wrappers (e.g. ``backend``, ``pattern``,</span>
+<span class="sd">        ``near_surface_dbar``, ``cruise_cfg``, ``gebco_path``, ``ladcp_pattern``).</span>
+<span class="sd">        Each wrapper names the kwargs it uses and ignores the rest.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    object</span>
+<span class="sd">        A list of per-stage return values when *stage* is ``None`` or a list;</span>
+<span class="sd">        the single stage's return value for a scalar *stage*.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Routed through `from_config` so the root-vs-legacy precedence is decided in</span>
+    <span class="c1"># exactly one place, whether the caller is the CLI reading YAML or Python</span>
+    <span class="c1"># passing kwargs.</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">StagePaths</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"cnv_dir"</span><span class="p">:</span> <span class="n">cnv_dir</span><span class="p">,</span>
+            <span class="s2">"hex_dir"</span><span class="p">:</span> <span class="n">hex_dir</span><span class="p">,</span>
+            <span class="s2">"ctd_raw_format"</span><span class="p">:</span> <span class="n">ctd_raw_format</span><span class="p">,</span>
+            <span class="s2">"ctd_root"</span><span class="p">:</span> <span class="n">ctd_root</span><span class="p">,</span>
+            <span class="s2">"nc_dir"</span><span class="p">:</span> <span class="n">nc_dir</span><span class="p">,</span>
+            <span class="s2">"ladcp_dir"</span><span class="p">:</span> <span class="n">ladcp_dir</span><span class="p">,</span>
+            <span class="s2">"ladcp_root"</span><span class="p">:</span> <span class="n">ladcp_root</span><span class="p">,</span>
+            <span class="s2">"ladcp_nc"</span><span class="p">:</span> <span class="n">ladcp_nc_dir</span><span class="p">,</span>
+            <span class="s2">"profiles_nc"</span><span class="p">:</span> <span class="n">profiles_path</span><span class="p">,</span>
+            <span class="s2">"ladcp_profiles_nc"</span><span class="p">:</span> <span class="n">ladcp_profiles_path</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="n">dry_run</span><span class="p">,</span> <span class="n">cast_tags</span><span class="o">=</span><span class="n">cast_tags</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stages_for</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stage</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">results</span>
+    <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

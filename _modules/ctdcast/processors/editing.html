@@ -1,0 +1,886 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.editing &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.editing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.editing</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Stage-3 editing at the native scan rate: Sea-Bird's Wild Edit and Loop Edit.</span>
+
+<span class="sd">Wild Edit marks values that sit far from the rest of their block of scans, as SBE Data</span>
+<span class="sd">Processing's module of the same name does: in each block of ``scans_per_block`` scans, the</span>
+<span class="sd">values beyond ``pass1_nstd`` standard deviations of the block mean are set aside, the mean and</span>
+<span class="sd">standard deviation are recomputed from what is left, and a value is marked when it lies beyond</span>
+<span class="sd">``pass2_nstd`` of those *and* farther than ``mindelta`` from the mean.  The last, partial block</span>
+<span class="sd">is judged against the last full ``scans_per_block`` scans of the cast.</span>
+
+<span class="sd">Sea-Bird replaces a marked value with its bad flag; ctdcast keeps the value and sets</span>
+<span class="sd">``{var}_qc`` to QARTOD 4 (fail), so nothing is lost and the edit is visible in the file.  The</span>
+<span class="sd">parameters and the number of values marked are recorded on each variable and in ``history``.</span>
+
+<span class="sd">The marking is :func:`seabirdscientific.processing.wild_edit`'s; ctdcast turns its bad-flag values</span>
+<span class="sd">into ``_qc`` flags and keeps the data.</span>
+
+<span class="sd">**Where it appears to differ from SBE Data Processing** (Sea-Bird's Windows program).  On a block</span>
+<span class="sd">where a channel sits at one or two A/D levels (an SBE 43 voltage, altimeter or fluorescence near</span>
+<span class="sd">the surface), the standard deviation left after the first pass is about zero.  With</span>
+<span class="sd">``mindelta`` 0 the Windows program then marks every value in the block; seabirdscientific marks</span>
+<span class="sd">only the values off the block's main level.  On OdB cast 050 every value ctdcast marked was also</span>
+<span class="sd">marked in the cruise's CNV, which marked 5–10 times more on those channels, in whole blocks.  The</span>
+<span class="sd">cause is inferred from the output, not from the Windows program's source.  A ``mindelta`` of a few</span>
+<span class="sd">A/D steps on such channels avoids both.</span>
+
+<span class="sd">Loop Edit marks whole scans where the package went up on the downcast (or down on the upcast),</span>
+<span class="sd">moved slower than ``min_velocity``, or was still in the surface soak, with</span>
+<span class="sd">:func:`seabirdscientific.processing.loop_edit`.  ctdcast keeps every value: the marks go into</span>
+<span class="sd">``loop_edit_flag`` and QARTOD 4 in each variable's ``_qc``, and later steps (Wild Edit and Window</span>
+<span class="sd">Filter with ``exclude_flagged``, Bin Average) leave the marked scans out.</span>
+
+<span class="sd">**Deck pressure.**  With ``deck_pressure: true``, seabirdscientific offsets the soak window by the</span>
+<span class="sd">first scan's depth.  On OdB casts 011, 017 and 050, whose CNV headers say ``useDeckPress = 1``, SBE</span>
+<span class="sd">Data Processing's marks match no offset instead (the recordings start with the package already in</span>
+<span class="sd">the water, 1.8–7.5 dbar): with the first-scan offset the soak runs 90–800 scans longer, with none</span>
+<span class="sd">the two agree except at 20–40 single scans at the speed threshold.  ``deck_pressure`` also takes a</span>
+<span class="sd">number, the deck pressure in dbar, so ``deck_pressure: 0`` reproduces those CNVs.</span>
+
+<span class="sd">Configuration, a step in ``data_processing.steps``::</span>
+
+<span class="sd">    - wildedit:</span>
+<span class="sd">        pass1_nstd: 2.0</span>
+<span class="sd">        pass2_nstd: 20.0</span>
+<span class="sd">        mindelta: 0.0</span>
+<span class="sd">        scans_per_block: 100</span>
+<span class="sd">        exclude_flagged: true    # leave scans an earlier Loop Edit marked out of the statistics</span>
+<span class="sd">        variables: [pressure, ctd_temperature_1, conductivity_1]</span>
+<span class="sd">    - loopedit:</span>
+<span class="sd">        min_velocity: 0.25         # dbar/s; or mean_speed_percent: 20 with window_seconds: 300</span>
+<span class="sd">        surface_soak: {min_depth: 5.0, max_depth: 20.0, deck_pressure: true}   # or false</span>
+<span class="sd">        exclude_flagged: true</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">replace</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">conversion</span> <span class="k">as</span> <span class="n">sbs_conversion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">processing</span> <span class="k">as</span> <span class="n">sbs_processing</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="n">applied_sbe_corrections</span><span class="p">,</span> <span class="n">header_from_raw_metadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.corrections</span><span class="w"> </span><span class="kn">import</span> <span class="n">_number</span><span class="p">,</span> <span class="n">_version</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">append_history</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QARTOD_FAIL</span><span class="p">,</span> <span class="n">_ensure_qc</span><span class="p">,</span> <span class="n">_raise_flag</span>
+
+<span class="c1">#: SBE Data Processing's example values (its Wild Edit dialog), used for a key the config leaves out.</span>
+<span class="n">WILD_EDIT_DEFAULTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"pass1_nstd"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+    <span class="s2">"pass2_nstd"</span><span class="p">:</span> <span class="mf">20.0</span><span class="p">,</span>
+    <span class="s2">"mindelta"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="s2">"scans_per_block"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s2">"exclude_flagged"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">#: Variables edited when the config names none.</span>
+<span class="n">DEFAULT_WILD_EDIT_VARIABLES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"pressure"</span><span class="p">,</span>
+    <span class="s2">"ctd_temperature_1"</span><span class="p">,</span>
+    <span class="s2">"ctd_temperature_2"</span><span class="p">,</span>
+    <span class="s2">"conductivity_1"</span><span class="p">,</span>
+    <span class="s2">"conductivity_2"</span><span class="p">,</span>
+    <span class="s2">"oxygen_raw_1"</span><span class="p">,</span>
+    <span class="s2">"oxygen_raw_2"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="WildEdit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.WildEdit">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WildEdit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolved Wild Edit parameters.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pass1_nstd, pass2_nstd : float</span>
+<span class="sd">        Standard deviations for the first and second passes.</span>
+<span class="sd">    mindelta : float</span>
+<span class="sd">        A value closer to the block mean than this is never marked, in the variable's units.</span>
+<span class="sd">    scans_per_block : int</span>
+<span class="sd">        Scans per block.</span>
+<span class="sd">    exclude_flagged : bool</span>
+<span class="sd">        Leave scans an earlier Loop Edit marked out of the block statistics.</span>
+<span class="sd">    variables : tuple of str</span>
+<span class="sd">        Variables to edit.</span>
+<span class="sd">    """</span>
+
+    <span class="n">pass1_nstd</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pass2_nstd</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">mindelta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">scans_per_block</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">exclude_flagged</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+<div class="viewcode-block" id="WildEdit.describe">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.WildEdit.describe">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the parameters as one line, for attributes and ``history``."""</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"pass1_nstd=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pass1_nstd</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> pass2_nstd=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pass2_nstd</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"mindelta=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mindelta</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> scans_per_block=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">scans_per_block</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"exclude_flagged=</span><span class="si">{</span><span class="s1">'yes'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'no'</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="resolve_wild_edit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.resolve_wild_edit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_wild_edit</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WildEdit</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the Wild Edit parameters from ``{"wildedit": parameters}``, or None when absent.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfg : dict or None</span>
+<span class="sd">        ``{"wildedit": ...}``: the step's parameters from ``data_processing.steps``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    WildEdit or None</span>
+<span class="sd">        None when ``wildedit`` is absent or empty.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key or a value of the wrong kind.</span>
+<span class="sd">    """</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">cfg</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s2">"wildedit"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cfg</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s2">"wildedit"</span><span class="p">]</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"wildedit: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">WILD_EDIT_DEFAULTS</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"variables"</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"wildedit: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">merged</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">WILD_EDIT_DEFAULTS</span><span class="p">,</span> <span class="o">**</span><span class="n">block</span><span class="p">}</span>
+    <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">md</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_number</span><span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"wildedit.</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"pass1_nstd"</span><span class="p">,</span> <span class="s2">"pass2_nstd"</span><span class="p">,</span> <span class="s2">"mindelta"</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">spb</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="s2">"scans_per_block"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spb</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spb</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"wildedit.scans_per_block: expected a whole number, got </span><span class="si">{</span><span class="n">spb</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">],</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"wildedit.exclude_flagged: expected true or false, got </span><span class="si">{</span><span class="n">merged</span><span class="p">[</span><span class="s1">'exclude_flagged'</span><span class="p">]</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">spb</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">p1</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p2</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">md</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"wildedit: scans_per_block must be at least 2, pass1_nstd and pass2_nstd positive, "</span>
+            <span class="s2">"mindelta not negative"</span>
+        <span class="p">)</span>
+    <span class="n">variables</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"variables"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">DEFAULT_WILD_EDIT_VARIABLES</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variables</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"wildedit.variables: expected a list of names, got </span><span class="si">{</span><span class="n">variables</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">WildEdit</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">md</span><span class="p">,</span> <span class="n">spb</span><span class="p">,</span> <span class="n">merged</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">variables</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="wild_edit_mask">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.wild_edit_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">wild_edit_mask</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">WildEdit</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return where Wild Edit marks *values*, using :func:`seabirdscientific.processing.wild_edit`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    values : numpy.ndarray</span>
+<span class="sd">        One variable at the native scan rate; NaN is never marked and never counted.</span>
+<span class="sd">    params : WildEdit</span>
+<span class="sd">        The resolved parameters.</span>
+<span class="sd">    excluded : numpy.ndarray, optional</span>
+<span class="sd">        Boolean, true at scans to leave out of the block statistics (an earlier Loop Edit's</span>
+<span class="sd">        marks); used only when ``params.exclude_flagged``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Boolean, true at the values marked.</span>
+<span class="sd">    """</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="p">:</span>
+        <span class="n">flags</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)]</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span>
+    <span class="c1"># seabirdscientific's last-block rule indexes from len - scans_per_block, so a cast shorter</span>
+    <span class="c1"># than one block is judged as one block.</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">scans_per_block</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">wild_edit</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">flags</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">pass1_nstd</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">pass2_nstd</span><span class="p">,</span>
+        <span class="n">k</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">mindelta</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">out</span> <span class="o">==</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="apply_wild_edit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.apply_wild_edit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_wild_edit</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"?"</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Apply Wild Edit to one cast: mark outliers QARTOD 4 in each named variable's ``_qc``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-2 dataset at its native scan rate.</span>
+<span class="sd">    cfg : dict or None</span>
+<span class="sd">        ``{"wildedit": ...}``: the step's parameters from ``data_processing.steps``.</span>
+<span class="sd">    excluded : numpy.ndarray, optional</span>
+<span class="sd">        Scans an earlier Loop Edit marked, left out of the statistics when ``exclude_flagged``.</span>
+<span class="sd">    cast_label : str, optional</span>
+<span class="sd">        How the cast is named in warnings.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (xarray.Dataset, dict)</span>
+<span class="sd">        A new dataset (the input is not mutated) and ``{variable: mask}`` of the values marked.</span>
+<span class="sd">        Without a ``wildedit`` entry the dataset is returned unchanged.  A cast Sea-Bird already</span>
+<span class="sd">        wild-edited is skipped, with a warning and a ``history`` note.</span>
+<span class="sd">    """</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">resolve_wild_edit</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="s2">"wildedit"</span> <span class="ow">in</span> <span class="n">applied_sbe_corrections</span><span class="p">(</span><span class="n">header</span><span class="p">)[</span><span class="s2">"modules"</span><span class="p">]:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s2">"wildedit skipped: Sea-Bird wildedit already ran"</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="c1"># exclude_flagged leaves out scans an earlier Loop Edit marked; say how many there were, so</span>
+    <span class="c1"># the record never claims an exclusion that did not happen.</span>
+    <span class="n">n_excluded</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span>
+        <span class="k">else</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="p">:</span>
+        <span class="n">exclusion</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_excluded</span><span class="si">}</span><span class="s2"> scan(s) marked by an earlier Loop Edit left out of the statistics"</span>
+            <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">"no earlier Loop Edit, so no scans left out of the statistics"</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">exclusion</span> <span class="o">=</span> <span class="s2">"no scans left out of the statistics"</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">_version</span><span class="p">()</span><span class="si">}</span><span class="s2"> processing.wild_edit"</span>
+    <span class="n">marks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">absent</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span> <span class="ow">or</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span> <span class="o">!=</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,):</span>
+            <span class="n">absent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">wild_edit_mask</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">excluded</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_excluded</span><span class="p">:</span>
+            <span class="c1"># A scan Loop Edit left out of the statistics is still compared with them, and</span>
+            <span class="c1"># seabirdscientific may mark it; it is already flagged 4 everywhere, so it is not</span>
+            <span class="c1"># counted as Wild Edit's, and later filters do not step over it on Wild Edit's say.</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">qc_name</span> <span class="o">=</span> <span class="n">_ensure_qc</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">)</span>
+        <span class="n">qc</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">_raise_flag</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">QARTOD_FAIL</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">qc</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc_name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"wild_edit"</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"wild_edit_method"</span><span class="p">]</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"wild_edit_excluded"</span><span class="p">]</span> <span class="o">=</span> <span class="n">exclusion</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"wild_edit_marked"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">attrs</span>
+        <span class="n">marks</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"wildedit: </span><span class="si">{</span><span class="n">params</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">exclusion</span><span class="si">}</span><span class="s2">); marked "</span> <span class="o">+</span> <span class="p">(</span>
+        <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">marks</span><span class="o">.</span><span class="n">items</span><span class="p">())</span> <span class="ow">or</span> <span class="s2">"nothing"</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">absent</span><span class="p">:</span>
+        <span class="n">note</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">"; not in this cast: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">absent</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">note</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">marks</span></div>
+
+
+
+<span class="c1"># --- Loop Edit ---------------------------------------------------------------------------------</span>
+
+<span class="c1">#: What ``loop_edit_flag`` holds.</span>
+<span class="n">LOOP_EDIT_FLAG</span> <span class="o">=</span> <span class="s2">"loop_edit_flag"</span>
+
+<span class="c1">#: How a cast's record starts when Loop Edit ran it without the soak test.</span>
+<span class="n">SOAK_NOT_APPLIED</span> <span class="o">=</span> <span class="s2">"surface soak not applied"</span>
+
+
+<div class="viewcode-block" id="LoopEdit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.LoopEdit">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoopEdit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Resolved Loop Edit parameters.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_velocity : float</span>
+<span class="sd">        Slowest good speed along the leg, dbar/s (``fixed``), or the floor under the percent rule.</span>
+<span class="sd">    mean_speed_percent : float or None</span>
+<span class="sd">        When set, a scan is good if its speed is at least this percentage of the mean speed over</span>
+<span class="sd">        ``window_seconds``; None for the fixed rule.</span>
+<span class="sd">    window_seconds : float</span>
+<span class="sd">        The window of the mean-speed rule.</span>
+<span class="sd">    surface_soak : bool</span>
+<span class="sd">        Mark the surface soak: the scans before the package passes ``min_depth`` after its last</span>
+<span class="sd">        excursion above it, below ``max_depth``.</span>
+<span class="sd">    min_depth, max_depth : float</span>
+<span class="sd">        The soak window, in metres.</span>
+<span class="sd">    deck_pressure : bool or float</span>
+<span class="sd">        True: offset the soak window by the first scan's depth (seabirdscientific's meaning); a</span>
+<span class="sd">        number: offset it by that pressure, in dbar; False: no offset.</span>
+<span class="sd">    exclude_flagged : bool</span>
+<span class="sd">        Keep the marks of an earlier Loop Edit.</span>
+<span class="sd">    starts_below : str</span>
+<span class="sd">        What to do with a cast whose recording is below the soak window before it is in it (a</span>
+<span class="sd">        yo-yo cut into casts at depth): ``"skip"`` runs it without the soak test, as there is no</span>
+<span class="sd">        soak to remove; ``"fail"`` refuses the cast.</span>
+<span class="sd">    """</span>
+
+    <span class="n">min_velocity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">mean_speed_percent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">window_seconds</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">surface_soak</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">min_depth</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_depth</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">deck_pressure</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">float</span>
+    <span class="n">exclude_flagged</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">starts_below</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"skip"</span>
+
+<div class="viewcode-block" id="LoopEdit.describe">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.LoopEdit.describe">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return the parameters as one line, for attributes and ``history``."""</span>
+        <span class="n">rule</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"min_velocity=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_velocity</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> dbar/s"</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean_speed_percent</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="sa">f</span><span class="s2">"mean_speed_percent=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mean_speed_percent</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> over </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_seconds</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s "</span>
+            <span class="sa">f</span><span class="s2">"(min_velocity=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_velocity</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+        <span class="n">soak</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"surface_soak min_depth=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_depth</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> max_depth=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"deck_pressure=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deck_pressure</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">deck_pressure</span><span class="p">,</span><span class="w"> </span><span class="nb">bool</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deck_pressure</span><span class="si">:</span><span class="s1">g</span><span class="si">}</span><span class="s1"> dbar'</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"starts_below=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">starts_below</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">surface_soak</span>
+            <span class="k">else</span> <span class="s2">"no surface soak"</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">rule</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">soak</span><span class="si">}</span><span class="s2">"</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="resolve_loop_edit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.resolve_loop_edit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_loop_edit</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoopEdit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the Loop Edit parameters of a ``loopedit`` step.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : dict</span>
+<span class="sd">        ``min_velocity`` (default 0.25 dbar/s), or ``mean_speed_percent`` with ``window_seconds``</span>
+<span class="sd">        (default 300); ``surface_soak: {min_depth, max_depth, deck_pressure, starts_below}``</span>
+<span class="sd">        (default 5, 20, true, ``skip``), or ``surface_soak: false``; ``exclude_flagged`` (default</span>
+<span class="sd">        true).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    LoopEdit</span>
+<span class="sd">        The resolved parameters.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key or a value of the wrong kind.</span>
+<span class="sd">    """</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">params</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"loopedit: expected a mapping, got </span><span class="si">{</span><span class="n">params</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span>
+        <span class="s2">"min_velocity"</span><span class="p">,</span>
+        <span class="s2">"mean_speed_percent"</span><span class="p">,</span>
+        <span class="s2">"window_seconds"</span><span class="p">,</span>
+        <span class="s2">"surface_soak"</span><span class="p">,</span>
+        <span class="s2">"exclude_flagged"</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"loopedit: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">vmin</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"min_velocity"</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">),</span> <span class="s2">"loopedit.min_velocity"</span><span class="p">)</span>
+    <span class="n">pct</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mean_speed_percent"</span><span class="p">)</span>
+    <span class="n">pct</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">pct</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_number</span><span class="p">(</span><span class="n">pct</span><span class="p">,</span> <span class="s2">"loopedit.mean_speed_percent"</span><span class="p">)</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"window_seconds"</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">),</span> <span class="s2">"loopedit.window_seconds"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">vmin</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">window</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">pct</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"loopedit: min_velocity must not be negative, window_seconds positive, "</span>
+            <span class="s2">"mean_speed_percent in (0, 100]"</span>
+        <span class="p">)</span>
+    <span class="n">soak</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"surface_soak"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">below</span> <span class="o">=</span> <span class="s2">"skip"</span>
+    <span class="k">if</span> <span class="n">soak</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">on</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">deck</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">soak</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">soak</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"min_depth"</span><span class="p">,</span> <span class="s2">"max_depth"</span><span class="p">,</span> <span class="s2">"deck_pressure"</span><span class="p">,</span> <span class="s2">"starts_below"</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"loopedit.surface_soak: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">lo</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">soak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"min_depth"</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span> <span class="s2">"loopedit.surface_soak.min_depth"</span><span class="p">)</span>
+        <span class="n">hi</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">soak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_depth"</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">),</span> <span class="s2">"loopedit.surface_soak.max_depth"</span><span class="p">)</span>
+        <span class="n">deck</span> <span class="o">=</span> <span class="n">soak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"deck_pressure"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">deck</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="s2">"loopedit.surface_soak.deck_pressure"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hi</span> <span class="o">&lt;</span> <span class="n">lo</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"loopedit.surface_soak: max_depth is shallower than min_depth"</span>
+            <span class="p">)</span>
+        <span class="n">below</span> <span class="o">=</span> <span class="n">soak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"starts_below"</span><span class="p">,</span> <span class="s2">"skip"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">below</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"skip"</span><span class="p">,</span> <span class="s2">"fail"</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"loopedit.surface_soak.starts_below: expected skip or fail, got </span><span class="si">{</span><span class="n">below</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"loopedit.surface_soak: expected a mapping or false, got </span><span class="si">{</span><span class="n">soak</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="n">excl</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"exclude_flagged"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">excl</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"loopedit.exclude_flagged: expected true or false, got </span><span class="si">{</span><span class="n">excl</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">LoopEdit</span><span class="p">(</span><span class="n">vmin</span><span class="p">,</span> <span class="n">pct</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">on</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">deck</span><span class="p">,</span> <span class="n">excl</span><span class="p">,</span> <span class="n">below</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_latitude</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"lat"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="n">lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">lat</span><span class="p">))</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_filled</span><span class="p">(</span><span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return *pressure* with NaNs interpolated (as Loop Edit runs on it), and where it was finite."""</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">finite</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">finite</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">p</span><span class="p">[</span><span class="o">~</span><span class="n">finite</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="o">~</span><span class="n">finite</span><span class="p">],</span> <span class="n">idx</span><span class="p">[</span><span class="n">finite</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="n">finite</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">p</span><span class="p">,</span> <span class="n">finite</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_soak_search</span><span class="p">(</span>
+    <span class="n">p</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">LoopEdit</span><span class="p">,</span>
+    <span class="n">latitude</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``(kind, why)`` seabirdscientific's soak search would be empty on *p*.</span>
+
+<span class="sd">    *kind* is ``""`` when the search finds a soak, ``"shallow"`` when the cast never goes below</span>
+<span class="sd">    the window, ``"starts_below"`` when the recording is below the window before it is in it.</span>
+
+<span class="sd">    Mirrors ``seabirdscientific.processing._find_depth_peaks``: it searches from the first scan</span>
+<span class="sd">    in the soak window to the first scan below it, skipping scans an earlier Loop Edit marked when</span>
+<span class="sd">    ``exclude_flagged``, and the window is offset as ``deck_pressure`` says.</span>
+<span class="sd">    """</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">sbs_conversion</span><span class="o">.</span><span class="n">depth_from_pressure</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">latitude</span><span class="p">)</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">deck_pressure</span>
+    <span class="k">if</span> <span class="n">deck</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">deck</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sbs_conversion</span><span class="o">.</span><span class="n">depth_from_pressure</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">deck</span><span class="p">]),</span> <span class="n">latitude</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">min_depth</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">max_depth</span> <span class="o">+</span> <span class="n">shift</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="p">:</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">in_window</span><span class="p">,</span> <span class="n">below</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;</span> <span class="n">lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">d</span> <span class="o">&lt;</span> <span class="n">hi</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">ok</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;</span> <span class="n">hi</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">ok</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">below</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">deepest</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">ok</span><span class="p">]))</span> <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"shallow"</span><span class="p">,</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"the cast never goes deeper than the soak window (deepest </span><span class="si">{</span><span class="n">deepest</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> dbar)"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_window</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">in_window</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">below</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">"starts_below"</span><span class="p">,</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"the recording starts below the soak window (at </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> dbar)"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span>
+
+
+<div class="viewcode-block" id="soak_window_reached">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.soak_window_reached">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">soak_window_reached</span><span class="p">(</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">LoopEdit</span><span class="p">,</span>
+    <span class="n">latitude</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether the cast has a surface soak for Loop Edit to look for.</span>
+
+<span class="sd">    The soak test needs a scan between ``min_depth`` and ``max_depth`` (offset as</span>
+<span class="sd">    ``deck_pressure`` says) before the first scan below ``max_depth``, leaving out scans an</span>
+<span class="sd">    earlier Loop Edit marked when ``exclude_flagged``, as seabirdscientific's search does.  A</span>
+<span class="sd">    recording that starts below the window (the logging began at depth, even if the package rose</span>
+<span class="sd">    into the window later), or a cast that never goes below it, has no surface soak for that</span>
+<span class="sd">    search to find; seabirdscientific's ``loop_edit`` then fails on an empty search.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Sea pressure, dbar; NaNs are interpolated, as Loop Edit runs on it.</span>
+<span class="sd">    params : LoopEdit</span>
+<span class="sd">        The resolved parameters.</span>
+<span class="sd">    latitude : float</span>
+<span class="sd">        For the depth conversion.</span>
+<span class="sd">    excluded : numpy.ndarray, optional</span>
+<span class="sd">        Scans an earlier Loop Edit marked.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True when an unmarked scan lies in the soak window before the first unmarked scan below.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span><span class="p">,</span> <span class="n">finite</span> <span class="o">=</span> <span class="n">_filled</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">_soak_search</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">latitude</span><span class="p">,</span> <span class="n">excluded</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">""</span></div>
+
+
+
+<div class="viewcode-block" id="loop_edit_mask">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.loop_edit_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">loop_edit_mask</span><span class="p">(</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">LoopEdit</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">latitude</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the scans Loop Edit marks, with :func:`seabirdscientific.processing.loop_edit`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Sea pressure, dbar, at the native scan rate.</span>
+<span class="sd">    params : LoopEdit</span>
+<span class="sd">        The resolved parameters.</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Scan interval, seconds.</span>
+<span class="sd">    latitude : float</span>
+<span class="sd">        For the depth conversion.</span>
+<span class="sd">    excluded : numpy.ndarray, optional</span>
+<span class="sd">        Scans an earlier Loop Edit marked, kept when ``exclude_flagged``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Boolean, true at the scans marked.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span><span class="p">,</span> <span class="n">finite</span> <span class="o">=</span> <span class="n">_filled</span><span class="p">(</span><span class="n">pressure</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">flag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">flag</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)]</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span>
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">deck</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">min_depth</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">max_depth</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">deck_pressure</span>
+    <span class="n">soak</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">surface_soak</span> <span class="ow">and</span> <span class="n">_soak_search</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">latitude</span><span class="p">,</span> <span class="n">excluded</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">soak</span><span class="p">:</span>
+        <span class="c1"># seabirdscientific still looks for the start of the downcast between the soak depths</span>
+        <span class="c1"># when the soak test is off, and with both at 0 finds nothing to search.  Searching up</span>
+        <span class="c1"># to the deepest scan makes the downcast start at the shallowest scan before it.  A</span>
+        <span class="c1"># cast that never sits in the soak window (its recording starts below it) has no soak</span>
+        <span class="c1"># to remove, and is run the same way.  The deepest scan is the deepest seabirdscientific</span>
+        <span class="c1"># searches, so scans it leaves out (exclude_flagged) are left out here too.</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">sbs_conversion</span><span class="o">.</span><span class="n">depth_from_pressure</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">latitude</span><span class="p">)</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">flag</span> <span class="o">!=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span>
+            <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span>
+            <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">deepest</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">ok</span><span class="p">]))</span> <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">deck</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">deepest</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">1e-9</span><span class="p">),</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="c1"># An explicit deck pressure: offset the soak window by its depth.</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sbs_conversion</span><span class="o">.</span><span class="n">depth_from_pressure</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">deck</span><span class="p">]),</span> <span class="n">latitude</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">deck</span> <span class="o">=</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span> <span class="n">hi</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">loop_edit</span><span class="p">(</span>
+        <span class="n">p</span><span class="p">,</span>
+        <span class="n">flag</span><span class="p">,</span>
+        <span class="n">interval</span><span class="p">,</span>
+        <span class="s2">"fixed"</span> <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">mean_speed_percent</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"percent"</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">min_velocity</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">window_seconds</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">mean_speed_percent</span> <span class="ow">or</span> <span class="mf">20.0</span><span class="p">,</span>
+        <span class="n">soak</span><span class="p">,</span>
+        <span class="n">lo</span><span class="p">,</span>
+        <span class="n">hi</span><span class="p">,</span>
+        <span class="n">deck</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">exclude_flagged</span><span class="p">,</span>
+        <span class="n">latitude</span><span class="o">=</span><span class="n">latitude</span><span class="p">,</span>
+        <span class="n">units</span><span class="o">=</span><span class="s2">"pressure"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">out</span> <span class="o">==</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span><span class="p">)</span> <span class="o">|</span> <span class="o">~</span><span class="n">finite</span></div>
+
+
+
+<div class="viewcode-block" id="apply_loop_edit">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.editing.apply_loop_edit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_loop_edit</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Apply Loop Edit to one cast: mark whole scans, keep every value.</span>
+
+<span class="sd">    A cast whose recording is below the soak window before it is in it has no soak to remove: with</span>
+<span class="sd">    ``surface_soak.starts_below: skip`` (the default) it runs without the soak test and the reason</span>
+<span class="sd">    is recorded on ``loop_edit_flag`` and in ``history``; with ``fail`` it is refused.  A cast that</span>
+<span class="sd">    never goes below the window runs without the soak test either way, with its reason recorded.</span>
+
+<span class="sd">    The marks are written as ``loop_edit_flag`` (1 where marked) and as QARTOD 4 in every</span>
+<span class="sd">    variable that has a ``_qc``; the parameters are recorded on ``loop_edit_flag`` and in</span>
+<span class="sd">    ``history``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A dataset at its native scan rate, with ``pressure``.</span>
+<span class="sd">    params : dict</span>
+<span class="sd">        The ``loopedit`` step's parameters (see :func:`resolve_loop_edit`).</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Scan interval, seconds.</span>
+<span class="sd">    excluded : numpy.ndarray, optional</span>
+<span class="sd">        Scans an earlier Loop Edit marked.</span>
+<span class="sd">    cast_label : str, optional</span>
+<span class="sd">        The cast's id (``"051"``, ``"122b"``), for the error message.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (xarray.Dataset, numpy.ndarray)</span>
+<span class="sd">        A new dataset (the input is not mutated) and the scans marked, including any from an</span>
+<span class="sd">        earlier Loop Edit kept by ``exclude_flagged``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On malformed parameters, no ``pressure``, or (with ``starts_below: fail``) a cast whose</span>
+<span class="sd">        recording starts below the soak window.</span>
+<span class="sd">    """</span>
+    <span class="n">configured</span> <span class="o">=</span> <span class="n">p</span> <span class="o">=</span> <span class="n">resolve_loop_edit</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"pressure"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"loopedit: the cast has no pressure"</span><span class="p">)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">_latitude</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">lat0</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">lat</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lat</span>
+    <span class="n">soak_note</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="n">filled</span><span class="p">,</span> <span class="n">finite</span> <span class="o">=</span> <span class="n">_filled</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">kind</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_soak_search</span><span class="p">(</span><span class="n">filled</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">lat0</span><span class="p">,</span> <span class="n">excluded</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">surface_soak</span> <span class="ow">and</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+        <span class="k">else</span> <span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span><span class="p">:</span>
+        <span class="c1"># A cast that never goes below the window has no soak test to run either way; only a</span>
+        <span class="c1"># recording that starts below it is what starts_below decides.</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">starts_below</span> <span class="o">==</span> <span class="s2">"fail"</span> <span class="ow">and</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">"starts_below"</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"loopedit: cast </span><span class="si">{</span><span class="n">cast_label</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'?'</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">, so the soak test cannot run "</span>
+                <span class="s2">"(surface_soak.starts_below: fail)"</span>
+            <span class="p">)</span>
+        <span class="n">soak_note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">SOAK_NOT_APPLIED</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">surface_soak</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">loop_edit_mask</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">lat0</span><span class="p">,</span> <span class="n">excluded</span><span class="p">)</span>
+    <span class="n">described</span> <span class="o">=</span> <span class="n">configured</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"; </span><span class="si">{</span><span class="n">soak_note</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">soak_note</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">_version</span><span class="p">()</span><span class="si">}</span><span class="s2"> processing.loop_edit"</span>
+    <span class="n">ds</span><span class="p">[</span><span class="n">LOOP_EDIT_FLAG</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">"time"</span><span class="p">,</span>
+        <span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>
+        <span class="p">{</span>
+            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Scan marked by Loop Edit"</span><span class="p">,</span>
+            <span class="s2">"flag_values"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>
+            <span class="s2">"flag_meanings"</span><span class="p">:</span> <span class="s2">"not_marked marked"</span><span class="p">,</span>
+            <span class="s2">"comment"</span><span class="p">:</span> <span class="s2">"Pressure reversal, too slow along the leg, or surface soak; every "</span>
+            <span class="s2">"value is kept and flagged QARTOD 4 in its _qc."</span><span class="p">,</span>
+            <span class="s2">"loop_edit"</span><span class="p">:</span> <span class="n">configured</span><span class="o">.</span><span class="n">describe</span><span class="p">(),</span>
+            <span class="s2">"loop_edit_method"</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
+            <span class="o">**</span><span class="p">({</span><span class="s2">"loop_edit_soak_not_applied"</span><span class="p">:</span> <span class="n">soak_note</span><span class="p">}</span> <span class="k">if</span> <span class="n">soak_note</span> <span class="k">else</span> <span class="p">{}),</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">flagged</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">):</span>
+        <span class="n">qc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">qc</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">or</span> <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span> <span class="o">!=</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,):</span>
+            <span class="k">continue</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">_raise_flag</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">QARTOD_FAIL</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">flagged</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"loopedit: </span><span class="si">{</span><span class="n">described</span><span class="si">}</span><span class="s2">; marked </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">mask</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> scans"</span>
+    <span class="k">if</span> <span class="n">lat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">note</span> <span class="o">+=</span> <span class="s2">"; no latitude in the cast, depth computed at latitude 0"</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">note</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">mask</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBE sensors — odb26</title>
+<style>
+:root {
+  --ocean: #1a3a5c;
+  --seafoam: #e8f4f8;
+  --muted: #95a5a6;
+  --text: #2c3e50;
+  --rule: #dfe6e9;
+  --bg: #ffffff;
+  --bg-sunken: #f7f9fa;
+  --warn: #e67e22;
+  --warn-bg: #fdf3e7;
+  --error: #c0392b;
+  --gray-1: #f5f7fa;
+  --gray-2: #e0e0e0;
+  --gray-3: #aaaaaa;
+  --gray-4: #888888;
+  --gray-5: #555555;
+  --gray-6: #333333;
+  --gray-7: #111111;
+  --ok: #2c6e49;
+  --role-landing: #2980b9;
+  --role-entity: #1a3a5c;
+  --role-collection: #1a3a5c;
+  --role-component: #1a3a5c;
+  --role-aggregate-a: #8e44ad;
+  --role-aggregate-b: #27ae60;
+  --role-map: #ee3377;
+  --role-up: #5d6d7e;
+  --qc-mark: var(--ok);
+  --package-accent: var(--ocean);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs-root: 14px;
+  --fs-h1: 1.75rem;
+  --fs-type: 1.35rem;
+  --fs-h2: 1rem;
+  --fs-h3: 0.88rem;
+  --fs-meta: 0.84rem;
+  --fs-note: 0.92rem;
+  --fs-nav: 0.8rem;
+  --fs-cap: 0.92rem;
+  --fs-xs: 0.75rem;
+  --fs-top: 0.72rem;
+  --fs-dt: 0.7rem;
+  --lh-root: 1.5;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-pill: 999px;
+  --qc-0: #999999;
+  --qc-1: #009E73;
+  --qc-2: #56B4E9;
+  --qc-3: #E69F00;
+  --qc-4: #D55E00;
+  --qc-7: #CC79A7;
+  --qc-8: #0072B2;
+  --qc-9: #bdbdbd;
+  --qc-3-text: #9A6B00;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-root); color: var(--text);
+  max-width: 1150px; margin: 0 auto;
+  padding: 1.5rem 2rem 4rem; line-height: var(--lh-root);
+}
+p, li { max-width: 78ch; }
+.masthead {
+  background: var(--ocean); color: #fff; position: relative;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 0.9rem;
+}
+.masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
+.wordmark {
+  position: absolute; right: 2rem; bottom: 1.2rem;
+  font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;
+  color: var(--package-accent); background: #fff; opacity: 0.85;
+  padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); text-decoration: none;
+}
+.wordmark:hover { opacity: 1; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem 2rem; font-size: var(--fs-meta); margin-top: 0.9rem;
+}
+.meta-grid dt {
+  opacity: 0.7; text-transform: uppercase; font-size: var(--fs-dt);
+  letter-spacing: 0.06em; margin-bottom: 0.1rem;
+}
+.meta-grid dd { margin: 0; font-weight: 600; }
+h2 {
+  color: var(--ocean); font-size: var(--fs-h2);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 0.3rem; margin: 2.5rem 0 1rem;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.top-link {
+  font-size: var(--fs-top); font-weight: 400; color: var(--muted);
+  text-decoration: none; margin-left: auto;
+}
+.top-link:hover { color: var(--ocean); text-decoration: underline; }
+.caption {
+  color: var(--gray-5); font-size: var(--fs-note);
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
+}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption { margin-top: -0.5rem; max-width: none; }
+/* Subsection headings inside a panel's own HTML — un-numbered, outside the jump
+   nav (the page model numbers Sections, not these).  Same navy as h2, smaller. */
+h3 {
+  color: var(--ocean); font-size: var(--fs-h3); margin: 1.2rem 0 0.4rem;
+}
+h3 + .caption { margin-top: -0.2rem; }
+figure h3, .fig-row > h3 { margin-top: 0.6rem; }  /* first heading inside a panel sits closer */
+.explainer {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}
+.warn {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}
+.warn::before { content: "⚠ "; }
+.warn.error { border-left-color: var(--error); }
+.jump-nav {
+  background: var(--seafoam); padding: 0.55rem 1rem;
+  border-radius: 6px; margin-bottom: 1.5rem;
+  font-size: var(--fs-nav); line-height: 2.2;
+}
+.jump-nav::before { content: "Jump to: "; opacity: 0.55; font-size: var(--fs-xs); margin-right: 0.25rem; }
+.jump-nav a {
+  color: var(--ocean); text-decoration: none;
+  font-weight: 600; margin: 0 0.5rem 0 0;
+}
+.jump-nav a::before { content: "▸ "; font-size: var(--fs-dt); }
+.fig-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+.fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.fig-row.center { justify-content: center; }
+/* A multi-table panel (processing provenance) is one full-width flex item so its
+   headings and tables stack instead of tiling across the row. */
+.prov-panel { flex: 1 1 100%; }
+/* Conformance status pips — a green ✓ (matches), a red ✗ (differs) and a neutral
+   ringed dash (no reference), matching the LADCP-present/absent badges. */
+.conf {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.4em; height: 1.4em; border-radius: 50%;
+  font-size: var(--fs-xs); font-weight: 700; line-height: 1;
+}
+.conf-match { background: var(--ok); color: #fff; }
+.conf-differ { background: var(--error); color: #fff; }
+.conf-none { background: #fff; color: #000; border: 1px solid #000; }
+figure { margin: 0; }
+figure img {
+  border: 1px solid var(--rule); border-radius: var(--radius-btn);
+  display: block; width: 100%; height: auto;
+}
+figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-bottom: 0.25rem; }
+/* Optional provenance line under a figure: which draw function produced it.
+   Off by default (vendored SHOW_FIGURE_SOURCE); a package turns it on in its
+   owned design module. */
+.fig-source {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs); color: var(--muted); margin-top: 0.15rem;
+}
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn { max-width: none; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}
+th {
+  background: var(--package-accent); color: #fff; text-align: center;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}
+th.num { text-align: right; }
+td {
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg-sunken); }
+td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+/* netCDF inventory tables (vendored nc_tables): variable / coord / scalar / sensor /
+   global tables.  Package-neutral — the markup is emitted by templates/_nc_tables.html. */
+.var-table code { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.muted { color: var(--muted); }
+.var-qc { color: var(--qc-mark); font-size: var(--fs-xs); }
+/* The original source name on its own muted line above the canonical name (name_cell), so the
+   Variable column does not widen to fit both on one line. */
+.var-orig { color: var(--muted); font-size: var(--fs-xs); }
+/* A long unbroken token (a tracking_id, a path, a dotted standard_name) in a scalar value or a
+   standard/long-name cell would widen the whole table; cap the width and break inside the word. */
+.cell-wrap { overflow-wrap: anywhere; max-width: 28rem; }
+.cell-bad { color: var(--warn); font-variant-numeric: tabular-nums; }
+tr.units th {
+  background: var(--package-accent); color: #fff; font-weight: 400;
+  font-size: var(--fs-xs); padding-top: 0;
+}
+/* Copyable YAML snippet boxes (templates/_snippet.html): one box, or a current/suggested pair
+   that stacks at phone width.  A read-only <textarea> with a full border and a drag handle
+   (resize: vertical); its rows come from the line count, so it opens without clipping. */
+.snippet-pair { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0 1.2rem; }
+.snippet-box { flex: 1 1 22rem; min-width: 0; }
+.snippet-single .snippet-box { flex-basis: 100%; }
+.snippet-title {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  font-size: var(--fs-xs); color: var(--muted); margin-bottom: 0.2rem;
+}
+.snippet-copy {
+  font: inherit; font-size: var(--fs-xs); cursor: pointer; color: var(--text);
+  border: 1px solid var(--rule); background: var(--bg-sunken);
+  border-radius: 4px; padding: 0.1rem 0.5rem;
+}
+.snippet-copy:hover { background: var(--seafoam); }
+textarea.snippet {
+  width: 100%; box-sizing: border-box; height: auto; min-height: 2.4em;
+  background: var(--bg-sunken); padding: 0.6rem 0.8rem; margin: 0;
+  white-space: pre; overflow-x: auto; resize: vertical;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.snippet-current textarea.snippet { border-color: var(--muted); }
+.snippet-suggested textarea.snippet { border-color: var(--package-accent); }
+.attr-disclosure summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.attr-disclosure table { margin: 0.3rem 0; width: auto; }
+.attr-disclosure th { background: transparent; color: var(--text); font-weight: 600; }
+/* QC flag-count distribution bar and legend (qc_counts_table). Flag colours are inline on each
+   segment (from the vendored QC_FLAG_COLORS), so these rules carry only the layout. */
+.qc-bar { display: flex; width: 200px; height: 13px; border-radius: 3px; overflow: hidden; gap: 1px; background: #ecf0f1; }
+.qc-bar div { height: 100%; }
+.qc-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.75rem; margin: 0.2rem 0 0.6rem; }
+.qc-legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
+/* The source: caption hugs the table it belongs to, not the next one: a table has 1.2rem
+   bottom margin, so pull the caption up under it and keep the gap below before the next table. */
+table + .fig-source { margin-top: -0.9rem; margin-bottom: 1.2rem; }
+/* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
+   keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
+   gets none).  The heading is a pointer; the active one shows the direction. */
+th[tabindex] { cursor: pointer; user-select: none; }
+th.sorted-asc::after { content: " \25B2"; font-size: 0.8em; }
+th.sorted-desc::after { content: " \25BC"; font-size: 0.8em; }
+.slot-full         { width: 100%; }
+.slot-twothirds     { width: calc(66.67% - 0.33rem); }
+.slot-three-fifths  { width: calc(60% - 0.40rem); }
+.slot-half          { width: calc(50% - 0.50rem); }
+.slot-two-fifths    { width: calc(40% - 0.60rem); }
+.slot-third         { width: calc(33.33% - 0.67rem); }
+.slot-quarter       { width: calc(25% - 0.75rem); }
+.masthead-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+.masthead-header h1 { margin: 0 0 0.1rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead-type {
+  font-size: var(--fs-type); font-weight: 700; opacity: 0.88; line-height: 1.35;
+  padding-top: 0.25rem;
+}
+.nav-btns { display: flex; gap: 0.5rem; }
+.btn-nav {
+  background: var(--ocean); color: #fff; padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
+}
+.btn-nav:hover { opacity: 0.85; }
+/* Masthead page-nav (vendored): the row of role pills under the masthead, and the
+   "Data inventory:" file strip.  A pill's colour is its role, never its page; the
+   current page's pill and an already-viewed file pill are muted the same way. */
+.page-nav { margin: 0.65rem 0 0.5rem; }
+/* Consecutive nav rows (a multi-row masthead) stack tighter than the first row's
+   top margin, which is sized for a single row. */
+.page-nav + .page-nav { margin-top: 0.15rem; }
+.page-nav-label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.nav-pill {
+  display: inline-block; padding: 0.2em 0.65em; border-radius: var(--radius-btn);
+  font-size: var(--fs-nav); font-weight: 700; text-decoration: none; color: #fff;
+  margin: 0 0.2rem 0.25rem 0;
+  /* A contrasting inner edge keeps a pill visible when its role colour matches the
+     masthead background, so colour-is-role holds on any masthead. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.nav-landing { background: var(--role-landing); }
+.nav-entity { background: var(--role-entity); }
+.nav-collection { background: var(--role-collection); }
+.nav-component { background: var(--role-component); }
+.nav-aggregate-a { background: var(--role-aggregate-a); }
+.nav-aggregate-b { background: var(--role-aggregate-b); }
+.nav-map { background: var(--role-map); }
+.nav-up { background: var(--role-up); }
+.masthead.role-landing { background: var(--role-landing); }
+.masthead.role-entity { background: var(--role-entity); }
+.masthead.role-collection { background: var(--role-collection); }
+.masthead.role-component { background: var(--role-component); }
+.masthead.role-aggregate-a { background: var(--role-aggregate-a); }
+.masthead.role-aggregate-b { background: var(--role-aggregate-b); }
+.masthead.role-map { background: var(--role-map); }
+.masthead.role-up { background: var(--role-up); }
+.nav-current { opacity: 0.5; pointer-events: none; }
+.nav-missing { background: var(--gray-3); opacity: 0.5; pointer-events: none; }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { opacity: 0.5; pointer-events: none; }
+/* Opt-in plain masthead (vendored) for landing / navigator pages: white panel,
+   ink text, rule border, wordmark hidden.  No ctdcast page uses it yet. */
+.masthead-plain { background: #fff; color: var(--text); border: 1px solid var(--rule); }
+.masthead-plain .wordmark { display: none; }
+footer {
+  text-align: center; padding: 1rem;
+  border-top: 1px solid var(--package-accent);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+footer a { color: var(--muted); }
+@media print {
+  body { max-width: 100%; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+  h2 { page-break-after: avoid; }
+  h3 { page-break-after: avoid; }
+  .fig-row, figure, table { break-inside: avoid; }
+  .jump-nav { display: none; }
+}
+
+/* Phone browsers enlarge text in wide blocks ("text autosizing"), so the same
+   class rendered at different sizes in a full-width section and in a half-width
+   cell.  Keep every size as the stylesheet sets it. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
+</style>
+
+<style>
+table.nc td, table.nc th { font-size: var(--fs-nav); }
+td.arrow { color: var(--ocean); text-align: center; }
+td.was { color: var(--muted); }
+.src { font-size: var(--fs-xs); color: var(--muted); }
+.roles { color: var(--muted); font-size: var(--fs-xs); }
+.scroll-x { overflow-x: auto; }
+table.config td.range { white-space: nowrap; font-weight: 600; }
+table.config th { white-space: nowrap; }
+td.nowrap { white-space: nowrap; }
+</style>
+
+</head>
+<body>
+<div id="top"></div>
+
+
+
+<div class="masthead role-component">
+  <div class="masthead-header">
+    <h1>SBE sensors</h1>
+    <span class="masthead-type">sensor inventory &amp; change log</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-09-08 06:59 UTC</p>
+  
+  
+
+<nav class="page-nav">
+  <span class="page-nav-label">Pages:</span>
+  
+  <a class="nav-pill nav-landing" href="index.html">Summary</a><a class="nav-pill nav-collection" href="casts.html">Casts</a><a class="nav-pill nav-aggregate-a" href="sections.html">Sections</a><a class="nav-pill nav-aggregate-b" href="timeseries.html">Timeseries</a><a class="nav-pill nav-map" href="leaflet.html">Interactive</a>
+</nav>
+
+<nav class="page-nav">
+  <span class="page-nav-label">Provenance:</span>
+  
+  <span class="nav-pill nav-landing nav-current" title="current page">SBE sensors</span><a class="nav-pill nav-landing" href="processing.html">Processing</a>
+</nav>
+
+
+
+  
+
+<nav class="inventory-strip">
+  <span class="label">Data inventory:</span>
+  <a class="file-pill" href="profiles_demo_inventory.html">profiles_demo.nc</a><a class="file-pill" href="ladcp_profiles_inventory.html">ladcp_profiles.nc</a>
+</nav>
+
+
+  
+  
+  <dl class="meta-grid">
+    <div><dt>Cruise</dt><dd>odb26</dd></div>
+    <div><dt>Source</dt><dd>profiles_demo.nc</dd></div>
+    <div><dt>Casts</dt><dd>4</dd></div>
+    <div><dt>Devices</dt><dd>11</dd></div>
+    <div><dt>Configurations</dt><dd>1</dd></div>
+  </dl>
+
+  <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="jump-nav">
+  <a href="#s-config">(1) Sensor configuration</a>
+  <a href="#s-preferred">(2) Preferred sensors</a>
+  <a href="#s-inventory">(3) Sensor inventory</a>
+  <a href="#s-rewiring">(4) Rewiring</a>
+  <a href="#s-variables">(5) Sensor variables</a>
+  
+</div>
+
+<h2 id="s-config">(1) Sensor configuration</h2>
+<p class="caption">Which sensor (by serial number) served each role, over which casts. Each row is a run of casts that shared the same set of sensors; a new row marks a hardware change. Serials resolve to model and calibration in the inventory below.</p>
+<div class="scroll-x">
+<table class="nc config sortable">
+  
+<thead>
+  <tr><th tabindex="0">Casts</th><th tabindex="0">Temperature 1</th><th tabindex="0">Temperature 2</th><th tabindex="0">Conductivity 1</th><th tabindex="0">Conductivity 2</th><th tabindex="0">Oxygen 1</th><th tabindex="0">Pressure</th><th tabindex="0">Fluorometer</th><th tabindex="0">Turbidity</th><th tabindex="0">Transmissometer</th><th tabindex="0">Ph</th><th tabindex="0">User Polynomial</th></tr>
+</thead>
+  <tbody>
+    
+    <tr>
+      <td class="range" data-sort="11">011–129</td>
+      <td class="mono">6435</td><td class="mono">6000</td><td class="mono">4922</td><td class="mono">3120</td><td class="mono">0707</td><td class="mono">0814</td><td class="mono">FLNTURTD-3508</td><td class="mono">3508</td><td class="mono">2033</td><td class="mono">339</td><td class="mono">UVP6</td>
+    </tr>
+    
+  </tbody>
+</table>
+</div>
+
+
+<h2 id="s-preferred">(2) Preferred sensors</h2>
+<p class="caption">Which line each cast uses where it carries two: the T/C pair (temperature, conductivity and salinity together) and oxygen, as declared by <code>processing.preferred_pair</code> and <code>processing.preferred_oxygen</code> in the cruise config. Serials are the chosen sensors, temperature / conductivity. An undeclared dual T/C cast has no preferred temperature or salinity; an undeclared dual-oxygen cast shows line 1 in the figures. The choice is resolved at stage 3, so a cast compiled from an earlier stage reads <em>not resolved yet</em>.</p>
+
+<table class="nc sortable">
+  
+<thead>
+  <tr><th tabindex="0">Casts</th><th tabindex="0">T/C pair</th><th tabindex="0">T/C serials</th><th tabindex="0">Oxygen</th><th tabindex="0">O₂ serial</th></tr>
+</thead>
+  <tbody>
+    
+    
+    <tr>
+      <td class="range" data-sort="11">011–012</td>
+      <td>primary</td>
+      <td class="mono">6435 / 4922</td>
+      <td>single sensor</td>
+      <td class="mono">0707</td>
+    </tr>
+    
+    
+    <tr>
+      <td class="range" data-sort="128">128–129</td>
+      <td>secondary</td>
+      <td class="mono">6000 / 3120</td>
+      <td>single sensor</td>
+      <td class="mono">0707</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+<h2 id="s-inventory">(3) Sensor inventory</h2>
+<p class="caption">Every distinct physical device used during the cruise, identified by serial number. Slope and Offset are the datcnv correction in the instrument configuration (temperature, conductivity and pressure sensors only). <span class="src">Source: <em>header</em> = named in the file; <em>assumed</em> = inferred from the SensorID; <em>operator</em> = supplied in the cruise config.</span></p>
+<p class="caption">Amber row: a calibration was applied — the sensor's Slope ≠ 1 or Offset ≠ 0 (a drift/span correction); the departing value is in bold.</p>
+<table class="nc sortable">
+  
+<thead>
+  <tr><th tabindex="0">Type</th><th tabindex="0">Model</th><th tabindex="0">Serial</th><th tabindex="0">Calibration</th><th tabindex="0">Slope</th><th tabindex="0">Offset</th><th tabindex="0">Maker</th><th tabindex="0">Source</th><th tabindex="0">Role(s)</th></tr>
+</thead>
+  <tbody>
+    
+    
+    <tr>
+      <td></td>
+      <td>UNK</td>
+      <td class="mono">UVP6</td>
+      <td class="mono nowrap">090726</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>UNK</td>
+      <td class="src">UNK</td>
+      <td class="roles">User Polynomial</td>
+    </tr>
+    
+    
+    <tr>
+      <td>dissolved gas sensors</td>
+      <td>SBE 43</td>
+      <td class="mono">0707</td>
+      <td class="mono nowrap">2025-Dec-10</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">header</td>
+      <td class="roles">Oxygen 1</td>
+    </tr>
+    
+    
+    <tr>
+      <td>fluorometers</td>
+      <td>WET Labs ECO FL</td>
+      <td class="mono">FLNTURTD-3508</td>
+      <td class="mono nowrap">2016-Apr-12</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Fluorometer</td>
+    </tr>
+    
+    
+    <tr>
+      <td>optical backscatter sensors</td>
+      <td>WET Labs ECO NTU</td>
+      <td class="mono">3508</td>
+      <td class="mono nowrap">2016-Apr-12</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Turbidity</td>
+    </tr>
+    
+    
+    <tr>
+      <td>pH sensors</td>
+      <td>SBE 18</td>
+      <td class="mono">339</td>
+      <td class="mono nowrap">2024-Feb-13</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Ph</td>
+    </tr>
+    
+    
+    <tr>
+      <td style="background:var(--warn-bg)">salinity sensor</td>
+      <td style="background:var(--warn-bg)">SBE 4C</td>
+      <td class="mono" style="background:var(--warn-bg)">3120</td>
+      <td class="mono nowrap" style="background:var(--warn-bg)">2023-May-23</td>
+      <td class="mono" style="background:var(--warn-bg)"><strong>0.99993682</strong></td>
+      <td class="mono" style="background:var(--warn-bg)">0.00000</td>
+      <td style="background:var(--warn-bg)">Sea-Bird Scientific</td>
+      <td class="src" style="background:var(--warn-bg)">assumed</td>
+      <td class="roles" style="background:var(--warn-bg)">Conductivity 2</td>
+    </tr>
+    
+    
+    <tr>
+      <td style="background:var(--warn-bg)">salinity sensor</td>
+      <td style="background:var(--warn-bg)">SBE 4C</td>
+      <td class="mono" style="background:var(--warn-bg)">4922</td>
+      <td class="mono nowrap" style="background:var(--warn-bg)">2026-Feb-17</td>
+      <td class="mono" style="background:var(--warn-bg)"><strong>1.00000452</strong></td>
+      <td class="mono" style="background:var(--warn-bg)">0.00000</td>
+      <td style="background:var(--warn-bg)">Sea-Bird Scientific</td>
+      <td class="src" style="background:var(--warn-bg)">assumed</td>
+      <td class="roles" style="background:var(--warn-bg)">Conductivity 1</td>
+    </tr>
+    
+    
+    <tr>
+      <td>transmissometers</td>
+      <td>WET Labs C-Star</td>
+      <td class="mono">2033</td>
+      <td class="mono nowrap">2020-Apr-14</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>WET Labs</td>
+      <td class="src">assumed</td>
+      <td class="roles">Transmissometer</td>
+    </tr>
+    
+    
+    <tr>
+      <td style="background:var(--warn-bg)">water pressure sensors</td>
+      <td style="background:var(--warn-bg)">Digiquartz</td>
+      <td class="mono" style="background:var(--warn-bg)">0814</td>
+      <td class="mono nowrap" style="background:var(--warn-bg)">2023-Feb-17</td>
+      <td class="mono" style="background:var(--warn-bg)"><strong>1.00004096</strong></td>
+      <td class="mono" style="background:var(--warn-bg)"><strong>0.27440</strong></td>
+      <td style="background:var(--warn-bg)">Paroscientific, Inc.</td>
+      <td class="src" style="background:var(--warn-bg)">assumed</td>
+      <td class="roles" style="background:var(--warn-bg)">Pressure</td>
+    </tr>
+    
+    
+    <tr>
+      <td>water temperature sensor</td>
+      <td>SBE 3plus</td>
+      <td class="mono">6000</td>
+      <td class="mono nowrap">2023-Apr-14</td>
+      <td class="mono">1.00000000</td>
+      <td class="mono">0.0000</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Temperature 2</td>
+    </tr>
+    
+    
+    <tr>
+      <td>water temperature sensor</td>
+      <td>SBE 3plus</td>
+      <td class="mono">6435</td>
+      <td class="mono nowrap">2026-Feb-17</td>
+      <td class="mono">1.00000000</td>
+      <td class="mono">0.0000</td>
+      <td>Sea-Bird Scientific</td>
+      <td class="src">assumed</td>
+      <td class="roles">Temperature 1</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+<h2 id="s-rewiring">(4) Rewiring</h2>
+<p class="caption">Casts where a device stayed the same but moved to a different acquisition channel — a re-cabling, not a hardware change.</p>
+
+<p class="caption">No rewiring — every device stayed on its original channel.</p>
+
+
+
+
+<h2 id="s-variables">(5) Sensor variables</h2>
+<p class="caption">The variables in <code>profiles_demo.nc</code> that the tables above are built from; the rest of the file is in its <a href="profiles_demo_inventory.html">netCDF inventory</a>.</p>
+
+<p class="caption">The file records its sensors in three families of variables:</p>
+<ul class="caption">
+  <li><code>SENSOR_&lt;TYPE&gt;_&lt;SERIAL&gt;</code> — one dimensionless variable per physical device, e.g. <code>SENSOR_CONDUCTIVITY_3120</code>. It holds no data; its attributes are the device's provenance: model, maker, serial, calibration date, the datcnv slope/offset and the configuration block as recorded.</li>
+  <li><code>sensor_&lt;role&gt;</code> — per profile, the name of the <code>SENSOR_*</code> variable that filled that role, e.g. <code>sensor_conductivity_2</code> = <code>SENSOR_CONDUCTIVITY_3120</code>. A change along the profiles is a sensor swap. Where a preferred pair or oxygen is declared, <code>sensor_&lt;role&gt;_preferred</code> names the device chosen for the plain composite.</li>
+  <li><code>sensor_channel_&lt;role&gt;</code> — per profile, the raw CNV acquisition channel that role's sensor was wired to (−1 where unused). A change with the same device is a re-cabling.</li>
+</ul>
+
+
+
+<h3 id="s-sensor-catalog">Sensor catalog (<code>SENSOR_*</code>)</h3>
+<p class="caption">One row per device; each row's <strong>Attributes</strong> cell expands to its full provenance. No data, so no value range.</p>
+<p class="caption"><em>(assumed)</em>: model inferred, not read from the sensor configuration.</p>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Sensor</th><th tabindex="0">Model</th><th tabindex="0">Serial</th><th tabindex="0">Calibration</th><th tabindex="0">Standard / long name</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td>SENSOR_CONDUCTIVITY_3120</td>
+<td>SBE 4C <em>(assumed)</em></td>
+<td>3120</td><td>2023-May-23</td>
+<td>Sea-Bird SBE 4C conductivity sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>salinity sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>3</td></tr><tr><th>sbe_sensor_element</th><td>ConductivitySensor</td></tr><tr><th>sensor_calibration_slope</th><td>0.99993682</td></tr><tr><th>sensor_calibration_offset</th><td>0.00000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;5&#34; &gt;
+    &lt;!-- Frequency 4, Conductivity, 2 --&gt;
+    &lt;ConductivitySensor SensorID=&#34;3&#34; &gt;
+      &lt;SerialNumb</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_CONDUCTIVITY_4922</td>
+<td>SBE 4C <em>(assumed)</em></td>
+<td>4922</td><td>2026-Feb-17</td>
+<td>Sea-Bird SBE 4C conductivity sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>salinity sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/350/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0417/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>3</td></tr><tr><th>sbe_sensor_element</th><td>ConductivitySensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000452</td></tr><tr><th>sensor_calibration_offset</th><td>0.00000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;2&#34; &gt;
+    &lt;!-- Frequency 1, Conductivity --&gt;
+    &lt;ConductivitySensor SensorID=&#34;3&#34; &gt;
+      &lt;SerialNumber&gt;</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_FLUOROMETER_FLNTURTD_3508</td>
+<td>WET Labs ECO FL <em>(assumed)</em></td>
+<td>FLNTURTD-3508</td><td>2016-Apr-12</td>
+<td>WET Labs ECO FL fluorometer</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>fluorometers</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/113/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0172/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>20</td></tr><tr><th>sbe_sensor_element</th><td>FluoroWetlabECO_AFL_FL_Sensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;13&#34; &gt;
+    &lt;!-- A/D voltage 7, Fluorometer, WET Labs ECO-AFL/FL --&gt;
+    &lt;FluoroWetlabECO_AFL_FL_Sensor S</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_OXYGEN_0707</td>
+<td>SBE 43</td>
+<td>0707</td><td>2025-Dec-10</td>
+<td>Sea-Bird SBE 43 dissolved oxygen sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>dissolved gas sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/351/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0036/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>38</td></tr><tr><th>sbe_sensor_element</th><td>OxygenSensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;8&#34; &gt;
+    &lt;!-- A/D voltage 2, Oxygen, SBE 43 --&gt;
+    &lt;OxygenSensor SensorID=&#34;38&#34; &gt;
+      &lt;SerialNumber&gt;0</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_PH_339</td>
+<td>SBE 18 <em>(assumed)</em></td>
+<td>339</td><td>2024-Feb-13</td>
+<td>Sea-Bird SBE 18 pH sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>pH sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/355/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0069/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>43</td></tr><tr><th>sbe_sensor_element</th><td>pH_Sensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;9&#34; &gt;
+    &lt;!-- A/D voltage 3, pH --&gt;
+    &lt;pH_Sensor SensorID=&#34;43&#34; &gt;
+      &lt;SerialNumber&gt;339&lt;/SerialNumbe</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_PRESSURE_0814</td>
+<td>Digiquartz <em>(assumed)</em></td>
+<td>0814</td><td>2023-Feb-17</td>
+<td>Paroscientific Digiquartz pressure sensor (SBE 9plus)</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water pressure sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/WPS/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0931/</td></tr><tr><th>sensor_maker</th><td>Paroscientific, Inc.</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0302/</td></tr><tr><th>sbe_sensor_id</th><td>45</td></tr><tr><th>sbe_sensor_element</th><td>PressureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00004096</td></tr><tr><th>sensor_calibration_offset</th><td>0.27440</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;3&#34; &gt;
+    &lt;!-- Frequency 2, Pressure, Digiquartz with TC --&gt;
+    &lt;PressureSensor SensorID=&#34;45&#34; &gt;
+      &lt;</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TEMPERATURE_6000</td>
+<td>SBE 3plus <em>(assumed)</em></td>
+<td>6000</td><td>2023-Apr-14</td>
+<td>Sea-Bird SBE 3plus temperature sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water temperature sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>55</td></tr><tr><th>sbe_sensor_element</th><td>TemperatureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000000</td></tr><tr><th>sensor_calibration_offset</th><td>0.0000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;4&#34; &gt;
+    &lt;!-- Frequency 3, Temperature, 2 --&gt;
+    &lt;TemperatureSensor SensorID=&#34;55&#34; &gt;
+      &lt;SerialNumbe</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TEMPERATURE_6435</td>
+<td>SBE 3plus <em>(assumed)</em></td>
+<td>6435</td><td>2026-Feb-17</td>
+<td>Sea-Bird SBE 3plus temperature sensor</td><td data-nosort><details class="attr-disclosure"><summary>10 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>water temperature sensor</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/134/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0416/</td></tr><tr><th>sensor_maker</th><td>Sea-Bird Scientific</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0013/</td></tr><tr><th>sbe_sensor_id</th><td>55</td></tr><tr><th>sbe_sensor_element</th><td>TemperatureSensor</td></tr><tr><th>sensor_calibration_slope</th><td>1.00000000</td></tr><tr><th>sensor_calibration_offset</th><td>0.0000</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;1&#34; &gt;
+    &lt;!-- Frequency 0, Temperature --&gt;
+    &lt;TemperatureSensor SensorID=&#34;55&#34; &gt;
+      &lt;SerialNumber&gt;6</td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TRANSMISSOMETER_2033</td>
+<td>WET Labs C-Star <em>(assumed)</em></td>
+<td>2033</td><td>2020-Apr-14</td>
+<td>WET Labs C-Star transmissometer</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>transmissometers</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/124/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0160/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>71</td></tr><tr><th>sbe_sensor_element</th><td>WET_LabsCStar</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;10&#34; &gt;
+    &lt;!-- A/D voltage 4, Transmissometer, WET Labs C-Star --&gt;
+    &lt;WET_LabsCStar SensorID=&#34;71&#34; &gt;
+ </td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_TURBIDITY_3508</td>
+<td>WET Labs ECO NTU <em>(assumed)</em></td>
+<td>3508</td><td>2016-Apr-12</td>
+<td>WET Labs ECO NTU turbidity sensor</td><td data-nosort><details class="attr-disclosure"><summary>8 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_type</th><td>optical backscatter sensors</td></tr><tr><th>sensor_type_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L05/current/123/</td></tr><tr><th>sensor_model_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L22/current/TOOL0879/</td></tr><tr><th>sensor_maker</th><td>WET Labs</td></tr><tr><th>sensor_maker_vocabulary</th><td>https://vocab.nerc.ac.uk/collection/L35/current/MAN0026/</td></tr><tr><th>sbe_sensor_id</th><td>67</td></tr><tr><th>sbe_sensor_element</th><td>TurbidityMeter</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;12&#34; &gt;
+    &lt;!-- A/D voltage 6, Turbidity Meter, WET Labs, ECO-NTU --&gt;
+    &lt;TurbidityMeter SensorID=&#34;67&#34; </td></tr>
+</tbody></table></details></td></tr>
+<tr><td>SENSOR_USER_POLYNOMIAL_UVP6</td>
+<td>UNK</td>
+<td>UVP6</td><td>090726</td>
+<td>user polynomial (derived voltage channel)</td><td data-nosort><details class="attr-disclosure"><summary>4 attrs</summary>
+<table data-nosort><tbody><tr><th>sensor_maker</th><td>UNK</td></tr><tr><th>sbe_sensor_id</th><td>61</td></tr><tr><th>sbe_sensor_element</th><td>UserPolynomialSensor</td></tr><tr><th>sensor_config_xml</th><td>&lt;sensor Channel=&#34;6&#34; &gt;
+    &lt;!-- A/D voltage 0, User Polynomial --&gt;
+    &lt;UserPolynomialSensor SensorID=&#34;61&#34; &gt;
+      &lt;Seria</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:sensor_rows</div>
+
+
+<h3 id="s-sensor-linkage">Sensor linkage (<code>sensor_&lt;role&gt;</code>)</h3>
+<p class="caption">String-valued, so no numeric range.</p>
+
+<h3>Variables on N_PROF (8 samples)</h3>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr>
+<td data-sort="sensor_conductivity_1">sensor_conductivity_1</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the conductivity_1 sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_conductivity_2">sensor_conductivity_2</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the conductivity_2 sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_conductivity_preferred">sensor_conductivity_preferred</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the preferred conductivity sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_fluorometer">sensor_fluorometer</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the fluorometer sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_oxygen_1">sensor_oxygen_1</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the oxygen_1 sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_ph">sensor_ph</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the ph sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_pressure">sensor_pressure</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the pressure sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_temperature_1">sensor_temperature_1</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the temperature_1 sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_temperature_2">sensor_temperature_2</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the temperature_2 sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_temperature_preferred">sensor_temperature_preferred</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the preferred temperature sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where the cast was undeclared or lacks the channel</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_transmissometer">sensor_transmissometer</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the transmissometer sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_turbidity">sensor_turbidity</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the turbidity sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_user_polynomial">sensor_user_polynomial</td>
+<td><code>string</code></td><td class="cell-wrap">catalog variable naming the user_polynomial sensor per profile</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>value is a SENSOR_* variable name in this file; empty where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
+
+
+<h3 id="s-sensor-channel">Sensor channels (<code>sensor_channel_&lt;role&gt;</code>)</h3>
+
+<h3>Variables on N_PROF (8 samples)</h3>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr>
+<td data-sort="sensor_channel_conductivity_1">sensor_channel_conductivity_1</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the conductivity_1 sensor</td><td data-sort="2.0">2 / 2</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_conductivity_2">sensor_channel_conductivity_2</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the conductivity_2 sensor</td><td data-sort="5.0">5 / 5</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_fluorometer">sensor_channel_fluorometer</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the fluorometer sensor</td><td data-sort="13.0">13 / 13</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_oxygen_1">sensor_channel_oxygen_1</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the oxygen_1 sensor</td><td data-sort="8.0">8 / 8</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_ph">sensor_channel_ph</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the ph sensor</td><td data-sort="9.0">9 / 9</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_pressure">sensor_channel_pressure</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the pressure sensor</td><td data-sort="3.0">3 / 3</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_temperature_1">sensor_channel_temperature_1</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the temperature_1 sensor</td><td data-sort="1.0">1 / 1</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_temperature_2">sensor_channel_temperature_2</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the temperature_2 sensor</td><td data-sort="4.0">4 / 4</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_transmissometer">sensor_channel_transmissometer</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the transmissometer sensor</td><td data-sort="10.0">10 / 10</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_turbidity">sensor_channel_turbidity</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the turbidity sensor</td><td data-sort="12.0">12 / 12</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+<tr>
+<td data-sort="sensor_channel_user_polynomial">sensor_channel_user_polynomial</td>
+<td><code>int32</code></td><td class="cell-wrap">raw CNV acquisition channel of the user_polynomial sensor</td><td data-sort="6.0">6 / 6</td>
+<td data-sort="8">8</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>comment</th><td>-1 where no sensor filled this role</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
+
+
+
+
+
+<script>
+document.querySelectorAll('h2').forEach(h => {
+  const a = document.createElement('a');
+  a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
+  h.appendChild(a);
+});
+</script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.4.1 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-09-08 06:59 UTC</footer>
+<script>
+document.querySelectorAll('table').forEach(function (table) {
+  if (table.hasAttribute('data-nosort')) { return; }
+  var head = table.tHead && table.tHead.rows[0];
+  var body = table.tBodies[0];
+  if (!head || !body) { return; }
+  function cellKey(row, idx) {
+    var cell = row.cells[idx];
+    if (!cell) { return ''; }
+    var ds = cell.getAttribute('data-sort');
+    return ds !== null ? ds : cell.textContent.trim();
+  }
+  function numeric(idx) {
+    var rows = body.rows, seen = false;
+    for (var i = 0; i < rows.length; i++) {
+      var k = cellKey(rows[i], idx);
+      if (k === '') { continue; }
+      if (!/^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/.test(k)) { return false; }
+      seen = true;
+    }
+    return seen;
+  }
+  Array.prototype.forEach.call(head.cells, function (th, idx) {
+    if (th.hasAttribute('data-nosort')) { return; }
+    th.tabIndex = 0;
+    function sort() {
+      var asc = !(th.classList.contains('sorted-asc'));
+      var isNum = numeric(idx);
+      var rows = Array.prototype.slice.call(body.rows);
+      rows.sort(function (a, b) {
+        var ka = cellKey(a, idx), kb = cellKey(b, idx);
+        if (isNum) { ka = parseFloat(ka) || 0; kb = parseFloat(kb) || 0; }
+        else { ka = ka.toLowerCase(); kb = kb.toLowerCase(); }
+        if (ka < kb) { return asc ? -1 : 1; }
+        if (ka > kb) { return asc ? 1 : -1; }
+        return 0;
+      });
+      rows.forEach(function (r) { body.appendChild(r); });
+      Array.prototype.forEach.call(head.cells, function (o) {
+        o.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+    }
+    th.addEventListener('click', sort);
+    th.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
+    });
+  });
+});
+</script>
+
+<script>
+document.querySelectorAll('button[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var box = document.getElementById(btn.getAttribute('data-copy'));
+    if (!box) { return; }
+    var label = btn.textContent;
+    function done() {
+      btn.textContent = 'copied';
+      setTimeout(function () { btn.textContent = label; }, 2000);
+    }
+    function fallback() {
+      box.focus(); box.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      if (ok) { done(); }
+    }
+    box.focus(); box.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(box.value).then(done, fallback);
+    } else { fallback(); }
+  });
+});
+</script>
+
+</body>
+</html>

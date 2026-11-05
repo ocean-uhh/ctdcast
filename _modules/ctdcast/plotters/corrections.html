@@ -1,0 +1,910 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.plotters.corrections &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ctdcast.plotters.corrections</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.plotters.corrections</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Figures for the corrections page: alignment and cell thermal mass fits over a cruise.</span>
+
+<span class="sd">Each draw function takes the ``fits.nc`` dataset written by ``ctdcast fit`` and the slot width,</span>
+<span class="sd">and returns a Figure at a fixed aspect.  Primary is drawn with circles and solid lines,</span>
+<span class="sd">secondary with triangles and dashed lines, throughout.  Downcast blue, upcast vermillion</span>
+<span class="sd">(Okabe–Ito, colour-blind safe).</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.fit</span><span class="w"> </span><span class="kn">import</span> <span class="n">LineSummary</span><span class="p">,</span> <span class="n">summarise</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">W_FULL</span> <span class="k">as</span> <span class="n">_W_FULL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">W_HALF</span> <span class="k">as</span> <span class="n">_W_HALF</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored.design_tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">pen</span>
+
+<span class="n">DOWN</span> <span class="o">=</span> <span class="s2">"#0072B2"</span>
+<span class="n">UP</span> <span class="o">=</span> <span class="s2">"#D55E00"</span>
+<span class="n">TAU_COLOUR</span> <span class="o">=</span> <span class="s2">"#CC79A7"</span>
+<span class="n">CONFIG_CHANGE</span> <span class="o">=</span> <span class="s2">"#009E73"</span>  <span class="c1"># Okabe–Ito bluish green — a sensor-configuration change</span>
+<span class="n">SELECTED</span> <span class="o">=</span> <span class="s2">"#56B4E9"</span>  <span class="c1"># Okabe–Ito sky blue — the recommended (selected) value</span>
+<span class="n">LINE_STYLE</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="s2">"o"</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">,</span> <span class="s2">"primary"</span><span class="p">),</span> <span class="mi">2</span><span class="p">:</span> <span class="p">(</span><span class="s2">"^"</span><span class="p">,</span> <span class="s2">"--"</span><span class="p">,</span> <span class="s2">"secondary"</span><span class="p">)}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_xticks</span><span class="p">(</span><span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">,</span> <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">//</span> <span class="mi">15</span><span class="p">)</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">),</span> <span class="n">step</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">([</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idx</span><span class="p">],</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_config_boundaries</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return x positions (``i - 0.5``) where the T/C hardware changed between casts.</span>
+
+<span class="sd">    A boundary sits between cast ``i-1`` and cast ``i`` wherever their ``sensor_config`` key</span>
+<span class="sd">    (the T/C-pair segment serials ``fit`` stored from</span>
+<span class="sd">    :func:`ctdcast.config.preferred_sensors.segment_key`) differs — the same rule</span>
+<span class="sd">    :func:`ctdcast.config.preferred_sensors.derive_segments` uses to break segments.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of float</span>
+<span class="sd">        The boundary x positions, in cast order; empty when ``sensor_config`` is absent.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"sensor_config"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"sensor_config"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cfg</span><span class="p">))</span> <span class="k">if</span> <span class="n">cfg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">cfg</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_strong_delta_t</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a per-cast mask: |ΔT| across the window above the cruise median (over down/up).</span>
+
+<span class="sd">    The one cut :func:`draw_ctm_casts_fig` draws as filled vs open markers and</span>
+<span class="sd">    :func:`draw_ctm_param_hist_fig` as dark vs light bars, so the two always agree.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray of bool</span>
+<span class="sd">        True where the cast's |ΔT| is above the cruise median; all False when none is finite.</span>
+<span class="sd">    """</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"delta_t"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dt</span><span class="p">),</span> <span class="n">dt</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">mag</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mag</span><span class="p">),</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mag</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">mag</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">mag</span><span class="p">)])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_mark_config_changes</span><span class="p">(</span><span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">,</span> <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Draw a vertical line at each sensor-configuration change; label the first once."""</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">xb</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_config_boundaries</span><span class="p">(</span><span class="n">fits</span><span class="p">)):</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+            <span class="n">xb</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">CONFIG_CHANGE</span><span class="p">,</span>
+            <span class="n">ls</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span>
+            <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">"hardware change"</span> <span class="k">if</span> <span class="n">label</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="per_cast_alignment">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.per_cast_alignment">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">per_cast_alignment</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">li</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">leg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return each cast's residual advance at the minimum of one leg's cost.</span>
+
+<span class="sd">    NaN where the cast has no alignment cost, where the minimum is at either end of the search</span>
+<span class="sd">    (the cost still falling there), or where the cost has no well</span>
+<span class="sd">    (:func:`ctdcast.analysis.fits.has_well`): no estimate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    li : int</span>
+<span class="sd">        Line index (0 primary, 1 secondary).</span>
+<span class="sd">    leg : int, default 0</span>
+<span class="sd">        0 downcast (the leg fitted), 1 upcast.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        One value per cast, seconds.</span>
+<span class="sd">    """</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"residual"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cast"</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"alignment_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">,</span> <span class="n">leg</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">F</span><span class="o">.</span><span class="n">has_well</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">a</span><span class="p">))]</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="alignment_at_edge">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.alignment_at_edge">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">alignment_at_edge</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">li</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a mask of the casts with a downcast alignment cost but no estimate from it.</span>
+
+<span class="sd">    The minimum is at an end of the search, or the cost has no well</span>
+<span class="sd">    (:func:`ctdcast.analysis.fits.has_well`).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    li : int</span>
+<span class="sd">        Line index (0 primary, 1 secondary).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray of bool</span>
+<span class="sd">        True where the cast has a cost but no estimate.</span>
+<span class="sd">    """</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cast"</span><span class="p">],</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"alignment_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">,</span> <span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">F</span><span class="o">.</span><span class="n">has_well</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="per_cast_one_parameter">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.per_cast_one_parameter">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">per_cast_one_parameter</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">li</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return each cast's alpha at tau = 7 s and tau at alpha = 0.03 (NaN where not fitted).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    li : int</span>
+<span class="sd">        Line index (0 primary, 1 secondary).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of numpy.ndarray</span>
+<span class="sd">        ``(alpha, tau)``, one value per cast.</span>
+<span class="sd">    """</span>
+    <span class="n">al</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"alpha"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cast"</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">]):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalise</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">one_parameter_fits</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">ta</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span> <span class="n">t</span></div>
+
+
+
+<div class="viewcode-block" id="draw_alignment_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_alignment_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_alignment_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return per-cast total conductivity advance, primary and secondary, with their medians.</span>
+
+<span class="sd">    The total is the deck unit's advance plus the residual at each cast's downcast minimum.  A solid line</span>
+<span class="sd">    marks the primary median and a dashed line the secondary, each with its value printed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no cast has an alignment fit.</span>
+<span class="sd">    """</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"cast_id"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.38</span><span class="p">))</span>
+    <span class="n">drawn</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">fits</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">if</span> <span class="s2">"deck_advance"</span> <span class="ow">in</span> <span class="n">fits</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"line"</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">marker</span><span class="p">,</span> <span class="n">ls</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">LINE_STYLE</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">)]</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">per_cast_alignment</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span> <span class="o">+</span> <span class="n">base</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="n">drawn</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">colour</span> <span class="o">=</span> <span class="s2">"k"</span> <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"0.4"</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">marker</span><span class="p">,</span>
+            <span class="n">ms</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span>
+            <span class="n">mfc</span><span class="o">=</span><span class="n">colour</span> <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"none"</span><span class="p">,</span>
+            <span class="n">ls</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">med</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">med</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">med</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> s"</span><span class="p">,</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">med</span><span class="p">),</span> <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s2">"axes fraction"</span><span class="p">,</span> <span class="s2">"data"</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">textcoords</span><span class="o">=</span><span class="s2">"offset points"</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">"center"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">drawn</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="c1"># Casts with no minimum inside the search: a tick along the top, not a value.</span>
+    <span class="n">edge_any</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">li</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]):</span>
+        <span class="n">edge_any</span> <span class="o">|=</span> <span class="n">alignment_at_edge</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">edge_any</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">edge_any</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">edge_any</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mf">0.97</span><span class="p">),</span> <span class="s2">"|"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.55"</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">(),</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"no estimate (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">edge_any</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">deck</span><span class="p">)),</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.75"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">))</span>
+    <span class="n">_mark_config_changes</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">fits</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"total conductivity advance (s)"</span><span class="p">)</span>
+    <span class="c1"># At least 0.15 s of headroom so the legend clears the data at the top.</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.15</span><span class="p">))</span>
+    <span class="n">_xticks</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"upper left"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_deck</span><span class="p">(</span><span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">fits</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"deck_advance"</span> <span class="ow">in</span> <span class="n">fits</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"line"</span><span class="p">])</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_well_xlim</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">curves</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the advances where any curve is below 2.5× its minimum, padded (else the search)."""</span>
+    <span class="n">inside</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">curves</span><span class="p">:</span>
+        <span class="n">inside</span> <span class="o">|=</span> <span class="n">c</span> <span class="o">&lt;=</span> <span class="mf">2.5</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inside</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">x</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span>
+    <span class="c1"># Do not clamp to 0: the residual advance is often negative, so the well sits left of zero.</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">lo</span> <span class="o">-</span> <span class="n">pad</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">hi</span> <span class="o">+</span> <span class="n">pad</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="draw_alignment_wells_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_alignment_wells_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_alignment_wells_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cruise alignment cost against total advance: the downcast and upcast wells.</span>
+
+<span class="sd">    One panel per line.  Each cast's cost is divided by its own minimum and the curve drawn is the</span>
+<span class="sd">    median across casts (:func:`ctdcast.analysis.fits.median_curve`), the 25–75th percentiles</span>
+<span class="sd">    shaded.  Downcast blue, upcast vermillion, each minimum dashed; the downcast's, the value</span>
+<span class="sd">    suggested, is bold in the legend.  A grey line marks the deck unit's advance; the top axis</span>
+<span class="sd">    counts scans.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no line has a downcast curve.</span>
+<span class="sd">    """</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"residual"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="n">_deck</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span>
+    <span class="n">interval</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"scan_interval_s"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.42</span><span class="p">),</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">drawn</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">li</span><span class="p">]</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">res</span> <span class="o">+</span> <span class="n">base</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"alignment_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">curves</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">leg</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">colour</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(((</span><span class="s2">"downcast"</span><span class="p">,</span> <span class="n">DOWN</span><span class="p">),</span> <span class="p">(</span><span class="s2">"upcast"</span><span class="p">,</span> <span class="n">UP</span><span class="p">))):</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">median_curve</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cost</span><span class="p">[:,</span> <span class="n">leg</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">curves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">median</span><span class="p">)</span>
+            <span class="n">drawn</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">xm</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span>
+                <span class="n">c</span><span class="o">.</span><span class="n">median</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: minimum </span><span class="si">{</span><span class="n">xm</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> s (n=</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">n_casts</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">xm</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">]):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.5"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">))</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="sa">f</span><span class="s2">"deck unit </span><span class="si">{</span><span class="n">base</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> s"</span><span class="p">,</span> <span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s2">"data"</span><span class="p">,</span> <span class="s2">"axes fraction"</span><span class="p">),</span>
+                        <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">textcoords</span><span class="o">=</span><span class="s2">"offset points"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.4"</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">"bottom"</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">LINE_STYLE</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">)][</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">_well_xlim</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">curves</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">]):</span>  <span class="c1"># room for the deck unit's label to its right</span>
+            <span class="n">hi</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">hi</span><span class="p">,</span> <span class="n">base</span> <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">0.98</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"total conductivity advance (s)"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span> <span class="ow">and</span> <span class="n">interval</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">secondary_xaxis</span><span class="p">(</span>
+                <span class="s2">"top"</span><span class="p">,</span>
+                <span class="n">functions</span><span class="o">=</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">interval</span><span class="p">:</span> <span class="n">s</span> <span class="o">/</span> <span class="n">h</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">n</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">interval</span><span class="p">:</span> <span class="n">n</span> <span class="o">*</span> <span class="n">h</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">top</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">"scans (1/</span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">interval</span><span class="p">)</span><span class="si">}</span><span class="s2"> s)"</span><span class="p">)</span>
+        <span class="n">leg</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"upper left"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">leg</span><span class="o">.</span><span class="n">get_texts</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">get_text</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"downcast"</span><span class="p">):</span>
+                <span class="n">text</span><span class="o">.</span><span class="n">set_fontweight</span><span class="p">(</span><span class="s2">"bold"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">drawn</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"salinity-spike cost / cast minimum"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_alignment_legs_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_alignment_legs_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_alignment_legs_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return each cast's downcast minus upcast best advance, primary and secondary.</span>
+
+<span class="sd">    Not on the corrections page: for looking into why the legs differ.  Casts where either leg has</span>
+<span class="sd">    no minimum inside the search are left out.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no cast has both legs.</span>
+<span class="sd">    """</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"cast_id"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.38</span><span class="p">))</span>
+    <span class="n">drawn</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">marker</span><span class="p">,</span> <span class="n">ls</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">LINE_STYLE</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">)]</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">per_cast_alignment</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">per_cast_alignment</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">continue</span>
+        <span class="n">drawn</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">colour</span> <span class="o">=</span> <span class="s2">"k"</span> <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"0.4"</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">marker</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">mfc</span><span class="o">=</span><span class="n">colour</span> <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"none"</span><span class="p">,</span>
+                <span class="n">ls</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
+        <span class="n">med</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">med</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">med</span><span class="si">:</span><span class="s2">+.4f</span><span class="si">}</span><span class="s2"> s"</span><span class="p">,</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">med</span><span class="p">),</span> <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s2">"axes fraction"</span><span class="p">,</span> <span class="s2">"data"</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">textcoords</span><span class="o">=</span><span class="s2">"offset points"</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">"center"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colour</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">drawn</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.75"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">))</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"downcast − upcast advance (s)"</span><span class="p">)</span>
+    <span class="n">_xticks</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"lower left"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_ctm_casts_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_ctm_casts_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_ctm_casts_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the three-panel cell thermal mass figure, x = cast.</span>
+
+<span class="sd">    (1) |ΔT| between the bottom and the top of the window, downcast and upcast; (2) maximum</span>
+<span class="sd">    pressure, with the window marked for casts that were fitted; (3) one-parameter fits, alpha at</span>
+<span class="sd">    tau = 7 s (black, left) and tau at alpha = 0.03 (right), filled where the cast's |ΔT| is above</span>
+<span class="sd">    the cruise median and open below.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no cast has a cell thermal mass fit.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"cast_id"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
+    <span class="n">pmin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctm_pmin_dbar"</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_CTM_PMIN</span><span class="p">))</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"delta_t"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">pmax</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"pmax"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="mi">3</span><span class="p">,</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.665</span><span class="p">),</span>
+        <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span><span class="s2">"height_ratios"</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]},</span>
+    <span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dt</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="s2">"-"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">DOWN</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">"."</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"downcast"</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dt</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="s2">"-"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">UP</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span> <span class="n">marker</span><span class="o">=</span><span class="s2">"."</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"upcast"</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">"|ΔT| bottom − </span><span class="si">{</span><span class="n">pmin</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> dbar (°C)"</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"upper right"</span><span class="p">)</span>
+    <span class="n">fitted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">pmax</span><span class="p">,</span> <span class="s2">"k."</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">fitted</span><span class="p">):</span>
+        <span class="n">a1</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="p">[</span><span class="n">pmin</span><span class="p">,</span> <span class="n">pmax</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.6"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thickest"</span><span class="p">))</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"max pressure (dbar)"</span><span class="p">)</span>
+    <span class="n">strong</span> <span class="o">=</span> <span class="n">_strong_delta_t</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span>
+    <span class="n">a2b</span> <span class="o">=</span> <span class="n">a2</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">marker</span><span class="p">,</span> <span class="n">_ls</span><span class="p">,</span> <span class="n">_name</span> <span class="o">=</span> <span class="n">LINE_STYLE</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">)]</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="n">per_cast_one_parameter</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">sel</span><span class="p">,</span> <span class="n">filled</span> <span class="ow">in</span> <span class="p">((</span><span class="n">strong</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span> <span class="p">(</span><span class="o">~</span><span class="n">strong</span><span class="p">,</span> <span class="kc">False</span><span class="p">)):</span>
+            <span class="n">a2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span>
+                <span class="n">a</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span>
+                <span class="n">marker</span><span class="p">,</span>
+                <span class="n">ms</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span>
+                <span class="n">mfc</span><span class="o">=</span><span class="s2">"k"</span> <span class="k">if</span> <span class="n">filled</span> <span class="k">else</span> <span class="s2">"none"</span><span class="p">,</span>
+                <span class="n">ls</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">a2b</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span>
+                <span class="n">t</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span>
+                <span class="n">marker</span><span class="p">,</span>
+                <span class="n">ms</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">TAU_COLOUR</span><span class="p">,</span>
+                <span class="n">mfc</span><span class="o">=</span><span class="n">TAU_COLOUR</span> <span class="k">if</span> <span class="n">filled</span> <span class="k">else</span> <span class="s2">"none"</span><span class="p">,</span>
+                <span class="n">ls</span><span class="o">=</span><span class="s2">"none"</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="n">a2</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">":"</span><span class="p">)</span>
+    <span class="n">a2b</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">TAU_COLOUR</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">":"</span><span class="p">)</span>
+    <span class="n">a2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"α at τ = 7 s"</span><span class="p">)</span>
+    <span class="n">a2b</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"τ at α = 0.03 (s)"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">TAU_COLOUR</span><span class="p">)</span>
+    <span class="n">_xticks</span><span class="p">(</span><span class="n">a2</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_ctm_surface_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_ctm_surface_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_ctm_surface_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the cruise cell thermal mass cost surface per line, as labelled line contours.</span>
+
+<span class="sd">    The surface is the |ΔT|-weighted mean of each cast's cost divided by its cost with no</span>
+<span class="sd">    correction; contours are labelled as multiples of the minimum, the region within the tolerance</span>
+<span class="sd">    (``ctm_tolerance``, default 2%) of the minimum is shaded, and three points are marked: the</span>
+<span class="sd">    global minimum (dot), Sea-Bird's (0.03, 7 s) (cross) and the recommended value (square).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no line has a cell thermal mass fit.</span>
+<span class="sd">    """</span>
+    <span class="n">al</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"alpha"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctm_tolerance"</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">))</span>
+    <span class="n">panels</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">costs</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">fits</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[:,</span> <span class="n">li</span><span class="p">],</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"delta_t"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalise</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">costs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">dt</span><span class="p">))</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">cruise_surface</span><span class="p">(</span><span class="n">costs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">panels</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">),</span> <span class="n">fit</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">panels</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">panels</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.42</span><span class="p">),</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">fit</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">panels</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">surface</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">smin</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+        <span class="n">levels</span> <span class="o">=</span> <span class="n">smin</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.02</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.7</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">])</span>
+        <span class="n">a_rec</span><span class="p">,</span> <span class="n">t_rec</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">snap_to_default</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">ta</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">tol</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">ta</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">smin</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tol</span><span class="p">)],</span> <span class="n">colors</span><span class="o">=</span><span class="p">[</span><span class="s2">"#fde3c8"</span><span class="p">])</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span>
+            <span class="n">ta</span><span class="p">,</span> <span class="n">al</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="n">levels</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="s2">"0.45"</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="k">lambda</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">smin</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">m</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ta</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">al</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">"o"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">UP</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"global minimum"</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">t_rec</span><span class="p">,</span> <span class="n">a_rec</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">SELECTED</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"recommended"</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span>
+            <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span>
+            <span class="s2">"x"</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span>
+            <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">"Sea-Bird (0.03, 7 s)"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">LINE_STYLE</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">: minimum (</span><span class="si">{</span><span class="n">al</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">ta</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s), n = </span><span class="si">{</span><span class="n">fit</span><span class="o">.</span><span class="n">n_casts</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"τ (s)"</span><span class="p">)</span>
+    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"α"</span><span class="p">)</span>
+    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"upper right"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_blocks_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_blocks_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_blocks_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cruise</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LineSummary</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_FULL</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the fits for blocks of consecutive casts: advance, alpha at 7 s, tau at 0.03.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset; its ``block`` attribute sets the casts per block.</span>
+<span class="sd">    cruise : list of LineSummary, optional</span>
+<span class="sd">        The whole-cruise summaries (:func:`ctdcast.processors.fit.summarise`), drawn as the</span>
+<span class="sd">        reference advance per line; computed here when the caller does not pass them.</span>
+<span class="sd">    width_in : float, default ``W_FULL``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when the cruise has fewer than two blocks.</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cast"</span><span class="p">]</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"block"</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">starts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"cast_id"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">fits</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">if</span> <span class="s2">"deck_advance"</span> <span class="ow">in</span> <span class="n">fits</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"line"</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="n">rows</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="p">[],</span> <span class="mi">2</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="k">for</span> <span class="n">b0</span> <span class="ow">in</span> <span class="n">starts</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">summarise</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">casts</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">b0</span><span class="p">,</span> <span class="n">b0</span> <span class="o">+</span> <span class="n">size</span><span class="p">)):</span>
+            <span class="n">rows</span><span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">b0</span> <span class="o">+</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="n">b0</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+    <span class="n">cruise_by_line</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">line</span><span class="p">:</span> <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span><span class="n">summarise</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span> <span class="k">if</span> <span class="n">cruise</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cruise</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">pts</span> <span class="ow">in</span> <span class="n">rows</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pts</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">marker</span><span class="p">,</span> <span class="n">ls</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">LINE_STYLE</span><span class="p">[</span><span class="n">line</span><span class="p">]</span>
+        <span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">]</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"color"</span><span class="p">:</span> <span class="s2">"k"</span><span class="p">,</span>
+            <span class="s2">"mfc"</span><span class="p">:</span> <span class="s2">"k"</span><span class="p">,</span>
+            <span class="s2">"ms"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s2">"ls"</span><span class="p">:</span> <span class="n">ls</span><span class="p">,</span>
+            <span class="s2">"marker"</span><span class="p">:</span> <span class="n">marker</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">a0</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">residual</span> <span class="o">+</span> <span class="n">base</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="n">a1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">alpha_at_tau</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="n">a2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tau_at_alpha</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="c1"># The cruise recommended advance for this line, as a reference across the blocks.</span>
+        <span class="n">rec</span> <span class="o">=</span> <span class="n">cruise_by_line</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">residual</span><span class="p">):</span>
+            <span class="n">a0</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">residual</span> <span class="o">+</span> <span class="n">base</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.6"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">))</span>
+    <span class="n">_mark_config_changes</span><span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">fits</span><span class="p">)</span>
+    <span class="n">_mark_config_changes</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">fits</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">_mark_config_changes</span><span class="p">(</span><span class="n">a2</span><span class="p">,</span> <span class="n">fits</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Align CT"</span><span class="p">)</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Cell thermal mass"</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"advance (s)"</span><span class="p">)</span>
+    <span class="n">a0</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"best"</span><span class="p">)</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.6"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">":"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">))</span>
+    <span class="n">a2</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.6"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">":"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thinner"</span><span class="p">))</span>
+    <span class="n">a1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"α at τ = 7 s"</span><span class="p">)</span>
+    <span class="n">a2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"τ at α = 0.03 (s)"</span><span class="p">)</span>
+    <span class="n">_xticks</span><span class="p">(</span><span class="n">a2</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_ctm_param_hist_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_ctm_param_hist_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_ctm_param_hist_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_HALF</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return histograms of the per-cast one-parameter fits: α (at τ=7 s) and τ (at α=0.03).</span>
+
+<span class="sd">    Two columns (α, τ) and one row per conductivity line; each bar split by whether the cast's</span>
+<span class="sd">    |ΔT| across the window is above (dark) or below (light) the cruise median — the same cut as</span>
+<span class="sd">    :func:`draw_ctm_casts_fig`'s filled/open markers — with Sea-Bird's value dotted.  A clearer</span>
+<span class="sd">    count summary than the per-cast scatter.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_HALF``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no cast has a cell thermal mass fit.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">fits</span><span class="p">[</span><span class="s2">"ctm_cost"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">strong</span> <span class="o">=</span> <span class="n">_strong_delta_t</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span>
+    <span class="n">al</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"alpha"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">al</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_ALPHA_SBE</span><span class="p">,</span> <span class="s2">"α at τ = 7 s"</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">ta</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">DEFAULT_TAU_SBE</span><span class="p">,</span> <span class="s2">"τ at α = 0.03 (s)"</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.85</span><span class="p">),</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="n">per_cast_one_parameter</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">params</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="n">li</span><span class="p">][</span><span class="n">col</span><span class="p">]</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">13</span><span class="p">)</span>
+            <span class="n">fin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">vals</span><span class="p">[</span><span class="n">fin</span> <span class="o">&amp;</span> <span class="n">strong</span><span class="p">],</span> <span class="n">vals</span><span class="p">[</span><span class="n">fin</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">strong</span><span class="p">]],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">edges</span><span class="p">,</span>
+                <span class="n">stacked</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">"0.3"</span><span class="p">,</span> <span class="s2">"0.8"</span><span class="p">],</span>
+                <span class="n">label</span><span class="o">=</span><span class="p">[</span><span class="s2">"|ΔT| &gt; median"</span><span class="p">,</span> <span class="s2">"≤ median"</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+                <span class="n">default</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">UP</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Sea-Bird default"</span>
+            <span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">LINE_STYLE</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">casts"</span><span class="p">)</span>
+    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"upper right"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+
+<div class="viewcode-block" id="draw_alignment_hist_fig">
+<a class="viewcode-back" href="../../../api.html#ctdcast.plotters.corrections.draw_alignment_hist_fig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">draw_alignment_hist_fig</span><span class="p">(</span>
+    <span class="n">fits</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">width_in</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_W_HALF</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a histogram of each cast's total conductivity advance, primary and secondary.</span>
+
+<span class="sd">    One panel per line: the deck unit's advance plus the residual at each cast's downcast minimum,</span>
+<span class="sd">    with the median drawn.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fits : xarray.Dataset</span>
+<span class="sd">        The ``fits.nc`` dataset.</span>
+<span class="sd">    width_in : float, default ``W_HALF``</span>
+<span class="sd">        Figure width in inches; the height follows at a fixed aspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.figure.Figure or None</span>
+<span class="sd">        None when no cast has an alignment fit.</span>
+<span class="sd">    """</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">fits</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">if</span> <span class="s2">"deck_advance"</span> <span class="ow">in</span> <span class="n">fits</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"line"</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fits</span><span class="p">[</span><span class="s2">"line"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">width_in</span><span class="p">,</span> <span class="n">width_in</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">),</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">drawn</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">li</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">deck</span><span class="p">[</span><span class="n">li</span><span class="p">])</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">per_cast_alignment</span><span class="p">(</span><span class="n">fits</span><span class="p">,</span> <span class="n">li</span><span class="p">)</span> <span class="o">+</span> <span class="n">base</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y</span><span class="p">)]</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">li</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">drawn</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.5"</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">y</span><span class="p">)),</span> <span class="n">color</span><span class="o">=</span><span class="s2">"k"</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">LINE_STYLE</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">lw</span><span class="o">=</span><span class="n">pen</span><span class="p">(</span><span class="s2">"thin"</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">LINE_STYLE</span><span class="p">[</span><span class="n">line</span><span class="p">][</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"total advance (s)"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">drawn</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"casts"</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

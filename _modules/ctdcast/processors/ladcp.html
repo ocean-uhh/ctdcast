@@ -1,0 +1,463 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.ladcp &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.ladcp</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.ladcp</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""LADCP processing: LDEO ``.mat`` → per-cast netCDF → compiled ``ladcp_profiles.nc``.</span>
+
+<span class="sd">Mirrors the CTD pipeline (stage1 ``convert_cast`` → ``build_profiles``):</span>
+<span class="sd">:func:`convert_ladcp_cast` translates one LDEO ``.mat`` solution to a per-cast</span>
+<span class="sd">``ladcp_&lt;cast_id&gt;.nc`` on the native 10 m depth grid, with storage dtypes reduced</span>
+<span class="sd">for file size; the compiler (added in :func:`build_ladcp_profiles`) concatenates</span>
+<span class="sd">those per-cast files onto a common depth axis.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.global_attrs</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CREATION_NOTE</span><span class="p">,</span>
+    <span class="n">aggregate_identity</span><span class="p">,</span>
+    <span class="n">cruise_global_attrs</span><span class="p">,</span>
+    <span class="n">identity_attrs</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_id_from_name</span><span class="p">,</span> <span class="n">format_cast_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors._warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warning_summary</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">append_history</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.stage_layout</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">is_up_to_date</span><span class="p">,</span>
+    <span class="n">select_best_available</span><span class="p">,</span>
+    <span class="n">stage_dir</span><span class="p">,</span>
+    <span class="n">stage_path</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.ladcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_ladcp_cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.netcdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">write</span> <span class="k">as</span> <span class="n">write_nc</span>
+
+<span class="c1">#: Bare LADCP stem: zero-padded cast number + optional letter suffix (``004b``).</span>
+<span class="c1">#: The shared ``cast_id_from_name`` needs a ``_``-prefixed group (CTD names), so</span>
+<span class="c1">#: LADCP's prefix-less ``NNN.mat`` convention needs this fallback.</span>
+<span class="n">_BARE_CAST_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^(\d+)([a-z]*)$"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ladcp_cast_id</span><span class="p">(</span><span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``(cast_num, cast_suffix)`` from a LADCP ``.mat`` stem, or None.</span>
+
+<span class="sd">    Tries the shared prefixed parser first (``*_NNN`` cruise-prefixed names), then</span>
+<span class="sd">    falls back to a bare ``NNN``/``NNNb`` stem.</span>
+<span class="sd">    """</span>
+    <span class="n">ident</span> <span class="o">=</span> <span class="n">cast_id_from_name</span><span class="p">(</span><span class="n">stem</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ident</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ident</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">_BARE_CAST_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">stem</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span> <span class="k">if</span> <span class="n">m</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="convert_ladcp_cast">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.ladcp.convert_ladcp_cast">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">convert_ladcp_cast</span><span class="p">(</span>
+    <span class="n">mat_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">nc_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">cast_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert one LDEO ``.mat`` to a per-cast LADCP netCDF.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mat_path:</span>
+<span class="sd">        Path to the LDEO IXv14 ``.mat`` solution.</span>
+<span class="sd">    nc_path:</span>
+<span class="sd">        Output ``ladcp_&lt;cast_id&gt;.nc`` path.</span>
+<span class="sd">    cast_num, cast_suffix:</span>
+<span class="sd">        Cast identity written into the file (and used to join to ``profiles.nc``).</span>
+<span class="sd">    force:</span>
+<span class="sd">        Overwrite an existing *nc_path* if True.</span>
+<span class="sd">    cruise_info:</span>
+<span class="sd">        The config ``cruise_info:`` mapping, stamped as cruise identity</span>
+<span class="sd">        (``cruise`` + ``platform_*`` + ``expocode``) so the file is</span>
+<span class="sd">        self-describing; ``None`` writes none.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if the file was written; False if skipped (already exists, not forced).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">nc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">read_ladcp_cast</span><span class="p">(</span><span class="n">mat_path</span><span class="p">,</span> <span class="n">cast_num</span><span class="o">=</span><span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="o">=</span><span class="n">cast_suffix</span><span class="p">)</span>
+    <span class="c1"># Stamp the immutable cruise identity; identity_attrs returns {} for no config.</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">identity_attrs</span><span class="p">(</span><span class="n">cruise_info</span><span class="p">))</span>
+    <span class="c1"># Lineage root for the LADCP source (parallels stage-1's source_cnv); the writer adds</span>
+    <span class="c1"># the tracking_id.</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"source_mat"</span><span class="p">]</span> <span class="o">=</span> <span class="n">mat_path</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">write_nc</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">nc_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Convert stage — the LADCP parallel of stage1 (raw → per-cast netCDF).</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="run_convert">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.ladcp.run_convert">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_convert</span><span class="p">(</span>
+    <span class="n">ladcp_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">ladcp_nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cast_tags</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert every LADCP ``.mat`` in *ladcp_dir* to a per-cast netCDF.</span>
+
+<span class="sd">    The LADCP parallel of :func:`ctdcast.processors.stage1.run`: discovers the</span>
+<span class="sd">    ``.mat`` files, derives each cast's identity from its filename, and writes</span>
+<span class="sd">    ``ladcp_nc_dir/stage1/ladcp_&lt;cast_id&gt;_stage1.nc``.  LADCP has a single</span>
+<span class="sd">    processing stage, so its stage-1 file *is* its per-cast product.  Files with</span>
+<span class="sd">    no cast number in the stem are skipped.  Returns the number of files written</span>
+<span class="sd">    (0 for *dry_run*).  ``cruise_info`` is stamped as cruise identity on each file.</span>
+<span class="sd">    """</span>
+    <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ladcp_pattern"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"*.mat"</span>  <span class="c1"># type: ignore[assignment]</span>
+    <span class="n">mats</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">ident</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ladcp_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ident</span> <span class="o">:=</span> <span class="n">_ladcp_cast_id</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">stem</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">cast_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mats</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="ow">in</span> <span class="n">mats</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">t</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">stem</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">cast_tags</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[dry-run] ladcp convert: </span><span class="si">{</span><span class="n">ladcp_dir</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">ladcp_nc_dir</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mats</span><span class="p">)</span><span class="si">}</span><span class="s2"> file(s))"</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">_ident</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">mats</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  [dry-run] would convert: </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="n">stage_dir</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># ladcp_nc_dir is the stage root</span>
+    <span class="n">n_written</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Per-cast data-quality warnings (e.g. blank instrument serials) are captured</span>
+    <span class="c1"># across the batch and collapsed into one counted summary line per message,</span>
+    <span class="c1"># so a whole-cruise convert does not emit the same warning hundreds of times.</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"always"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">cast_num</span><span class="p">,</span> <span class="n">cast_suffix</span><span class="p">),</span> <span class="n">mat_path</span> <span class="ow">in</span> <span class="n">mats</span><span class="p">:</span>
+            <span class="n">stem</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"ladcp_</span><span class="si">{</span><span class="n">format_cast_id</span><span class="p">(</span><span class="n">cast_num</span><span class="p">,</span><span class="w"> </span><span class="n">cast_suffix</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+            <span class="n">nc_path</span> <span class="o">=</span> <span class="n">stage_path</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">,</span> <span class="n">stem</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">convert_ladcp_cast</span><span class="p">(</span>
+                <span class="n">mat_path</span><span class="p">,</span>
+                <span class="n">nc_path</span><span class="p">,</span>
+                <span class="n">cast_num</span><span class="o">=</span><span class="n">cast_num</span><span class="p">,</span>
+                <span class="n">cast_suffix</span><span class="o">=</span><span class="n">cast_suffix</span><span class="p">,</span>
+                <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="n">n_written</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">warning_summary</span><span class="p">(</span><span class="n">caught</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n_written</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Compile stage — the LADCP parallel of processors/profiles.py.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_select_ladcp_files</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the best-available per-cast LADCP file under *ladcp_nc_dir*, sorted.</span>
+
+<span class="sd">    LADCP has a single processing stage, so "best-available" is just its stage-1</span>
+<span class="sd">    file; the stage layout is used so a nested ``stage1/ladcp_&lt;id&gt;_stage1.nc`` and</span>
+<span class="sd">    an old flat ``ladcp_&lt;id&gt;.nc`` (via the compatibility shim) are both found.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">path</span> <span class="k">for</span> <span class="n">_cast_id</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">_stage</span> <span class="ow">in</span> <span class="n">select_best_available</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">)]</span>
+
+
+<div class="viewcode-block" id="build_ladcp_profiles">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.ladcp.build_ladcp_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_ladcp_profiles</span><span class="p">(</span>
+    <span class="n">ladcp_nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">ladcp_profiles_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Compile per-cast ``ladcp_*.nc`` into ``ladcp_profiles.nc``.</span>
+
+<span class="sd">    The LADCP parallel of :func:`ctdcast.processors.profiles.build_profiles`.</span>
+<span class="sd">    Because each cast is already on a uniform 10 m grid, this is a common-axis</span>
+<span class="sd">    *alignment* (not a regrid): every profile is reindexed onto the deepest cast's</span>
+<span class="sd">    depth axis (NaN below its own bottom) and stacked on a new ``N_PROF``</span>
+<span class="sd">    dimension.  Per-cast scalars become ``N_PROF`` vectors; cruise-common</span>
+<span class="sd">    provenance is kept in attrs, per-cast-varying provenance is already stored as</span>
+<span class="sd">    variables.  Returns True if written, False when there is nothing to compile.</span>
+
+<span class="sd">    Skips when ``ladcp_profiles.nc`` already exists and is newer than every</span>
+<span class="sd">    per-cast source file (same source-mtime rule as the CTD compiler and the</span>
+<span class="sd">    processing stages); ``force`` rebuilds regardless.</span>
+
+<span class="sd">    ``cruise_info`` (the config ``cruise_info:`` block) supplies discovery</span>
+<span class="sd">    metadata, people, embargo, and the ship/date for the EXPOCODE coordinate.</span>
+<span class="sd">    Coverage bounds (lat/lon from the per-cast positions, vertical from the depth</span>
+<span class="sd">    axis in metres) and the creation time are computed from the data.</span>
+<span class="sd">    """</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="n">_select_ladcp_files</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">files</span><span class="p">:</span>
+        <span class="c1"># Say so.  Silence here is indistinguishable from success, and the CTD</span>
+        <span class="c1"># half prints on write, so a quiet LADCP half reads as "did not run".</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"ladcp-profiles: no per-cast files under </span><span class="si">{</span><span class="n">ladcp_nc_dir</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"(looked in stage1/ and directly) — nothing to compile"</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="c1"># Skip only when the product exists AND is newer than every source cast file,</span>
+    <span class="c1"># so a re-converted cast rebuilds the compile rather than keeping it stale.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="n">is_up_to_date</span><span class="p">(</span><span class="n">ladcp_profiles_path</span><span class="p">,</span> <span class="n">files</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="n">dss</span> <span class="o">=</span> <span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"netcdf4"</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
+    <span class="n">per_cast_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dss</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">depth</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">d</span><span class="p">[</span><span class="s2">"depth"</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dss</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">nbt</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">d</span><span class="o">.</span><span class="n">sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dss</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">aligned</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dss</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nbt</span> <span class="ow">and</span> <span class="n">d</span><span class="o">.</span><span class="n">sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bottom_track"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">nbt</span><span class="p">:</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">bottom_track</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nbt</span><span class="p">))</span>
+            <span class="n">aligned</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">ds_out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">aligned</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="s2">"N_PROF"</span><span class="p">,</span> <span class="n">combine_attrs</span><span class="o">=</span><span class="s2">"drop_conflicts"</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dss</span><span class="p">:</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"source"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span><span class="si">}</span><span class="s2"> per-cast LADCP netCDF files compiled by ctdcast"</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Identity (cruise, platform_*, expocode) is lifted from the per-cast files,</span>
+    <span class="c1"># strictly: constant across casts → lifted; varying → error (two cruises in</span>
+    <span class="c1"># one directory); absent → cruise_info fallback with a warning.  This replaces</span>
+    <span class="c1"># the old drop_conflicts merge as the authority for identity at compile.</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">cruise_info</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="n">aggregate_identity</span><span class="p">(</span><span class="n">per_cast_attrs</span><span class="p">,</span> <span class="n">ci</span><span class="p">)</span>
+
+    <span class="c1"># Derived coverage + authored/provenance/people/platform globals.  The LADCP</span>
+    <span class="c1"># product is gridded on a depth axis (metres, positive down), not pressure;</span>
+    <span class="c1"># take the units from the depth variable's own declared units.</span>
+    <span class="n">_depth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"depth"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"float64"</span><span class="p">)</span>
+    <span class="n">_depth_units</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"depth"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">,</span> <span class="s2">"m"</span><span class="p">))</span>
+    <span class="n">_depth_ok</span> <span class="o">=</span> <span class="n">_depth</span><span class="o">.</span><span class="n">size</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">_depth</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">())</span>
+    <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="n">cruise_global_attrs</span><span class="p">(</span>
+            <span class="n">ci</span><span class="p">,</span>
+            <span class="n">lats</span><span class="o">=</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"latitude"</span> <span class="ow">in</span> <span class="n">ds_out</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">lons</span><span class="o">=</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"longitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"longitude"</span> <span class="ow">in</span> <span class="n">ds_out</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">vertical_min</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">_depth</span><span class="p">))</span> <span class="k">if</span> <span class="n">_depth_ok</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">vertical_max</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">_depth</span><span class="p">))</span> <span class="k">if</span> <span class="n">_depth_ok</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">vertical_units</span><span class="o">=</span><span class="n">_depth_units</span><span class="p">,</span>
+            <span class="c1"># One time per LADCP profile: it is both the start and the end bound.</span>
+            <span class="n">time_starts</span><span class="o">=</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"time"</span> <span class="ow">in</span> <span class="n">ds_out</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">time_ends</span><span class="o">=</span><span class="n">ds_out</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">if</span> <span class="s2">"time"</span> <span class="ow">in</span> <span class="n">ds_out</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">source</span><span class="o">=</span><span class="s2">"ladcp"</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="c1"># Per-cast-sourced identity is authoritative over the config identity that</span>
+    <span class="c1"># cruise_global_attrs still emits, so a compiled file states the cruise its</span>
+    <span class="c1"># casts actually came from (and errors if they disagree).</span>
+    <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span>
+
+    <span class="c1"># Provenance: what wrote the file, then what it did.  Both go through</span>
+    <span class="c1"># `append_history`; `cruise_global_attrs` no longer returns a `history` key,</span>
+    <span class="c1"># so this no longer depends on being called after it.</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">CREATION_NOTE</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"create"</span><span class="p">)</span>
+    <span class="n">append_history</span><span class="p">(</span>
+        <span class="n">ds_out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"compiled </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span><span class="si">}</span><span class="s2"> LADCP casts; aligned onto the deepest cast's "</span>
+            <span class="s2">"depth axis (common-axis reindex, not a regrid)"</span>
+        <span class="p">),</span>
+        <span class="n">stage</span><span class="o">=</span><span class="s2">"ladcp_profiles"</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">write_nc</span><span class="p">(</span><span class="n">ds_out</span><span class="p">,</span> <span class="n">ladcp_profiles_path</span><span class="p">)</span>  <span class="c1"># storage dtypes are set by the writer</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ladcp-profiles: wrote </span><span class="si">{</span><span class="n">ladcp_profiles_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Stage entry points — registered in ctdcast.processors.STAGES.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="run_compile">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.ladcp.run_compile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_compile</span><span class="p">(</span>
+    <span class="n">ladcp_nc_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">ladcp_profiles_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cruise_info</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>  <span class="c1"># noqa: ARG001</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Build ``ladcp_profiles.nc`` from ``ladcp_*.nc`` in *ladcp_nc_dir*.</span>
+
+<span class="sd">    The LADCP parallel of :func:`ctdcast.processors.profiles.run`.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_select_ladcp_files</span><span class="p">(</span><span class="n">ladcp_nc_dir</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[dry-run] ladcp-profiles: </span><span class="si">{</span><span class="n">ladcp_nc_dir</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">ladcp_profiles_path</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> cast(s))"</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">build_ladcp_profiles</span><span class="p">(</span>
+        <span class="n">ladcp_nc_dir</span><span class="p">,</span> <span class="n">ladcp_profiles_path</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">,</span> <span class="n">cruise_info</span><span class="o">=</span><span class="n">cruise_info</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

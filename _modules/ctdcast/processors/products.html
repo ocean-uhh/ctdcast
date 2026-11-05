@@ -1,0 +1,717 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.products &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.products</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.products</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Products: files made from the stage-3 file by further steps, such as a 1 dbar downcast.</span>
+
+<span class="sd">Sea-Bird processing usually runs one sequence of steps and then branches: the same corrected scans</span>
+<span class="sd">become a 1 s time series, a 1 dbar downcast and a 1 dbar upcast, each with its own Loop Edit and</span>
+<span class="sd">Bin Average.  ``data_processing.products`` lists these branches; each has a ``name`` and its own</span>
+<span class="sd">``steps``, run on the stage-3 data (every scan, already through ``data_processing.steps``)::</span>
+
+<span class="sd">    data_processing:</span>
+<span class="sd">      steps: [...]                       # the stage-3 file</span>
+<span class="sd">      products:</span>
+<span class="sd">        - name: 1dbar_down</span>
+<span class="sd">          steps:</span>
+<span class="sd">            - split: down</span>
+<span class="sd">            - loopedit: {min_velocity: 0.25}</span>
+<span class="sd">            - binavg: {bin: decibars, size: 1}</span>
+<span class="sd">        - name: 1sec</span>
+<span class="sd">          steps:</span>
+<span class="sd">            - binavg: {bin: seconds, size: 1}</span>
+
+<span class="sd">A product may use any step; ``split`` and ``binavg`` are product-only, because the stage-3 file</span>
+<span class="sd">keeps every scan, and ``binavg`` comes last.  Each product is written to</span>
+<span class="sd">``&lt;ctd_root&gt;/products/&lt;name&gt;/&lt;cast&gt;_&lt;name&gt;.nc``; the stage-3 file is unchanged.</span>
+
+<span class="sd">**Bin Average** (``binavg``) uses :func:`seabirdscientific.processing.bin_average`.  Bins are</span>
+<span class="sd">``decibars`` (on ``pressure``), ``seconds`` (from the first scan) or ``scans``.  A value is left</span>
+<span class="sd">out of its bin when its ``_qc`` is 4 (fail) or 9 (missing) — so Wild Edit's marks, stage 2's soak</span>
+<span class="sd">and deck flags and a failed gross-range test leave out that one value, not its whole scan — and,</span>
+<span class="sd">with ``exclude_flagged``, the scans Loop Edit marked are left out entirely, as SBE Data Processing</span>
+<span class="sd">does.  Salinity is re-derived from the binned conductivity, temperature and pressure.  Bins of a</span>
+<span class="sd">pressure product run down then up unless a ``split`` chose one leg.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">processing</span> <span class="k">as</span> <span class="n">sbs_processing</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.analysis.derive</span><span class="w"> </span><span class="kn">import</span> <span class="n">derive_salinity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.corrections</span><span class="w"> </span><span class="kn">import</span> <span class="n">_number</span><span class="p">,</span> <span class="n">_version</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">append_history</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">usable_pressure</span>
+
+<span class="c1">#: Bin types, and the variable each bins on.</span>
+<span class="n">BIN_TYPES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"decibars"</span><span class="p">:</span> <span class="s2">"pressure"</span><span class="p">,</span> <span class="s2">"seconds"</span><span class="p">:</span> <span class="s2">"elapsed_seconds"</span><span class="p">,</span> <span class="s2">"scans"</span><span class="p">:</span> <span class="s2">"nScan"</span><span class="p">}</span>
+<span class="n">_SAFE_NAME</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^[A-Za-z0-9][A-Za-z0-9_.-]*$"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="check_split">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.check_split">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_split</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the leg a ``split`` step keeps: ``"down"`` or ``"up"``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : str or dict</span>
+<span class="sd">        ``down`` / ``up``, or ``{leg: down}``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        ``"down"`` or ``"up"``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On anything else.</span>
+<span class="sd">    """</span>
+    <span class="n">leg</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"leg"</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">params</span>
+    <span class="k">if</span> <span class="n">leg</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"down"</span><span class="p">,</span> <span class="s2">"up"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"split: expected down or up, got </span><span class="si">{</span><span class="n">params</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">leg</span></div>
+
+
+
+<div class="viewcode-block" id="check_binavg">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.check_binavg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_binavg</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the resolved parameters of a ``binavg`` step.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : dict</span>
+<span class="sd">        ``bin`` (``decibars``, ``seconds``, ``scans``), ``size``, and optionally</span>
+<span class="sd">        ``exclude_flagged`` (default true), ``min_scans`` (1), ``max_scans``, ``skip_over`` (scans</span>
+<span class="sd">        dropped at the start, 0), ``omit`` (at the end, 0), ``surface_bin``</span>
+<span class="sd">        (``{min, max, value}`` or null) and ``interpolate`` (false).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        The parameters with defaults filled in.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key or a value of the wrong kind.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg: expected a mapping, got </span><span class="si">{</span><span class="n">params</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span>
+        <span class="s2">"bin"</span><span class="p">,</span>
+        <span class="s2">"size"</span><span class="p">,</span>
+        <span class="s2">"exclude_flagged"</span><span class="p">,</span>
+        <span class="s2">"min_scans"</span><span class="p">,</span>
+        <span class="s2">"max_scans"</span><span class="p">,</span>
+        <span class="s2">"skip_over"</span><span class="p">,</span>
+        <span class="s2">"omit"</span><span class="p">,</span>
+        <span class="s2">"surface_bin"</span><span class="p">,</span>
+        <span class="s2">"interpolate"</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bin"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">BIN_TYPES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg.bin: expected one of </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">BIN_TYPES</span><span class="p">)</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">kind</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"size"</span><span class="p">),</span> <span class="s2">"binavg.size"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg.size: must be positive, got </span><span class="si">{</span><span class="n">size</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"bin"</span><span class="p">:</span> <span class="n">kind</span><span class="p">,</span> <span class="s2">"size"</span><span class="p">:</span> <span class="n">size</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">"min_scans"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"max_scans"</span><span class="p">,</span> <span class="mi">2147483647</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"skip_over"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"omit"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: expected a whole number, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"exclude_flagged"</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span> <span class="p">(</span><span class="s2">"interpolate"</span><span class="p">,</span> <span class="kc">False</span><span class="p">)):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"binavg.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: expected true or false, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">out</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"binavg.exclude_flagged: false is not supported: a value flagged fail (4) or "</span>
+            <span class="s2">"missing (9), Loop Edit's scans among them, never enters a ctdcast bin, as in "</span>
+            <span class="s2">"profiles.nc; remove the key"</span>
+        <span class="p">)</span>
+    <span class="n">surface</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"surface_bin"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">surface</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">surface</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">set</span><span class="p">(</span><span class="n">surface</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"min"</span><span class="p">,</span> <span class="s2">"max"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"binavg.surface_bin: expected </span><span class="se">{{</span><span class="s2">min, max, value</span><span class="se">}}</span><span class="s2"> or null, got </span><span class="si">{</span><span class="n">surface</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="n">surface</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">_number</span><span class="p">(</span><span class="n">surface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">d</span><span class="p">),</span> <span class="sa">f</span><span class="s2">"binavg.surface_bin.</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"min"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">"max"</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
+        <span class="p">}</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"surface_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="n">surface</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="check_products">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.check_products">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_products</span><span class="p">(</span><span class="n">products</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``data_processing.products``, checked.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    products : list or None</span>
+<span class="sd">        Each entry ``{name, steps}``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of dict</span>
+<span class="sd">        The products.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On a missing or unsafe name, a repeated name, a step not allowed here, ``binavg`` before</span>
+<span class="sd">        the last step, or more than one ``split``.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.steps</span><span class="w"> </span><span class="kn">import</span> <span class="n">STEPS</span><span class="p">,</span> <span class="n">iter_steps</span>
+
+    <span class="k">if</span> <span class="n">products</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">products</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"data_processing.products: expected a list, got </span><span class="si">{</span><span class="n">products</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">prod</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">products</span><span class="p">):</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"data_processing.products[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]"</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prod</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">set</span><span class="p">(</span><span class="n">prod</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"steps"</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: expected </span><span class="se">{{</span><span class="s2">name, steps</span><span class="se">}}</span><span class="s2">, got </span><span class="si">{</span><span class="n">prod</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">prod</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">_SAFE_NAME</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.name: letters, digits, '_', '-', '.' only, got </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.name: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is used twice"</span><span class="p">)</span>
+        <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="n">iter_steps</span><span class="p">({</span><span class="s2">"steps"</span><span class="p">:</span> <span class="n">prod</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"steps"</span><span class="p">)})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">steps</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: no steps"</span><span class="p">)</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">"binavg"</span> <span class="ow">in</span> <span class="n">names</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: binavg must be the last step"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">names</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">"split"</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: split may appear once"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">STEPS</span><span class="p">[</span><span class="n">step</span><span class="p">]</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.steps[</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">return</span> <span class="n">products</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_leg_slice</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">leg</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">slice</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the scans of one leg: to the deepest scan (inclusive), or from it."""</span>
+    <span class="c1"># A scan with a failed pressure has no depth: it cannot be the bottom of the cast.</span>
+    <span class="n">deepest</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanargmax</span><span class="p">(</span><span class="n">usable_pressure</span><span class="p">(</span><span class="n">ds</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">deepest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">leg</span> <span class="o">==</span> <span class="s2">"down"</span> <span class="k">else</span> <span class="nb">slice</span><span class="p">(</span><span class="n">deepest</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="split_leg">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.split_leg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_leg</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">leg</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the downcast (to the deepest scan, inclusive) or the upcast (from it).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A cast at its native scan rate, with ``pressure``.</span>
+<span class="sd">    leg : str</span>
+<span class="sd">        ``"down"`` or ``"up"``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        The scans of that leg; the dataset's ``product_leg`` attribute names it.</span>
+<span class="sd">    """</span>
+    <span class="n">sel</span> <span class="o">=</span> <span class="n">_leg_slice</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">leg</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">sel</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>  <span class="c1"># isel shares the attributes; the input must not change</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"product_leg"</span><span class="p">]</span> <span class="o">=</span> <span class="n">leg</span>
+    <span class="n">append_history</span><span class="p">(</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"split: </span><span class="si">{</span><span class="n">leg</span><span class="si">}</span><span class="s2">cast, scans </span><span class="si">{</span><span class="n">sel</span><span class="o">.</span><span class="n">start</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">–</span><span class="si">{</span><span class="p">(</span><span class="n">sel</span><span class="o">.</span><span class="n">stop</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_binnable</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">v</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">da</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">da</span><span class="o">.</span><span class="n">dims</span> <span class="o">==</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,)</span>
+        <span class="ow">and</span> <span class="n">da</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"f"</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"SENSOR_"</span><span class="p">)</span>
+    <span class="p">]</span>
+
+
+<div class="viewcode-block" id="bin_average">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.bin_average">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bin_average</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Bin-average a cast with :func:`seabirdscientific.processing.bin_average`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A cast at its native scan rate (dim ``time``), possibly one leg from :func:`split_leg`.</span>
+<span class="sd">    params : dict</span>
+<span class="sd">        The ``binavg`` step's parameters (see :func:`check_binavg`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        Dim ``bin``: each binned variable, ``nbin`` (scans in the bin), and ``time`` (the bin's</span>
+<span class="sd">        mean time).  Salinity is re-derived from the binned values.</span>
+<span class="sd">    """</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">check_binavg</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    <span class="n">leg</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"product_leg"</span><span class="p">)</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">_binnable</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">flag</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">FLAG_VALUE</span>
+    <span class="n">columns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">bad_of</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">qc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">_qc"</span>
+        <span class="k">if</span> <span class="n">qc</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">bad_of</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+            <span class="n">x</span><span class="p">[</span><span class="n">bad_of</span><span class="p">[</span><span class="n">v</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">columns</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">columns</span><span class="p">[</span><span class="s2">"elapsed_seconds"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">((</span><span class="n">t</span> <span class="o">-</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">columns</span><span class="p">[</span><span class="s2">"flag"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"loop_edit_flag"</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"time"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">))</span><span class="o">.</span><span class="n">values</span>
+        <span class="p">)</span>
+        <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">flag</span><span class="p">,</span>
+        <span class="mf">0.0</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># The bin variable's own values are never left out singly: a scan without one has no bin.</span>
+    <span class="n">control</span> <span class="o">=</span> <span class="n">BIN_TYPES</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s2">"bin"</span><span class="p">]]</span>
+    <span class="k">if</span> <span class="n">control</span> <span class="o">==</span> <span class="s2">"pressure"</span><span class="p">:</span>
+        <span class="c1"># A scan whose pressure failed has no bin: it is left out whole.</span>
+        <span class="n">columns</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span> <span class="o">=</span> <span class="n">usable_pressure</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">keep</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">columns</span><span class="p">[</span><span class="n">control</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">control</span> <span class="ow">in</span> <span class="n">columns</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="s2">"bin"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"decibars"</span><span class="p">:</span>
+        <span class="n">cast</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"down"</span><span class="p">:</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">CastType</span><span class="o">.</span><span class="n">DOWNCAST</span><span class="p">,</span>
+            <span class="s2">"up"</span><span class="p">:</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">CastType</span><span class="o">.</span><span class="n">UPCAST</span><span class="p">,</span>
+        <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">leg</span><span class="p">,</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">CastType</span><span class="o">.</span><span class="n">BOTH</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cast</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">CastType</span><span class="o">.</span><span class="n">NONE</span>
+    <span class="n">surface</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">"surface_bin"</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">cols</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="p">(</span><span class="s2">"scan"</span><span class="p">,</span> <span class="n">v</span><span class="p">[</span><span class="n">keep</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">bin_average</span><span class="p">(</span>
+                <span class="n">frame</span><span class="p">,</span>
+                <span class="n">control</span><span class="p">,</span>
+                <span class="n">p</span><span class="p">[</span><span class="s2">"size"</span><span class="p">],</span>
+                <span class="n">include_scan_count</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">min_scans</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"min_scans"</span><span class="p">],</span>
+                <span class="n">max_scans</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"max_scans"</span><span class="p">],</span>
+                <span class="n">exclude_bad_scans</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"exclude_flagged"</span><span class="p">],</span>
+                <span class="n">interpolate</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"interpolate"</span><span class="p">],</span>
+                <span class="n">cast_type</span><span class="o">=</span><span class="n">cast</span><span class="p">,</span>
+                <span class="n">trim_start</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"skip_over"</span><span class="p">],</span>
+                <span class="n">trim_end</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"omit"</span><span class="p">],</span>
+                <span class="n">include_surface_bin</span><span class="o">=</span><span class="n">surface</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">surface_bin_min</span><span class="o">=</span><span class="p">(</span><span class="n">surface</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"min"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="n">surface_bin_max</span><span class="o">=</span><span class="p">(</span><span class="n">surface</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max"</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span>
+                <span class="n">surface_bin_value</span><span class="o">=</span><span class="p">(</span><span class="n">surface</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span>
+            <span class="p">)</span>
+
+    <span class="n">binned</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+    <span class="c1"># The scans that enter the binning, as seabirdscientific takes them: a usable bin variable,</span>
+    <span class="c1"># then skip_over/omit counted on those rows, then Loop Edit's scans out.</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">keep</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s2">"skip_over"</span><span class="p">]</span> <span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">rows</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="n">p</span><span class="p">[</span><span class="s2">"omit"</span><span class="p">],</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="n">entering</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">entering</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">entering</span> <span class="o">&amp;=</span> <span class="n">columns</span><span class="p">[</span><span class="s2">"flag"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="n">partial</span><span class="p">,</span> <span class="n">by_var</span> <span class="o">=</span> <span class="n">_sea_bird_would_drop</span><span class="p">(</span><span class="n">bad_of</span><span class="p">,</span> <span class="n">entering</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="n">control</span><span class="p">)</span>
+    <span class="n">binned</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">binned</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">"bin_number"</span><span class="p">:</span> <span class="s2">"bin"</span><span class="p">})</span> <span class="k">if</span> <span class="s2">"bin_number"</span> <span class="ow">in</span> <span class="n">binned</span><span class="o">.</span><span class="n">dims</span> <span class="k">else</span> <span class="n">binned</span>
+    <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">attrs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">binned</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"bin"</span><span class="p">,</span> <span class="n">binned</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">))</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"nbin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">"bin"</span><span class="p">,</span>
+        <span class="n">binned</span><span class="p">[</span><span class="s2">"nbin"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+        <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Number of scans in the bin"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">"bin"</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">binned</span><span class="p">[</span><span class="s2">"elapsed_seconds"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"s"</span><span class="p">))</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="p">{</span><span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"Mean time of the scans in the bin"</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"latitude"</span><span class="p">,</span> <span class="s2">"longitude"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span> <span class="ow">and</span> <span class="n">ds</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">data_vars</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"ctd_salinity"</span><span class="p">,</span> <span class="s2">"sbe_"</span><span class="p">))]</span>
+    <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">derive_salinity</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="k">if</span> <span class="s2">"pressure"</span> <span class="ow">in</span> <span class="n">out</span> <span class="k">else</span> <span class="n">out</span>
+    <span class="n">desc</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"bin </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'bin'</span><span class="p">]</span><span class="si">}</span><span class="s2"> size </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'size'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, exclude_flagged="</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'yes'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">p</span><span class="p">[</span><span class="s1">'exclude_flagged'</span><span class="p">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'no'</span><span class="si">}</span><span class="s2">, min_scans </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'min_scans'</span><span class="p">]</span><span class="si">}</span><span class="s2">, "</span>
+        <span class="sa">f</span><span class="s2">"skip_over </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'skip_over'</span><span class="p">]</span><span class="si">}</span><span class="s2">, omit </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'omit'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+        <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">", surface bin </span><span class="si">{</span><span class="n">surface</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">surface</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">", </span><span class="si">{</span><span class="n">leg</span><span class="si">}</span><span class="s2">cast"</span> <span class="k">if</span> <span class="n">leg</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"bin_average"</span><span class="p">]</span> <span class="o">=</span> <span class="n">desc</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"bin_average_partly_flagged_scans"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">partial</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"bin_average_partly_flagged"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_partly_flagged_text</span><span class="p">(</span><span class="n">partial</span><span class="p">,</span> <span class="n">by_var</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"bin_average_method"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">_version</span><span class="p">()</span><span class="si">}</span><span class="s2"> processing.bin_average; a value with _qc 4 or 9 "</span>
+        <span class="s2">"left out of its own bin"</span>
+    <span class="p">)</span>
+    <span class="n">append_history</span><span class="p">(</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"binavg: </span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">out</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">'bin'</span><span class="p">]</span><span class="si">}</span><span class="s2"> bins; salinity re-derived"</span><span class="p">,</span>
+        <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_sea_bird_would_drop</span><span class="p">(</span>
+    <span class="n">bad_of</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">entering</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">skip</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Count the scans entering the binning that carry a flagged value beside good ones.</span>
+
+<span class="sd">    seabirdscientific's ``bin_average`` drops the whole scan when any value in it holds its bad</span>
+<span class="sd">    flag; ctdcast leaves out only that value.  These are the scans where the two part ways.</span>
+<span class="sd">    *entering* is the scans that reach the binning (usable bin variable, ``skip_over`` /</span>
+<span class="sd">    ``omit``, Loop Edit's scans out).  A scan flagged in every variable that has a ``_qc``,</span>
+<span class="sd">    pressure aside (stage 2's soak and deck), is a whole-scan flag both treat alike, when at</span>
+<span class="sd">    least two variables carry flags; salinity (re-derived from the binned values) and the bin</span>
+<span class="sd">    variable (*skip*) are not counted.  A bin that ``min_scans`` / ``max_scans`` then removes is</span>
+<span class="sd">    not tracked.  Also returned: the flagged scans by variable.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Stage 2 never flags pressure (it places the scan), so a whole-scan flag is one on every</span>
+    <span class="c1"># other variable that has a _qc; with a single such variable, every flag is that variable's.</span>
+    <span class="n">judged</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">bad_of</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="s2">"pressure"</span><span class="p">]</span>
+    <span class="n">whole</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">judged</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">judged</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">entering</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">per_value</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">v</span><span class="p">:</span> <span class="n">m</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">whole</span> <span class="o">&amp;</span> <span class="n">entering</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">bad_of</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="n">skip</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"ctd_salinity"</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">per_value</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">per_value</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">by_var</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">per_value</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">total</span><span class="p">,</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">n</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">by_var</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">n</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_partly_flagged_text</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">by_var</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the one-line record of :func:`_sea_bird_would_drop`, for the product attributes."""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">"none: no scan with a value flagged fail or missing would be dropped whole"</span>
+        <span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">by_var</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="o">-</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> scan(s) entering the bins had a value flagged fail or missing beside good "</span>
+        <span class="sa">f</span><span class="s2">"values (by variable: </span><span class="si">{</span><span class="n">parts</span><span class="si">}</span><span class="s2">). ctdcast left out only the flagged values; "</span>
+        <span class="s2">"seabirdscientific's bin_average drops a whole scan when one of its values carries "</span>
+        <span class="s2">"its bad flag, so treated that way these scans would have lost every value."</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="describe_product_steps">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.describe_product_steps">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">describe_product_steps</span><span class="p">(</span><span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a product's configured steps as one line: ``split down; binavg bin=decibars size=1``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    steps : list of dict</span>
+<span class="sd">        The product's ``steps``, each a one-key mapping of step name to its parameters.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The steps in order, ``"; "``-separated; a mapping's ``key=value`` pairs follow the step</span>
+<span class="sd">        name in their configured order.</span>
+<span class="sd">    """</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">values</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="make_product">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.products.make_product">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_product</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">product</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">marked</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Run one product's steps on a finished stage-3 dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        The stage-3 dataset (every scan).</span>
+<span class="sd">    product : dict</span>
+<span class="sd">        ``{name, steps}`` from ``data_processing.products``.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        For per-cast-range values in the product's steps.</span>
+<span class="sd">    cast_label : str</span>
+<span class="sd">        How the cast is named in warnings.</span>
+<span class="sd">    marked : dict of str to numpy.ndarray, optional</span>
+<span class="sd">        ``{variable: mask}`` of the values stage 3's Wild Edit marked, which a filter in the</span>
+<span class="sd">        product steps over as at stage 3.  Without it (a product made later from the file),</span>
+<span class="sd">        every value flagged fail or missing outside Loop Edit's scans is stepped over: the file</span>
+<span class="sd">        keeps the flag, not which step raised it.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.Dataset</span>
+<span class="sd">        The product; ``product_name`` and ``data_processing_steps`` attributes say what it is.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.steps</span><span class="w"> </span><span class="kn">import</span> <span class="n">STEPS</span><span class="p">,</span> <span class="n">StepContext</span><span class="p">,</span> <span class="n">iter_steps</span>
+
+    <span class="n">ctx</span> <span class="o">=</span> <span class="n">StepContext</span><span class="p">(</span><span class="n">cast_number</span><span class="o">=</span><span class="n">cast_number</span><span class="p">,</span> <span class="n">cast_label</span><span class="o">=</span><span class="n">cast_label</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"loop_edit_flag"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"loop_edit_flag"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="c1"># A filter here steps over what stage 3's Wild Edit marked, as it does at stage 3.</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">marked</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">marked</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">if</span> <span class="n">marked</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">_failed_values</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"product_name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">product</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+    <span class="n">ran</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">iter_steps</span><span class="p">({</span><span class="s2">"steps"</span><span class="p">:</span> <span class="n">product</span><span class="p">[</span><span class="s2">"steps"</span><span class="p">]}):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"split"</span><span class="p">:</span>
+            <span class="n">sl</span> <span class="o">=</span> <span class="n">_leg_slice</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">check_split</span><span class="p">(</span><span class="n">params</span><span class="p">))</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">marked</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">marked</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">split_leg</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">check_split</span><span class="p">(</span><span class="n">params</span><span class="p">))</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">excluded</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">out</span><span class="p">[</span><span class="s2">"loop_edit_flag"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s2">"loop_edit_flag"</span> <span class="ow">in</span> <span class="n">out</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"binavg"</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">bin_average</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bin_average_partly_flagged_scans"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">n</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">, product </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">: "</span>
+                    <span class="o">+</span> <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"bin_average_partly_flagged"</span><span class="p">],</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">STEPS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+        <span class="n">ran</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"binavg"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ran</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"ctd_temperature"</span><span class="p">))</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">==</span> <span class="s2">"pressure"</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">changed</span>
+    <span class="p">):</span>
+        <span class="c1"># Salinity is always derived: re-derived whenever a step changed C, T or P.</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">derive_salinity</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="s2">"salinity re-derived"</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"product_steps"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ran</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_failed_values</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">excluded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return ``{variable: mask}`` of each variable's fail (4) and missing (9) values, Loop Edit's scans out."""</span>
+    <span class="n">keep_out</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">excluded</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">excluded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"time"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">v</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)]:</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">keep_out</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span>
+        <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">v</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">"_qc"</span><span class="p">)]</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span> <span class="o">==</span> <span class="p">(</span><span class="s2">"time"</span><span class="p">,)</span>
+    <span class="p">}</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1278 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctdcast.processors.corrections &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=20758594" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ctdcast
+              <img src="../../../_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../development.html">Development and debugging switches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../processors.html">ctdcast.processors</a></li>
+      <li class="breadcrumb-item active">ctdcast.processors.corrections</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ctdcast.processors.corrections</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Stage-3 corrections at the native scan rate: alignment, cell thermal mass, and SBE 43 oxygen.</span>
+
+<span class="sd">These are the Sea-Bird processing steps that only make sense on unbinned, unfiltered data at the</span>
+<span class="sd">instrument's own scan rate (24 Hz on a 911plus), applied with Sea-Bird's ``seabirdscientific``</span>
+<span class="sd">toolkit:</span>
+
+<span class="sd">- **alignment** (``processing.align_ctd``): advance conductivity, or an SBE 43 voltage, relative to</span>
+<span class="sd">  pressure by a configured number of seconds;</span>
+<span class="sd">- **cell thermal mass** (``processing.cell_thermal_mass``): correct conductivity for the heat the</span>
+<span class="sd">  conductivity cell stores, from the temperature of the same line;</span>
+<span class="sd">- **oxygen** (``conversion.convert_sbe43_oxygen``): derive ``ctd_oxygen`` from the aligned SBE 43</span>
+<span class="sd">  voltage and the corrected temperature, salinity and pressure of its line, with the tau and</span>
+<span class="sd">  hysteresis corrections of Sea-Bird Application Note 64-3.</span>
+
+<span class="sd">**Where this diverges from seabirdscientific (3.1.1).**  The tau and hysteresis corrections are</span>
+<span class="sd">computed here (:func:`sbe43_dvdt`, :func:`sbe43_hysteresis`, :func:`sbe43_tau_term`) and folded</span>
+<span class="sd">into the voltage, and ``convert_sbe43_oxygen`` is then called with both of its corrections off.</span>
+<span class="sd">Two reasons: speed (seabirdscientific fits a regression per scan for dV/dt, about 11 s on a</span>
+<span class="sd">3000 dbar cast; the same least-squares slope as a convolution agrees to 1e-12 V/s in</span>
+<span class="sd">milliseconds), and the hysteresis recursion (seabirdscientific feeds the *corrected* previous</span>
+<span class="sd">voltage where Application Note 64-3 uses the *uncorrected* one; the two differ by a few µmol/kg</span>
+<span class="sd">at depth).  The divergence is recorded on every derived variable (``oxygen_hysteresis_method``)</span>
+<span class="sd">and should be removed once seabirdscientific matches Application Note 64-3: call</span>
+<span class="sd">``convert_sbe43_oxygen`` with ``apply_tau_correction`` and ``apply_hysteresis_correction`` on</span>
+<span class="sd">again, and drop the three functions.</span>
+
+<span class="sd">Every step records its parameters on the variable it changed and in ``history``, so the correction</span>
+<span class="sd">is reconstructable from the output file alone.  A step that cannot apply to a cast (the data is</span>
+<span class="sd">binned, or Sea-Bird already applied the same step) is skipped with a warning and a ``history``</span>
+<span class="sd">note; the cast's other stage-3 steps still run.</span>
+
+<span class="sd">Configuration (``data_processing:``, see :mod:`ctdcast.config.layout`): ``alignctd`` and ``celltm``</span>
+<span class="sd">are steps in ``data_processing.steps``, each entry a bare value or a ``default`` and/or ``ranges``</span>
+<span class="sd">(``casts`` + ``value``) declaration; the oxygen window and the per-sensor conductivity slope and</span>
+<span class="sd">offset sit beside the steps::</span>
+
+<span class="sd">    data_processing:</span>
+<span class="sd">      slope_offset:                # per conductivity sensor: C' = slope * C + offset</span>
+<span class="sd">        conductivity_1: {slope: 1.0000452, offset: 0.0}</span>
+<span class="sd">      oxygen:</span>
+<span class="sd">        tau_window_seconds: 2.0    # window for the SBE 43 tau correction's dV/dt</span>
+<span class="sd">      steps:</span>
+<span class="sd">        - alignctd:                # seconds; + advances the variable relative to pressure</span>
+<span class="sd">            conductivity: 0.0</span>
+<span class="sd">            oxygen: 3.0</span>
+<span class="sd">            conductivity_2: {ranges: [{casts: [[30, 45]], value: 0.021}]}</span>
+<span class="sd">        - celltm:                  # alpha and tau (1/beta, seconds); conductivity only</span>
+<span class="sd">            conductivity: {alpha: 0.03, tau: 7.0}</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib.metadata</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">conversion</span> <span class="k">as</span> <span class="n">sbs_conversion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific</span><span class="w"> </span><span class="kn">import</span> <span class="n">processing</span> <span class="k">as</span> <span class="n">sbs_processing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">seabirdscientific.cal_coefficients</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oxygen43Coefficients</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.config.cnv_header</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">applied_sbe_corrections</span><span class="p">,</span>
+    <span class="n">detect_instrument</span><span class="p">,</span>
+    <span class="n">header_from_raw_metadata</span><span class="p">,</span>
+    <span class="n">parse_sample_interval</span><span class="p">,</span>
+    <span class="n">parse_star_block</span><span class="p">,</span>
+    <span class="n">raw_metadata_block</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">expand_cast_numbers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.history</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PL_CONVERTED</span><span class="p">,</span>
+    <span class="n">add_processing_level</span><span class="p">,</span>
+    <span class="n">append_history</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QARTOD_MISSING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.writers.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">widen_floats</span>
+
+<span class="c1">#: Native scan interval by instrument, as :func:`ctdcast.config.cnv_header.detect_instrument`</span>
+<span class="c1">#: names it.  Extend as other instruments arrive.</span>
+<span class="n">NATIVE_SCAN_INTERVAL_SECONDS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"SBE 9"</span><span class="p">:</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">24.0</span><span class="p">}</span>
+
+<span class="c1">#: Default window (s) for the SBE 43 tau correction's dV/dt.</span>
+<span class="n">DEFAULT_OXYGEN_TAU_WINDOW_SECONDS</span> <span class="o">=</span> <span class="mf">2.0</span>
+
+<span class="c1"># Config key -&gt; the stage variables it may align.  A specific key (``conductivity_2``) wins over</span>
+<span class="c1"># the family key (``conductivity``).</span>
+<span class="n">_ALIGN_TARGETS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"conductivity_1"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">),</span>
+    <span class="s2">"conductivity_2"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"conductivity_2"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">),</span>
+    <span class="s2">"oxygen_raw_1"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"oxygen_1"</span><span class="p">,</span> <span class="s2">"oxygen"</span><span class="p">),</span>
+    <span class="s2">"oxygen_raw_2"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"oxygen_2"</span><span class="p">,</span> <span class="s2">"oxygen"</span><span class="p">),</span>
+<span class="p">}</span>
+<span class="n">_ALIGN_KEYS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">keys</span> <span class="ow">in</span> <span class="n">_ALIGN_TARGETS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">)</span>
+<span class="n">_CTM_KEYS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">,</span> <span class="s2">"conductivity"</span><span class="p">})</span>
+<span class="n">_DECK_CHANNEL</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"conductivity_1"</span><span class="p">:</span> <span class="s2">"primary conductivity"</span><span class="p">,</span>
+    <span class="s2">"conductivity_2"</span><span class="p">:</span> <span class="s2">"secondary conductivity"</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">cache</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_version</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">importlib</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">version</span><span class="p">(</span><span class="s2">"seabirdscientific"</span><span class="p">)</span>
+
+
+<span class="c1"># --- input checks --------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="native_rate_reason">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.native_rate_reason">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">native_rate_reason</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return why *ds* is not at its instrument's native scan rate, or None if it is.</span>
+
+<span class="sd">    A thin wrapper over :func:`native_interval`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-2 or stage-3 per-cast dataset.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        A one-line reason, or None when the data is at the native rate.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="native_interval">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.native_interval">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Return the scan interval to correct *ds* with, or why it cannot be corrected.</span>
+
+<span class="sd">    Alignment, cell thermal mass and the SBE 43 tau correction act scan by scan; on binned or</span>
+<span class="sd">    averaged data they would be wrong.  All of these must hold: ``sample_interval_seconds`` equals</span>
+<span class="sd">    the instrument's native interval (911plus: 1/24 s), the deck unit averaged no scans, and the</span>
+<span class="sd">    Sea-Bird chain has no ``binavg``.</span>
+
+<span class="sd">    The interval returned is the instrument's exact native interval (911plus: 1/24 s), not the</span>
+<span class="sd">    recorded one: a CNV writes it rounded (``seconds: 0.0416667``), and the rounded value makes</span>
+<span class="sd">    seabirdscientific's time axis one sample long for some cast lengths.  A stage file written</span>
+<span class="sd">    before stage 1 recorded the interval falls back to the CNV header's ``# interval`` line.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-2 or stage-3 per-cast dataset.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (float or None, str or None)</span>
+<span class="sd">        ``(interval_seconds, None)`` at the native rate, else ``(None, reason)``.</span>
+<span class="sd">    """</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="n">interval</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sample_interval_seconds"</span><span class="p">)</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sample_interval_kind"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">kind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># A stage file written before stage 1 recorded the interval: read the CNV header.</span>
+        <span class="n">kind</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">parse_sample_interval</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="n">value</span> <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">"seconds"</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"sampled by </span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2">, not by scan"</span> <span class="k">if</span> <span class="n">kind</span> <span class="k">else</span> <span class="s2">"no sample interval recorded"</span>
+        <span class="p">)</span>
+    <span class="n">instrument</span> <span class="o">=</span> <span class="n">detect_instrument</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">native</span> <span class="o">=</span> <span class="n">NATIVE_SCAN_INTERVAL_SECONDS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">instrument</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">native</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"no native scan interval known for instrument </span><span class="si">{</span><span class="n">instrument</span><span class="si">!r}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">interval</span><span class="p">),</span> <span class="n">native</span><span class="p">,</span> <span class="n">rel_tol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"sampled every </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s, not the </span><span class="si">{</span><span class="n">instrument</span><span class="si">}</span><span class="s2">'s native </span><span class="si">{</span><span class="n">native</span><span class="si">:</span><span class="s2">.6g</span><span class="si">}</span><span class="s2"> s"</span>
+        <span class="p">)</span>
+    <span class="n">averaged</span> <span class="o">=</span> <span class="n">parse_star_block</span><span class="p">(</span><span class="n">header</span><span class="p">)</span><span class="o">.</span><span class="n">deck_unit</span><span class="o">.</span><span class="n">scans_averaged</span>
+    <span class="k">if</span> <span class="n">averaged</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"the deck unit averaged </span><span class="si">{</span><span class="n">averaged</span><span class="si">}</span><span class="s2"> scans"</span>
+    <span class="k">if</span> <span class="s2">"binavg"</span> <span class="ow">in</span> <span class="n">applied_sbe_corrections</span><span class="p">(</span><span class="n">header</span><span class="p">)[</span><span class="s2">"modules"</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"bin-averaged by Sea-Bird (binavg)"</span>
+    <span class="k">return</span> <span class="n">native</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<span class="c1"># --- configuration -------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_decl_value</span><span class="p">(</span>
+    <span class="n">decl</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">value_is_mapping</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Value a declaration gives *cast_number*, with its source, or None.</span>
+
+<span class="sd">    A declaration is either a **bare value** — the value for every cast (a number for ``alignctd``,</span>
+<span class="sd">    an ``{alpha, tau}`` mapping for ``celltm``) — or a mapping with ``default`` and/or ``ranges`` for</span>
+<span class="sd">    per-cast-range exceptions.</span>
+
+<span class="sd">    *value_is_mapping* says whether a bare value is itself a mapping (``celltm``'s ``{alpha, tau}``).</span>
+<span class="sd">    When it is not (``alignctd``'s number), a mapping can only be a declaration, so one that lacks</span>
+<span class="sd">    ``default``/``ranges`` is a mis-spelled declaration and its keys are reported by name — not</span>
+<span class="sd">    passed on as a value that later fails with a less helpful "expected a number".</span>
+<span class="sd">    """</span>
+    <span class="n">is_declaration</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">({</span><span class="s2">"default"</span><span class="p">,</span> <span class="s2">"ranges"</span><span class="p">}</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">decl</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_declaration</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">value_is_mapping</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">decl</span><span class="p">)</span><span class="si">}</span><span class="s2">; use default and/or ranges"</span>
+            <span class="p">)</span>
+        <span class="c1"># A bare value: the default for every cast (a number, or an {alpha, tau} mapping).</span>
+        <span class="k">return</span> <span class="n">decl</span><span class="p">,</span> <span class="s2">"default"</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">decl</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"default"</span><span class="p">,</span> <span class="s2">"ranges"</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rng</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ranges"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"casts"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rng</span> <span class="ow">or</span> <span class="s2">"value"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rng</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2"> range </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: needs casts and value"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cast_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cast_number</span> <span class="ow">in</span> <span class="n">expand_cast_numbers</span><span class="p">(</span><span class="n">rng</span><span class="p">[</span><span class="s2">"casts"</span><span class="p">]):</span>
+            <span class="n">hits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="p">[</span><span class="s2">"value"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">hits</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">h</span> <span class="o">!=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: cast </span><span class="si">{</span><span class="n">cast_number</span><span class="si">}</span><span class="s2"> is in ranges with different values </span><span class="si">{</span><span class="n">hits</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"range"</span>
+    <span class="k">if</span> <span class="s2">"default"</span> <span class="ow">in</span> <span class="n">decl</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">decl</span><span class="p">[</span><span class="s2">"default"</span><span class="p">],</span> <span class="s2">"default"</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_number</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""*value* as a finite float, or a ValueError naming *where*."""</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: expected a number, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: expected a finite number, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<div class="viewcode-block" id="resolve_alignment">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.resolve_alignment">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_alignment</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the configured advance (s) for *var* on *cast_number*, and the key it came from.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfg : dict or None</span>
+<span class="sd">        ``{"alignctd": ...}``: the step's parameters from ``data_processing.steps``.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        A stage variable: ``conductivity_1/2`` or ``oxygen_raw_1/2``.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number (a lettered cast resolves by its number).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (float, str) or None</span>
+<span class="sd">        ``(seconds, "alignctd.&lt;key&gt; &lt;default|range&gt;")``, or None when nothing is configured.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key, a malformed entry, or overlapping ranges with different values.</span>
+<span class="sd">    """</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"alignctd"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"alignctd: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="n">_ALIGN_KEYS</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"alignctd: unknown channel key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">; use </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_ALIGN_KEYS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_ALIGN_TARGETS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">()):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+            <span class="n">hit</span> <span class="o">=</span> <span class="n">_decl_value</span><span class="p">(</span><span class="n">block</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">cast_number</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"alignctd.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_number</span><span class="p">(</span><span class="n">hit</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"alignctd.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">"</span><span class="p">),</span> <span class="sa">f</span><span class="s2">"alignctd.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">hit</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_cell_thermal_mass">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.resolve_cell_thermal_mass">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_cell_thermal_mass</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the configured ``(alpha, tau_seconds, source)`` for conductivity *var*, or None.</span>
+
+<span class="sd">    The ``celltm`` block may hold ``default``/``ranges`` itself (every conductivity channel) and</span>
+<span class="sd">    per-channel keys (``conductivity_2``) that win over it.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfg : dict or None</span>
+<span class="sd">        ``{"celltm": ...}``: the step's parameters from ``data_processing.steps``.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        ``conductivity_1`` or ``conductivity_2``.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (float, float, str) or None</span>
+<span class="sd">        ``(alpha, tau, "celltm[.&lt;key&gt;] &lt;default|range&gt;")``, or None when nothing is configured.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key, a value without ``alpha`` and ``tau``, or conflicting ranges.</span>
+<span class="sd">    """</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"celltm"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"celltm: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="n">_CTM_KEYS</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"default"</span><span class="p">,</span> <span class="s2">"ranges"</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"celltm: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[(</span><span class="n">var</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"celltm.</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"conductivity"</span><span class="p">,</span> <span class="s2">"celltm.conductivity"</span><span class="p">)]</span>
+    <span class="n">hit</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">where</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+            <span class="n">hit</span> <span class="o">=</span> <span class="n">_decl_value</span><span class="p">(</span><span class="n">block</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">cast_number</span><span class="p">,</span> <span class="n">where</span><span class="p">,</span> <span class="n">value_is_mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">where_hit</span> <span class="o">=</span> <span class="n">where</span>
+                <span class="k">break</span>
+    <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">block</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"default"</span><span class="p">,</span> <span class="s2">"ranges"</span><span class="p">)}</span>
+        <span class="k">if</span> <span class="n">top</span><span class="p">:</span>
+            <span class="n">hit</span> <span class="o">=</span> <span class="n">_decl_value</span><span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">,</span> <span class="s2">"celltm"</span><span class="p">,</span> <span class="n">value_is_mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">where_hit</span> <span class="o">=</span> <span class="s2">"celltm"</span>
+    <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">hit</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"alpha"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span> <span class="ow">or</span> <span class="s2">"tau"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where_hit</span><span class="si">}</span><span class="s2">: a value needs alpha and tau, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"alpha"</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where_hit</span><span class="si">}</span><span class="s2">.alpha"</span><span class="p">)</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"tau"</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where_hit</span><span class="si">}</span><span class="s2">.tau"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">tau</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where_hit</span><span class="si">}</span><span class="s2">: needs alpha &gt;= 0 and tau &gt; 0, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where_hit</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">hit</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_slope_offset">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.resolve_slope_offset">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_slope_offset</span><span class="p">(</span>
+    <span class="n">block</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return ``(slope, offset, source)`` for conductivity *var* on *cast_number*, or None.</span>
+
+<span class="sd">    ``data_processing.slope_offset`` holds one entry per conductivity sensor</span>
+<span class="sd">    (``conductivity_1``, ``conductivity_2``), each a bare ``{slope:, offset:}`` or a</span>
+<span class="sd">    ``{default:, ranges:}`` declaration of them; ``offset`` defaults to 0.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    block : dict or None</span>
+<span class="sd">        The ``data_processing.slope_offset`` block.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        ``conductivity_1`` or ``conductivity_2``.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (float, float, str) or None</span>
+<span class="sd">        None when nothing is configured for *var* on this cast.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On an unknown key or a malformed value.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"slope_offset: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"slope_offset: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">; use conductivity_1, conductivity_2"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"slope_offset.</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">hit</span> <span class="o">=</span> <span class="n">_decl_value</span><span class="p">(</span><span class="n">block</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">cast_number</span><span class="p">,</span> <span class="n">where</span><span class="p">,</span> <span class="n">value_is_mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">hit</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="s2">"slope"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span>
+        <span class="ow">or</span> <span class="nb">set</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"slope"</span><span class="p">,</span> <span class="s2">"offset"</span><span class="p">}</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">: a value is </span><span class="se">{{</span><span class="s2">slope:, offset:</span><span class="se">}}</span><span class="s2">, got </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">"slope"</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.slope"</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"offset"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.offset"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">slope</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">.slope: must be positive, got </span><span class="si">{</span><span class="n">slope</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">slope</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">hit</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_oxygen_window">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.resolve_oxygen_window">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_oxygen_window</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the SBE 43 tau-correction window (s) from ``data_processing.oxygen``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfg : dict or None</span>
+<span class="sd">        The ``data_processing:`` config block.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        ``oxygen.tau_window_seconds``, or :data:`DEFAULT_OXYGEN_TAU_WINDOW_SECONDS`.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the block is not a mapping, has unknown keys, or the window is not a number</span>
+<span class="sd">        spanning more than two native scans.</span>
+<span class="sd">    """</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">cfg</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"oxygen"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"oxygen: expected a mapping, got </span><span class="si">{</span><span class="n">block</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"tau_window_seconds"</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"oxygen: unknown key(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">_number</span><span class="p">(</span>
+        <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tau_window_seconds"</span><span class="p">,</span> <span class="n">DEFAULT_OXYGEN_TAU_WINDOW_SECONDS</span><span class="p">),</span>
+        <span class="s2">"oxygen.tau_window_seconds"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">shortest</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">min</span><span class="p">(</span><span class="n">NATIVE_SCAN_INTERVAL_SECONDS</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">window</span> <span class="o">&lt;=</span> <span class="n">shortest</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"oxygen.tau_window_seconds: must span more than two scans (&gt; </span><span class="si">{</span><span class="n">shortest</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2"> s), "</span>
+            <span class="sa">f</span><span class="s2">"got </span><span class="si">{</span><span class="n">window</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">window</span></div>
+
+
+
+<span class="c1"># --- appliers ------------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="align">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.align">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">align</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">offset_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">interval_seconds</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Advance *values* by *offset_seconds* with seabirdscientific's ``align_ctd``.</span>
+
+<span class="sd">    Positive advances the variable relative to pressure: the value at scan *k* becomes the one</span>
+<span class="sd">    measured ``offset_seconds`` later (linear interpolation between scans).  Values that would</span>
+<span class="sd">    come from beyond either end of the cast are NaN.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    values : numpy.ndarray</span>
+<span class="sd">        One variable at the native scan rate.</span>
+<span class="sd">    offset_seconds : float</span>
+<span class="sd">        The advance, in seconds.</span>
+<span class="sd">    interval_seconds : float</span>
+<span class="sd">        Time between scans.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (numpy.ndarray, numpy.ndarray)</span>
+<span class="sd">        The aligned values (float64) and a boolean mask of the scans set NaN because they fell</span>
+<span class="sd">        past an end.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If seabirdscientific returns an array of a different length.</span>
+<span class="sd">    """</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">align_ctd</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">offset_seconds</span><span class="p">,</span> <span class="n">interval_seconds</span><span class="p">,</span> <span class="n">flag_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"align_ctd returned </span><span class="si">{</span><span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> for input </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">interval_seconds</span> <span class="o">+</span> <span class="n">offset_seconds</span>
+    <span class="n">past_end</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">t</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">interval_seconds</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">past_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="n">past_end</span></div>
+
+
+
+<div class="viewcode-block" id="cell_thermal_mass">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.cell_thermal_mass">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cell_thermal_mass</span><span class="p">(</span>
+    <span class="n">conductivity_mS_cm</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">tau_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">interval_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Correct conductivity for cell thermal mass with seabirdscientific's ``cell_thermal_mass``.</span>
+
+<span class="sd">    seabirdscientific's filter works in S/m (its ``0.1 × (1 + 0.006 (T − 20))`` term is S/m per</span>
+<span class="sd">    °C), so conductivity is converted from mS/cm to S/m, corrected, and converted back.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    conductivity_mS_cm : numpy.ndarray</span>
+<span class="sd">        Conductivity in mS/cm at the native scan rate.</span>
+<span class="sd">    temperature : numpy.ndarray</span>
+<span class="sd">        Temperature (°C, ITS-90) of the same line; must be finite throughout, since the</span>
+<span class="sd">        recursive filter would carry a NaN to every later scan.</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        Thermal anomaly amplitude.</span>
+<span class="sd">    tau_seconds : float</span>
+<span class="sd">        Thermal anomaly time constant (1/beta), in seconds.</span>
+<span class="sd">    interval_seconds : float</span>
+<span class="sd">        Time between scans.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Corrected conductivity in mS/cm (float64).</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the temperature has non-finite values, or alpha &lt; 0 or tau &lt;= 0.  Alpha = 0 returns</span>
+<span class="sd">        the conductivity unchanged.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">tau_seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cell thermal mass needs alpha &gt;= 0 and tau &gt; 0, got </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">tau_seconds</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">alpha</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># No correction; seabirdscientific's filter divides by alpha.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">conductivity_mS_cm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"temperature has gaps (NaN); the recursive CTM filter cannot cross them"</span>
+        <span class="p">)</span>
+    <span class="n">c_si</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">conductivity_mS_cm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">/</span> <span class="mf">10.0</span>
+    <span class="n">corrected</span> <span class="o">=</span> <span class="n">sbs_processing</span><span class="o">.</span><span class="n">cell_thermal_mass</span><span class="p">(</span>
+        <span class="n">t</span><span class="p">,</span> <span class="n">c_si</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">tau_seconds</span><span class="p">,</span> <span class="n">interval_seconds</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">corrected</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">*</span> <span class="mf">10.0</span></div>
+
+
+
+<span class="c1"># --- orchestration -------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="CorrectionRecord">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.CorrectionRecord">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CorrectionRecord</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""What :func:`apply_corrections` did to one cast, for stage 3 and the compiled product."""</span>
+
+    <span class="c1">#: Variables whose values changed (conductivity and SBE 43 voltages).</span>
+    <span class="n">changed</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="c1">#: ``{variable: seconds}`` advances applied.</span>
+    <span class="n">alignment</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="c1">#: ``{variable: (alpha, tau)}`` cell-thermal-mass corrections applied.</span>
+    <span class="n">cell_thermal_mass</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="c1">#: ``{variable: boolean mask}`` scans set NaN by an alignment.</span>
+    <span class="n">edge_masks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="c1">#: One-line reasons for steps that were configured but skipped.</span>
+    <span class="n">skipped</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="flag_missing">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.flag_missing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">flag_missing</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Set ``{var}_qc`` to QARTOD 9 (missing) where *mask* is true, in place.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        The dataset to flag.</span>
+<span class="sd">    var : str</span>
+<span class="sd">        The data variable; its ``{var}_qc`` is changed if it exists.</span>
+<span class="sd">    mask : numpy.ndarray</span>
+<span class="sd">        Boolean, true at the scans with no measurement.</span>
+<span class="sd">    """</span>
+    <span class="n">qc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">_qc"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">qc</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">flags</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">QARTOD_MISSING</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">qc</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_skip</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="n">CorrectionRecord</span><span class="p">,</span> <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">cast</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">record</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="apply_corrections">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.apply_corrections">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_corrections</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cast_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"?"</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">CorrectionRecord</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Apply the configured alignment and cell thermal mass corrections to one cast.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-2 dataset at its native scan rate.</span>
+<span class="sd">    cruise_cfg : dict or None</span>
+<span class="sd">        ``{"alignctd": ...}`` and/or ``{"celltm": ...}``: one step's parameters from</span>
+<span class="sd">        ``data_processing.steps``.</span>
+<span class="sd">    cast_number : int or None</span>
+<span class="sd">        The cast's number, for per-range values.</span>
+<span class="sd">    cast_label : str, optional</span>
+<span class="sd">        How the cast is named in warnings (e.g. ``"011"``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (xarray.Dataset, CorrectionRecord)</span>
+<span class="sd">        A new dataset (the input is not mutated) and what was done.  With neither block</span>
+<span class="sd">        configured, the dataset is returned unchanged.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On malformed configuration.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Recursive corrections (cell thermal mass) run in float64, whatever the file stored.</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">widen_floats</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">cruise_cfg</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">record</span> <span class="o">=</span> <span class="n">CorrectionRecord</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"alignctd"</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"celltm"</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">record</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">native</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">native</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_skip</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">cast_label</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"alignctd/celltm skipped: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">record</span>
+
+    <span class="n">interval</span> <span class="o">=</span> <span class="n">native</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">header_from_raw_metadata</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="n">applied</span> <span class="o">=</span> <span class="n">applied_sbe_corrections</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">_version</span><span class="p">()</span>
+
+    <span class="c1"># Alignment first (Sea-Bird's order: align, then cell thermal mass).</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">_ALIGN_TARGETS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">hit</span> <span class="o">=</span> <span class="n">resolve_alignment</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">seconds</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">hit</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="s2">"oxygen_"</span> <span class="o">+</span> <span class="n">var</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"oxygen_raw"</span><span class="p">)</span> <span class="k">else</span> <span class="n">var</span>
+        <span class="k">if</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"align_unparsed"</span><span class="p">]:</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"alignctd </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: Sea-Bird alignctd already ran on channels ctdcast cannot name (</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">applied</span><span class="p">[</span><span class="s1">'align_unparsed'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"oxygen_raw"</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ctd_oxygen"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_1"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_2"</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"alignctd </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: Sea-Bird already converted oxygen, which ctdcast keeps; aligning the voltage would not change it"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">line_temp</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"temperature_</span><span class="si">{</span><span class="n">var</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"conductivity"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"aligned"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">line_temp</span><span class="p">):</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"alignctd </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: Sea-Bird alignctd advanced </span><span class="si">{</span><span class="n">line_temp</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">applied</span><span class="p">[</span><span class="s1">'aligned'</span><span class="p">][</span><span class="n">line_temp</span><span class="p">]</span><span class="si">:</span><span class="s2">+g</span><span class="si">}</span><span class="s2"> s, so a conductivity advance relative to pressure no longer matches it"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"aligned"</span><span class="p">]:</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"alignctd </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: Sea-Bird alignctd already advanced it </span><span class="si">{</span><span class="n">applied</span><span class="p">[</span><span class="s1">'aligned'</span><span class="p">][</span><span class="n">base</span><span class="p">]</span><span class="si">:</span><span class="s2">+g</span><span class="si">}</span><span class="s2"> s"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">values</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">align</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"alignment_offset_seconds"</span><span class="p">]</span> <span class="o">=</span> <span class="n">seconds</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"alignment_method"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> processing.align_ctd"</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"alignment_config"</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="n">deck</span> <span class="o">=</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"deck_advance"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_DECK_CHANNEL</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+        <span class="n">note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"alignctd: </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2"> s (</span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="k">if</span> <span class="n">deck</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"alignment_deck_unit_advance_seconds"</span><span class="p">]</span> <span class="o">=</span> <span class="n">deck</span>
+            <span class="n">note</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">", residual on the deck-unit advance </span><span class="si">{</span><span class="n">deck</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2"> s"</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">note</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"; </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2"> scan(s) past the cast's ends set NaN, flagged 9"</span>
+            <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">attrs</span><span class="p">)</span>
+        <span class="n">flag_missing</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+        <span class="n">record</span><span class="o">.</span><span class="n">alignment</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">seconds</span>
+        <span class="n">record</span><span class="o">.</span><span class="n">edge_masks</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask</span>
+        <span class="n">record</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> <span class="n">note</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">)</span>
+
+    <span class="c1"># Cell thermal mass, conductivity only, with the temperature of the same line.</span>
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conductivity_1"</span><span class="p">,</span> <span class="s2">"conductivity_2"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">hit</span> <span class="o">=</span> <span class="n">resolve_cell_thermal_mass</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">cast_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">alpha</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">hit</span>
+        <span class="k">if</span> <span class="s2">"celltm"</span> <span class="ow">in</span> <span class="n">applied</span><span class="p">[</span><span class="s2">"modules"</span><span class="p">]:</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"celltm </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: Sea-Bird celltm already ran"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">var</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"ctd_temperature_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"ctd_temperature"</span><span class="p">)</span> <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">temp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_skip</span><span class="p">(</span>
+                <span class="n">record</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">,</span>
+                <span class="n">cast_label</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"celltm </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: no temperature for line </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">cell_thermal_mass</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">temp</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">interval</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">_skip</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">cast_label</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"celltm </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> skipped: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cell_thermal_mass_alpha"</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cell_thermal_mass_tau_seconds"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tau</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cell_thermal_mass_temperature"</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cell_thermal_mass_method"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> processing.cell_thermal_mass"</span>
+        <span class="p">)</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s2">"cell_thermal_mass_config"</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">attrs</span><span class="p">)</span>
+        <span class="n">record</span><span class="o">.</span><span class="n">cell_thermal_mass</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">changed</span><span class="p">:</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"celltm: </span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2"> alpha=</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> tau=</span><span class="si">{</span><span class="n">tau</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s with </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+            <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">record</span></div>
+
+
+
+<span class="c1"># --- SBE 43 oxygen -------------------------------------------------------------------------</span>
+
+
+<span class="c1"># --- SBE 43 corrections: diverges from seabirdscientific until it matches AN 64-3 ---------------</span>
+<span class="c1">#: What the ``oxygen_hysteresis_method`` attribute records, so a reader of the file knows which</span>
+<span class="c1">#: recursion was used.</span>
+<span class="n">SBE43_HYSTERESIS_METHOD</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"Sea-Bird Application Note 64-3: Oxnew(i) = (Ox(i) + Oxnew(i-1)*C*D - Ox(i-1)*C)/D, "</span>
+    <span class="s2">"Ox(i-1) uncorrected (seabirdscientific 3.1.1 uses the corrected value)"</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="sbe43_dvdt">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.sbe43_dvdt">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sbe43_dvdt</span><span class="p">(</span><span class="n">volts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">window_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return dV/dt for the SBE 43 tau correction: a least-squares slope over a centred window.</span>
+
+<span class="sd">    The same slope seabirdscientific's ``convert_sbe43_oxygen`` fits scan by scan, as one</span>
+<span class="sd">    convolution.  ``floor(window / 2 / interval)`` scans each side; the scans within that many of</span>
+<span class="sd">    either end get 0, as in seabirdscientific.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    volts : numpy.ndarray</span>
+<span class="sd">        SBE 43 voltage at the native scan rate, without gaps.</span>
+<span class="sd">    window_seconds : float</span>
+<span class="sd">        Width of the fitting window, in seconds.</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Time between scans, in seconds.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        dV/dt in V/s, the same length as *volts*.</span>
+<span class="sd">    """</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">window_seconds</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">interval</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">v</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">j</span> <span class="o">/</span> <span class="p">(</span><span class="n">interval</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">j</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">k</span> <span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">weights</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"valid"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="sbe43_hysteresis">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.sbe43_hysteresis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sbe43_hysteresis</span><span class="p">(</span>
+    <span class="n">volts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">coefs</span><span class="p">:</span> <span class="n">Oxygen43Coefficients</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return SBE 43 voltage corrected for hysteresis, as Sea-Bird Application Note 64-3 gives it.</span>
+
+<span class="sd">    ``Oxnew(i) = (Ox(i) + Oxnew(i-1)·C·D − Ox(i-1)·C) / D`` with ``Ox = V + Voffset``,</span>
+<span class="sd">    ``D = 1 + H1·(exp(P/H2) − 1)`` and ``C = exp(−interval/H3)``; ``Ox(i-1)`` is the uncorrected</span>
+<span class="sd">    previous value.  Written as ``y(i) = C·y(i-1) + (x(i) − C·x(i-1))/D(i)``, a first-order</span>
+<span class="sd">    recursive filter.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    volts : numpy.ndarray</span>
+<span class="sd">        SBE 43 voltage, without gaps.</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Pressure (dbar), same length.</span>
+<span class="sd">    coefs : seabirdscientific.cal_coefficients.Oxygen43Coefficients</span>
+<span class="sd">        The sensor's calibration (``h1``, ``h2``, ``h3``, ``v_offset``).</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Time between scans, in seconds.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Corrected voltage (V), the same length; the first scan is unchanged.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">signal</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">+</span> <span class="n">coefs</span><span class="o">.</span><span class="n">v_offset</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">coefs</span><span class="o">.</span><span class="n">v_offset</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">coefs</span><span class="o">.</span><span class="n">h1</span> <span class="o">*</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">/</span> <span class="n">coefs</span><span class="o">.</span><span class="n">h2</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+    <span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">interval</span> <span class="o">/</span> <span class="n">coefs</span><span class="o">.</span><span class="n">h3</span><span class="p">)</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">c</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">return</span> <span class="n">signal</span><span class="o">.</span><span class="n">lfilter</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="n">c</span><span class="p">],</span> <span class="n">u</span><span class="p">)</span> <span class="o">-</span> <span class="n">coefs</span><span class="o">.</span><span class="n">v_offset</span></div>
+
+
+
+<div class="viewcode-block" id="sbe43_tau_term">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.sbe43_tau_term">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sbe43_tau_term</span><span class="p">(</span>
+    <span class="n">dvdt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">coefs</span><span class="p">:</span> <span class="n">Oxygen43Coefficients</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the tau correction in volts: ``tau20·exp(D1·P + D2·(T − 20))·dV/dt``.</span>
+
+<span class="sd">    Added to the voltage, it gives what seabirdscientific's equation does with its tau term.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dvdt : numpy.ndarray</span>
+<span class="sd">        From :func:`sbe43_dvdt`.</span>
+<span class="sd">    temperature : numpy.ndarray</span>
+<span class="sd">        ITS-90 temperature (°C).</span>
+<span class="sd">    pressure : numpy.ndarray</span>
+<span class="sd">        Pressure (dbar).</span>
+<span class="sd">    coefs : seabirdscientific.cal_coefficients.Oxygen43Coefficients</span>
+<span class="sd">        The sensor's calibration (``tau_20``, ``d1``, ``d2``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        The term, in volts.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">coefs</span><span class="o">.</span><span class="n">tau_20</span>
+        <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">coefs</span><span class="o">.</span><span class="n">d1</span> <span class="o">*</span> <span class="n">pressure</span> <span class="o">+</span> <span class="n">coefs</span><span class="o">.</span><span class="n">d2</span> <span class="o">*</span> <span class="p">(</span><span class="n">temperature</span> <span class="o">-</span> <span class="mf">20.0</span><span class="p">))</span>
+        <span class="o">*</span> <span class="n">dvdt</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sbe43_oxygen">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.sbe43_oxygen">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sbe43_oxygen</span><span class="p">(</span>
+    <span class="n">volts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">salinity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">coefs</span><span class="p">:</span> <span class="n">Oxygen43Coefficients</span><span class="p">,</span>
+    <span class="n">window_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return SBE 43 oxygen (µmol/kg) with the tau and Application Note 64-3 hysteresis corrections.</span>
+
+<span class="sd">    dV/dt comes from the uncorrected voltage and hysteresis acts on the voltage, as in</span>
+<span class="sd">    seabirdscientific; the corrected voltage plus the tau term then goes through</span>
+<span class="sd">    ``convert_sbe43_oxygen`` with its own corrections off.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    volts, temperature, pressure, salinity : numpy.ndarray</span>
+<span class="sd">        SBE 43 voltage, ITS-90 temperature (°C), pressure (dbar) and practical salinity of one</span>
+<span class="sd">        unbroken run of finite scans.</span>
+<span class="sd">    coefs : seabirdscientific.cal_coefficients.Oxygen43Coefficients</span>
+<span class="sd">        The sensor's calibration.</span>
+<span class="sd">    window_seconds : float</span>
+<span class="sd">        The tau correction's dV/dt window, in seconds.</span>
+<span class="sd">    interval : float</span>
+<span class="sd">        Time between scans, in seconds.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Oxygen in µmol/kg.</span>
+<span class="sd">    """</span>
+    <span class="n">dvdt</span> <span class="o">=</span> <span class="n">sbe43_dvdt</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">window_seconds</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">sbe43_hysteresis</span><span class="p">(</span><span class="n">volts</span><span class="p">,</span> <span class="n">pressure</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">sbe43_tau_term</span><span class="p">(</span><span class="n">dvdt</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">pressure</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sbs_conversion</span><span class="o">.</span><span class="n">convert_sbe43_oxygen</span><span class="p">(</span>
+        <span class="n">v</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">pressure</span><span class="p">,</span> <span class="n">salinity</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span>
+        <span class="n">apply_tau_correction</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">apply_hysteresis_correction</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"umol/kg"</span><span class="p">,</span>
+    <span class="p">)</span>  <span class="c1"># fmt: skip</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_finite_runs</span><span class="p">(</span><span class="n">good</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">slice</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Slices of each unbroken run of True in *good*."""</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mi">0</span><span class="p">],</span> <span class="n">good</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span> <span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">edges</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">stops</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">edges</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">starts</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fill_marked</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">marked</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return *x* with the finite values in *marked* replaced by interpolation from unmarked neighbours.</span>
+
+<span class="sd">    NaN stays NaN (a cast's alignment edges have no value to convert).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">marked</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span>
+    <span class="n">gap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">marked</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">gap</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">gap</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ok</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">x</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">gap</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">gap</span><span class="p">],</span> <span class="n">idx</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<div class="viewcode-block" id="derive_oxygen">
+<a class="viewcode-back" href="../../../api.html#ctdcast.processors.corrections.derive_oxygen">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">derive_oxygen</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">cruise_cfg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cast_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"?"</span><span class="p">,</span>
+    <span class="n">marked</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Derive ``ctd_oxygen`` from each SBE 43 voltage, as Sea-Bird's Data Conversion does.</span>
+
+<span class="sd">    For each ``oxygen_raw_&lt;N&gt;`` with no converted oxygen beside it (a CNV's own ``ctd_oxygen`` is</span>
+<span class="sd">    never re-derived), oxygen in µmol/kg is computed with ``convert_sbe43_oxygen`` from the</span>
+<span class="sd">    (aligned) voltage, the temperature, practical salinity and pressure of line *N* (line 1 if the</span>
+<span class="sd">    cast has no line *N*), and the sensor's coefficients from the ``.xmlcon`` in</span>
+<span class="sd">    ``raw_metadata``, with the tau and hysteresis corrections on (Sea-Bird Application Note 64-3).</span>
+<span class="sd">    One sensor gives plain ``ctd_oxygen``; two give ``ctd_oxygen_1``/``_2``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        A stage-3 dataset after alignment, CTM and salinity.</span>
+<span class="sd">    cruise_cfg : dict or None</span>
+<span class="sd">        The ``data_processing:`` block; ``oxygen.tau_window_seconds`` sets the tau-correction window.</span>
+<span class="sd">    cast_label : str, optional</span>
+<span class="sd">        How the cast is named in warnings.</span>
+<span class="sd">    marked : dict of str to numpy.ndarray, optional</span>
+<span class="sd">        ``{variable: mask}`` of values an earlier Wild Edit marked.  The tau and hysteresis</span>
+<span class="sd">        corrections step scan to scan, so a marked voltage, temperature, conductivity or</span>
+<span class="sd">        pressure would spread into the neighbouring oxygen; each is replaced by interpolation</span>
+<span class="sd">        from its unmarked neighbours for the conversion, and the oxygen at those scans is</span>
+<span class="sd">        flagged 4.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (xarray.Dataset, list of str)</span>
+<span class="sd">        A new dataset and the names of the variables written.</span>
+<span class="sd">    """</span>
+    <span class="n">raws</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"oxygen_raw_1"</span><span class="p">,</span> <span class="s2">"oxygen_raw_2"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">]</span>
+    <span class="n">marked</span> <span class="o">=</span> <span class="n">marked</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raws</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ctd_oxygen"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_1"</span><span class="p">,</span> <span class="s2">"ctd_oxygen_2"</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="n">xml</span> <span class="o">=</span> <span class="n">raw_metadata_block</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"raw_metadata"</span><span class="p">),</span> <span class="s2">"xmlcon"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">xml</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: oxygen not derived: no .xmlcon in raw_metadata"</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.readers.xmlcon</span><span class="w"> </span><span class="kn">import</span> <span class="n">oxygen43_coefficients</span><span class="p">,</span> <span class="n">parse_xmlcon</span>
+
+    <span class="n">sensors</span> <span class="o">=</span> <span class="n">parse_xmlcon</span><span class="p">(</span><span class="n">xml</span><span class="p">)</span><span class="o">.</span><span class="n">by_element</span><span class="p">(</span><span class="s2">"OxygenSensor"</span><span class="p">)</span>
+    <span class="n">interval</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="n">native_interval</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: oxygen not derived: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">resolve_oxygen_window</span><span class="p">(</span><span class="n">cruise_cfg</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">written</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">_version</span><span class="p">()</span>
+    <span class="n">single</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">raws</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">raws</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">sensors</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2"> has no OxygenSensor </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> in the .xmlcon"</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">if</span> <span class="sa">f</span><span class="s2">"ctd_temperature_</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">else</span> <span class="s2">"1"</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"ctd_temperature_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"ctd_temperature"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span>
+        <span class="p">)</span>
+        <span class="n">sal</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"ctd_salinity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"ctd_salinity"</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">sal</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"cast </span><span class="si">{</span><span class="n">cast_label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2"> not converted: no salinity on line </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">cond</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="sa">f</span><span class="s2">"conductivity_</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">else</span> <span class="s2">"conductivity_1"</span>
+        <span class="p">)</span>
+        <span class="n">none</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">m_v</span><span class="p">,</span> <span class="n">m_t</span><span class="p">,</span> <span class="n">m_c</span><span class="p">,</span> <span class="n">m_p</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">marked</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">none</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">temp</span><span class="p">,</span> <span class="n">cond</span><span class="p">,</span> <span class="s2">"pressure"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># A marked input is bridged for the conversion, so it does not spread to its neighbours.</span>
+        <span class="n">volts</span> <span class="o">=</span> <span class="n">_fill_marked</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">m_v</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">_fill_marked</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">temp</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">m_t</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">_fill_marked</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">sal</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">m_t</span> <span class="o">|</span> <span class="n">m_c</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">_fill_marked</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"pressure"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">m_p</span><span class="p">)</span>
+        <span class="n">any_marked</span> <span class="o">=</span> <span class="n">m_v</span> <span class="o">|</span> <span class="n">m_t</span> <span class="o">|</span> <span class="n">m_c</span> <span class="o">|</span> <span class="n">m_p</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">volts</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">o2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">volts</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">coefs</span> <span class="o">=</span> <span class="n">oxygen43_coefficients</span><span class="p">(</span><span class="n">sensors</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="c1"># The tau and hysteresis corrections step scan to scan, so each unbroken run of finite</span>
+        <span class="c1"># scans is converted on its own: a NaN would otherwise spread through the filter.  A</span>
+        <span class="c1"># run shorter than the tau window stays NaN.</span>
+        <span class="n">min_run</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">window</span> <span class="o">/</span> <span class="n">interval</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">span</span> <span class="ow">in</span> <span class="n">_finite_runs</span><span class="p">(</span><span class="n">good</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">span</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">span</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">min_run</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">o2</span><span class="p">[</span><span class="n">span</span><span class="p">]</span> <span class="o">=</span> <span class="n">sbe43_oxygen</span><span class="p">(</span>
+                <span class="n">volts</span><span class="p">[</span><span class="n">span</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="n">span</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="n">span</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="n">span</span><span class="p">],</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">interval</span>
+            <span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">"ctd_oxygen"</span> <span class="k">if</span> <span class="n">single</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"ctd_oxygen_</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"umol kg-1"</span><span class="p">,</span>
+            <span class="s2">"conversion_method"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"seabirdscientific </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> conversion.convert_sbe43_oxygen, its corrections "</span>
+                <span class="s2">"off; tau and hysteresis by ctdcast.processors.corrections.sbe43_oxygen"</span>
+            <span class="p">),</span>
+            <span class="s2">"oxygen_tau_correction"</span><span class="p">:</span> <span class="s2">"yes"</span><span class="p">,</span>
+            <span class="s2">"oxygen_tau_window_seconds"</span><span class="p">:</span> <span class="n">window</span><span class="p">,</span>
+            <span class="s2">"oxygen_hysteresis_correction"</span><span class="p">:</span> <span class="s2">"yes"</span><span class="p">,</span>
+            <span class="s2">"oxygen_hysteresis_method"</span><span class="p">:</span> <span class="n">SBE43_HYSTERESIS_METHOD</span><span class="p">,</span>
+            <span class="s2">"derived_from"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sal</span><span class="si">}</span><span class="s2">, pressure"</span><span class="p">,</span>
+            <span class="s2">"sensor_serial_number"</span><span class="p">:</span> <span class="n">sensors</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">serial</span> <span class="ow">or</span> <span class="s2">"UNK"</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="s2">"sensor"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>  <span class="c1"># the voltage's link to its SENSOR_OXYGEN_* entry</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">"sensor"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"sensor"</span><span class="p">]</span>
+        <span class="n">add_processing_level</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">PL_CONVERTED</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">o2</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2">_qc"</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="c1"># The voltage's flags (stage-2 soak/deck, alignment edges) carry to the oxygen.</span>
+            <span class="c1"># Its long_name names the voltage; dropped so the writer names this variable.</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span>
+                <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"long_name"</span><span class="p">},</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">any_marked</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="c1"># Oxygen at a scan whose input was marked is an interpolated estimate: fail.</span>
+            <span class="k">if</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.processors.qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">_qc_attrs</span>
+
+                <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">o2</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>
+                    <span class="n">_qc_attrs</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="n">qc_o2</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">qc_o2</span><span class="p">[</span><span class="n">any_marked</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">qc_o2</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">4</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">raw</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">qc_o2</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_qc"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"oxygen_marked_inputs_bridged"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">any_marked</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">written</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">append_history</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"oxygen: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">raw</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sal</span><span class="si">}</span><span class="s2">, pressure; SBE 43 tau correction "</span>
+            <span class="sa">f</span><span class="s2">"(window </span><span class="si">{</span><span class="n">window</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s) and Application Note 64-3 hysteresis correction"</span><span class="p">,</span>
+            <span class="n">stage</span><span class="o">=</span><span class="s2">"stage3"</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">written</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

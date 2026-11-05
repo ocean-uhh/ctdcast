@@ -1,0 +1,233 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Development and debugging switches &mdash; ctdcast v0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=20758594" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=33ce4c6d"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Migrating to 0.4.0" href="migrating_0_4_0.html" />
+    <link rel="prev" title="Python API" href="api.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ctdcast
+              <img src="_static/ctdcast.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">About the demo report</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://ocean-uhh.github.io/ctdcast/_static/demo/index.html">Demo report</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="processing_framework.html">ctdcast processing framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provenance_roadmap.html">Provenance roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="config_yaml.html">config.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cruise_metadata.html">Cruise metadata (<code class="docutils literal notranslate"><span class="pre">cruise_info</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ctd_groupings.html">ctd_groupings.yaml</a></li>
+<li class="toctree-l1"><a class="reference internal" href="registries.html">Registries</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Outputs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data_files.html">Data files (netCDF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_output.html">Report output</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Python API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development and releases</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Development and debugging switches</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#debugging-the-reports">Debugging the reports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#processing-switches">Processing switches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-demo-report">The demo report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migrating_0_4_0.html">Migrating to 0.4.0</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/ocean-uhh/ctdcast">GitHub repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ctdcast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Development and debugging switches</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/development.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="development-and-debugging-switches">
+<span id="development"></span><h1>Development and debugging switches<a class="headerlink" href="#development-and-debugging-switches" title="Link to this heading"></a></h1>
+<p>Settings for working on ctdcast itself, or for finding out why a report or a run looks the way it
+does. None of them is needed to process a cruise, and <code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">init</span></code> writes none of them.</p>
+<hr class="docutils" />
+<section id="debugging-the-reports">
+<h2>Debugging the reports<a class="headerlink" href="#debugging-the-reports" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Switch</p></th>
+<th class="head"><p>What it does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CTDCAST_REPORT_DEBUG=1</span></code>
+(environment variable)</p></td>
+<td><p>Under every embedded figure, a line naming the page slot, the draw function, the figure
+size in inches and the PNG size in pixels.  Use it to find a figure drawn wider than the
+slot it is shown in, which shrinks its text.  Any value other than empty, <code class="docutils literal notranslate"><span class="pre">0</span></code>,
+<code class="docutils literal notranslate"><span class="pre">false</span></code> or <code class="docutils literal notranslate"><span class="pre">no</span></code> turns it on; off, it costs nothing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CTDCAST_UNIT_LABEL_DEBUG=1</span></code>
+(environment variable)</p></td>
+<td><p>Adds a <code class="docutils literal notranslate"><span class="pre">*</span></code> to every unit label that goes through ctdcast’s units layer.  Regenerate a
+report with it set: an axis, colorbar or caption without the star builds its label some
+other way.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RAISE_ON_PLOT_ERROR</span></code>
+(Python)</p></td>
+<td><p>A figure that fails to draw is normally left out with a warning (most panels also show a
+note on the page saying why).  Set this to raise the error instead, with its traceback:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ctdcast.reports._vendored</span><span class="w"> </span><span class="kn">import</span> <span class="n">design_tokens</span>
+<span class="n">design_tokens</span><span class="o">.</span><span class="n">RAISE_ON_PLOT_ERROR</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>It is read each time a figure is drawn, so set it before calling <code class="docutils literal notranslate"><span class="pre">ctdcast.report</span></code>.</p>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FIGURE_SOURCE</span></code>
+(<code class="docutils literal notranslate"><span class="pre">reports/design.py</span></code>)</p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">source:</span></code> line under each figure and table, naming the module and function that
+drew it.  On by default in ctdcast.  It is a constant read when the report templates
+load, so turning it off means editing <code class="docutils literal notranslate"><span class="pre">FIGURE_SOURCE</span> <span class="pre">=</span> <span class="pre">False</span></code> in
+<code class="docutils literal notranslate"><span class="pre">ctdcast/reports/design.py</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The shared report layer under <code class="docutils literal notranslate"><span class="pre">ctdcast/reports/_vendored/</span></code> is kept byte-identical with ctdcast’s
+sibling packages; <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ctdcast.reports._vendored.check</span></code> reports any difference from its
+manifest.  Change those files only together with the siblings.</p>
+</section>
+<hr class="docutils" />
+<section id="processing-switches">
+<h2>Processing switches<a class="headerlink" href="#processing-switches" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">data_processing.allow_unapplied</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">true</span></code> lets stage 3 run when <code class="docutils literal notranslate"><span class="pre">data_processing.steps</span></code> lists a Sea-Bird step it has no
+applier for: the step is skipped, named in a warning, in <code class="docutils literal notranslate"><span class="pre">history</span></code> and in the stage-3 file’s
+<code class="docutils literal notranslate"><span class="pre">data_processing_steps</span></code>.  The default, <code class="docutils literal notranslate"><span class="pre">false</span></code>, refuses such a config, because the steps
+after it would run on data that step was meant to change first and the stage-3 file would look
+complete.  Every step ctdcast lists today has an applier, so the switch currently has no
+effect; it is kept for a step added to the table before its applier.  <code class="docutils literal notranslate"><span class="pre">split</span></code> and
+<code class="docutils literal notranslate"><span class="pre">binavg</span></code> listed under <code class="docutils literal notranslate"><span class="pre">steps</span></code> (instead of in a product) are refused either way.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">CTDCAST_CONFIG_DIR</span></code></dt><dd><p>The per-user folder the institution and platform registries are read from (default
+<code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/ctdcast</span></code>, else <code class="docutils literal notranslate"><span class="pre">~/.config/ctdcast</span></code>); see <a class="reference internal" href="registries.html"><span class="doc">Registries</span></a>.</p>
+</dd>
+</dl>
+</section>
+<hr class="docutils" />
+<section id="the-demo-report">
+<h2>The demo report<a class="headerlink" href="#the-demo-report" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">scripts/make_demo.py</span></code> rebuilds the published demo in <code class="docutils literal notranslate"><span class="pre">docs/source/_static/demo/</span></code> from the
+committed fixture casts: it runs stage 2 and QC in a temporary folder, recompiles
+<code class="docutils literal notranslate"><span class="pre">tests/fixtures/profiles_demo.nc</span></code> (a committed fixture the tests read), and builds the report.
+The maps get bathymetry from <code class="docutils literal notranslate"><span class="pre">../cruiseplan/data/bathymetry/GEBCO_2025.nc</span></code> when that file
+exists.  Run it from the repository root after a change to the report pages, and commit both:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/make_demo.py
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ctdcast</span> <span class="pre">run</span> <span class="pre">config_demo.yaml</span> <span class="pre">--stage</span> <span class="pre">profiles</span></code> builds a report from the same casts into
+<code class="docutils literal notranslate"><span class="pre">demo_report/</span></code> (the compiled file in <code class="docutils literal notranslate"><span class="pre">demo_work/</span></code>), without stage 2 or QC.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="api.html" class="btn btn-neutral float-left" title="Python API" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="migrating_0_4_0.html" class="btn btn-neutral float-right" title="Migrating to 0.4.0" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eleanor Frajka-Williams.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
