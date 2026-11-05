@@ -460,7 +460,7 @@ def _run_auto_section(args: argparse.Namespace) -> int:
     if not profiles_path.exists():
         print(
             f"ERROR: profiles.nc not found: {profiles_path}\n"
-            "       Build it with: ctdcast process profiles",
+            "       Build it with: ctdcast process CONFIG --stage profiles",
             file=sys.stderr,
         )
         return 1

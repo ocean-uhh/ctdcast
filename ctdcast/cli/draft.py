@@ -14,7 +14,8 @@ def build_parser(
     _epilog = """
 Converts raw CNV files to netCDF via seasenselib, then generates station pages,
 an index page, and a Leaflet map — all in one step with no config.yaml required.
-Sections and time-series pages are skipped (they need a compiled profiles.nc).
+Section and time-series pages stay empty: they need a groupings file saying which
+casts belong together (use a config.yaml and `ctdcast run` for those).
 
 Examples:
   # Quick look at today's casts:
@@ -72,7 +73,7 @@ Examples:
         "--cruise",
         metavar="ID",
         default=None,
-        help="Cruise ID shown in the report header (default: read from nc attrs, fallback 'draft').",
+        help="Cruise ID shown in the report header (default: the files' cruise attribute, else UNKCRUISE).",
     )
     parser.add_argument(
         "--ship",
@@ -100,9 +101,10 @@ Examples:
         metavar=("MIN", "MAX"),
         default=None,
         help=(
-            "Salinity range [MIN MAX] for plot trimming.  Records with ctd_salinity_1 "
-            "outside this range are excluded from all station page plots "
-            "(NC files are not modified).  Example: --sal 30 36"
+            "Salinity range [MIN MAX] for plot trimming: records whose salinity "
+            "(ctd_salinity, else ctd_salinity_1) is outside it are left out of the cast "
+            "page plots; the netCDF files are not changed.  An up-to-date page is rebuilt "
+            "only with --force.  Example: --sal 30 36"
         ),
     )
     parser.add_argument(
@@ -110,10 +112,10 @@ Examples:
         action="store_true",
         default=False,
         help=(
-            "Auto-detect and strip the pre-soak window from each cast: cuts at least "
-            "the first 60 s (pump activation) and any records up to the last time the "
-            "CTD was within 2 dbar of the surface after pump-on.  NC files are not "
-            "modified; only plots are affected."
+            "Leave the surface soak and the back-on-deck records out of the cast page "
+            "plots, found as stage 2 finds them (the last scan above 10 dbar before the "
+            "descent, searched back 20 s; the deck by the pressure of the last 20 s).  "
+            "The netCDF files are not changed; an up-to-date page is rebuilt only with --force."
         ),
     )
     parser.add_argument(

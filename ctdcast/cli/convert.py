@@ -121,7 +121,7 @@ Examples:
     if subparsers is not None:
         parser = subparsers.add_parser(
             "convert",
-            help="(deprecated) Convert raw CTD (CNV) files to netCDF; use 'process'.",
+            help="(deprecated, removed in 0.5.0) Convert CNV files to netCDF; use 'process'.",
             **kwargs,
         )
         parser.set_defaults(func=run)
@@ -216,7 +216,10 @@ def run(args: argparse.Namespace) -> int:
     else:
         _suggest = "process CONFIG --stage profiles"
     print(
-        f"NOTE: 'ctdcast convert' is deprecated; use 'ctdcast {_suggest}'.",
+        f"NOTE: 'ctdcast convert' is deprecated and will be removed in 0.5.0; use "
+        f"'ctdcast {_suggest}'.  On a config with only ctd_root (no data.profiles_nc) "
+        "it may do nothing, and --ctd does not stamp cruise_info or sensor overrides "
+        "as 'process --stage 1' does.",
         file=sys.stderr,
     )
     cfg_path: Path = args.config

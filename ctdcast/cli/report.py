@@ -80,7 +80,9 @@ Examples:
         "--index",
         action="store_true",
         default=False,
-        help="Generate navigation pages (index.html, casts.html, sections.html).",
+        help="Generate the cruise-wide pages: index, casts, sections and timeseries "
+        "index pages, each compiled file's inventory, SBE sensors, processing, and "
+        "T/S corrections when fits.nc exists.",
     )
     page.add_argument(
         "--map",
@@ -104,7 +106,7 @@ Examples:
         nargs="+",
         metavar="N",
         default=None,
-        help="Rebuild pages for one or more cast numbers (implies --casts). "
+        help="Rebuild only these casts' pages (no other page type). "
         "Example: --only 42  or  --only 42 43 44",
     )
     parser.add_argument(
@@ -124,9 +126,10 @@ Examples:
         metavar=("MIN", "MAX"),
         default=None,
         help=(
-            "Salinity range [MIN MAX] for plot trimming.  Records with ctd_salinity_1 "
-            "outside this range are excluded from station page plots "
-            "(NC files are not modified).  Example: --sal 30 36"
+            "Salinity range [MIN MAX] for plot trimming: records whose salinity "
+            "(ctd_salinity, else ctd_salinity_1) is outside it are left out of the cast "
+            "page plots; the netCDF files are not changed.  An up-to-date page is rebuilt "
+            "only with --force.  Example: --sal 30 36"
         ),
     )
     parser.add_argument(
@@ -134,10 +137,10 @@ Examples:
         action="store_true",
         default=False,
         help=(
-            "Auto-detect and strip the pre-soak window from each cast: cuts at least "
-            "the first 60 s (pump activation) and any records up to the last time the "
-            "CTD was within 2 dbar of the surface after pump-on.  NC files are not "
-            "modified; only plots are affected."
+            "Leave the surface soak and the back-on-deck records out of the cast page "
+            "plots, found as stage 2 finds them (the last scan above 10 dbar before the "
+            "descent, searched back 20 s; the deck by the pressure of the last 20 s).  "
+            "The netCDF files are not changed; an up-to-date page is rebuilt only with --force."
         ),
     )
 

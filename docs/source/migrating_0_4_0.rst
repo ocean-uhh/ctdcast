@@ -1,8 +1,10 @@
 Migrating to 0.4.0
 ==================
 
-0.4.0 changes two output attributes, drops Python 3.10, and renames one public
-function. This page lists what changed, whether you must reprocess, and one
+0.4.0 changes two output attributes, drops Python 3.10, renames one public
+function, and removes two public modules (``reports.qc_summary`` and
+``reports.qc_thresholds``; their tables are now built by the vendored
+``reports._vendored.nc_tables`` builders). This page lists what changed, whether you must reprocess, and one
 worked example.
 
 What changed

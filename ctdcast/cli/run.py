@@ -16,9 +16,9 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     """Build the argument parser for ``ctdcast run``."""
     _epilog = """
-Equivalent to running ``ctdcast process`` then ``ctdcast report`` in sequence.
-By default runs every stage (1 2 3 profiles) across every configured source,
-then generates HTML. Narrow with --stage; both steps are mtime-smart.
+Runs the processing stages, then the report.  By default every stage
+(1 2 3 profiles) across every configured source, then the HTML.  Narrow with
+--stage; both steps rebuild only what is out of date (--force rebuilds all).
 
 Examples:
   # Full pipeline (all stages, all sources) then reports:
@@ -112,8 +112,10 @@ Examples:
         default=False,
         dest="trim_soak",
         help=(
-            "Remove pre-soak records from each cast before plotting. "
-            "Detects the last near-surface point before the main descent and trims everything prior."
+            "Leave the surface soak and the back-on-deck records out of the cast page "
+            "plots, found as stage 2 finds them (the last scan above 10 dbar before the "
+            "descent, searched back 20 s; the deck by the pressure of the last 20 s).  "
+            "The netCDF files are not changed; an up-to-date page is rebuilt only with --force."
         ),
     )
 

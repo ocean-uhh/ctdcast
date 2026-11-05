@@ -32,8 +32,9 @@ File identity and lineage — done
 
 Every file ctdcast writes carries a ``tracking_id`` (UUID4, ACDD/OceanSITES convention),
 fresh on every write, and from stage 2 onward a ``source_tracking_id`` naming the file it was
-made from. Stage 1 records ``source_cnv`` instead, since it has no upstream netCDF; the LADCP
-stage-1 file records ``source_mat``. ``profiles.nc`` carries ``source_tracking_id`` per
+made from. Stage 1 records the raw file instead, since it has no upstream netCDF:
+``source_cnv`` for a CNV cast, ``source_hex`` and ``source_xmlcon`` for a ``.hex`` cast,
+``source_mat`` for LADCP. ``profiles.nc`` carries ``source_tracking_id`` per
 profile alongside ``source_file``.
 
 ``tracking_id`` answers *which instance of this file this is* — it is deliberately **not** a
@@ -64,13 +65,14 @@ every file — the per-cast stage files as well as the compiled products — so 
 reads a stage file through ``select_best_available`` (caldip does) sees the mode without
 opening ``profiles.nc``. The default is ``P`` provisional; ``D`` delayed-mode is a claim that
 all calibrations and quality control have been applied, so it is **declared** in the config
-(``cruise_info.data_mode: D``), never inferred — and a ``D`` declared with no calibration
-block warns and names the cast. Quick-look output (``ctdcast draft``) is ``P`` regardless of
+(``cruise_info.data_mode: D``), never inferred — and a ``D`` declared on a cast where no
+calibration was applied (none of its variables carries the calibration ``processing_level``)
+warns and names the cast. Quick-look output (``ctdcast draft``) is ``P`` regardless of
 configuration.
 
 ``processing_level`` (reference table 3) says what has been done, **per variable**, using that
 table's wording. The stage-1 conversion value is stamped on every measured channel — the ones
-that map to a sensor in the CNV ``<Sensors>`` block — and on no computed channel, since
+that map to a sensor in the CNV ``<Sensors>`` block or the ``.xmlcon`` — and on no computed channel, since
 salinity, density and the rest were derived from already-converted inputs and were never
 instrument data. Later procedures append their own values: range-flagging at stages 2 and 3,
 and calibration at stage 3, which propagates to re-derived salinity. Several values can apply
@@ -101,21 +103,29 @@ because stage is not data mode:
   to say which data is in which mode, satisfied by a per-``N_PROF`` ``source_data_mode``
   variable read from each cast's own attribute.
 
-Sensor calibration coefficients — planned
------------------------------------------
+Sensor calibration coefficients — done
+---------------------------------------
 
-Stage-1 files preserve the instrument header verbatim, so the base calibration coefficients
-are present at stage 1 but do not currently reach the compiled product. Carrying each sensor's
-complete configuration block onto its catalog entry makes the raw-to-physical conversion
-reconstructable from the compiled file alone.
+Each sensor's complete configuration block, with every calibration coefficient, is carried on
+its catalog entry (``sensor_config_xml``) into ``profiles.nc``, so the raw-to-physical
+conversion is reconstructable from the compiled file alone (see :doc:`data_files`).
+
+Processing record — done
+------------------------
+
+Every step applied to a cast — stage 1, the Sea-Bird steps in the raw header, stage 2, stage
+3 and the products — is compiled into ``profiles.nc`` as a per-cast ``processing_record``,
+with the setting kept apart from what the step did on that cast; ``processing.html`` shows it
+by run of casts.
 
 Known limits
 ------------
 
-**Stage 3 can apply only a conductivity slope.** There is no conductivity offset, no
-temperature correction and no pressure correction. A downstream package's temperature reference
-therefore cannot be corrected by ctdcast as it stands, whichever stage it reads. Any check that
-enumerates ctdcast's correction fields is complete only until a second correction is added.
+**Stage 3 calibrates conductivity only.** It applies a per-sensor conductivity slope and
+offset (``data_processing.slope_offset``); there is no temperature or pressure correction. A
+downstream package's temperature reference therefore cannot be corrected by ctdcast as it
+stands, whichever stage it reads. Any check that enumerates ctdcast's correction fields is
+complete only until another correction is added.
 
 **Calibration-dip integration is not yet implemented in either direction.** caldip's
 machine-readable output is moving to one netCDF per cast, with the statistics CSV retained as a
