@@ -1,21 +1,26 @@
 .. ctdcast documentation master file
 
-==========================================================
-ctdcast: HTML reports for shipboard CTD and LADCP data
-==========================================================
+=====================================================================
+ctdcast: processing and reports for shipboard CTD and LADCP data
+=====================================================================
 
-**ctdcast** generates self-contained HTML report files from shipboard CTD and LADCP data.
-All figures are embedded as base64 PNG images — no external requests are made at view time,
-so the output files work fully offline on a research vessel.
+**ctdcast** takes shipboard CTD data from the raw Sea-Bird files to a compiled, documented
+dataset and a set of self-contained HTML reports:
 
-Three report types are produced:
+- **Processing** — the raw ``.hex`` (with its ``.xmlcon``) or ``.cnv`` is read to netCDF
+  (stage 1), the surface soak and deck records are flagged (stage 2), and Sea-Bird's processing
+  steps, calibration and QC are applied (stage 3), with products such as 1 dbar averages made
+  from the result. Every step and its parameters are recorded in the files. LADCP profiles are
+  converted alongside.
+- **profiles.nc** — the casts compiled on a common pressure grid, with CF and CCHDO variable
+  names, the sensor catalog and each cast's processing record.
+- **Reports** — HTML pages that work fully offline at sea (every figure embedded, no external
+  requests): a summary page and map, a page per cast, section and time-series pages for the
+  groups of casts you define, an interactive map, the sensors used, every processing step by
+  run of casts, and an inventory of each compiled file.
 
-- **Cast pages** — one page per cast, with hydrographic profiles, T-S diagram, and a
-  cruise-track map highlighting the cast location.
-- **Section pages** — transect sections showing T, S, σ₀, and O₂ across user-defined groups
-  of casts.
-- **Time series page** — cruise-wide hovmöller diagrams of T, S, and O₂ versus time and
-  pressure.
+The pages are described in :doc:`report_output`, the files in :doc:`data_files`, and the stages
+in :doc:`processing_framework`.
 
 Contents
 --------

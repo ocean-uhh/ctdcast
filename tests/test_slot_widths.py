@@ -145,6 +145,10 @@ def test_cli_report_overview_panels_fill_their_slot(tmp_path: Path) -> None:
 
     root = Path(__file__).resolve().parents[1]
     cfg = (root / "config_demo.yaml").read_text(encoding="utf-8")
+    # The demo compiles into demo_work/; this test reports from the committed profiles file.
+    cfg = cfg.replace(
+        "demo_work/profiles_demo.nc", "tests/fixtures/profiles_demo.nc"
+    )
     cfg = cfg.replace("tests/fixtures", str(root / "tests" / "fixtures"))
     cfg = cfg.replace("  dir: demo_report", f"  dir: {tmp_path / 'out'}")
     (tmp_path / "config.yaml").write_text(cfg, encoding="utf-8")

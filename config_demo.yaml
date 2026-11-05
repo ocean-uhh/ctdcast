@@ -92,7 +92,9 @@ sensors:
 
 data:
   nc_dir:       tests/fixtures/nc
-  profiles_nc:  tests/fixtures/profiles_demo.nc
+  # The demo compiles profiles.nc into a work folder, so the committed fixtures are never written:
+  # run it with `ctdcast run config_demo.yaml --stage profiles` (the casts are already processed).
+  profiles_nc:  demo_work/profiles_demo.nc
   groupings_yaml: tests/fixtures/ctd_sections_demo.yaml
   ladcp_dir:    tests/fixtures/ladcp
   gebco_nc:     tests/fixtures/gebco_demo.nc   # committed subset covering the demo region; maps render without it
@@ -110,12 +112,12 @@ generate:
   leaflet:    true
 
 # display:
-#   section_style: pcolormesh    # or "contour" for smoothed filled contours
+#   section_style: pcolormesh    # or "contourf" for smoothed filled contours
 #   timeseries_style: pcolormesh
 #   # Override colorbar limits when the auto-scale is dominated by outliers:
 #   vmin:
-#     oxygen_1: 70.0   # % saturation
-#     temperature_1: 3.0
+#     ctd_oxygen: 200.0   # umol/kg
+#     conservative_temperature: 3.0
 #   vmax:
-#     oxygen_1: 105.0
-#     temperature_1: 10.0
+#     ctd_oxygen: 300.0
+#     conservative_temperature: 10.0
