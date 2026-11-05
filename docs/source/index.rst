@@ -30,30 +30,45 @@ Contents
    :caption: Getting started
 
    quickstart
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Demo
-
-   Demo report <https://ocean-uhh.github.io/ctdcast/_static/demo/index.html>
    demo
-
+   Demo report <https://ocean-uhh.github.io/ctdcast/_static/demo/index.html>
 
 .. toctree::
    :maxdepth: 2
-   :caption: Reference
+   :caption: Concepts
 
-   cli_reference
    processing_framework
+   provenance_roadmap
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Configuration
+
    config_yaml
    cruise_metadata
-   registries
    ctd_groupings
+   registries
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Outputs
+
    data_files
    report_output
-   provenance_roadmap
-   migrating_0_4_0
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Interfaces
+
+   cli_reference
    api
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development and releases
+
+   development
+   migrating_0_4_0
 
 .. toctree::
    :maxdepth: 1

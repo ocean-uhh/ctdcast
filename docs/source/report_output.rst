@@ -18,14 +18,17 @@ Directory layout
 .. code-block:: text
 
    <output.dir>/
-       index.html              front page
-       casts.html              sortable table of all casts
-       sections.html           section overview cards
-       timeseries.html         cruise-wide time series index
+       index.html              summary: map and cruise-wide overview panels
+       casts.html              map, sortable table of all casts, acquisition clock
+       sections.html           section cards
+       timeseries.html         time-series group cards
        leaflet.html            interactive map
        sbe_sensors.html        sensors by cast and device, and the sensor variables
        processing.html         every processing step applied, by run of casts
-       profiles_inventory.html netCDF variable + attribute inventory
+       <stem>_inventory.html   variables and attributes of each compiled file
+                               (profiles_inventory.html, ladcp_profiles_inventory.html)
+       corrections_ts.html     alignment and cell-thermal-mass fits, when ctdcast fit
+                               has written fits.nc
        casts/
            cast_001.html
            cast_002.html
@@ -43,13 +46,16 @@ Directory layout
 index.html
 ----------
 
-The front page shows:
+The summary page.  Its masthead gives the cruise, ship, departure and arrival, duration,
+number of casts and sections, and maximum depth, and links every other page.  Below it:
 
-- An interactive Leaflet map (bundled offline) with the ship track and all cast
-  positions.  Clicking a marker opens a pop-up with cast number and a link to the
-  station page.
-- A summary table: total casts, date range, depth range.
-- Navigation links to the station index, section overview, and time series page.
+- **Map** — the cruise track and station positions (a static map; the interactive one is
+  ``leaflet.html``).
+- **Hydrography** — cruise-wide overview panels of conservative temperature, absolute
+  salinity and potential density across all downcasts.
+- **Biogeochemistry** — the same for oxygen, fluorescence and turbidity.
+- **Velocity** — eastward and northward LADCP velocity, when LADCP data are present.
+- **T–S diagram** — a CT–SA histogram of all downcast profiles.
 
 ----
 
@@ -61,53 +67,68 @@ marker per cast and a line per section; hovering a table row highlights its mark
 versa, and clicking a marker or row opens the station page.  A static map prints and shows
 when JavaScript is off.
 
-The table lists every cast: cast number, date/time, latitude, longitude, and maximum
-pressure.  Each row links to the corresponding station page.
+The table lists every cast: **Cast · File · Start (UTC) · Latitude · Longitude · Depth · QC
+flagged · LADCP · Links** (*QC flagged* is the percentage of samples flagged suspect or fail;
+*LADCP* appears when LADCP is configured).  An **Acquisition clock** section below it
+compares the acquisition PC's clock with NMEA time cast by cast and suggests a ``clock``
+block when they differ.
 
 ----
 
 sections.html
 -------------
 
-A card grid showing each named section from ``ctd_groupings.yaml``.  Each card shows the
-section name, description, cast count, and a thumbnail map.  Clicking a card opens the
-section page.
+One shared **Section tracks** map with every section drawn on it, then a card for each named
+section in ``ctd_groupings.yaml`` with its name, description and casts, and a link to its
+page.
 
 ----
 
 Cast pages — ``casts/cast_NNN.html``
 ------------------------------------------
 
-One page per cast.  Panels shown:
+One page per cast.  The header gives the cast's position, time and depth, the **Raw input**
+it was read from (``MIXSED2_012.hex + MIXSED2_012.XMLCON`` or ``mixsed2_012.cnv``) and its
+**Sampling** (``24 Hz (native, unbinned)``, or what a CNV's ``# interval`` line says).
+Sections, each shown only when it applies:
 
 .. list-table::
    :header-rows: 1
    :widths: 30 70
 
-   * - Panel
-     - Description
-   * - CT profile
-     - Conservative Temperature vs pressure (downcast and upcast).
-   * - T / S / σ₀ profile
-     - Triple-axis profile of in-situ temperature, absolute salinity, and potential
-       density anomaly.
-   * - T-S diagram
-     - Temperature–salinity diagram coloured by O₂ saturation.
-   * - Auxiliary profiles
-     - O₂ saturation, fluorescence, and turbidity vs pressure.
-   * - Stability panels
-     - Buoyancy frequency N² and Turner angle vs pressure.
-   * - Cast map
-     - Cruise track with the current cast highlighted.
-   * - LADCP profiles
-     - Eastward and northward velocity vs pressure (shown when LADCP data are
-       present).
+   * - Section
+     - Panels
+   * - Overview
+     - CT · SA · σ₀ against pressure (with the LADCP U and V profiles beside them when LADCP
+       is present), the station map, and the T–S diagram down against up.
+   * - Hydrography
+     - CT · SA · σ₀ against pressure, downcast in colour, upcast in grey.
+   * - Biogeochemistry
+     - O₂ saturation, fluorescence and turbidity against pressure.
+   * - T–S diagram
+     - Coloured by O₂ saturation, downcast only.
+   * - Stability
+     - N² and Turner angle, downcast only.  Not drawn on a native-rate cast (unbinned 24 Hz
+       scans); an amber note says why.
+   * - Velocity (bottom track)
+     - The LADCP bottom-track velocity, when LADCP data are present.
+   * - Diagnostics
+     - Pressure against time; primary minus secondary T and S; downcast minus upcast.
+   * - QC flags
+     - A histogram of the QARTOD flags, the gross-range thresholds applied, and the flag
+       counts per variable.
+
+Appendices: **(A) Sensors**, **(B) File provenance** (cast, data mode, processing stage and
+the ``tracking_id`` lineage), **(C) netCDF data ranges** (minimum, maximum and valid count of
+every variable in the file), and **(D) Processing provenance** (below).
 
 Processing provenance
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 An appendix on each cast page reports what the Sea-Bird deck unit and Sea-Bird Data
-Processing did to the cast **before** ctdcast read it.  ctdcast does not re-derive this;
+Processing did to the cast **before** ctdcast read it, and, in a second table, **Corrections
+applied by ctdcast** at stage 3 (and in its products), in the order they ran.  Both tables
+number their steps (*#*).  ctdcast does not re-derive this;
 it recovers it from the raw instrument header, which every stage-1 file carries verbatim
 in its ``raw_metadata`` attribute and passes forward unchanged through stages 2 and 3.  A
 cast with no Sea-Bird header (a LADCP cast, or a file converted without its header) has no
@@ -161,8 +182,9 @@ A single table joins each science variable to the physical device that produced 
 row: **Variable · Role · Ch · Device · Model · Cal date · Slope · Offset**.  It is read from
 the per-cast sensor catalog (the ``SENSOR_*`` entries and each variable's ``sensor`` link —
 see :doc:`data_files`), not re-parsed from the header.  A
-device with no stored variable (pH, a transmissometer) still appears, with an empty Variable
-cell.  For a **frequency** sensor (temperature, conductivity, pressure) a Slope away from 1
+device with no stored variable still appears, with an empty Variable
+cell; on a ``.hex`` cast a device ctdcast does not convert (pH, a user polynomial) is joined to
+its raw voltage.  For a **frequency** sensor (temperature, conductivity, pressure) a Slope away from 1
 or Offset away from 0 is a ``datcnv`` drift/span correction already baked in; that row is
 tinted amber and the specific value bolded, so a correction is visible at a glance.  A cast
 file that predates the catalog falls back to the header-parsed device inventory and
@@ -205,46 +227,54 @@ describe how the data were taken and processed, not a data file, so they sit apa
 Section pages — ``sections/section_NAME.html``
 ----------------------------------------------
 
-One page per named section.  Panels shown:
+One page per named section, against distance along the section:
 
 .. list-table::
    :header-rows: 1
    :widths: 30 70
 
-   * - Panel
-     - Description
-   * - Conservative Temperature section
-     - CT colour-filled on a distance × pressure grid.
-   * - Absolute Salinity section
-     - SA colour-filled on a distance × pressure grid.
-   * - Potential density (σ₀) section
-     - σ₀ colour-filled on a distance × pressure grid.
-   * - O₂ saturation section
-     - O₂ colour-filled on a distance × pressure grid.
-   * - Section map
-     - Cruise track with section casts highlighted.
+   * - Section
+     - Panels
+   * - Map
+     - The section track and its stations.
+   * - Hydrography
+     - CT, SA and σ₀ (with the 27.7 and 27.8 kg m⁻³ isopycnals labelled); triangles along the
+       top mark the profiles.
+   * - Biogeochemistry
+     - Oxygen (``ctd_oxygen``, µmol kg⁻¹), fluorescence and turbidity, where present.
+   * - Velocity
+     - LADCP U (east) and V (north), when LADCP data are present.
+   * - T–S diagrams
+     - The section's water masses in temperature–salinity space.
 
-All section plots use discrete colorbars with 20 levels.  Bathymetry is shown as a
-filled grey polygon when a GEBCO file is available.
+The fields use discrete colorbars with 12 levels (limits overridable with ``display.vmin`` /
+``vmax``, see :doc:`config_yaml`).  Bathymetry is shown as a filled grey polygon when a GEBCO
+file is available.
 
 ----
 
-timeseries.html
----------------
+Time-series pages — ``timeseries.html`` and ``timeseries/timeseries_NAME.html``
+--------------------------------------------------------------------------------
 
-Cruise-wide hovmöller diagrams:
+``timeseries.html`` is the index: a **Timeseries locations** map and a card for each
+time-series group in ``ctd_groupings.yaml`` (repeat stations, sorted by time).  Each group's
+page has:
 
 .. list-table::
    :header-rows: 1
    :widths: 30 70
 
-   * - Panel
-     - Description
-   * - Temperature
-     - CT vs time and pressure (downcasts only).
-   * - Salinity
-     - SA vs time and pressure (downcasts only).
-   * - O₂ saturation
-     - O₂ % vs time and pressure (downcasts only).
+   * - Section
+     - Panels
+   * - Map
+     - The group's station positions.
+   * - Hydrography
+     - CT, SA and σ₀ against time and pressure (downcasts).
+   * - Biogeochemistry
+     - Oxygen (``ctd_oxygen``), fluorescence and turbidity against time and pressure.
+   * - Velocity
+     - LADCP U and V, when LADCP data are present.
+   * - T–S diagram
+     - The group's profiles in temperature–salinity space.
 
-Time runs on the horizontal axis; pressure on the vertical axis (increasing downward).
+Time runs on the horizontal axis, pressure on the vertical axis (increasing downward).
