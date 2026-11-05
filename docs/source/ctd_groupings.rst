@@ -18,7 +18,8 @@ superseded spelling and is still accepted.
 
 An optional ``cruise_info:`` block at the top level provides cruise and ship
 metadata that appears in page headers and footers.  Values here take precedence
-over any cruise metadata found in the netCDF file attributes:
+over any cruise metadata found in the netCDF file attributes; where ``config.yaml`` also
+has a ``cruise_info`` block, the two are merged and ``config.yaml``'s values win:
 
 .. code-block:: yaml
 
@@ -28,7 +29,9 @@ over any cruise metadata found in the netCDF file attributes:
 
 Both keys are optional.  If absent, the report falls back to the ``cruise``
 attribute of the first netCDF file (defaulting to ``"UNKCRUISE"`` if that
-attribute is not set), and ship shows as ``"UNK"``.
+attribute is not set), and the ship falls back to the file's ``ship``, ``platform`` or
+``vessel`` attribute, then to ``"UNK"`` on cast, section and time-series pages; the summary
+pages leave it blank.
 
 Top-level key: ``sections``
 

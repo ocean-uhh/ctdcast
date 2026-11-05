@@ -81,15 +81,31 @@ reads, so a stray directory never changes what a cruise is read from.
      - Override for the compiled profiles path.  Derived as
        ``<ctd_root>/profiles.nc``; set this only to read a product that lives
        elsewhere.
+   * - ``ladcp_profiles_nc``
+     - no
+     - Override for the compiled LADCP path, derived as
+       ``<ladcp_root>/ladcp_profiles.nc``.
+   * - ``ladcp_pattern``
+     - no
+     - LADCP file names when they are not ``NNN.mat``: a pattern with ``*`` for the cast
+       number, e.g. ``msm_142_1_*.mat``.  Without it ctdcast tries ``NNN.mat`` and then any
+       ``*_NNN.mat``.
    * - ``gebco_nc``
      - no
-     - Path to a GEBCO NetCDF bathymetry file.  Maps render without bathymetry if
-       this is omitted or the file is not found — not an error.
+     - Path to a GEBCO NetCDF bathymetry file, for the report maps.  Maps render without
+       bathymetry if this is omitted or the file is not found — not an error.  The
+       profiles compile reads bathymetry only from ``ctdcast process --gebco``.
+   * - ``ship_track``
+     - no
+     - A ship-track netCDF, drawn as the background line on the interactive map.
    * - ``nc_dir``
      - no
      - Superseded spelling of ``ctd_root``, still accepted.  A directory written
        before the stage layout holds unsuffixed per-cast files; those are read as
        stage 1.
+   * - ``ladcp_nc``
+     - no
+     - Superseded spelling of ``ladcp_root``, still accepted.
 
 ``output`` block
 ~~~~~~~~~~~~~~~~
@@ -124,19 +140,76 @@ reads, so a stray directory never changes what a cruise is read from.
        and ``groupings_yaml``.
    * - ``timeseries``
      - ``true``
-     - Generate the cruise-wide time series page.  Requires a compiled
-       ``profiles.nc``.
+     - Generate a time-series page per group in ``groupings_yaml``.  Requires a
+       compiled ``profiles.nc``.
    * - ``index``
      - ``true``
-     - Generate the navigation pages (``index.html``, ``casts.html``,
-       ``sections.html``).
+     - Generate the cruise-wide pages: ``index.html``, ``casts.html``,
+       ``sections.html``, ``timeseries.html``, and the pages drawn from the compiled
+       files (each file's inventory, ``sbe_sensors.html``, ``processing.html``, and
+       ``corrections_ts.html`` when ``ctdcast fit`` has written ``fits.nc``).
    * - ``leaflet``
      - ``true``
      - Generate the interactive Leaflet map page.
 
-``force`` (regenerate all pages even if they already exist) is a **top-level**
-config key, not part of the ``generate`` block; it defaults to ``false`` and is
-overridden by ``--force`` on the command line.
+``force`` (rebuild every page even when it is up to date) is a **top-level** config
+key, not part of the ``generate`` block; it defaults to ``false``, and ``--force`` on the
+command line turns it on.
+
+``display`` block
+~~~~~~~~~~~~~~~~~
+
+How the report figures look.  Every key is optional.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 18 60
+
+   * - Key
+     - Default
+     - Description
+   * - ``section_style``
+     - ``pcolormesh``
+     - Section fields drawn as cells (``pcolormesh``) or smoothed filled contours
+       (``contourf``).
+   * - ``timeseries_style``
+     - ``pcolormesh``
+     - The same for the time-series pages.
+   * - ``vmin``, ``vmax``
+     - from the data
+     - Colorbar limits per variable, for when an outlier dominates the auto-scale.  Keyed
+       by the variable the panel draws: ``conservative_temperature``,
+       ``absolute_salinity``, ``sigma0``, ``ctd_oxygen``, ``ctd_fluor``, ``ctd_turbidity``
+       (``ctd_oxygen`` and ``ctd_oxygen_1`` stand for each other).
+   * - ``var_cmaps``
+     - per variable
+     - Colormap per variable (a matplotlib or cmocean name), merged over the defaults:
+       ``RdYlBu_r`` for temperatures, ``YlGnBu_r`` for salinities, ``cmo.oxy`` for oxygen,
+       ``YlGn`` for fluorescence, ``YlOrBr`` for turbidity.
+   * - ``overview_figsize``
+     - ``[9, 3]``
+     - Shape of the summary page's overview panels, ``[width, height]``.  They are drawn
+       at the full slot width, so only the ratio counts.
+   * - ``clean_spines``
+     - ``true``
+     - Hide the top and right axis lines on the profile, section, time-series and LADCP
+       panels.
+
+.. code-block:: yaml
+
+   display:
+     section_style: contourf
+     vmin:
+       ctd_oxygen: 200.0             # umol/kg
+       conservative_temperature: 3.0
+     vmax:
+       ctd_oxygen: 300.0
+       conservative_temperature: 10.0
+     var_cmaps:
+       ctd_turbidity: cmo.turbid
+
+Map extent is set in ``cruise_info`` (``map_lat_min``, ``map_lat_max``, ``map_lon_min``,
+``map_lon_max``); see :doc:`cruise_metadata`.
 
 Processing settings (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,9 +271,6 @@ block that reproduces a cruise's own Sea-Bird processing; ``ctdcast fit`` sugges
        to ``<ctd_root>/products/<name>/<cast>_<name>.nc``.  ``ctdcast inspect`` puts a CNV's
        Split and Bin Average into a product (two, one per leg, after a Split).  The stage-3 file
        records each product made and its steps in ``products_made``.
-   * - ``allow_unapplied``
-     - ``true`` to run when ``steps`` lists a step stage 3 does not apply yet (it is skipped).
-       Default ``false``: such a config is refused.
 
 The steps, as Sea-Bird names its modules:
 
@@ -267,16 +337,17 @@ The steps, as Sea-Bird names its modules:
        ``seabirdscientific``, which drops the whole scan (:ref:`sbe_differences`); a scan whose
        pressure is flagged 4 or 9 has no bin at all.  Scans Loop Edit marked are always left out
        (``exclude_flagged: false`` is refused).  Salinity is re-derived from
-       the binned values.  Applied with ``seabirdscientific``.  Stage 3 refuses a config that lists one, because the
-       steps after it would run on data it was meant to change first; set
-       ``data_processing.allow_unapplied: true`` to run anyway, skipping it.  The skip is named in
-       a warning, in ``history``, and in the stage-3 file's ``data_processing_steps`` attribute
-       (the order the steps ran in).
+       the binned values.  Applied with ``seabirdscientific``.  Listed under ``steps`` instead of
+       in a product, ``split`` or ``binavg`` is refused, since the stage-3 file keeps every scan.
 
-Alignment, cell thermal mass, Wild Edit and the oxygen derivation act scan by scan, so they run only
-on a cast at its instrument's native scan rate (24 Hz on a 911plus) that Sea-Bird has not already
-processed the same way.  Any other cast skips them with a warning and a ``history`` note, and still
-gets the slope, salinity and QC.
+Alignment, cell thermal mass, Filter, Window Filter, Loop Edit and the oxygen derivation act scan
+by scan, so they run only on a cast at its instrument's native scan rate (24 Hz on a 911plus) that
+Sea-Bird has not already processed the same way.  Any other cast skips them with a warning and a
+``history`` note, and still gets the slope, salinity and QC.  Wild Edit skips a cast Sea-Bird's own
+Wild Edit already ran on, but does not yet check the scan rate.
+
+The stage-3 file records the order the steps ran in (``data_processing_steps``) and, on each
+variable, what each step did to it.
 
 .. code-block:: yaml
 
@@ -472,9 +543,10 @@ Example
 .. code-block:: yaml
 
    data:
-     ctd_root:     /data/cruise/CTD/ctd_nc     # stage1/…stage3/ + profiles.nc
+     ctd_root:     /data/cruise/CTD/ctd_nc     # stage1/…stage3/, products/, profiles.nc
      ladcp_root:   /data/cruise/LADCP/ladcp_nc
-     cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
+     hex_dir:      /data/cruise/CTD/raw        # input: .hex + .xmlcon
+     ladcp_dir:    /data/cruise/LADCP/mat      # input: processed .mat
      groupings_yaml: /data/cruise/config/ctd_groupings.yaml
      gebco_nc:     /data/GEBCO_2025.nc
 
@@ -485,4 +557,5 @@ Example
      stations:   true
      sections:   true
      timeseries: true
-     force:      false
+
+   force: false                                # top level, not under generate

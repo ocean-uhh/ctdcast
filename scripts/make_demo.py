@@ -23,8 +23,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import xarray as xr
 import yaml
 
+from ctdcast.config.layout import processing_view
 from ctdcast.config.report_config import ReportConfig
 from ctdcast.identity import cast_id_from_name
+from ctdcast.processors.ladcp import run_compile as run_ladcp_compile
+from ctdcast.processors.ladcp import run_convert as run_ladcp_convert
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.qc import apply_gross_range, apply_spike_test
 from ctdcast.processors.stage2 import apply_stage2
@@ -47,9 +50,13 @@ GEBCO_NC = REPO.parent / "cruiseplan" / "data" / "bathymetry" / "GEBCO_2025.nc"
 
 
 def _demo_processing() -> dict:
-    """Read the ``processing`` block from ``config_demo.yaml`` (the single declaration)."""
+    """Return the stage settings from ``config_demo.yaml`` (the single declaration).
+
+    Read through :func:`ctdcast.config.layout.processing_view`, as the CLI reads a config, so
+    the top-level ``preferred_sensor`` / ``qc`` blocks reach the stages.
+    """
     with CONFIG_DEMO.open() as f:
-        return (yaml.safe_load(f) or {}).get("processing") or {}
+        return processing_view(yaml.safe_load(f) or {})
 
 
 def _fixed_generated_at() -> str:
@@ -88,7 +95,7 @@ def _build_stage3(nc_dir: Path, root: Path, cruise_cfg: dict) -> None:
     (stage 3), so the demo cast pages show the QC panel — flag counts, the
     thresholds table, and the distribution histograms — from a real ``_qc``.  Then
     applies the preferred-sensor stamp and builds the plain composites from
-    ``cruise_cfg`` (``config_demo.yaml``'s ``processing`` block), so the demo shows
+    ``cruise_cfg`` (``config_demo.yaml``'s stage settings), so the demo shows
     ``ctd_temperature`` / ``ctd_salinity`` / ``conductivity`` beside the ``_1`` / ``_2``
     channels and the per-cast preferred choice.
     """
@@ -124,6 +131,16 @@ if __name__ == "__main__":
         build_profiles(stage_root, PROFILES_NC, force=True, cruise_cfg=processing)
         print(f"  -> {PROFILES_NC}")
 
+        # The summary page's Velocity section reads the compiled LADCP file, not
+        # the .mat files, so convert and compile them too.
+        ladcp_root = Path(_tmp) / "ladcp"
+        ladcp_profiles = ladcp_root / "ladcp_profiles.nc"
+        print("Building ladcp_profiles.nc from the LADCP fixtures ...")
+        run_ladcp_convert(LADCP_DIR, ladcp_root, force=True, cruise_info=CRUISE_INFO)
+        run_ladcp_compile(
+            ladcp_root, ladcp_profiles, force=True, cruise_info=CRUISE_INFO
+        )
+
         print(f"Generating demo report to {OUT_DIR} ...")
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         report(
@@ -132,6 +149,7 @@ if __name__ == "__main__":
             profiles_path=PROFILES_NC,
             section_yaml=SECTIONS_YAML,
             ladcp_dir=LADCP_DIR,
+            ladcp_profiles_path=ladcp_profiles,
             generate={
                 "stations": True,
                 "sections": True,

@@ -1,4 +1,4 @@
-"""``ctdcast validate`` — check config and data paths without writing anything."""
+"""``ctdcast validate`` — check a config and the files it names before a run."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ Examples:
     if subparsers is not None:
         parser = subparsers.add_parser(
             "validate",
-            help="Validate config and data paths without writing anything.",
+            help="Check a config and the files it names before a run.",
             **kwargs,
         )
         parser.set_defaults(func=run)

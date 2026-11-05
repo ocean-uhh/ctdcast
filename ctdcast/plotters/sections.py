@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -604,6 +606,22 @@ def draw_section_ts_o2_fig(
     return fig
 
 
+def _overview_tick_indices(cast_nums: Sequence[int] | np.ndarray) -> list[int]:
+    """Return the indices of the casts that get a tick on a cruise overview panel.
+
+    Casts whose number is a multiple of 5 (10 above 100 casts), when at least two
+    are present; otherwise about ten evenly spaced casts, so a cruise whose cast
+    numbers miss the multiples (11, 12, 128, 129) still gets cast-number labels
+    rather than the axis's own positions.
+    """
+    n = len(cast_nums)
+    step = 5 if n <= 100 else 10
+    idx = [i for i, cn in enumerate(cast_nums) if int(cn) % step == 0]
+    if len(idx) >= 2:
+        return idx
+    return list(range(0, n, max(1, round(n / 10))))
+
+
 def draw_overview_panel_fig(
     ds_prof: xr.Dataset,
     var: str,
@@ -681,16 +699,12 @@ def draw_overview_panel_fig(
 
     fig, ax = plt.subplots(figsize=overview_figsize(cfg.overview_figsize, width_in))
 
-    # Subtle cast-position gridlines drawn before the fill so the fill sits on top.
-    # Use multiples of 5 or 10 cast numbers as grid positions.
-    n_casts = len(cast_nums)
-    _grid_step = 5 if n_casts <= 100 else 10
+    # Subtle cast-position gridlines drawn before the fill so the fill sits on top,
+    # at the casts that get a tick label.
     _cast_to_xpos = {int(cn): x_pos[i] for i, cn in enumerate(cast_nums)}
-    for cn_i, cn in enumerate(cast_nums):
-        if int(cn) % _grid_step == 0:
-            ax.axvline(
-                x_pos[cn_i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0
-            )
+    tick_idx = _overview_tick_indices(cast_nums)
+    for i in tick_idx:
+        ax.axvline(x_pos[i], color="white", lw=pen("thinner"), alpha=0.25, zorder=0)
 
     mesh_field(
         ax,
@@ -735,17 +749,10 @@ def draw_overview_panel_fig(
     ax.set_ylabel(vlabel("pressure"))
     ax.set_xlabel("Cast number")
 
-    # Tick marks at multiples of 5 or 10, matching the grid lines
-    tick_cast_nums = [cn for cn in cast_nums if int(cn) % _grid_step == 0]
-    tick_xpos = [
-        _cast_to_xpos[int(cn)] for cn in tick_cast_nums if int(cn) in _cast_to_xpos
-    ]
-    if tick_xpos:
-        ax.set_xticks(tick_xpos)
-        ax.set_xticklabels(
-            [str(int(cn)) for cn in tick_cast_nums if int(cn) in _cast_to_xpos],
-            rotation=45,
-            ha="right",
-        )
+    # Ticks at the casts the grid lines mark, labelled with their cast numbers.
+    ax.set_xticks([x_pos[i] for i in tick_idx])
+    ax.set_xticklabels(
+        [str(int(cast_nums[i])) for i in tick_idx], rotation=45, ha="right"
+    )
 
     return fig

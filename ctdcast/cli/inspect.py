@@ -41,7 +41,7 @@ header's own fields for each module.
     if subparsers is not None:
         parser = subparsers.add_parser(
             "inspect",
-            help="Render a netCDF data-inventory page for a single file.",
+            help="Show a netCDF file's inventory, or a CNV's Sea-Bird processing steps.",
             **kwargs,
         )
         parser.set_defaults(func=run)

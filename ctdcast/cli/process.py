@@ -44,12 +44,19 @@ def build_parser(
     """Build the argument parser for ``ctdcast process``."""
     _epilog = """
 Processing stages:
-  Stage 1: convert raw CTD files to per-cast netCDF  (reads data.cnv_dir, or data.hex_dir)
-  Stage 2: flag pre-soak and post-recovery records with QARTOD flag 4
-  Stage 3: gross-range QC and conductivity calibration (reads processing: config)
-  profiles: bin per-cast netCDF to profiles.nc on a 1-dbar grid
+  Stage 1: read the raw files to per-cast netCDF (data.hex_dir or data.cnv_dir)
+  Stage 2: flag pre-soak and post-recovery records (QARTOD 4), apply the clock
+           block, drop the sbe_ channels (processing.trim)
+  Stage 3: conductivity slope/offset, the data_processing steps (Wild Edit,
+           filters, alignment, cell thermal mass, Loop Edit), salinity, SBE 43
+           oxygen, gross-range and spike QC (qc:), then the products
+  profiles: compile the casts into profiles.nc on a pressure grid
+           (processing.profiles_dbar, default 1)
 
-Paths (ctd_root, cnv_dir, ladcp_root, ladcp_dir) are read from the config YAML.
+A stage-1 file is read only when it is missing; a stage-2 or stage-3 file, or
+profiles.nc, is rebuilt when its input is newer.  --force rebuilds every one.
+Paths (ctd_root, hex_dir, cnv_dir, ctd_raw_format, ladcp_root, ladcp_dir) are
+read from the config YAML.
 
 Examples:
   ctdcast process config.yaml --stage 1
@@ -93,7 +100,7 @@ Examples:
         "--force",
         action="store_true",
         default=False,
-        help="Overwrite existing output files.",
+        help="Rebuild every stage file, even when it is up to date.",
     )
     parser.add_argument(
         "--only",
@@ -128,13 +135,13 @@ Examples:
         choices=["seasenselib"],
         default="seasenselib",
         metavar="NAME",
-        help="CTD conversion backend (default: seasenselib).",
+        help="CNV reader (default: seasenselib); a hex_dir cruise reads .hex regardless.",
     )
     s1.add_argument(
         "--pattern",
         metavar="GLOB",
         default=None,
-        help="Filename glob for CNV files (default: from config or '*.cnv').",
+        help="Filename glob for CNV files (default: from config or '*.cnv'); not used for .hex.",
     )
 
     # Stage 2 tuning — CLI values override config processing.trim.*
@@ -182,7 +189,7 @@ Examples:
         type=Path,
         default=None,
         metavar="NC",
-        help="Path to GEBCO_2025.nc for bathymetry depth at each cast position.",
+        help="GEBCO netCDF for the water depth at each cast in profiles.nc (data.gebco_nc is not read here).",
     )
 
     return parser

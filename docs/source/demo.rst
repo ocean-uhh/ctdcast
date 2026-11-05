@@ -7,13 +7,18 @@ About the demo report
 The pages below are generated from the four committed fixture casts (cruise **odb26**, ship *Odon de Buen*, North Atlantic July 2026) using the same pipeline you would run on your own data.
 They cover: two casts on a short transect (casts 011–012, section "KO") and two casts at a repeat station (casts 128–129, timeseries "Triangle"), all with LADCP.
 
-**Run it yourself** — after installing ctdcast, generate the same report locally:
+**Run it yourself** — from a source checkout (the fixture casts come with the repository, not
+with ``pip install``), generate a report from the same casts:
 
 .. code-block:: bash
 
-   ctdcast run config_demo.yaml
+   ctdcast run config_demo.yaml --stage profiles
 
-Output is written to ``demo_report/`` in the repo root.
+The casts are stage-1 files: ``--stage profiles`` compiles and reports them without running
+stages 2 and 3, which would write into the fixtures.  The published demo above is made by
+``scripts/make_demo.py``, which also runs stage 2 and QC, so it has the QC tables the local
+report lacks.  Output is written to ``demo_report/`` in the repo root, the compiled file to
+``demo_work/``.
 To open it: find ``demo_report/index.html`` in your file manager and double-click it,
 or from the terminal::
 

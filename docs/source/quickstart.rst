@@ -4,33 +4,43 @@
 Quickstart guide
 ================
 
-This guide walks through generating a ctdcast report from CTD data.
-Two workflows are available: a quick-look path that needs only raw CNV files and no
-configuration, and a full workflow for sections, time series, and LADCP panels.
+This guide takes a cruise's CTD data from the raw files to a report.
+Two workflows are available: a quick look that needs only CNV files and no configuration,
+and the full workflow — raw ``.hex`` or ``.cnv`` through every processing stage, with
+sections, time series, LADCP panels and the processing record.
 
 ----
 
 Quick look (no config file needed)
 -----------------------------------
 
-If you have raw SBE CNV files and want station pages + index + map immediately::
+If you have SBE CNV files and want cast pages, an index and a map immediately::
 
-   pip install seasenselib
+   pip install "ctdcast[cnv]"
    ctdcast draft /path/to/cnv/                         # output → ./ctd_draft/
    ctdcast draft /path/to/cnv/ ./out/ --cruise odb2026 # with cruise ID and output dir
    ctdcast draft /path/to/cnv/ --dry-run               # preview without writing
 
-``ctdcast draft`` converts CNV files to netCDF via ``seasenselib``, then generates
-station pages, an index, and a Leaflet map in one step.  No ``config.yaml`` is needed.
-Sections and time series pages are **not** generated (they require a compiled
-``profiles.nc``).  For those, use the full workflow below.
+``ctdcast draft`` reads the CNV files to netCDF (stage 1), compiles ``profiles.nc`` and
+builds the cast pages, the index, the map, the sensors page and the processing page in one
+step.  No ``config.yaml`` is needed.  It builds no section or time-series pages (their index
+pages are empty): those need a groupings file that says which casts belong together; for
+those, use the full workflow below.
 
 ----
 
 Full workflow prerequisites
 ---------------------------
 
-Python 3.11–3.14 is required.  Create a virtual environment and install from source:
+Python 3.11–3.14 is required.  Install from PyPI into a virtual environment:
+
+.. code-block:: bash
+
+   python -m venv venv
+   source venv/bin/activate        # macOS / Linux
+   pip install ctdcast             # reads .hex; add [cnv] to read .cnv
+
+or from source, which also gives you the demo:
 
 .. code-block:: bash
 
@@ -43,11 +53,14 @@ Python 3.11–3.14 is required.  Create a virtual environment and install from s
 Land coastlines on the interactive maps need the optional ``maps`` extra (cartopy and
 shapely): ``pip install -e ".[maps]"``.  Without it the maps draw over a lat/lon graticule.
 
-To verify the installation, run the bundled demo against the committed fixture casts:
+To check a source checkout, build a demo report from the committed fixture casts.  They are
+stage-1 files: ``--stage profiles`` compiles and reports them without running stages 2 and 3
+(which would write into the fixtures), and the compiled file goes to a work folder
+(``demo_work/``):
 
 .. code-block:: bash
 
-   ctdcast run config_demo.yaml
+   ctdcast run config_demo.yaml --stage profiles
 
 Then open ``demo_report/index.html`` in a browser.
 See :ref:`demo` for a preview of what the output looks like.
@@ -57,23 +70,27 @@ See :ref:`demo` for a preview of what the output looks like.
 Prepare your input files
 -------------------------
 
-ctdcast needs at minimum a directory of per-cast netCDF files (one per CTD cast).
-Section and time series pages additionally require a compiled ``profiles.nc``.
+ctdcast starts from the raw files, one per cast: Sea-Bird ``.hex`` files with the
+``.xmlcon`` beside each (``hex_dir``), or ``.cnv`` files (``cnv_dir``).  It never writes
+there.  LADCP profiles come as processed ``.mat`` files, one per cast (``ladcp_dir``).
 
-Each instrument gets one **root** that ctdcast owns. Inside it, one directory per
-processing stage, and the compiled product at the top:
+Each instrument gets one **root** that ctdcast owns and fills.  Inside it, one directory per
+processing stage, products, and the compiled file at the top:
 
 .. code-block:: text
 
    /data/cruise/CTD/ctd_nc/          # ctd_root
        stage1/
-           cast_001_stage1.nc        # raw CNV converted
-           cast_002_stage1.nc
+           MIXSED2_001_stage1.nc     # the raw file read to netCDF (named after it)
+           MIXSED2_002_stage1.nc
        stage2/
-           cast_001_stage2.nc        # + soak / back-on-deck flags
+           MIXSED2_001_stage2.nc     # + soak / back-on-deck flags
        stage3/
-           cast_001_stage3.nc        # + QC and calibration
-       profiles.nc                   # compiled product (optional but recommended)
+           MIXSED2_001_stage3.nc     # + Sea-Bird's steps, calibration and QC
+       products/
+           1dbar_down/
+               MIXSED2_001_1dbar_down.nc   # a product, as configured
+       profiles.nc                   # the compiled casts
 
    /data/cruise/LADCP/ladcp_nc/      # ladcp_root
        stage1/
@@ -82,7 +99,7 @@ processing stage, and the compiled product at the top:
 A directory of unsuffixed per-cast files written before the stage layout is still
 read, as stage 1.
 
-See :doc:`config_yaml` for a description of what each file must contain.
+See :doc:`data_files` for what each file contains.
 
 ----
 
@@ -95,8 +112,9 @@ the current directory), then adjust the paths:
 .. code-block:: yaml
 
    data:
-     ctd_root:     /data/cruise/CTD/ctd_nc     # profiles.nc derives from this
-     cnv_dir:      /data/cruise/CTD/cnv_cal    # external input
+     ctd_root:     /data/cruise/CTD/ctd_nc     # ctdcast's; profiles.nc goes at its top
+     hex_dir:      /data/cruise/CTD/raw        # .hex + .xmlcon, read only
+     # cnv_dir:    /data/cruise/CTD/cnv        # or .cnv instead (needs ctdcast[cnv])
      groupings_yaml: /data/cruise/config/ctd_groupings.yaml
      gebco_nc:     /data/GEBCO_2025.nc         # optional
 
@@ -109,7 +127,10 @@ the current directory), then adjust the paths:
      timeseries: true    # requires profiles.nc
 
 Leave ``gebco_nc`` blank or omit it entirely if you do not have a GEBCO file — maps will
-render without bathymetry.
+render without bathymetry.  Sea-Bird's processing steps (Wild Edit, filters, alignment, cell
+thermal mass, Loop Edit) and the products go in a ``data_processing`` block;
+``ctdcast inspect cast.cnv`` prints that block from a CNV's own header, so you can start from
+the steps used at sea.  See :doc:`config_yaml`.
 
 ----
 
@@ -135,14 +156,18 @@ See :doc:`ctd_groupings` for the full groupings YAML specification.
 
 ----
 
-Generate the report
--------------------
+Process and report
+------------------
 
 .. code-block:: bash
 
    ctdcast run config.yaml
 
-To force regeneration of all pages (including ones that already exist):
+``run`` runs every stage from the raw files (1, 2, 3, then the compile) and builds the
+report.  To work a step at a time, use ``ctdcast process config.yaml --stage …`` and
+``ctdcast report config.yaml`` (see :doc:`cli_reference`).
+
+To force every stage and page to be rebuilt (including ones that are up to date):
 
 .. code-block:: bash
 
@@ -159,15 +184,22 @@ copy the entire output directory anywhere and it works offline.
 .. code-block:: text
 
    <output.dir>/
-       index.html              front page — map, cast count, navigation
-       casts.html      sortable table of all casts
+       index.html              summary — map, overview panels, navigation
+       casts.html              map and sortable table of all casts
        sections.html           section cards with links
-       timeseries.html         T, S, O₂ hovmöller diagrams
+       timeseries.html         time-series groups with links
+       leaflet.html            interactive map
+       sbe_sensors.html        sensors by cast and device
+       processing.html         every processing step, by run of casts
+       profiles_inventory.html variables and attributes of profiles.nc
        casts/
            cast_001.html
            ...
        sections/
            section_KTout.html
+           ...
+       timeseries/
+           timeseries_<name>.html
            ...
 
 See :doc:`report_output` for a description of what each page contains.
@@ -177,16 +209,20 @@ See :doc:`report_output` for a description of what each page contains.
 Updating mid-cruise
 -------------------
 
-All three steps are incremental by default — already-generated HTML pages are skipped.
-After adding new casts, rebuild ``profiles.nc`` if needed, then re-run:
+``run`` is incremental.  A stage-1 file is read only when it is missing (``--force`` reads
+a replaced raw file again); a stage-2 or stage-3 file is rebuilt when its input is newer;
+``profiles.nc`` when a cast file is newer; a cast, section or time-series page when the files
+it is drawn from are newer.  The cruise-wide pages (summary, casts, sensors, processing, …)
+are rebuilt on every run.  After new casts arrive, run it again:
 
 .. code-block:: bash
 
    ctdcast run config.yaml
 
-Only pages for new casts will be written.  Existing section and time series pages are
-**not** automatically updated when new casts arrive; add ``--force`` or set
-``force: true`` to rebuild them.
+The new casts are processed and get their pages; ``profiles.nc`` is recompiled, so the
+section, time series and summary pages are rebuilt with them.  A config change is not a newer
+file: after changing the processing steps or thresholds, add ``--force`` (with ``--only`` to
+limit it to a few casts).
 
 ----
 
@@ -194,6 +230,7 @@ Where to go next
 ----------------
 
 - :doc:`config_yaml` — every ``config.yaml`` field.
+- :doc:`processing_framework` — the stages and what each one does.
 - :doc:`cruise_metadata` — the ``cruise_info`` block: identity, platform, people, embargo.
 - :doc:`ctd_groupings` — every ``ctd_groupings.yaml`` field.
 - :doc:`data_files` — the netCDF files ctdcast reads and writes.

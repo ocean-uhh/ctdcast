@@ -12,8 +12,10 @@ Run ``ctdcast <command> --help`` for the full flag list at any time.
 ctdcast draft
 ---------------
 
-Quick-look pipeline: convert raw CNV files to station pages + index + map in one step.
-No ``config.yaml`` required.  Sections and time series are skipped (require ``profiles.nc``).
+Quick look: read CNV files (stage 1), compile ``profiles.nc``, and build the cast pages, index,
+map, sensors and processing pages in one step.  No ``config.yaml`` required.  No section or
+time-series pages are built (their index pages are empty): they need a groupings file saying
+which casts belong together.
 
 .. code-block:: text
 
@@ -25,20 +27,22 @@ No ``config.yaml`` required.  Sections and time series are skipped (require ``pr
 
    options:
      --cruise ID      Cruise ID shown in the report header
-                      (default: read from nc file attrs, fallback 'draft')
+                      (default: the files' cruise attribute, else UNKCRUISE)
      --ship NAME      Ship name shown in the report header
      --keep-nc DIR    Save converted netCDF files to DIR instead of discarding after the run
      --pattern GLOB   Filename glob selecting CNV files within cnv_dir (default: '*.cnv')
-     --sal MIN MAX    Salinity range for plot trimming: records with salinity_1 outside
-                      it are excluded from the station plots.  The netCDF files are not
-                      modified — this is a plotting filter only
-     --trim-soak      Strip the pre-soak window from each cast before plotting: at least
-                      the first 60 s (pump activation), and any records up to the last
-                      time the CTD was within 2 dbar of the surface
+     --sal MIN MAX    Salinity range for plot trimming: records whose salinity
+                      (ctd_salinity, else ctd_salinity_1) is outside it are left out
+                      of the cast-page plots
+     --trim-soak      Leave the surface soak and back-on-deck records out of the
+                      cast-page plots, with stage 2's default rules (last scan above
+                      10 dbar before the descent, searched back 20 s; the deck from
+                      the pressure of the last 20 s; processing.trim is not read)
+                      (both plotting filters only; the netCDF files are not changed)
      --force          Regenerate existing pages regardless of modification times
      --dry-run        Print what would be done without writing any files
 
-Requires ``seasenselib`` (``pip install seasenselib``) for CNV conversion.
+Requires ``seasenselib`` for CNV conversion (``pip install "ctdcast[cnv]"``).
 
 **Examples**::
 
@@ -52,8 +56,8 @@ Requires ``seasenselib`` (``pip install seasenselib``) for CNV conversion.
 ctdcast inspect
 -----------------
 
-Render a data-inventory page for a **single** netCDF file: every variable with its
-dimensions, units and attributes.  No ``config.yaml`` required.  Useful for checking
+Render a data-inventory page for a **single** netCDF file — every variable with its
+dimensions, units and attributes — or print a Sea-Bird CNV's processing steps (below).  No ``config.yaml`` required.  Useful for checking
 what a stage actually wrote — which QC flags are present, whether an attribute
 survived a stage, what the compiled product contains.
 
@@ -62,7 +66,7 @@ survived a stage, what the compiled product contains.
    ctdcast inspect <nc_file> [options]
 
    positional arguments:
-     nc_file          The netCDF file to inventory
+     nc_file          The netCDF file to inventory, or a .cnv
 
    options:
      -o, --out PATH   Output HTML path
@@ -108,11 +112,14 @@ sections/timeseries groups from ``profiles.nc``) in the target directory.
      --interactive         Prompt for all data paths and cruise metadata,
                            then offer to auto-detect sections/timeseries
      --auto-section        Re-run section/timeseries detection from an existing
-                           config and overwrite ctd_groupings_draft.yaml.
-                           Reads profiles_nc from the config; does not touch config.yaml.
+                           config and write ctd_groupings_draft.yaml (an existing
+                           draft is overwritten with --force, or after asking in a
+                           terminal).  Reads
+                           <ctd_root>/profiles.nc, or data.profiles_nc when set;
+                           does not touch config.yaml.
      --force               Overwrite existing files
 
-   detection thresholds (used with --interactive or --auto-section):
+   detection thresholds (used only with --interactive or --auto-section; ignored otherwise):
      --dx-diameter KM      Max inter-cast distance (km) within a repeat-station cluster (default: 1)
      --dx-section KM       Inter-cast gap (km) that starts a new coarse group (default: 50)
      --max-turn-deg DEG    Max heading change (°) within a directional run (default: 45)
@@ -149,7 +156,10 @@ config, or in the config's directory).  Review and rename to
 ctdcast validate
 ------------------
 
-Validate config paths and data before the first run.  Does not write any files.
+Check a config and the files it names before the first run: the YAML, the output folder
+(created if missing), the stage root and ``profiles.nc`` (warnings when absent), and the
+groupings file.  It does not check the raw input folders (``hex_dir``, ``cnv_dir``,
+``ladcp_dir``).
 
 .. code-block:: text
 
@@ -159,8 +169,8 @@ Validate config paths and data before the first run.  Does not write any files.
      config           Path to config.yaml
 
    options:
-     --strict         Also check that all cast numbers referenced in
-                      ctd_groupings.yaml are present in ctd_root
+     --strict         Also check that every cast number the sections in
+                      ctd_groupings.yaml name is present in ctd_root
 
 **Examples**::
 
@@ -174,7 +184,7 @@ ctdcast process
 
 Run one or more pipeline stages, across every configured data source.  A stage
 runs for whichever sources are configured: with both CTD and LADCP paths set,
-``--stage 1`` ingests both (CNV → nc *and* ``.mat`` → nc) and ``--stage profiles``
+``--stage 1`` ingests both (``.hex`` or CNV → nc *and* ``.mat`` → nc) and ``--stage profiles``
 compiles both (``profiles.nc`` *and* ``ladcp_profiles.nc``).  A source whose paths
 are absent is silently skipped.
 
@@ -192,11 +202,15 @@ are absent is silently skipped.
 
    options:
      --only N [N ...]  Restrict cast-scope stages (1, 2, 3) to these casts
-     --force           Overwrite existing output files
+     --force           Rebuild every stage file, even when it is up to date
      --dry-run         Print what would be done without writing any files
-     --gebco NC        GEBCO bathymetry for the profiles stage
-     --backend NAME    CTD conversion backend (default: seasenselib)
-     --pattern GLOB    Filename glob for CNV files (default: from config, else '*.cnv')
+     --gebco NC        GEBCO netCDF for the water depth at each cast in profiles.nc
+                       (data.gebco_nc is not read by this stage)
+     --backend NAME    CNV reader (default: seasenselib); a hex_dir cruise reads .hex
+     --pattern GLOB    Filename glob for CNV files (default: from config, else '*.cnv');
+                       not used for .hex
+
+   (The former --cast spelling still works as a deprecated alias for --only.)
 
    stage 2 trim tuning (all optional; the defaults are the documented behaviour):
      --near-surface-dbar D    Pressure threshold for the last near-surface crossing
@@ -214,9 +228,12 @@ A trim flag overrides the corresponding ``processing.trim`` key in the config fo
 run only; nothing is written back.  Use them to test a threshold before committing it
 to the config.
 
-Stage 1 ingests raw files to per-cast netCDF; stages 2 and 3 apply CTD soak/deck
-flagging and QC/calibration (LADCP has no stage 2 or 3); ``profiles`` compiles the
-per-cast files into the gridded products.
+Stage 1 reads the raw ``.hex`` or CNV files to per-cast netCDF; stage 2 flags the soak and
+deck records and applies the clock block; stage 3 applies the conductivity slope and offset,
+the ``data_processing`` steps, salinity, SBE 43 oxygen and QC, then makes the products (LADCP
+has no stage 2 or 3); ``profiles`` compiles the per-cast files into the gridded files.  A
+stage-1 file is read only when it is missing (``--force`` reads a replaced raw file again); a
+stage-2 or stage-3 file, or ``profiles.nc``, is rebuilt when its input is newer.
 
 **Examples**::
 
@@ -232,10 +249,12 @@ ctdcast convert (deprecated)
 
 .. note::
 
-   ``ctdcast convert`` is deprecated — use ``ctdcast process --stage ...``.
-   ``convert --ctd`` → ``process --stage 1``; ``convert --profiles`` →
-   ``process --stage profiles``; ``convert --ladcp`` → ``process --stage 1 profiles``.
-   The command still runs, with a notice.
+   ``ctdcast convert`` is deprecated and will be removed in 0.5.0 — use
+   ``ctdcast process --stage ...``.  ``convert --ctd`` → ``process --stage 1``;
+   ``convert --profiles`` → ``process --stage profiles``; ``convert --ladcp`` →
+   ``process --stage 1 profiles``.  The command still runs, with a notice, but it is not
+   the same: on a config with only ``ctd_root`` (no ``data.profiles_nc``) it may do
+   nothing, and ``--ctd`` does not stamp ``cruise_info`` or the sensor overrides.
 
 Convert raw data to netCDF inputs without generating HTML.
 
@@ -258,12 +277,12 @@ Convert raw data to netCDF inputs without generating HTML.
      --force          Overwrite existing output files
      --dry-run        Print what would be done without writing any files
 
-   (The former ``--cast`` spelling still works as a deprecated alias for ``--only``.)
+   (The former --cast spelling still works as a deprecated alias for --only.)
 
 **Examples**::
 
    ctdcast convert config.yaml                  # build profiles.nc (default)
-   ctdcast convert config.yaml --ctd            # CNV → nc, then profiles.nc
+   ctdcast convert config.yaml --ctd            # CNV → nc (no profiles.nc)
    ctdcast convert config.yaml --profiles       # rebuild profiles.nc only
    ctdcast convert config.yaml --ctd --only 42  # convert one cast
    ctdcast convert config.yaml --dry-run
@@ -286,30 +305,37 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
      --casts          Generate per-cast pages
      --sections       Generate section pages (requires profiles.nc and groupings_yaml)
      --timeseries     Generate timeseries pages (requires profiles.nc and groupings_yaml)
-     --index          Generate navigation pages (index.html, casts.html, sections.html)
+     --index          Generate the cruise-wide pages: index, casts, sections and
+                      timeseries index pages, each compiled file's inventory, SBE
+                      sensors, processing, and T/S corrections when fits.nc exists
      --map            Generate leaflet.html interactive map
      --all            Generate every page type
 
    options:
-     --only N [N ...] Regenerate only the pages for cast N (one or more)
+     --only N [N ...] Regenerate only these casts' pages (no other page type)
      --force          Regenerate all pages regardless of modification times
      --skip-existing  Skip pages whose HTML already exists (fill missing pages only)
      --dry-run        Print what would be done without writing any files
 
    plotting (affect the figures only; no netCDF file is modified):
-     --sal MIN MAX    Salinity range for plot trimming: records with salinity_1
-                      outside it are excluded from the cast-page plots
-     --trim-soak      Strip the pre-soak window before plotting: at least the first
-                      60 s (pump activation), and any records up to the last time
-                      the CTD was within 2 dbar of the surface
-     --dbar-step N    Plot every Nth dbar level from profiles.nc in section and
-                      timeseries figures (default: 1, full resolution).  The
-                      compiled product always stores 1 dbar; this thins the plot,
-                      not the data
+     --sal MIN MAX    Salinity range for plot trimming: records whose salinity
+                      (ctd_salinity, else ctd_salinity_1) is outside it are left out
+                      of the cast-page plots
+     --trim-soak      Leave the surface soak and back-on-deck records out of the
+                      cast-page plots, with stage 2's default rules (last scan above
+                      10 dbar before the descent, searched back 20 s; the deck from
+                      the pressure of the last 20 s; processing.trim is not read)
+     --dbar-step N    Plot every Nth pressure level from profiles.nc in section and
+                      timeseries figures (default: 1, every level).  This thins the
+                      plot, not the data; the grid is set by processing.profiles_dbar
      --drop-stub      Drop cast-page sections whose figures all failed to render.
                       By default such a section stays visible as a warning, so a
                       failed figure is noticed rather than silently absent
 
+   A cast, section or time-series page is rebuilt only when the files it is drawn
+   from are newer, so --sal, --trim-soak and --drop-stub change an up-to-date page
+   only with --force; the cruise-wide pages are rebuilt on every run.  A top-level
+   force: true in the config does the same as --force.
    The process exits non-zero if any requested page fails to build.
    The former ``--stations`` and ``--cast`` spellings still work as hidden,
    deprecated aliases for ``--casts`` and ``--only``; they emit a warning.
@@ -345,11 +371,11 @@ Run the processing pipeline then the reports in one step (most common workflow).
      --force          Force regeneration of all outputs regardless of modification times
      --skip-existing  Skip pages whose HTML already exists
      --dry-run        Print what would be done without writing any files
-     --trim-soak      Strip pre-soak records from each cast before plotting (see
+     --trim-soak      Leave the soak and deck records out of the cast-page plots (see
                       ``report --trim-soak``)
 
-Equivalent to ``ctdcast process --stage ...`` then ``ctdcast report``.  ``run`` is
-the recommended everyday command: by default it runs every stage (ingest → QC →
+Runs ``ctdcast process --stage ...`` and then ``ctdcast report``.  ``run`` is the
+recommended everyday command: by default it runs every stage (ingest → QC →
 compile) across every configured source, then builds the HTML — so it works from
 raw on a fresh checkout.  Narrow with ``--stage`` when you do not want the full
 pipeline (``--stage profiles`` compiles and reports without re-ingesting raw).  Use
@@ -411,7 +437,7 @@ ctdcast fit
 Suggest conductivity-alignment and cell-thermal-mass parameters for a cruise.  ``fit`` reads every
 native-rate stage-2 cast, scores each conductivity line's salinity-spike cost (alignment) and
 down/up salinity-mismatch cost (cell thermal mass), writes the per-cast cost surfaces to
-``<ctd_root>/fits.nc``, and prints a paste-ready ``processing:`` block with the recommended
+``<ctd_root>/fits.nc``, and prints a paste-ready ``data_processing:`` block with the recommended
 ``alignctd`` and ``celltm`` values.  It writes no stage file — the values reach stage 3 only when
 you paste them into the config.  ``ctdcast report`` draws the *T/S corrections* page from
 ``fits.nc``.
@@ -435,7 +461,7 @@ size) with the ``fit`` block (see :ref:`config_yaml`).
 
 **Examples**::
 
-   ctdcast fit config.yaml                         # print the suggested processing: block
+   ctdcast fit config.yaml                         # print the suggested data_processing: block
    ctdcast fit config.yaml --only 11 12            # just two casts
    ctdcast fit config.yaml --dry-run               # list what would be fitted
 

@@ -35,6 +35,7 @@ htmlcov/
 # Outputs (generated HTML reports)
 outputs/
 demo_report/
+demo_work/
 
 # Data files — large and generally not for version control
 *.nc

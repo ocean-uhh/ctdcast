@@ -91,7 +91,8 @@ Field reference:
    * - ``cruise_id``
      - Cruise identifier. Written to the file as ``cruise`` — the key name is
        not itself an attribute — and used in the page headers. Falls back to the
-       per-cast netCDF ``cruise`` attribute, then ``"UNK"``.
+       per-cast netCDF ``cruise`` attribute, then to ``"UNK"`` in the compiled file
+       and ``"UNKCRUISE"`` in the report pages.
    * - ``ship``
      - Free-text display name shown in the report masthead.
    * - ``platform`` (or ``ship_slug``)
@@ -146,7 +147,9 @@ Field reference:
        **or** — for one not in the registry — an inline
        ``{name, id, role}`` (look up the EDMO code at
        https://edmo.seadatanet.org/ , or use a ROR id). Roles: ``CONLEAD``
-       (leads), ``CONMEM`` (takes part), ``FUND`` (funder). Independent of
+       (leads), ``CONMEM`` (takes part; the default), ``DATM`` (data management),
+       ``FUND`` (funder).  ``institutions_file`` names a further registry file to read
+       institutions from (see :doc:`registries`). Independent of
        ``contributors``: one person may sit at several institutions and one
        institution may send several people, so the two lists are **not**
        positionally aligned.
@@ -154,8 +157,12 @@ Field reference:
      - Which vocabulary the roles are drawn from — ``C89`` (default, BODC
        dataset roles) or ``G04`` (ISO 19115 ``CI_RoleCode``). ctdcast validates
        and writes in the declared vocabulary and never converts between them.
+   * - ``title``, ``summary``, ``project``, ``program``
+     - Free text, each written to the ACDD global attribute of the same name when set.
    * - ``acknowledgement``
      - Free text written to the ``acknowledgement`` global attribute.
+   * - ``map_lat_min``, ``map_lat_max``, ``map_lon_min``, ``map_lon_max``
+     - The extent of the report maps; without them the extent follows the casts.
    * - ``embargo``
      - Mapping (``policy``, ``until``, ``contact``). Produces a moratorium
        ``license``; ``until`` defaults to ``end_date + 2 years`` when null.

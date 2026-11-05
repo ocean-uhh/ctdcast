@@ -145,6 +145,8 @@ def test_cli_report_overview_panels_fill_their_slot(tmp_path: Path) -> None:
 
     root = Path(__file__).resolve().parents[1]
     cfg = (root / "config_demo.yaml").read_text(encoding="utf-8")
+    # The demo compiles into demo_work/; this test reports from the committed profiles file.
+    cfg = cfg.replace("demo_work/profiles_demo.nc", "tests/fixtures/profiles_demo.nc")
     cfg = cfg.replace("tests/fixtures", str(root / "tests" / "fixtures"))
     cfg = cfg.replace("  dir: demo_report", f"  dir: {tmp_path / 'out'}")
     (tmp_path / "config.yaml").write_text(cfg, encoding="utf-8")
@@ -160,3 +162,10 @@ def test_cli_report_overview_panels_fill_their_slot(tmp_path: Path) -> None:
     for b64 in full:
         width = Image.open(io.BytesIO(base64.b64decode(b64))).size[0]
         assert width == round(W_FULL * FIG_DPI)
+
+
+def test_overview_ticks_are_cast_numbers_when_none_is_a_multiple_of_five() -> None:
+    from ctdcast.plotters.sections import _overview_tick_indices
+
+    assert _overview_tick_indices([11, 12, 128, 129]) == [0, 1, 2, 3]
+    assert _overview_tick_indices(list(range(1, 31))) == [4, 9, 14, 19, 24, 29]

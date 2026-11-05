@@ -17,9 +17,9 @@ def build_parser(
     _epilog = """
 Reads every stage-2 cast at its native scan rate under the config's ctd_root,
 fits the conductivity alignment (salinity spikes in the thermocline, down and
-up) and then the cell thermal mass (down/up salinity below processing.fit.ctm_pmin,
+up) and then the cell thermal mass (down/up salinity below fit.ctm_pmin,
 default 200 dbar), and writes the cost surfaces to <ctd_root>/fits.nc.  It
-changes no stage file: it prints a paste-ready 'processing:' block, and
+changes no stage file: it prints a paste-ready 'data_processing:' block, and
 'ctdcast report' draws corrections_ts.html from fits.nc.
 
 Examples:

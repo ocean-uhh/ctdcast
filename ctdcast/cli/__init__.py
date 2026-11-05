@@ -22,12 +22,12 @@ from . import validate as _validate
 _EPILOG = """
 Typical mid-cruise workflow:
   ctdcast init                                  write a template config.yaml
-  ctdcast validate config.yaml                  check paths and data
+  ctdcast validate config.yaml                  check the config before a run
   ctdcast process config.yaml --stage 1         raw → per-cast netCDF (CTD + LADCP)
   ctdcast process config.yaml --stage 2 3       soak/deck flags, QC + calibration
   ctdcast process config.yaml --stage profiles  compile profiles.nc (+ ladcp_profiles.nc)
   ctdcast report config.yaml                    generate HTML reports
-  ctdcast run config.yaml                       profiles + all HTML in one step
+  ctdcast run config.yaml                       every stage, then the HTML
 
 Run 'ctdcast <command> --help' for command-specific options.
 """

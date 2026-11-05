@@ -4,14 +4,27 @@
 Python API
 ============
 
-The primary public entry point is :func:`ctdcast.report`.
+The public entry points are importable from ``ctdcast`` itself: :func:`ctdcast.process` runs
+processing stages, :func:`ctdcast.report` builds the HTML report, and
+``ctdcast.stage1`` / ``ctdcast.profiles`` run stage 1 and the profiles compile on their own.
 
 ----
 
-Main entry point
-----------------
+Main entry points
+-----------------
+
+.. autofunction:: ctdcast.processors.process
 
 .. autofunction:: ctdcast.reports.index.report
+
+``ctdcast.stage1`` is :func:`ctdcast.processors.stage1.stage1` and ``ctdcast.profiles`` is
+:func:`ctdcast.processors.profiles.build_profiles`, both documented below.
+
+The stage registry: one entry per stage token, read by the CLI's ``--stage`` and by
+:func:`ctdcast.process`.
+
+.. autodata:: ctdcast.processors.STAGES
+   :no-value:
 
 ----
 
@@ -354,7 +367,7 @@ Cast processing
 
 :mod:`~ctdcast.processors.fit` is ``ctdcast fit``: it scores every native-rate stage-2 cast with
 :mod:`~ctdcast.analysis.fits`, writes the cost surfaces to ``fits.nc``, and turns them into the
-cruise summary and the suggested ``processing:`` block.
+cruise summary and the suggested ``data_processing:`` block.
 
 .. automodule:: ctdcast.processors.fit
    :members:
@@ -362,8 +375,27 @@ cruise summary and the suggested ``processing:`` block.
 
 ----
 
+Stage layout
+^^^^^^^^^^^^
+
+Where each stage's files live and how a file's stage is read from its name.
+
+.. automodule:: ctdcast.processors.stage_layout
+   :members:
+
+.. automodule:: ctdcast.processors.ladcp
+   :members:
+
+.. automodule:: ctdcast.processors.units
+   :members:
+
+----
+
 Readers
 -------
+
+.. automodule:: ctdcast.readers.cnv
+   :members:
 
 .. automodule:: ctdcast.readers.ladcp
    :members:
@@ -380,3 +412,25 @@ Readers
 .. automodule:: ctdcast.readers.xmlcon
    :members:
    :undoc-members:
+
+----
+
+Writers
+-------
+
+.. automodule:: ctdcast.writers.netcdf
+   :members:
+
+.. automodule:: ctdcast.writers.dtypes
+   :members:
+
+----
+
+Configuration
+-------------
+
+.. automodule:: ctdcast.config.loader
+   :members:
+
+.. automodule:: ctdcast.config.report_config
+   :members:

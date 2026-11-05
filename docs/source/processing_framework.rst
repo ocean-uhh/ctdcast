@@ -25,10 +25,9 @@ per compiled product.
 - **Incremental** — a stage's output is storable and reloadable, so processing can
   stop and resume rather than being one long run.
 
-Output files use CF-netCDF conventions with ACDD discovery metadata; the compiled
-products additionally carry an ``expocode`` variable over ``N_PROF``, in the CCHDO
-manner. It is a variable rather than a coordinate: it names the one cruise every
-profile already belongs to, so it indexes nothing.
+Output files use CF-netCDF conventions with ACDD discovery metadata.  The cruise's
+``expocode`` is a global attribute of every file: it names the one cruise every profile
+belongs to, so it indexes nothing.
 
 ----
 
@@ -104,11 +103,11 @@ directories, not inside them.
 What Sea-Bird has already done to the file
 ------------------------------------------
 
-ctdcast now ingests the 24 Hz ``.hex`` directly (through ``seabirdscientific``) and
-applies alignment and cell thermal mass itself at stage 3; the rest of the Sea-Bird
-chain is not yet run here. The other input, a calibrated Sea-Bird CNV, has usually
-been through two rounds of processing before ctdcast opens it, and **neither of them
-announces itself in a way the stages can see**:
+ctdcast reads the 24 Hz ``.hex`` directly (through ``seabirdscientific``) and runs
+Sea-Bird's processing chain itself: Wild Edit, Filter, Window Filter, Align CTD, Cell
+Thermal Mass and Loop Edit at stage 3, Split and Bin Average in the products.  The other
+input, a Sea-Bird CNV, has usually been through two rounds of processing before ctdcast
+opens it, and **neither of them announces itself in a way the stages can see**:
 
 - the **deck unit**, at acquisition, in hardware;
 - **SBE Data Processing**, ashore or at sea, as a chain of modules.
@@ -279,70 +278,49 @@ Cast-level processing
 
 One cast in, one cast out, once per cast.
 
-- **Stage 0 (partly landed).** Acquire and convert raw instrument files. ctdcast now
-  reads raw ``.hex`` + ``.xmlcon`` at stage 1 (conversion to engineering units through
-  ``seabirdscientific``), so a cruise need no longer start from a calibrated CNV; the
-  rest of the Sea-Bird chain (wild-edit, low-pass filter, loop-edit, bottle files) is
-  still external. **That chain is what** `ctdam <https://github.com/ocean-uhh/ctdam>`_
-  **does**: it
-  drives the Sea-Bird processing chain (``wildedit``, ``wfilter``, ``alignctd``,
-  ``celltm``, bottle-file creation, gsw derivations) from a ``proc_template.toml``
-  and writes CNV. Stage 0 is therefore a *boundary* with a sibling package rather
-  than a module to be written here.
+- **Stage 0 — the raw files.** The ``.hex`` + ``.xmlcon`` from the deck unit, or a CNV.
+  ctdcast reads raw ``.hex`` at stage 1 (conversion to engineering units through
+  ``seabirdscientific``) and runs Sea-Bird's processing chain at stage 3, with the
+  parameters in its own config (``data_processing``), so a cruise need not start from a
+  processed CNV.  A CNV made by SBE Data Processing, or by a tool such as
+  `ctdam <https://github.com/ocean-uhh/ctdam>`_, is the other entry point.
 
   .. important::
 
-     **What arrives at stage 1 is not raw.** ctdam's chain does two different
-     kinds of work. ``datcnv`` is conversion — hex to engineering units — which is
-     stage-0/1 work. But ``wildedit`` (despike), ``wfilter`` (median filter),
-     ``filter`` (low-pass), ``alignctd`` (sensor time alignment) and ``celltm``
-     (cell thermal mass) all **change measured values**, which by the second rule
-     above makes them **stage-3-class corrections applied upstream**,
-     with per-variable parameters recorded only in the CNV header::
+     **A processed CNV is not raw.** ``datcnv`` is conversion — hex to engineering units —
+     which is stage-1 work. But ``wildedit`` (despike), ``wfilter`` (median filter),
+     ``filter`` (low-pass), ``alignctd`` (sensor time alignment) and ``celltm`` (cell
+     thermal mass) all **change measured values**, which by the second rule above makes
+     them **stage-3-class corrections applied upstream**, with their parameters recorded
+     only in the CNV header::
 
          # wfilter_action t090C = median, 10
          # filter_low_pass_tc_A = 0.030
          # filter_low_pass_A_vars = altM flECO-AFL turbWETntu0 …
 
-     Two consequences follow, and both matter more than the provenance:
+     Two consequences follow:
 
-     - **Re-run scope is asymmetric.** Changing a ctdcast stage-3 parameter
-       invalidates stage 3. Changing a *ctdam* parameter regenerates the CNV and
-       invalidates every ctdcast stage **from stage 1**, because the corrections
-       sit below it. That is the practical cost of these steps living outside the
-       framework.
-     - **Stage 3 must know what was already done.** Applying a cell-thermal-mass
-       correction or a time alignment twice is a silent error that produces
-       plausible numbers. Stage 3 reading the upstream chain is a safety check,
-       not only a record.
-
-     **Alignment and cell thermal mass have since landed as ctdcast stage-3
-     modules** (through ``seabirdscientific``, with parameters in
-     the ``alignctd`` / ``celltm`` steps in ``data_processing`` that ``ctdcast fit`` suggests),
-     and ``.hex`` + ``.xmlcon`` are now read at stage 1 — so for those steps the
-     boundary has moved inside the framework. The longer-term shape is to express
-     the rest (wild-edit, low-pass filter, loop-edit) the same way, with their
-     parameters in ctdcast's config, ingesting unfiltered ``datcnv`` output
-     — one place for the parameters, and re-runnable within the stages.
-     Importantly this needs **no file round-trip**: ctdam is a Python library
-     whose appliers (``AlignCTD``, ``WFilter``, ``CellTM``, ``LoopRemoval``)
-     accept and return an in-memory ``CTDData``, so ctdcast would call them
-     directly rather than exporting CNV, invoking a tool, and re-reading. The
-     cost is an xarray ↔ ``CTDData`` adapter, not an export/import cycle. Not a
-     near-term change; noted so the current arrangement is understood as a
-     boundary compromise rather than the design.
+     - **Re-run scope is asymmetric.** Changing a ctdcast stage-3 parameter invalidates
+       stage 3. Changing a parameter of the tool that made the CNV regenerates the CNV and
+       invalidates every ctdcast stage **from stage 1**, because the corrections sit below
+       it.  Starting from ``.hex`` avoids this: every correction is a stage-3 step.
+     - **Stage 3 must know what was already done.** Applying a cell-thermal-mass correction
+       or a time alignment twice is a silent error that produces plausible numbers.  Stage
+       3 reads the upstream chain and skips a step Sea-Bird already ran (with a warning);
+       ``ctdcast inspect cast.cnv`` prints that chain as a ``data_processing`` block, to
+       reproduce it from the ``.hex``.
 
   .. important::
 
-     **The boundary contract: ctdam runs without ``binavg`` and without
-     ``downcast_only``.** Both are legitimate in ctdam's own terms, but a CNV
+     **A CNV entry point should come without ``binavg`` and without
+     ``downcast_only``.** Both are legitimate in Sea-Bird's own terms, but a CNV
      produced with either is **already a terminal product** by this framework's
      second rule — ctdcast would be splitting downcast from upcast on a file that
      has neither, or re-binning binned data. Those two jobs belong to stage 2 and
      to the ``profiles`` compile, where they are reversible and recorded. A CNV
      arriving at stage 1 carries every scan of the full cast.
-- **Stage 1 — standardisation.** Convert raw CNV to CF-netCDF, faithfully: no
-  trimming, no QC, and no channel dropped — every CNV column reaches the stage-1
+- **Stage 1 — standardisation.** Convert the raw ``.hex`` or the CNV to CF-netCDF,
+  faithfully: no trimming, no QC, and no channel dropped — every column reaches the stage-1
   file, with Sea-Bird-derived channels (density, depth, flags) kept under an
   ``sbe_`` prefix rather than discarded. Canonical variable names, unit
   normalisation (conductivity to mS/cm, pressure to dbar), and single-sensor
@@ -442,9 +420,10 @@ Many casts in, one file out, once per product.
 - **ladcp_profiles** — the LADCP equivalent, gridded on depth in metres rather
   than pressure.
 
-Both carry the cruise-level metadata: ACDD discovery fields, contributors and
-institutions with their controlled-vocabulary roles, licence and embargo, derived
-spatiotemporal coverage, and the ``expocode`` coordinate.
+Both carry the cruise-level metadata: ACDD discovery fields, derived spatiotemporal
+coverage, the ``expocode`` attribute, and — when ``cruise_info`` supplies them —
+contributors and institutions with their controlled-vocabulary roles, licence and
+embargo.
 
 ----
 
@@ -460,20 +439,26 @@ Summary table
      - Description
    * - 0
      - cast
-     - Acquisition (planned)
-     - Raw instrument files to CNV
+     - Raw files
+     - ``.hex`` + ``.xmlcon`` from the deck unit, or a Sea-Bird CNV
    * - 1
      - cast
      - Standardisation
-     - CNV to CF-netCDF; canonical names and units; values preserved as-is
+     - ``.hex`` or CNV to CF-netCDF; canonical names and units; values preserved as-is
    * - 2
      - cast
      - Trim
-     - Soak and back-on-deck flagged (not removed); no splitting
+     - Soak and back-on-deck flagged (not removed); clock offset; no splitting
    * - 3
      - cast
-     - QC and calibration
-     - Gross-range and spike QC; conductivity calibration; salinity re-derived
+     - Corrections, calibration and QC
+     - Conductivity slope and offset; Sea-Bird's steps (Wild Edit, filters, alignment,
+       cell thermal mass, Loop Edit); salinity re-derived; SBE 43 oxygen; gross-range and
+       spike QC
+   * - products
+     - cast
+     - Products
+     - Further steps on the stage-3 data, e.g. split and Bin Average to a 1 dbar downcast
    * - profiles
      - cruise
      - Compile (CTD)
@@ -497,7 +482,7 @@ Summary table
         - oceanarray (a moored record)
       * - 1
         - Standardisation — raw to CF-netCDF, values preserved
-        - CNV to netCDF
+        - ``.hex`` or CNV to netCDF
         - ``.cnv``/``.rsk``/``.aqd`` to netCDF
       * - 2
         - **Trim** — decide which records belong to the real measurement
@@ -505,7 +490,7 @@ Summary table
         - deployment window, plus clock offset/drift
       * - 3
         - QC and derived variables
-        - gross-range QC, conductivity calibration, salinity
+        - Sea-Bird's corrections, conductivity calibration, salinity, oxygen, QC
         - QARTOD QC, pressure interpolation, salinity, velocity rotation
 
    The alignment is not a coincidence of numbering: each stage is a *kind* of

@@ -9,15 +9,16 @@ Layout
 
 Each instrument has one **root** that ctdcast owns — ``ctd_root`` and
 ``ladcp_root`` in the config's ``data:`` block. Inside it, one directory per
-processing stage, and the compiled product at the top:
+processing stage, the products, and the compiled file at the top:
 
 .. code-block:: text
 
    <ctd_root>/
-       stage1/  mixsed2_017_stage1.nc     raw CNV converted
+       stage1/  mixsed2_017_stage1.nc     the raw .hex or .cnv read to netCDF
        stage2/  mixsed2_017_stage2.nc     + soak / back-on-deck flags
-       stage3/  mixsed2_017_stage3.nc     + QC and calibration
-       profiles.nc                        compiled product
+       stage3/  mixsed2_017_stage3.nc     + Sea-Bird's steps, calibration and QC
+       products/<name>/  mixsed2_017_<name>.nc   made from stage 3 (e.g. 1 dbar downcast)
+       profiles.nc                        the casts compiled on a pressure grid
 
    <ladcp_root>/
        stage1/  ladcp_017_stage1.nc       LADCP has one stage
@@ -28,7 +29,8 @@ so a stage can be re-run without redoing the ones before it, and the full lineag
 stays on disk. See :doc:`processing_framework` for what each stage does.
 
 **Stage 1 is faithful; stage 2 is curated.** Stage 1 is a faithful translation —
-*every* column in the CNV reaches the stage-1 file, dropping nothing. SeaBird-computed
+*every* column in the CNV, or every channel in the ``.hex``, reaches the stage-1 file,
+dropping nothing. SeaBird-computed
 quantities (density, depth, sound velocity, ``timeJ``/``timeS``, the per-scan flag,
 oxygen saturation) are kept under an ``sbe_`` prefix so they cannot be mistaken for
 ctdcast's own (ctdcast writes ``sigma0`` via TEOS-10, not SBE density); an unrecognised
@@ -88,13 +90,17 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``ctd_temperature`` / ``ctd_temperature_1`` / ``ctd_temperature_2``
      - In-situ temperature in °C (ITS-90). Plain name for single-sensor instruments; ``_1``/``_2`` suffix for dual-sensor rigs.
    * - ``ctd_salinity`` / ``ctd_salinity_1`` / ``ctd_salinity_2``
-     - Practical salinity (PSU).
+     - Practical salinity (PSS-78).  A ``.hex`` cast's is derived by ctdcast from C, T and P
+       with TEOS-10; a CNV cast keeps Sea-Bird's (``sal00``, ``sal11``) until a stage-3 step
+       changes C, T or P, when stage 3 derives it again.  Stored with ``units: "1"``, as CF
+       writes a dimensionless quantity.
    * - ``ctd_oxygen`` / ``ctd_oxygen_1`` / ``ctd_oxygen_2``
      - Dissolved oxygen in µmol kg⁻¹.
    * - ``ctd_fluor``
      - Fluorescence in mg m⁻³ (chlorophyll-a equivalent; 1 mg m⁻³ = 1 µg L⁻¹).
    * - ``ctd_turbidity``
-     - Turbidity in NTU.
+     - Turbidity, in NTU by the sensor's calibration; stored with ``units: "1"``, as CF has no
+       NTU unit.
    * - ``ctd_altimeter``
      - Altimeter distance to seafloor in m.
    * - ``conductivity_1`` / ``conductivity_2``
@@ -113,23 +119,46 @@ Each file covers one CTD cast.  The required dimension and variables are:
      - ``.hex`` casts only: quick-look SBE 43 oxygen in µmol kg⁻¹, converted at read time by ctdcast with Sea-Bird's ``seabirdscientific`` toolkit (uncorrected T/S, no tau or hysteresis correction). Dropped at stage 2 with the other ``sbe_`` channels.
    * - ``pump_status``, ``bottom_contact_status``, ``bottle_confirm_status``, ``modem_status``, ``data_integrity``
      - ``.hex`` casts only: the SBE 911plus deck unit's per-scan status bits and data-integrity counter. Neither these nor the ``volt{N}_raw`` channels get a ``_qc`` flag at stage 2: they are not measurements a flag could describe. ``oxygen_raw_N`` does, as stage 3 derives oxygen from it.
+   * - ``<var>_qc``
+     - From stage 2: the QARTOD flag of each measurement, ``int8``, ``flag_values`` 1 2 3 4 9
+       (pass, not evaluated, suspect, fail, missing) with ``conventions: QARTOD``.  Stage 3
+       records each test's thresholds on the flag variable (``qc_gross_range_suspect_min``,
+       ``qc_spike_fail_threshold``, …).  A flagged value is kept; the flag says what is wrong
+       with it.
+   * - ``loop_edit_flag``
+     - Stage 3, when ``loopedit`` runs: ``1`` on a scan Loop Edit marked (a pressure reversal,
+       too slow, or the surface soak), with the parameters (``loop_edit``) and, on a cast that
+       ran without the soak test, why (``loop_edit_soak_not_applied``).  The same scans are
+       flagged 4 in every ``_qc``.
 
 A cast read from ``.hex`` is at the native scan rate (24 Hz on a 911plus), with no
 Sea-Bird processing applied; its conductivity, temperature and pressure carry the
 ``.xmlcon`` Slope and Offset they were converted with (``xmlcon_slope``,
 ``xmlcon_offset``) and the conversion function (``conversion_method``).
 
+Each stage-3 step records what it did on the variables it changed: Wild Edit
+(``wild_edit``, ``wild_edit_marked``, …), filters (``filters``), alignment
+(``alignment_offset_seconds``, …), cell thermal mass (``cell_thermal_mass_alpha``,
+``cell_thermal_mass_tau_seconds``, ``cell_thermal_mass_temperature``, …), the SBE 43 oxygen
+derivation (``oxygen_tau_window_seconds``, ``oxygen_hysteresis_method``, …), each with the
+function that applied it (``*_method``).  The processing record and the report pages are
+built from these attributes and ``history``.
+
 Storage dtypes, in every file ctdcast writes: science values ``float32`` (about 10⁻⁷
 relative, far below the sensors' resolution), QARTOD flags ``int8``, ``time``,
 ``latitude`` and ``longitude`` ``float64``.  Processing reads them back as ``float64``.
 
 Global attributes: cruise identity (``cruise``, ``platform_*``, ``expocode``),
-``raw_filename``, ``raw_metadata``, a stamped ``history``, and the upstream
-correction ledger (``sbe_*``, ``correction_*``, ``time_coordinate_source``,
-``time_clock_offset_seconds``). Each is described in the table below. A ``.hex`` cast
-adds ``input_format`` (``"hex"``), ``sample_interval_seconds``,
-``seabirdscientific_version``, and ``time_bottle_log_check`` when a ``.bl`` bottle log was
-beside it; its ``raw_metadata`` holds the ``.hex`` header and the ``.xmlcon`` verbatim.
+``raw_filename``, ``raw_filesize_bytes``, ``raw_mtime_utc``, ``raw_metadata``, a stamped
+``history``, and the upstream correction ledger (``sbe_*``, ``correction_*``,
+``time_coordinate_source``, ``time_clock_offset_seconds``). Each is described in the table
+below. A ``.hex`` cast adds ``input_format`` (``"hex"``), ``sample_interval_seconds``,
+``sample_interval_kind``, ``sbe_n_scans``, ``seabirdscientific_version``, and
+``time_bottle_log_check`` when a ``.bl`` bottle log was beside it; its ``raw_metadata``
+holds the ``.hex`` header and the ``.xmlcon`` verbatim. Stage 2 adds ``dropped_channels``;
+stage 3 adds ``data_processing_steps`` (the steps in the order they ran), ``products_made``
+(each product and its steps) and, when a product's Bin Average kept part of a flagged scan,
+``products_bin_average_partly_flagged``.
 
 File identity and lineage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,13 +173,17 @@ from — so the chain back to the raw CNV is readable from any single output.
   bug — a stable id could not detect a rewrite.
 - ``source_tracking_id`` (stage 2, stage 3) holds the ``tracking_id`` of the stage file that
   was read. In ``profiles.nc`` it is a per-``N_PROF`` variable, naming the source cast file
-  per profile (the compiled file has its own ``tracking_id`` global attribute).
+  per profile (the compiled file has its own ``tracking_id`` global attribute).  A product
+  currently carries the ``source_tracking_id`` of the stage-3 data's own source (the stage-2
+  file), because it is made before the stage-3 file is written; pointing it at the stage-3
+  file is planned.
 - Stage 1 has no upstream netCDF, so it records the raw source filename in a distinct
   attribute instead — ``source_cnv`` for a CNV cast, ``source_hex`` and ``source_xmlcon``
   for a ``.hex`` cast, ``source_mat`` for LADCP.
 - ``processing_stage`` (``1``/``2``/``3``) records the stage in the file itself, not only in
   the filename, so a file copied out of its stage directory still declares what it is — the
-  form a cross-package consumer (caldip) reads.
+  form a cross-package consumer (caldip) reads.  Products carry ``3`` today, the stage of the
+  data they were made from.
 - ``cast_id`` records the cast identity (the canonical zero-padded form, e.g. ``011`` or
   ``011b``) in the file for the same reason; it is stamped at stage 1 and carried forward.
 - ``date_created`` is set once (first write) and preserved across re-runs; ``date_modified``
@@ -172,9 +205,8 @@ product of record), ``D`` delayed-mode (all calibrations and QC applied), ``M`` 
 ``D`` is **declared, never inferred**: it comes only from ``cruise_info.data_mode: D`` in
 the config, because no code can know that *every* calibration a cruise needed was applied.
 A quick-look (``ctdcast draft``) file is always ``P``. In ``profiles.nc`` the global value
-is ``M`` only when the compiled casts genuinely differ, and a per-``N_PROF``
-``source_data_mode`` variable then says which profile is in which mode; casts merely compiled
-from different
+is ``M`` only when the compiled casts genuinely differ; a per-``N_PROF`` ``source_data_mode``
+variable always says which profile is in which mode. Casts merely compiled from different
 *stages* do not make the file ``M`` (stages 1–3 are all provisional — ``source_stage``
 records the stage difference). ``data_mode_meaning`` always accompanies it.
 
@@ -183,7 +215,9 @@ been done to that variable, using table 3's strings verbatim:
 
 - ``Instrument data that has been converted to geophysical values`` — stamped at stage 1 on
   every **measured** channel (temperature, conductivity, pressure, oxygen, fluorescence,
-  turbidity, altimeter), identified by its link to a sensor in the CNV ``<Sensors>`` block.
+  turbidity, beam transmission), identified by its link to a sensor in the CNV ``<Sensors>``
+  block or the ``.xmlcon``.  The altimeter has no serial number, so no catalog entry and no
+  link, and does not carry it.
   **Computed** channels (``ctd_salinity_*``, density, …) do not carry it: they were derived
   from already-converted inputs, never instrument data. Absence is not "raw" — table 3 has an
   explicit raw value; absence means *not stated*.
@@ -210,7 +244,8 @@ treatment stays reachable through ``source_stage`` / ``source_data_mode`` /
 Profiles file (``<ctd_root>/profiles.nc``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
+Compiled on a pressure grid (1 dbar unless ``processing.profiles_dbar`` says otherwise,
+recorded in ``pressure_spacing_dbar``), dimensions ``N_PROF × pressure``.  Per profile:
 
 .. list-table::
    :header-rows: 1
@@ -223,6 +258,11 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
    * - ``cast_suffix``
      - Letter suffix for a repeated cast (``"b"``), empty otherwise. Identity is
        the ``(cast_number, cast_suffix)`` pair.
+   * - ``cast_id``
+     - The same identity as one string, ``011`` or ``011b``.
+   * - ``source_file``, ``source_tracking_id``, ``source_data_mode``
+     - The stage file each profile was compiled from, its ``tracking_id``, and its
+       ``data_mode``.
    * - ``source_stage``
      - Which processing stage this profile was compiled from — ``int8`` with
        ``flag_values``/``flag_meanings``, the same idiom as the QARTOD flags:
@@ -236,16 +276,18 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
      - Latitude in decimal degrees north.
    * - ``longitude``
      - Longitude in decimal degrees east.
-   * - ``time_start``
-     - Start time of the cast (datetime64).
-   * - ``time_end``
-     - End time of the cast (datetime64).
-   * - ``ctd_temperature`` / ``ctd_temperature_1``
-     - In-situ temperature on the 1 dbar grid.
-   * - ``ctd_salinity`` / ``ctd_salinity_1``
-     - Practical salinity on the 1 dbar grid.
-   * - ``ctd_oxygen`` / ``ctd_oxygen_1``
-     - Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.
+   * - ``time_start``, ``time_end``
+     - Start and end of the profile's leg, stored as seconds since 1970 (read as datetimes).
+   * - ``max_pressure_dbar``
+     - The deepest pressure of the cast.
+   * - ``gebco_depth_m``
+     - Water depth at the cast position from GEBCO when the compile was given a file
+       (``ctdcast process --stage profiles --gebco``), NaN otherwise; ``ctdcast run`` passes
+       no file.
+   * - ``<var>_<parameter>``
+     - A correction parameter that differs between casts (for example a per-cast cell thermal
+       mass ``alpha``), one value per profile; when every cast agrees it is an attribute of the
+       variable instead.
    * - ``processing_record``
      - The cast's processing steps, as a JSON list (the same on its down and up profiles): one
        entry per step with ``stage``, ``step``, ``producer``, ``version``, ``setting`` (what was
@@ -256,10 +298,16 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
        the stage file's ``history`` and per-variable attributes, so it holds only what the file
        records; ``processing.html`` is drawn from it.
 
+On the grid: every measured and derived variable of the stage files (``ctd_temperature_1``,
+``ctd_salinity``, ``ctd_oxygen``, ``conductivity_1``, ``ctd_fluor``, the raw voltages, …).
+
 Each cast contributes **two** profiles — downcast and upcast — so ``N_PROF`` is
 twice the cast count. The LADCP product has one profile per cast, so the two
 files' ``N_PROF`` axes do not align; join on ``(cast_number, cast_suffix)``
 rather than by index.
+
+The deck unit's status words (``pump_status``, …) are gridded too today; their bin means
+carry no meaning, and leaving them out of the compile is planned.
 
 The pressure coordinate is the **bin centre**, so a binned value sits at the mean
 depth of the samples it averages rather than at the bin's shallow edge.
@@ -273,6 +321,30 @@ records ``qc_input_samples`` (finite input samples) and ``qc_excluded_samples``
 pre-binning samples, so the figure is not confounded by binning's own reduction in
 point count. Note the soak/deck trim flags the same scans on *every* variable, so a
 variable can be excluded here without its own gross-range or spike test firing.
+
+Product files (``<ctd_root>/products/<name>/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Made at stage 3 from each cast's stage-3 data by the steps in ``data_processing.products``
+(see :doc:`config_yaml`), one file per cast: ``<cast>_<name>.nc``.  A product with a Bin
+Average has dimension ``bin`` instead of ``time``, an ``nbin`` variable (scans in each bin),
+salinity re-derived from the binned C, T and P, and no ``_qc`` variables (flagged 4 and 9
+values were left out of their bins).  It keeps the stage file's global attributes and adds:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Attribute
+     - Meaning
+   * - ``product_name``, ``product_steps``, ``product_leg``
+     - The product's name, its steps in order, and the leg a ``split`` kept.
+   * - ``bin_average``, ``bin_average_method``
+     - The Bin Average parameters, and the function and rule that applied them.
+   * - ``bin_average_partly_flagged_scans``, ``bin_average_partly_flagged``
+     - How many scans entering the bins had a value flagged 4 or 9 beside good values, by
+       variable — the scans seabirdscientific's own Bin Average would have dropped whole
+       (:ref:`sbe_differences`).
 
 Where each attribute is written
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -309,7 +381,8 @@ frozen stage files and then edited in config is a stale copy in 200 places.
        years afterwards; per-cast copies would be plausible and wrong.
 
    * - **About the product**
-     - ``pressure_spacing_dbar``, ``source``, ``id``
+     - ``pressure_spacing_dbar``, ``source``, ``id`` (only when ``cruise_info`` sets an
+       ``expocode``)
      - **Compile time only.** They describe the gridded artefact, not the
        measurement, so there is nothing earlier to originate them.
 
@@ -464,9 +537,11 @@ infix are meaningful — keep them distinct:
   Each measured **data variable** carries a single ``sensor`` attribute naming
   the ``SENSOR_*`` entry that produced it (e.g. ``ctd_temperature_1``'s
   ``sensor = "SENSOR_TEMPERATURE_5806"``). That one link is all a variable
-  holds; its role and channel live on the entry, so a device with no stored
-  variable (pH, a transmissometer) still records both. This is what lets the
-  compile aggregate the catalog without re-reading the header.
+  holds; its role and channel live on the entry. A device ctdcast does not convert
+  (pH, a user polynomial) is linked to its raw voltage on a ``.hex`` cast
+  (``volt3_raw``'s ``sensor = "SENSOR_PH_339"``); a device with no stored variable at
+  all still records its role and channel. This is what lets the compile aggregate the
+  catalog without re-reading the header.
 
 ``sensor_<role>`` — lower-case, dimension ``N_PROF``
   Per profile, a **string** naming the ``SENSOR_*`` variable that filled each
