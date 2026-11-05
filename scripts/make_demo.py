@@ -26,6 +26,8 @@ import yaml
 from ctdcast.config.layout import processing_view
 from ctdcast.config.report_config import ReportConfig
 from ctdcast.identity import cast_id_from_name
+from ctdcast.processors.ladcp import run_compile as run_ladcp_compile
+from ctdcast.processors.ladcp import run_convert as run_ladcp_convert
 from ctdcast.processors.profiles import build_profiles
 from ctdcast.processors.qc import apply_gross_range, apply_spike_test
 from ctdcast.processors.stage2 import apply_stage2
@@ -129,6 +131,16 @@ if __name__ == "__main__":
         build_profiles(stage_root, PROFILES_NC, force=True, cruise_cfg=processing)
         print(f"  -> {PROFILES_NC}")
 
+        # The summary page's Velocity section reads the compiled LADCP file, not
+        # the .mat files, so convert and compile them too.
+        ladcp_root = Path(_tmp) / "ladcp"
+        ladcp_profiles = ladcp_root / "ladcp_profiles.nc"
+        print("Building ladcp_profiles.nc from the LADCP fixtures ...")
+        run_ladcp_convert(LADCP_DIR, ladcp_root, force=True, cruise_info=CRUISE_INFO)
+        run_ladcp_compile(
+            ladcp_root, ladcp_profiles, force=True, cruise_info=CRUISE_INFO
+        )
+
         print(f"Generating demo report to {OUT_DIR} ...")
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         report(
@@ -137,6 +149,7 @@ if __name__ == "__main__":
             profiles_path=PROFILES_NC,
             section_yaml=SECTIONS_YAML,
             ladcp_dir=LADCP_DIR,
+            ladcp_profiles_path=ladcp_profiles,
             generate={
                 "stations": True,
                 "sections": True,

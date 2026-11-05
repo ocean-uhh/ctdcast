@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ladcp_profiles.nc — odb26 data inventory — netCDF inventory</title>
+<style>
+:root {
+  --ocean: #1a3a5c;
+  --seafoam: #e8f4f8;
+  --muted: #95a5a6;
+  --text: #2c3e50;
+  --rule: #dfe6e9;
+  --bg: #ffffff;
+  --bg-sunken: #f7f9fa;
+  --warn: #e67e22;
+  --warn-bg: #fdf3e7;
+  --error: #c0392b;
+  --gray-1: #f5f7fa;
+  --gray-2: #e0e0e0;
+  --gray-3: #aaaaaa;
+  --gray-4: #888888;
+  --gray-5: #555555;
+  --gray-6: #333333;
+  --gray-7: #111111;
+  --ok: #2c6e49;
+  --role-landing: #2980b9;
+  --role-entity: #1a3a5c;
+  --role-collection: #1a3a5c;
+  --role-component: #1a3a5c;
+  --role-aggregate-a: #8e44ad;
+  --role-aggregate-b: #27ae60;
+  --role-map: #ee3377;
+  --role-up: #5d6d7e;
+  --qc-mark: var(--ok);
+  --package-accent: var(--ocean);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs-root: 14px;
+  --fs-h1: 1.75rem;
+  --fs-type: 1.35rem;
+  --fs-h2: 1rem;
+  --fs-h3: 0.88rem;
+  --fs-meta: 0.84rem;
+  --fs-note: 0.92rem;
+  --fs-nav: 0.8rem;
+  --fs-cap: 0.92rem;
+  --fs-xs: 0.75rem;
+  --fs-top: 0.72rem;
+  --fs-dt: 0.7rem;
+  --lh-root: 1.5;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-pill: 999px;
+  --qc-0: #999999;
+  --qc-1: #009E73;
+  --qc-2: #56B4E9;
+  --qc-3: #E69F00;
+  --qc-4: #D55E00;
+  --qc-7: #CC79A7;
+  --qc-8: #0072B2;
+  --qc-9: #bdbdbd;
+  --qc-3-text: #9A6B00;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-root); color: var(--text);
+  max-width: 1150px; margin: 0 auto;
+  padding: 1.5rem 2rem 4rem; line-height: var(--lh-root);
+}
+p, li { max-width: 78ch; }
+.masthead {
+  background: var(--ocean); color: #fff; position: relative;
+  padding: 1.6rem 2rem; border-radius: var(--radius-card); margin-bottom: 0.9rem;
+}
+.masthead h1 { margin: 0 0 0.3rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead .sub { font-size: var(--fs-meta); opacity: 0.85; margin: 0 0 0.15rem; max-width: none; }
+.wordmark {
+  position: absolute; right: 2rem; bottom: 1.2rem;
+  font-size: var(--fs-dt); font-weight: 700; letter-spacing: 0.04em;
+  color: var(--package-accent); background: #fff; opacity: 0.85;
+  padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); text-decoration: none;
+}
+.wordmark:hover { opacity: 1; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem 2rem; font-size: var(--fs-meta); margin-top: 0.9rem;
+}
+.meta-grid dt {
+  opacity: 0.7; text-transform: uppercase; font-size: var(--fs-dt);
+  letter-spacing: 0.06em; margin-bottom: 0.1rem;
+}
+.meta-grid dd { margin: 0; font-weight: 600; }
+h2 {
+  color: var(--ocean); font-size: var(--fs-h2);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 0.3rem; margin: 2.5rem 0 1rem;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.top-link {
+  font-size: var(--fs-top); font-weight: 400; color: var(--muted);
+  text-decoration: none; margin-left: auto;
+}
+.top-link:hover { color: var(--ocean); text-decoration: underline; }
+.caption {
+  color: var(--gray-5); font-size: var(--fs-note);
+  margin-top: 0.75rem; margin-bottom: 0.75rem;
+}
+/* A section intro (the caption directly under a heading) is a lede for the whole
+   figure block, so it spans the content width rather than the 78ch prose measure a
+   paragraph would otherwise inherit — which left it stranded under full-width figures. */
+h2 + .caption { margin-top: -0.5rem; max-width: none; }
+/* Subsection headings inside a panel's own HTML — un-numbered, outside the jump
+   nav (the page model numbers Sections, not these).  Same navy as h2, smaller. */
+h3 {
+  color: var(--ocean); font-size: var(--fs-h3); margin: 1.2rem 0 0.4rem;
+}
+h3 + .caption { margin-top: -0.2rem; }
+figure h3, .fig-row > h3 { margin-top: 0.6rem; }  /* first heading inside a panel sits closer */
+.explainer {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--bg-sunken); border-left: 3px solid var(--muted);
+  padding: var(--sp-3); margin: -0.25rem 0 0.75rem; border-radius: var(--radius-btn);
+}
+.warn {
+  font-size: var(--fs-note); color: var(--text);
+  background: var(--warn-bg); border-left: 3px solid var(--warn);
+  padding: var(--sp-3); margin-bottom: 0.5rem; border-radius: var(--radius-btn);
+}
+.warn::before { content: "⚠ "; }
+.warn.error { border-left-color: var(--error); }
+.jump-nav {
+  background: var(--seafoam); padding: 0.55rem 1rem;
+  border-radius: 6px; margin-bottom: 1.5rem;
+  font-size: var(--fs-nav); line-height: 2.2;
+}
+.jump-nav::before { content: "Jump to: "; opacity: 0.55; font-size: var(--fs-xs); margin-right: 0.25rem; }
+.jump-nav a {
+  color: var(--ocean); text-decoration: none;
+  font-weight: 600; margin: 0 0.5rem 0 0;
+}
+.jump-nav a::before { content: "▸ "; font-size: var(--fs-dt); }
+.fig-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+.fig-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.fig-row.center { justify-content: center; }
+/* A multi-table panel (processing provenance) is one full-width flex item so its
+   headings and tables stack instead of tiling across the row. */
+.prov-panel { flex: 1 1 100%; }
+/* Conformance status pips — a green ✓ (matches), a red ✗ (differs) and a neutral
+   ringed dash (no reference), matching the LADCP-present/absent badges. */
+.conf {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.4em; height: 1.4em; border-radius: 50%;
+  font-size: var(--fs-xs); font-weight: 700; line-height: 1;
+}
+.conf-match { background: var(--ok); color: #fff; }
+.conf-differ { background: var(--error); color: #fff; }
+.conf-none { background: #fff; color: #000; border: 1px solid #000; }
+figure { margin: 0; }
+figure img {
+  border: 1px solid var(--rule); border-radius: var(--radius-btn);
+  display: block; width: 100%; height: auto;
+}
+figcaption { font-size: var(--fs-cap); color: var(--gray-5); margin-bottom: 0.25rem; }
+/* Optional provenance line under a figure: which draw function produced it.
+   Off by default (vendored SHOW_FIGURE_SOURCE); a package turns it on in its
+   owned design module. */
+.fig-source {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs); color: var(--muted); margin-top: 0.15rem;
+}
+/* A stub panel's warning fills the figure slot it stands in for, rather than the
+   78ch prose reading measure it would otherwise inherit as a paragraph. */
+figure .warn { max-width: none; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--fs-note); margin: 0.6rem 0 1.2rem;
+}
+th {
+  background: var(--package-accent); color: #fff; text-align: center;
+  font-weight: 600; padding: 0.4rem 0.65rem;
+}
+th.num { text-align: right; }
+td {
+  padding: 0.35rem 0.65rem; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg-sunken); }
+td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+/* netCDF inventory tables (vendored nc_tables): variable / coord / scalar / sensor /
+   global tables.  Package-neutral — the markup is emitted by templates/_nc_tables.html. */
+.var-table code { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.muted { color: var(--muted); }
+.var-qc { color: var(--qc-mark); font-size: var(--fs-xs); }
+/* The original source name on its own muted line above the canonical name (name_cell), so the
+   Variable column does not widen to fit both on one line. */
+.var-orig { color: var(--muted); font-size: var(--fs-xs); }
+/* A long unbroken token (a tracking_id, a path, a dotted standard_name) in a scalar value or a
+   standard/long-name cell would widen the whole table; cap the width and break inside the word. */
+.cell-wrap { overflow-wrap: anywhere; max-width: 28rem; }
+.cell-bad { color: var(--warn); font-variant-numeric: tabular-nums; }
+tr.units th {
+  background: var(--package-accent); color: #fff; font-weight: 400;
+  font-size: var(--fs-xs); padding-top: 0;
+}
+/* Copyable YAML snippet boxes (templates/_snippet.html): one box, or a current/suggested pair
+   that stacks at phone width.  A read-only <textarea> with a full border and a drag handle
+   (resize: vertical); its rows come from the line count, so it opens without clipping. */
+.snippet-pair { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.6rem 0 1.2rem; }
+.snippet-box { flex: 1 1 22rem; min-width: 0; }
+.snippet-single .snippet-box { flex-basis: 100%; }
+.snippet-title {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  font-size: var(--fs-xs); color: var(--muted); margin-bottom: 0.2rem;
+}
+.snippet-copy {
+  font: inherit; font-size: var(--fs-xs); cursor: pointer; color: var(--text);
+  border: 1px solid var(--rule); background: var(--bg-sunken);
+  border-radius: 4px; padding: 0.1rem 0.5rem;
+}
+.snippet-copy:hover { background: var(--seafoam); }
+textarea.snippet {
+  width: 100%; box-sizing: border-box; height: auto; min-height: 2.4em;
+  background: var(--bg-sunken); padding: 0.6rem 0.8rem; margin: 0;
+  white-space: pre; overflow-x: auto; resize: vertical;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.snippet-current textarea.snippet { border-color: var(--muted); }
+.snippet-suggested textarea.snippet { border-color: var(--package-accent); }
+.attr-disclosure summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.attr-disclosure table { margin: 0.3rem 0; width: auto; }
+.attr-disclosure th { background: transparent; color: var(--text); font-weight: 600; }
+/* QC flag-count distribution bar and legend (qc_counts_table). Flag colours are inline on each
+   segment (from the vendored QC_FLAG_COLORS), so these rules carry only the layout. */
+.qc-bar { display: flex; width: 200px; height: 13px; border-radius: 3px; overflow: hidden; gap: 1px; background: #ecf0f1; }
+.qc-bar div { height: 100%; }
+.qc-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.75rem; margin: 0.2rem 0 0.6rem; }
+.qc-legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
+/* The source: caption hugs the table it belongs to, not the next one: a table has 1.2rem
+   bottom margin, so pull the caption up under it and keep the gap below before the next table. */
+table + .fig-source { margin-top: -0.9rem; margin-bottom: 1.2rem; }
+/* Click-to-sort affordance: _JS_SORT_TABLES gives every sortable heading a tabindex, so
+   keying on th[tabindex] styles exactly the headings it wired (a data-nosort table or th
+   gets none).  The heading is a pointer; the active one shows the direction. */
+th[tabindex] { cursor: pointer; user-select: none; }
+th.sorted-asc::after { content: " \25B2"; font-size: 0.8em; }
+th.sorted-desc::after { content: " \25BC"; font-size: 0.8em; }
+.slot-full         { width: 100%; }
+.slot-twothirds     { width: calc(66.67% - 0.33rem); }
+.slot-three-fifths  { width: calc(60% - 0.40rem); }
+.slot-half          { width: calc(50% - 0.50rem); }
+.slot-two-fifths    { width: calc(40% - 0.60rem); }
+.slot-third         { width: calc(33.33% - 0.67rem); }
+.slot-quarter       { width: calc(25% - 0.75rem); }
+.masthead-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+.masthead-header h1 { margin: 0 0 0.1rem; font-size: var(--fs-h1); font-weight: 700; }
+.masthead-type {
+  font-size: var(--fs-type); font-weight: 700; opacity: 0.88; line-height: 1.35;
+  padding-top: 0.25rem;
+}
+.nav-btns { display: flex; gap: 0.5rem; }
+.btn-nav {
+  background: var(--ocean); color: #fff; padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill); text-decoration: none; font-size: var(--fs-nav);
+}
+.btn-nav:hover { opacity: 0.85; }
+/* Masthead page-nav (vendored): the row of role pills under the masthead, and the
+   "Data inventory:" file strip.  A pill's colour is its role, never its page; the
+   current page's pill and an already-viewed file pill are muted the same way. */
+.page-nav { margin: 0.65rem 0 0.5rem; }
+/* Consecutive nav rows (a multi-row masthead) stack tighter than the first row's
+   top margin, which is sized for a single row. */
+.page-nav + .page-nav { margin-top: 0.15rem; }
+.page-nav-label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.nav-pill {
+  display: inline-block; padding: 0.2em 0.65em; border-radius: var(--radius-btn);
+  font-size: var(--fs-nav); font-weight: 700; text-decoration: none; color: #fff;
+  margin: 0 0.2rem 0.25rem 0;
+  /* A contrasting inner edge keeps a pill visible when its role colour matches the
+     masthead background, so colour-is-role holds on any masthead. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.nav-landing { background: var(--role-landing); }
+.nav-entity { background: var(--role-entity); }
+.nav-collection { background: var(--role-collection); }
+.nav-component { background: var(--role-component); }
+.nav-aggregate-a { background: var(--role-aggregate-a); }
+.nav-aggregate-b { background: var(--role-aggregate-b); }
+.nav-map { background: var(--role-map); }
+.nav-up { background: var(--role-up); }
+.masthead.role-landing { background: var(--role-landing); }
+.masthead.role-entity { background: var(--role-entity); }
+.masthead.role-collection { background: var(--role-collection); }
+.masthead.role-component { background: var(--role-component); }
+.masthead.role-aggregate-a { background: var(--role-aggregate-a); }
+.masthead.role-aggregate-b { background: var(--role-aggregate-b); }
+.masthead.role-map { background: var(--role-map); }
+.masthead.role-up { background: var(--role-up); }
+.nav-current { opacity: 0.5; pointer-events: none; }
+.nav-missing { background: var(--gray-3); opacity: 0.5; pointer-events: none; }
+.inventory-strip { margin: 0 0 1rem; }
+.inventory-strip .label { font-size: var(--fs-top); opacity: 0.75; margin-right: 0.3rem; }
+.file-pill {
+  display: inline-block; background: var(--role-component); color: #fff;
+  padding: 0.2rem 0.7rem; border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: 0.78rem;
+  text-decoration: none; margin: 0.1rem 0.05rem;
+}
+.file-pill:hover { opacity: 0.85; }
+.file-pill-active { opacity: 0.5; pointer-events: none; }
+/* Opt-in plain masthead (vendored) for landing / navigator pages: white panel,
+   ink text, rule border, wordmark hidden.  No ctdcast page uses it yet. */
+.masthead-plain { background: #fff; color: var(--text); border: 1px solid var(--rule); }
+.masthead-plain .wordmark { display: none; }
+footer {
+  text-align: center; padding: 1rem;
+  border-top: 1px solid var(--package-accent);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+footer a { color: var(--muted); }
+@media print {
+  body { max-width: 100%; }
+  .masthead { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.9rem 1.25rem; }
+  .masthead-header h1, .masthead h1 { font-size: 1.35rem; }
+  .meta-grid { grid-template-columns: repeat(4, 1fr); gap: 0.3rem 1rem; font-size: var(--fs-xs); }
+  h2 { page-break-after: avoid; }
+  h3 { page-break-after: avoid; }
+  .fig-row, figure, table { break-inside: avoid; }
+  .jump-nav { display: none; }
+}
+
+/* Phone browsers enlarge text in wide blocks ("text autosizing"), so the same
+   class rendered at different sizes in a full-width section and in a half-width
+   cell.  Keep every size as the stylesheet sets it. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
+   CTDCAST_REPORT_DEBUG is set. */
+.debug {
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted);
+  border-left: 3px solid var(--rule); padding: 0.15rem 0.5rem;
+  margin: -0.4rem 0 0.6rem;
+}
+</style>
+
+<style>
+/* Dataset inventory page — the tables themselves are styled by the vendored CSS. */
+.rename { color: var(--muted); }
+.rename .arrow { color: var(--ocean); }
+</style>
+
+</head>
+<body>
+<div id="top"></div>
+
+
+
+<div class="masthead role-component">
+  <div class="masthead-header">
+    <h1>ladcp_profiles.nc</h1>
+    <span class="masthead-type">netCDF inventory</span>
+  </div>
+  <p class="sub" style="margin:0 0 0.6rem; text-align:right;">generated 2026-09-08 06:59 UTC</p>
+  
+  
+
+<nav class="page-nav">
+  <span class="page-nav-label">Pages:</span>
+  
+  <a class="nav-pill nav-landing" href="index.html">Summary</a><a class="nav-pill nav-collection" href="casts.html">Casts</a><a class="nav-pill nav-aggregate-a" href="sections.html">Sections</a><a class="nav-pill nav-aggregate-b" href="timeseries.html">Timeseries</a><a class="nav-pill nav-map" href="leaflet.html">Interactive</a>
+</nav>
+
+<nav class="page-nav">
+  <span class="page-nav-label">Provenance:</span>
+  
+  <a class="nav-pill nav-landing" href="sbe_sensors.html">SBE sensors</a><a class="nav-pill nav-landing" href="processing.html">Processing</a>
+</nav>
+
+
+
+  
+
+<nav class="inventory-strip">
+  <span class="label">Data inventory:</span>
+  <a class="file-pill" href="profiles_demo_inventory.html">profiles_demo.nc</a><span class="file-pill file-pill-active">ladcp_profiles.nc</span>
+</nav>
+
+
+  
+  
+  <dl class="meta-grid">
+    <div><dt>File</dt><dd>ladcp_profiles.nc</dd></div>
+    <div><dt>Size</dt><dd>125.7 KB</dd></div>
+    <div><dt>Dimensions</dt><dd>N_PROF=4, depth=71, bottom_track=3</dd></div>
+  </dl>
+
+  <a class="wordmark" href="https://github.com/ocean-uhh/ctdcast">ctdcast</a>
+</div>
+
+
+
+
+
+<p class="caption">23 data variables ·
+0 sensors ·
+0 QC companions ·
+8 coordinates</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="jump-nav">
+  <a href="#s-coords">(1) Coordinates</a>
+  <a href="#s-vars">(2) Data variables</a>
+  <a href="#s-rename">(3) Variable renaming</a>
+  <a href="#s-global">(4) Global attributes</a>
+  
+</div>
+
+<h2 id="s-coords">(1) Coordinates</h2>
+
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">#</th><th tabindex="0">Variable</th><th tabindex="0">Dims</th><th tabindex="0">Type</th><th tabindex="0">Length</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td data-sort="1">1</td>
+<td data-sort="bottom_track">bottom_track</td><td>bottom_track</td><td><code>int32</code></td><td data-sort="3">3</td>
+<td>—</td><td class="cell-wrap">—</td><td data-sort="0.0">0 / 2</td><td data-nosort>—</td></tr>
+<tr><td data-sort="2">2</td>
+<td data-sort="cast_number">cast_number</td><td>N_PROF</td><td><code>int32</code></td><td data-sort="4">4</td>
+<td>—</td><td class="cell-wrap">—</td><td data-sort="11.0">11 / 129</td><td data-nosort>—</td></tr>
+<tr><td data-sort="3">3</td>
+<td data-sort="cast_suffix">cast_suffix</td><td></td><td><code>string</code></td><td data-sort="1">1</td>
+<td>—</td><td class="cell-wrap">—</td><td data-sort="-1e308">—</td><td data-nosort>—</td></tr>
+<tr><td data-sort="4">4</td>
+<td data-sort="depth"><span class="var-orig"><code>dr.z</code> →</span><br>depth</td><td>depth</td><td><code>float32</code></td><td data-sort="71">71</td>
+<td>m</td><td class="cell-wrap"><strong><code>depth</code></strong></td><td data-sort="10.0">10 / 710</td><td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>positive</th><td>down</td></tr><tr><th>original_name</th><td>dr.z</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="5">5</td>
+<td data-sort="latitude"><span class="var-orig"><code>dr.lat</code> →</span><br>latitude</td><td>N_PROF</td><td><strong><code>float64</code></strong></td><td data-sort="4">4</td>
+<td>degrees_north</td><td class="cell-wrap"><strong><code>latitude</code></strong><br>Latitude</td><td data-sort="65.58247">65.58 / 65.86</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.lat</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="6">6</td>
+<td data-sort="longitude"><span class="var-orig"><code>dr.lon</code> →</span><br>longitude</td><td>N_PROF</td><td><strong><code>float64</code></strong></td><td data-sort="4">4</td>
+<td>degrees_east</td><td class="cell-wrap"><strong><code>longitude</code></strong><br>Longitude</td><td data-sort="-29.58679720673085">-29.59 / -29.43</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.lon</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="7">7</td>
+<td data-sort="pressure"><span class="var-orig"><code>dr.p</code> →</span><br>pressure</td><td>N_PROF × depth</td><td><code>float32</code></td><td data-sort="284">284</td>
+<td>dbar</td><td class="cell-wrap"><strong><code>sea_water_pressure</code></strong><br>Sea pressure</td><td data-sort="10.07621955871582">10.08 / 716.5</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.p</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="8">8</td>
+<td data-sort="time">time</td><td>N_PROF</td><td><code>datetime</code></td><td data-sort="4">4</td>
+<td>—</td><td class="cell-wrap">—</td><td>2026-07-12 02:50:43 / 2026-07-22 09:39:30</td><td data-nosort>—</td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:coords_rows</div>
+
+<h2 id="s-vars">(2) Data variables</h2>
+<p class="caption">Grouped by dimension; the per-group sample count is in each heading. Each row's <strong>Attributes</strong> cell expands to the full per-variable attribute set.</p>
+
+<h3>Variables on N_PROF × depth (4 × 71 = 284 samples)</h3><p class="caption">Amber Valid %: fewer valid values than samples. Amber Units: a floating-point variable with no units attribute (CF expects one).</p>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">#</th><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td data-sort="1">1</td>
+<td data-sort="ensemble_vel_err"><span class="var-orig"><code>dr.ensemble_vel_err</code> →</span><br>ensemble_vel_err</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap">ensemble velocity error</td><td data-sort="0.03126741945743561">0.03127 / 0.1607</td>
+<td data-sort="183">183</td>
+<td data-sort="64.4" class="cell-bad">64.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.ensemble_vel_err</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="2">2</td>
+<td data-sort="nvel"><span class="var-orig"><code>dr.nvel</code> →</span><br>nvel</td>
+<td><code>float32</code></td><td class="cell-bad">—</td><td class="cell-wrap">number of velocity samples per bin</td><td data-sort="0.0">0 / 29</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.nvel</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="3">3</td>
+<td data-sort="profiling_range"><span class="var-orig"><code>dr.range</code> →</span><br>profiling_range</td>
+<td><code>float32</code></td><td>m</td><td class="cell-wrap">effective acoustic profiling range at each depth bin</td><td data-sort="19.632715225219727">19.63 / 174.3</td>
+<td data-sort="197">197</td>
+<td data-sort="69.4" class="cell-bad">69.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.range</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="4">4</td>
+<td data-sort="target_strength"><span class="var-orig"><code>dr.ts</code> →</span><br>target_strength</td>
+<td><code>float32</code></td><td>dB</td><td class="cell-wrap">target strength, 2nd downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)</td><td data-sort="46.22428894042969">46.22 / 67.34</td>
+<td data-sort="197">197</td>
+<td data-sort="69.4" class="cell-bad">69.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.ts</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="5">5</td>
+<td data-sort="target_strength_out"><span class="var-orig"><code>dr.ts_out</code> →</span><br>target_strength_out</td>
+<td><code>float32</code></td><td>dB</td><td class="cell-wrap">target strength, last downlooker bin (dB, RDI 0.45, median of 4 beams, super-ensemble averaged)</td><td data-sort="19.295513153076172">19.3 / 46.19</td>
+<td data-sort="197">197</td>
+<td data-sort="69.4" class="cell-bad">69.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.ts_out</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="6">6</td>
+<td data-sort="u"><span class="var-orig"><code>dr.u</code> →</span><br>u</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>eastward_sea_water_velocity</code></strong></td><td data-sort="-1.1191911697387695">-1.119 / 0.7045</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.u</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="7">7</td>
+<td data-sort="u_downlooker"><span class="var-orig"><code>dr.u_do</code> →</span><br>u_downlooker</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>eastward_sea_water_velocity</code></strong></td><td data-sort="-0.3960667550563812">-0.3961 / 0.2911</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.u_do</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="8">8</td>
+<td data-sort="u_error"><span class="var-orig"><code>dr.uerr</code> →</span><br>u_error</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>error_sea_water_velocity</code></strong></td><td data-sort="0.01943598873913288">0.01944 / 0.1171</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.uerr</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="9">9</td>
+<td data-sort="u_shear"><span class="var-orig"><code>dr.u_shear_method</code> →</span><br>u_shear</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>eastward_sea_water_velocity</code></strong></td><td data-sort="-0.4046151041984558">-0.4046 / 0.3135</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.u_shear_method</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="10">10</td>
+<td data-sort="u_uplooker"><span class="var-orig"><code>dr.u_up</code> →</span><br>u_uplooker</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>eastward_sea_water_velocity</code></strong></td><td data-sort="-0.4672505259513855">-0.4673 / 0.2818</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.u_up</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="11">11</td>
+<td data-sort="v"><span class="var-orig"><code>dr.v</code> →</span><br>v</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>northward_sea_water_velocity</code></strong></td><td data-sort="-0.7196640372276306">-0.7197 / 0.5892</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.v</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="12">12</td>
+<td data-sort="v_downlooker"><span class="var-orig"><code>dr.v_do</code> →</span><br>v_downlooker</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>northward_sea_water_velocity</code></strong></td><td data-sort="-0.5731792449951172">-0.5732 / 0.2275</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.v_do</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="13">13</td>
+<td data-sort="v_shear"><span class="var-orig"><code>dr.v_shear_method</code> →</span><br>v_shear</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>northward_sea_water_velocity</code></strong></td><td data-sort="-0.5616753697395325">-0.5617 / 0.1807</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.v_shear_method</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="14">14</td>
+<td data-sort="v_uplooker"><span class="var-orig"><code>dr.v_up</code> →</span><br>v_uplooker</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>northward_sea_water_velocity</code></strong></td><td data-sort="-0.6075515151023865">-0.6076 / 0.2027</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.v_up</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="15">15</td>
+<td data-sort="w_shear"><span class="var-orig"><code>dr.w_shear_method</code> →</span><br>w_shear</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>upward_sea_water_velocity</code></strong></td><td data-sort="-0.03395629674196243">-0.03396 / 0.06465</td>
+<td data-sort="200">200</td>
+<td data-sort="70.4" class="cell-bad">70.4</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.w_shear_method</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table>
+<h3>Variables on N_PROF (4 samples)</h3>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">#</th><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td data-sort="1">1</td>
+<td data-sort="instrument_config">instrument_config</td>
+<td><code>string</code></td><td>—</td><td class="cell-wrap">ADCP instrument(s) with valid data for this cast</td><td data-sort="-1e308">—</td>
+<td data-sort="4">4</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>flag_values</th><td>both downlooker uplooker unknown</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="2">2</td>
+<td data-sort="magnetic_deviation_deg">magnetic_deviation_deg</td>
+<td><code>float32</code></td><td>degree</td><td class="cell-wrap">magnetic deviation</td><td data-sort="-12.869999885559082">-12.87 / -12.87</td>
+<td data-sort="4">4</td>
+<td data-sort="100.0">100.0</td><td data-nosort>—</td></tr>
+<tr><td data-sort="3">3</td>
+<td data-sort="ocean_depth">ocean_depth</td>
+<td><code>float32</code></td><td>m</td><td class="cell-wrap">ocean depth</td><td data-sort="316.0">316 / 723</td>
+<td data-sort="4">4</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>positive</th><td>down</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="4">4</td>
+<td data-sort="u_barotropic"><span class="var-orig"><code>dr.ubar</code> →</span><br>u_barotropic</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap">barotropic (depth-mean) eastward velocity</td><td data-sort="-0.7672233581542969">-0.7672 / 0.5397</td>
+<td data-sort="4">4</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.ubar</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="5">5</td>
+<td data-sort="v_barotropic"><span class="var-orig"><code>dr.vbar</code> →</span><br>v_barotropic</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap">barotropic (depth-mean) northward velocity</td><td data-sort="-0.19968858361244202">-0.1997 / 0.5167</td>
+<td data-sort="4">4</td>
+<td data-sort="100.0">100.0</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.vbar</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table>
+<h3>Variables on N_PROF × bottom_track (4 × 3 = 12 samples)</h3><p class="caption">Amber Valid %: fewer valid values than samples. Amber Units: a floating-point variable with no units attribute (CF expects one).</p>
+<table class="sortable var-table">
+
+
+<thead>
+  <tr><th tabindex="0">#</th><th tabindex="0">Variable</th><th tabindex="0">Type</th><th tabindex="0">Units</th><th tabindex="0">Standard / long name</th><th tabindex="0">Min / Max</th><th tabindex="0">Valid</th><th tabindex="0">Valid %</th><th data-nosort>Attributes</th></tr>
+</thead>
+<tbody>
+<tr><td data-sort="1">1</td>
+<td data-sort="u_bottom"><span class="var-orig"><code>dr.ubot</code> →</span><br>u_bottom</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>eastward_sea_water_velocity</code></strong><br>bottom-track eastward velocity per bottom bin</td><td data-sort="-0.9314472675323486">-0.9314 / 0.2726</td>
+<td data-sort="8">8</td>
+<td data-sort="66.7" class="cell-bad">66.7</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.ubot</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="2">2</td>
+<td data-sort="v_bottom"><span class="var-orig"><code>dr.vbot</code> →</span><br>v_bottom</td>
+<td><code>float32</code></td><td>m s-1</td><td class="cell-wrap"><strong><code>northward_sea_water_velocity</code></strong><br>bottom-track northward velocity per bottom bin</td><td data-sort="-0.437932550907135">-0.4379 / 0.512</td>
+<td data-sort="8">8</td>
+<td data-sort="66.7" class="cell-bad">66.7</td><td data-nosort><details class="attr-disclosure"><summary>1 attr</summary>
+<table data-nosort><tbody><tr><th>original_name</th><td>dr.vbot</td></tr>
+</tbody></table></details></td></tr>
+<tr><td data-sort="3">3</td>
+<td data-sort="z_bottom"><span class="var-orig"><code>dr.zbot</code> →</span><br>z_bottom</td>
+<td><code>float32</code></td><td>m</td><td class="cell-wrap">bottom-track bin depth</td><td data-sort="280.0">280 / 670</td>
+<td data-sort="8">8</td>
+<td data-sort="66.7" class="cell-bad">66.7</td><td data-nosort><details class="attr-disclosure"><summary>2 attrs</summary>
+<table data-nosort><tbody><tr><th>positive</th><td>down</td></tr><tr><th>original_name</th><td>dr.zbot</td></tr>
+</tbody></table></details></td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:variables_rows</div>
+
+
+
+
+
+
+<h2 id="s-rename">(3) Variable renaming</h2>
+<p class="caption">Source → canonical name, from each variable's <code>original_name</code> attribute (written at read time) so the rename is reconstructable from the output alone. The same rename also shows inline in each variable row's Variable cell.</p>
+<table class="sortable">
+  
+<thead>
+  <tr><th tabindex="0">Source name</th><th data-nosort></th><th tabindex="0">Canonical name</th></tr>
+</thead>
+  <tbody>
+    
+    <tr><td class="rename">dr.z</td><td class="rename arrow">→</td><td>depth</td></tr>
+    
+    <tr><td class="rename">dr.ensemble_vel_err</td><td class="rename arrow">→</td><td>ensemble_vel_err</td></tr>
+    
+    <tr><td class="rename">dr.lat</td><td class="rename arrow">→</td><td>latitude</td></tr>
+    
+    <tr><td class="rename">dr.lon</td><td class="rename arrow">→</td><td>longitude</td></tr>
+    
+    <tr><td class="rename">dr.nvel</td><td class="rename arrow">→</td><td>nvel</td></tr>
+    
+    <tr><td class="rename">dr.p</td><td class="rename arrow">→</td><td>pressure</td></tr>
+    
+    <tr><td class="rename">dr.range</td><td class="rename arrow">→</td><td>profiling_range</td></tr>
+    
+    <tr><td class="rename">dr.ts</td><td class="rename arrow">→</td><td>target_strength</td></tr>
+    
+    <tr><td class="rename">dr.ts_out</td><td class="rename arrow">→</td><td>target_strength_out</td></tr>
+    
+    <tr><td class="rename">dr.u</td><td class="rename arrow">→</td><td>u</td></tr>
+    
+    <tr><td class="rename">dr.ubar</td><td class="rename arrow">→</td><td>u_barotropic</td></tr>
+    
+    <tr><td class="rename">dr.ubot</td><td class="rename arrow">→</td><td>u_bottom</td></tr>
+    
+    <tr><td class="rename">dr.u_do</td><td class="rename arrow">→</td><td>u_downlooker</td></tr>
+    
+    <tr><td class="rename">dr.uerr</td><td class="rename arrow">→</td><td>u_error</td></tr>
+    
+    <tr><td class="rename">dr.u_shear_method</td><td class="rename arrow">→</td><td>u_shear</td></tr>
+    
+    <tr><td class="rename">dr.u_up</td><td class="rename arrow">→</td><td>u_uplooker</td></tr>
+    
+    <tr><td class="rename">dr.v</td><td class="rename arrow">→</td><td>v</td></tr>
+    
+    <tr><td class="rename">dr.vbar</td><td class="rename arrow">→</td><td>v_barotropic</td></tr>
+    
+    <tr><td class="rename">dr.vbot</td><td class="rename arrow">→</td><td>v_bottom</td></tr>
+    
+    <tr><td class="rename">dr.v_do</td><td class="rename arrow">→</td><td>v_downlooker</td></tr>
+    
+    <tr><td class="rename">dr.v_shear_method</td><td class="rename arrow">→</td><td>v_shear</td></tr>
+    
+    <tr><td class="rename">dr.v_up</td><td class="rename arrow">→</td><td>v_uplooker</td></tr>
+    
+    <tr><td class="rename">dr.w_shear_method</td><td class="rename arrow">→</td><td>w_shear</td></tr>
+    
+    <tr><td class="rename">dr.zbot</td><td class="rename arrow">→</td><td>z_bottom</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+<h2 id="s-global">(4) Global attributes</h2>
+<p class="caption">Shown in the file's own write order, split into the canonical groups.</p>
+
+<h3>Identity &amp; discovery</h3>
+<table class="sortable">
+
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">cruise</td><td><code>string</code></td><td>odb26</td></tr>
+</tbody></table>
+<h3>Spatiotemporal coverage</h3><p class="caption">Computed values are recomputed from the data in this file. Diff is File − Computed; a cell is amber when |Diff| exceeds the tolerance (latitude/longitude 0.001°, vertical 1 dbar, time 1 s).</p>
+<table class="sortable">
+
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">File value</th><th tabindex="0">Computed</th><th tabindex="0">Diff</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">geospatial_lat_min</td><td>65.58247</td><td>65.58</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lat_max</td><td>65.86074912131522</td><td>65.86</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lat_units</td><td>degrees_north</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_lon_min</td><td>-29.58679720673085</td><td>-29.59</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lon_max</td><td>-29.432906851324027</td><td>-29.43</td>
+<td>0</td></tr>
+<tr><td class="mono">geospatial_lon_units</td><td>degrees_east</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_vertical_min</td><td>10.0</td><td>10.08</td>
+<td>-0.0762</td></tr>
+<tr><td class="mono">geospatial_vertical_max</td><td>710.0</td><td>716.5</td>
+<td class="cell-bad">-6.47</td></tr>
+<tr><td class="mono">geospatial_vertical_units</td><td>m</td><td></td>
+<td></td></tr>
+<tr><td class="mono">geospatial_vertical_positive</td><td>down</td><td></td>
+<td></td></tr>
+<tr><td class="mono">time_coverage_start</td><td>2026-07-12T02:50:43Z</td><td>2026-07-12 02:50:43</td>
+<td>0 s</td></tr>
+<tr><td class="mono">time_coverage_end</td><td>2026-07-22T09:39:30Z</td><td>2026-07-22 09:39:30</td>
+<td>0 s</td></tr>
+<tr><td class="mono">time_coverage_duration</td><td>P10DT6H48M47S</td><td></td>
+<td></td></tr>
+</tbody></table>
+<h3>Provenance &amp; processing</h3>
+<table class="sortable">
+
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">date_created</td><td><code>string</code></td><td>2026-11-05T20:27:41Z</td></tr>
+<tr><td class="mono">date_modified</td><td><code>string</code></td><td>2026-11-05T20:27:41Z</td></tr>
+<tr><td class="mono">tracking_id</td><td><code>string</code></td><td>1c76fa4d-e8e7-4f63-9d31-24105f9a4963</td></tr>
+<tr><td class="mono">history</td><td><code>string</code></td><td>2026-11-05T20:27:41Z ctdcast 0.4.1 create: file created by ctdcast (https://github.com/ocean-uhh/ctdcast)
+2026-11-05T20:27:41Z ctdcast 0.4.1 ladcp_profiles: compiled 4 LADCP casts; aligned onto the deepest cast&#39;s depth axis (common-axis reindex, not a regrid)</td></tr>
+<tr><td class="mono">source</td><td><code>string</code></td><td>4 per-cast LADCP netCDF files compiled by ctdcast</td></tr>
+<tr><td class="mono">data_mode</td><td><code>string</code></td><td>P</td></tr>
+<tr><td class="mono">data_mode_meaning</td><td><code>string</code></td><td>provisional</td></tr>
+<tr><td class="mono">Conventions</td><td><code>string</code></td><td>CF-1.13, ACDD-1.3</td></tr>
+<tr><td class="mono">featureType</td><td><code>string</code></td><td>profile</td></tr>
+<tr><td class="mono">cdm_data_type</td><td><code>string</code></td><td>Profile</td></tr>
+</tbody></table>
+<h3>Other</h3>
+<table class="sortable">
+
+<thead>
+  <tr><th tabindex="0">Attribute</th><th tabindex="0">Type</th><th tabindex="0">Value</th></tr>
+</thead>
+<tbody>
+<tr><td class="mono">ladcp_processing_date</td><td><code>string</code></td><td>28-Jul-2026</td></tr>
+<tr><td class="mono">ladcp_processing_personnel</td><td><code>string</code></td><td>Angel, Mara</td></tr>
+<tr><td class="mono">ladcp_processing_methodology</td><td><code>string</code></td><td>[inverse]</td></tr>
+<tr><td class="mono">ladcp_velocity_units</td><td><code>string</code></td><td>m/s</td></tr>
+<tr><td class="mono">ladcp_depth_source</td><td><code>string</code></td><td>[measured P (CTD)]</td></tr>
+<tr><td class="mono">ladcp_inverse_weight_bottom</td><td><strong><code>float64</code></strong></td><td>1.0</td></tr>
+<tr><td class="mono">ladcp_inverse_weight_navigation</td><td><strong><code>float64</code></strong></td><td>1.0</td></tr>
+<tr><td class="mono">ladcp_inverse_weight_smooth</td><td><strong><code>float64</code></strong></td><td>0.0</td></tr>
+<tr><td class="mono">ladcp_downlooker_freq_khz</td><td><strong><code>float64</code></strong></td><td>300.0</td></tr>
+<tr><td class="mono">ladcp_downlooker_beam_angle_deg</td><td><strong><code>float64</code></strong></td><td>20.0</td></tr>
+<tr><td class="mono">ladcp_downlooker_serial</td><td><code>string</code></td><td>UNK</td></tr>
+<tr><td class="mono">ladcp_grid_step_m</td><td><strong><code>float64</code></strong></td><td>10.0</td></tr>
+</tbody></table><div class="fig-source">source: ctdcast/reports/_vendored/nc_tables.py:globals_rows</div>
+
+
+
+<script>
+document.querySelectorAll('h2').forEach(h => {
+  const a = document.createElement('a');
+  a.href = '#top'; a.className = 'top-link'; a.textContent = '↑ top';
+  h.appendChild(a);
+});
+</script>
+
+
+
+<footer>Generated by <a href="https://github.com/eleanorfrajka/ctdcast">ctdcast</a> v0.4.1 &nbsp;·&nbsp; odb26 &nbsp;·&nbsp; 2026-09-08 06:59 UTC</footer>
+<script>
+document.querySelectorAll('table').forEach(function (table) {
+  if (table.hasAttribute('data-nosort')) { return; }
+  var head = table.tHead && table.tHead.rows[0];
+  var body = table.tBodies[0];
+  if (!head || !body) { return; }
+  function cellKey(row, idx) {
+    var cell = row.cells[idx];
+    if (!cell) { return ''; }
+    var ds = cell.getAttribute('data-sort');
+    return ds !== null ? ds : cell.textContent.trim();
+  }
+  function numeric(idx) {
+    var rows = body.rows, seen = false;
+    for (var i = 0; i < rows.length; i++) {
+      var k = cellKey(rows[i], idx);
+      if (k === '') { continue; }
+      if (!/^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/.test(k)) { return false; }
+      seen = true;
+    }
+    return seen;
+  }
+  Array.prototype.forEach.call(head.cells, function (th, idx) {
+    if (th.hasAttribute('data-nosort')) { return; }
+    th.tabIndex = 0;
+    function sort() {
+      var asc = !(th.classList.contains('sorted-asc'));
+      var isNum = numeric(idx);
+      var rows = Array.prototype.slice.call(body.rows);
+      rows.sort(function (a, b) {
+        var ka = cellKey(a, idx), kb = cellKey(b, idx);
+        if (isNum) { ka = parseFloat(ka) || 0; kb = parseFloat(kb) || 0; }
+        else { ka = ka.toLowerCase(); kb = kb.toLowerCase(); }
+        if (ka < kb) { return asc ? -1 : 1; }
+        if (ka > kb) { return asc ? 1 : -1; }
+        return 0;
+      });
+      rows.forEach(function (r) { body.appendChild(r); });
+      Array.prototype.forEach.call(head.cells, function (o) {
+        o.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+    }
+    th.addEventListener('click', sort);
+    th.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
+    });
+  });
+});
+</script>
+
+<script>
+document.querySelectorAll('button[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var box = document.getElementById(btn.getAttribute('data-copy'));
+    if (!box) { return; }
+    var label = btn.textContent;
+    function done() {
+      btn.textContent = 'copied';
+      setTimeout(function () { btn.textContent = label; }, 2000);
+    }
+    function fallback() {
+      box.focus(); box.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      if (ok) { done(); }
+    }
+    box.focus(); box.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(box.value).then(done, fallback);
+    } else { fallback(); }
+  });
+});
+</script>
+
+</body>
+</html>

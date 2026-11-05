@@ -164,3 +164,10 @@ def test_cli_report_overview_panels_fill_their_slot(tmp_path: Path) -> None:
     for b64 in full:
         width = Image.open(io.BytesIO(base64.b64decode(b64))).size[0]
         assert width == round(W_FULL * FIG_DPI)
+
+
+def test_overview_ticks_are_cast_numbers_when_none_is_a_multiple_of_five() -> None:
+    from ctdcast.plotters.sections import _overview_tick_indices
+
+    assert _overview_tick_indices([11, 12, 128, 129]) == [0, 1, 2, 3]
+    assert _overview_tick_indices(list(range(1, 31))) == [4, 9, 14, 19, 24, 29]
