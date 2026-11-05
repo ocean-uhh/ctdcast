@@ -28,6 +28,14 @@ _PAGES: tuple[tuple[str, str, str, str], ...] = (
 #: its source exists (``fits.nc`` for T/S).
 CORRECTIONS_TS_HREF = "corrections_ts.html"
 
+#: The rows below ``Pages:`` that pills join by their ``"row"`` key: (key, label, role), in
+#: rendered order.  ``Provenance:`` holds the pages that say how the data were taken and
+#: processed (the SBE sensors, the processing steps), not data files.
+_EXTRA_ROWS: tuple[tuple[str, str, str], ...] = (
+    ("provenance", "Provenance:", "landing"),
+    ("corrections", "Corrections:", "aggregate-a"),
+)
+
 
 def inventory_sources(
     profiles_path: Path | str | None, ladcp_profiles_path: Path | str | None
@@ -69,11 +77,11 @@ def inventory_pills(
     """Return the pills for the pages built from files: the inventory strip and Corrections.
 
     One pill per compiled dataset that exists (``profiles.nc``,
-    ``ladcp_profiles.nc``), plus an ``SBE sensors`` pill when ``profiles.nc`` is
-    present.  Built from :func:`inventory_sources` so the strip and the caller's
-    generation loop share one existence rule.  When *fits_path* exists, a ``T/S`` pill
-    marked ``"row": "corrections"`` is added; :func:`nav_for` puts it in the
-    ``Corrections:`` row instead of the strip.  Hrefs are bare (no path prefix);
+    ``ladcp_profiles.nc``).  When ``profiles.nc`` is present, ``SBE sensors`` and
+    ``Processing`` pills marked ``"row": "provenance"`` are added; :func:`nav_for` puts
+    them in the ``Provenance:`` row.  Built from :func:`inventory_sources` so the strip
+    and the caller's generation loop share one existence rule.  When *fits_path* exists, a
+    ``T/S`` pill marked ``"row": "corrections"`` is added for the ``Corrections:`` row.  Hrefs are bare (no path prefix);
     :func:`nav_for` applies the per-page prefix.
 
     Parameters
@@ -88,12 +96,17 @@ def inventory_pills(
     Returns
     -------
     list of dict
-        ``{"label", "href"}`` entries (plus ``"row"`` for a Corrections pill).
+        ``{"label", "href"}`` entries (plus ``"row"`` for a pill outside the strip).
     """
     srcs, has_sensors = inventory_sources(profiles_path, ladcp_profiles_path)
     pills = [{"label": p.name, "href": f"{p.stem}_inventory.html"} for p in srcs]
     if has_sensors:
-        pills.append({"label": "SBE sensors", "href": "sbe_sensors.html"})
+        pills.append(
+            {"label": "SBE sensors", "href": "sbe_sensors.html", "row": "provenance"}
+        )
+        pills.append(
+            {"label": "Processing", "href": "processing.html", "row": "provenance"}
+        )
     if fits_path is not None and Path(fits_path).exists():
         pills.append(
             {"label": "T/S", "href": CORRECTIONS_TS_HREF, "row": "corrections"}
@@ -123,8 +136,8 @@ def nav_for(
         Prepended to every href — ``""`` for top-level pages, ``"../"`` for the
         per-cast / per-section / per-timeseries detail pages.
     inventory : sequence of mapping, default ()
-        The pills from :func:`inventory_pills` (``{"label", "href"}``, and ``"row":
-        "corrections"`` for the ``Corrections:`` row).
+        The pills from :func:`inventory_pills` (``{"label", "href"}``, and a ``"row"`` key
+        for a pill in a row of its own, ``Provenance:`` or ``Corrections:``).
     inventory_current : str or None, default None
         The bare href of the strip pill for the page being viewed, if any.
 
@@ -147,18 +160,19 @@ def nav_for(
             ],
         }
     ]
-    corrections = [
-        {
-            "label": p["label"],
-            "href": prefix + p["href"],
-            "role": "aggregate-a",
-            "state": "current" if p["href"] == inventory_current else "link",
-        }
-        for p in inventory
-        if p.get("row") == "corrections"
-    ]
-    if corrections:
-        rows.append({"label": "Corrections:", "pills": corrections})
+    for key, row_label, row_role in _EXTRA_ROWS:
+        pills = [
+            {
+                "label": p["label"],
+                "href": prefix + p["href"],
+                "role": row_role,
+                "state": "current" if p["href"] == inventory_current else "link",
+            }
+            for p in inventory
+            if p.get("row") == key
+        ]
+        if pills:
+            rows.append({"label": row_label, "pills": pills})
     strip = [
         {
             "label": p["label"],
@@ -167,7 +181,7 @@ def nav_for(
             "state": "current" if p["href"] == inventory_current else "link",
         }
         for p in inventory
-        if p.get("row") != "corrections"
+        if not p.get("row")
     ]
     nav = {"rows": rows, "back": None, "inventory": strip}
     validate_nav(nav)

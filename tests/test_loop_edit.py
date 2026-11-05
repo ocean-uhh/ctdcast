@@ -3,9 +3,11 @@ import pytest
 from seabirdscientific import processing as sp
 
 from ctdcast.processors.editing import (
+    SOAK_NOT_APPLIED,
     apply_loop_edit,
     loop_edit_mask,
     resolve_loop_edit,
+    soak_window_reached,
 )
 from ctdcast.processors.stage3 import stage3
 
@@ -100,3 +102,95 @@ def test_no_surface_soak_runs_and_marks_less(hex_stage2):
     assert not (no_soak & ~with_soak).any()
     out, _ = apply_loop_edit(hex_stage2, {"surface_soak": False}, DT)
     assert "no surface soak" in out.loop_edit_flag.attrs["loop_edit"]
+
+
+# --- A cast whose recording starts below the soak window (a yo-yo cut into casts at depth) ---
+
+
+#: A soak window at fixed depth (as OdB configures it); with the default ``deck_pressure: true``
+#: the window moves down to wherever the recording starts, so it is always reached.
+FIXED = {"surface_soak": {"deck_pressure": 0}}
+
+
+def _starts_at_depth(ds, dbar=40.0):
+    """The real cast from its first scan deeper than *dbar*: logging that began at depth."""
+    first = int(np.argmax(ds.pressure.values > dbar))
+    return ds.isel(time=slice(first, None))
+
+
+def test_soak_window_reached(hex_stage2):
+    lat = float(np.nanmean(hex_stage2.latitude.values))
+    p = resolve_loop_edit(FIXED)
+    assert soak_window_reached(hex_stage2.pressure.values, p, lat)
+    deep = _starts_at_depth(hex_stage2)
+    assert not soak_window_reached(deep.pressure.values, p, lat)
+    assert soak_window_reached(deep.pressure.values, resolve_loop_edit({}), lat)
+
+
+def test_starts_below_resolves_and_is_described():
+    assert resolve_loop_edit({}).starts_below == "skip"
+    p = resolve_loop_edit({"surface_soak": {"starts_below": "fail"}})
+    assert p.starts_below == "fail" and p.describe().endswith("starts_below=fail")
+    with pytest.raises(ValueError, match="skip or fail"):
+        resolve_loop_edit({"surface_soak": {"starts_below": "ignore"}})
+
+
+def test_cast_starting_at_depth_runs_without_the_soak_test(hex_stage2):
+    deep = _starts_at_depth(hex_stage2)
+    out, mask = apply_loop_edit(deep, FIXED, DT, cast_label="011")
+    lat = float(np.nanmean(deep.latitude.values))
+    no_soak = loop_edit_mask(
+        deep.pressure.values.astype(float),
+        resolve_loop_edit({"surface_soak": False}),
+        DT,
+        lat,
+    )
+    np.testing.assert_array_equal(mask, no_soak)
+    attrs = out.loop_edit_flag.attrs
+    # The configured setting is recorded unchanged, so every cast of the cruise reads the same.
+    assert attrs["loop_edit"] == resolve_loop_edit(FIXED).describe()
+    assert attrs["loop_edit_soak_not_applied"].startswith(SOAK_NOT_APPLIED)
+    assert SOAK_NOT_APPLIED in out.attrs["history"]
+    # A cast that has a soak keeps the soak test, and records no note.
+    full, _ = apply_loop_edit(hex_stage2, FIXED, DT, cast_label="011")
+    assert "loop_edit_soak_not_applied" not in full.loop_edit_flag.attrs
+
+
+def test_starts_below_fail_refuses_the_cast(hex_stage2):
+    deep = _starts_at_depth(hex_stage2)
+    strict = {"surface_soak": {"deck_pressure": 0, "starts_below": "fail"}}
+    with pytest.raises(
+        ValueError, match=r"cast 011: the recording starts below .*starts_below: fail"
+    ):
+        apply_loop_edit(deep, strict, DT, cast_label="011")
+    apply_loop_edit(hex_stage2, strict, DT, cast_label="011")  # a cast with a soak runs
+
+
+def test_shallow_cast_runs_without_the_soak_test_even_with_fail(hex_stage2):
+    # The slice reaches 97 dbar: a window down to 120 m is never passed, so there is no soak
+    # test to run, and the record says that rather than "starts below".
+    shallow = {
+        "surface_soak": {"max_depth": 120, "deck_pressure": 0, "starts_below": "fail"}
+    }
+    out, _ = apply_loop_edit(hex_stage2, shallow, DT, cast_label="011")
+    note = out.loop_edit_flag.attrs["loop_edit_soak_not_applied"]
+    assert "never goes deeper than the soak window" in note
+
+
+def test_soak_search_leaves_out_scans_an_earlier_loop_edit_marked(hex_stage2):
+    # An earlier Loop Edit marked every scan down to the first one below the window: the soak
+    # search (which skips marked scans when exclude_flagged) finds nothing in the window first.
+    p = hex_stage2.pressure.values.astype(float)
+    lat = float(np.nanmean(hex_stage2.latitude.values))
+    excluded = np.zeros(p.size, dtype=bool)
+    excluded[: int(np.argmax(p > 25.0))] = True
+    params = resolve_loop_edit(FIXED)
+    assert soak_window_reached(p, params, lat)
+    assert not soak_window_reached(p, params, lat, excluded)
+    out, mask = apply_loop_edit(
+        hex_stage2, FIXED, DT, excluded=excluded, cast_label="011"
+    )
+    assert mask[excluded].all()
+    assert out.loop_edit_flag.attrs["loop_edit_soak_not_applied"].startswith(
+        SOAK_NOT_APPLIED
+    )

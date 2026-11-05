@@ -645,6 +645,33 @@ def report(
                 _failed += 1
                 traceback.print_exc()
 
+            # Processing page — every step applied, by run of casts, from the
+            # processing_record the profiles compile stores per cast.
+            _t0 = perf_counter()
+            try:
+                from ctdcast.reports.processing import (
+                    PROCESSING_HREF,
+                    generate_processing_page,
+                )
+
+                generate_processing_page(
+                    Path(profiles_path),
+                    out_dir / PROCESSING_HREF,
+                    cruise=cruise,
+                    nav_prefix="",
+                    show_nav=True,
+                    inventory_pills=inventory_datasets,
+                    current_href=PROCESSING_HREF,
+                    generated_at=generated_at,
+                )
+                print(f"  [{PROCESSING_HREF}: {perf_counter() - _t0:.1f}s]")
+            except Exception:  # noqa: BLE001
+                import traceback
+
+                print("  processing.html: FAILED")
+                _failed += 1
+                traceback.print_exc()
+
         if fits_path is not None and fits_path.exists():
             _t0 = perf_counter()
             try:

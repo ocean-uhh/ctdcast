@@ -1,0 +1,371 @@
+"""The per-cast processing record, its compile into profiles.nc, and the cruise processing page."""
+
+import dataclasses
+import json
+import re
+import warnings
+
+import numpy as np
+import pytest
+import xarray as xr
+
+from ctdcast.analysis.processing_record import (
+    BINAVG_KEPT_PARTLY_FLAGGED,
+    ProcessingRow,
+    processing_rows,
+    record_json,
+    rows_from_json,
+)
+from ctdcast.config.cnv_header import CONFORMANCE_DIFFER
+from ctdcast.processors.editing import SOAK_NOT_APPLIED
+from ctdcast.processors.profiles import build_profiles
+from ctdcast.processors.stage3 import run as stage3_run
+from ctdcast.reports.processing import (
+    VARIES_AFTER,
+    Run,
+    _varies,
+    generate_processing_page,
+    read_processing_tables,
+)
+
+#: OdB's own steps (from its CNV header), cut down to one of each kind ctdcast applies.
+DP = {
+    "steps": [
+        {
+            "wildedit": {
+                "pass1_nstd": 2.0,
+                "pass2_nstd": 20.0,
+                "variables": ["pressure"],
+            }
+        },
+        {"filter": {"time_constant": 0.15, "variables": ["pressure"]}},
+        {"celltm": {"conductivity_1": {"alpha": 0.03, "tau": 7.0}}},
+        {
+            "loopedit": {
+                "min_velocity": 0.25,
+                "surface_soak": {"min_depth": 5.0, "max_depth": 20, "deck_pressure": 0},
+            }
+        },
+    ],
+    "products": [
+        {
+            "name": "1dbar_down",
+            "steps": [{"split": "down"}, {"binavg": {"bin": "decibars", "size": 1}}],
+        }
+    ],
+}
+
+
+@pytest.fixture(scope="module")
+def odb_root(hex_stage2, tmp_path_factory):
+    """OdB cast 011 (the committed .hex slice) through stage 3 and the profiles compile."""
+    root = tmp_path_factory.mktemp("prov")
+    (root / "stage2").mkdir()
+    hex_stage2.to_netcdf(root / "stage2" / "MIXSED2_011_stage2.nc")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        stage3_run(root, force=True, cruise_cfg={"data_processing": DP})
+        build_profiles(root, root / "profiles.nc", force=True)
+    return root
+
+
+@pytest.fixture(scope="module")
+def stage3_ds(odb_root):
+    path = next((odb_root / "stage3").glob("*.nc"))
+    with xr.open_dataset(path, engine="netcdf4") as ds:
+        return ds.load()
+
+
+def test_record_lists_every_stage_in_order(stage3_ds):
+    rows = processing_rows(stage3_ds)
+    stages = [r.stage for r in rows]
+    assert stages == sorted(
+        stages, key=["stage 1", "Sea-Bird", "stage 2", "stage 3", "product"].index
+    )
+    steps = [r.step for r in rows if r.stage == "stage 3"]
+    assert steps[:4] == ["wildedit", "filter", "celltm", "loopedit"]
+    loop = next(r for r in rows if r.step == "loopedit")
+    # The setting is what was configured; what it did on this cast is the outcome.
+    assert loop.setting == stage3_ds["loop_edit_flag"].attrs["loop_edit"]
+    assert "scans marked" in loop.outcome
+    product = next(r for r in rows if r.stage == "product")
+    assert product.step == "binavg (1dbar_down)"
+    assert product.setting == "split down; binavg bin=decibars size=1"
+
+
+def test_record_round_trips_through_json(stage3_ds):
+    text = record_json(stage3_ds)
+    assert isinstance(json.loads(text), list)
+    assert rows_from_json(text) == processing_rows(stage3_ds)
+    assert rows_from_json("") == []
+
+
+def test_profiles_carry_the_record_on_both_legs(odb_root, stage3_ds):
+    with xr.open_dataset(odb_root / "profiles.nc", engine="netcdf4") as prof:
+        records = [str(v) for v in prof["processing_record"].values]
+        directions = list(prof["cast_direction"].values.astype(str))
+    assert sorted(directions) == ["down", "up"]
+    assert records[0] == records[1] == record_json(stage3_ds)
+
+
+def _cruise(tmp_path, records):
+    """A profiles.nc holding only what the processing page reads: one record per cast, both legs."""
+    n = len(records)
+    ds = xr.Dataset(
+        {
+            "cast_number": ("N_PROF", np.repeat(np.arange(1, n + 1), 2)),
+            "cast_suffix": ("N_PROF", np.array([""] * 2 * n, dtype=object)),
+            "cast_direction": ("N_PROF", np.array(["down", "up"] * n, dtype=object)),
+            "processing_record": (
+                "N_PROF",
+                np.repeat(
+                    np.array(
+                        [
+                            json.dumps([dataclasses.asdict(r) for r in rows])
+                            for rows in records
+                        ],
+                        dtype=object,
+                    ),
+                    2,
+                ),
+            ),
+        }
+    )
+    path = tmp_path / "profiles.nc"
+    ds.to_netcdf(path)
+    return path
+
+
+def _with(rows, step, **changes):
+    return [dataclasses.replace(r, **changes) if r.step == step else r for r in rows]
+
+
+def test_page_collapses_runs_and_marks_exceptions(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    loop = next(r for r in base if r.step == "loopedit")
+    skipped = f"{SOAK_NOT_APPLIED}: the recording starts below the soak window"
+    deep = _with(
+        base,
+        "loopedit",
+        outcome=f"{loop.outcome}; {skipped} (at 200.0 dbar)",
+        exception=skipped,
+    )
+    tighter = _with(base, "wildedit", setting="pass1_nstd=3 pass2_nstd=20")
+    # Casts 1–3 as set, 4–5 a different Wild Edit, 6 starts at depth, 7 as set.
+    path = _cruise(tmp_path, [base, base, base, tighter, tighter, deep, base])
+    meta = read_processing_tables(path)
+    steps = {s.step: s for _, _, ss in meta["stages"] for s in ss}
+    assert [r.casts for r in steps["wildedit"].runs] == [
+        "001–003",
+        "004–005",
+        "006–007",
+    ]
+    # The skipped soak test leaves the setting alone (one run) and gets its own amber row.
+    assert [r.casts for r in steps["loopedit"].runs] == ["001–007"]
+    assert steps["loopedit"].exceptions == [
+        {"text": skipped, "casts": "006", "count": 1}
+    ]
+    assert meta["any_exception"]
+
+    out = generate_processing_page(path, tmp_path / "processing.html", cruise="test")
+    html = out.read_text(encoding="utf-8")
+    assert "did not run as its setting says" in html
+    row = html[html.index('<tr class="exception">') :].split("</tr>")[0]
+    assert "1 cast<" in row and "<strong>006</strong>" in row and skipped in row
+
+
+def test_page_draws_a_setting_that_varies_cast_to_cast(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    records = [
+        _with(
+            base,
+            "celltm",
+            setting=f"alpha={0.02 + 0.002 * i:g} tau=7 s, with ctd_temperature_1",
+        )
+        for i in range(VARIES_AFTER + 2)
+    ]
+    meta = read_processing_tables(_cruise(tmp_path, records))
+    celltm = next(s for _, _, ss in meta["stages"] for s in ss if s.step == "celltm")
+    assert celltm.varies is not None
+    assert (
+        celltm.varies["setting"] == "alpha=0.02–0.032 tau=7 s, with ctd_temperature_1"
+    )
+    assert celltm.figure  # one number varies, so it is drawn against cast number
+
+
+def test_amber_caption_states_the_reference_criterion(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    differ = _with(
+        base,
+        "celltm",
+        state=CONFORMANCE_DIFFER,
+        reference="(α,τ)=(0.03,7)",
+        source="SBE manual",
+    )
+    path = _cruise(tmp_path, [differ, differ])
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
+    assert "differs from the value SBE documents" in html
+    row = html[html.index("celltm") :].split("</tr>")[0]
+    assert 'style="background:var(--warn-bg)"' in row and "✗" in row
+
+
+def test_page_without_a_record_says_how_to_rebuild(tmp_path):
+    path = tmp_path / "old.nc"
+    xr.Dataset({"cast_number": ("N_PROF", [1, 1])}).to_netcdf(path)
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
+    assert "No processing record" in html and "--stage profiles --force" in html
+
+
+def test_processing_row_defaults_are_json_safe():
+    row = ProcessingRow("stage 3", "filter", "ctdcast", "0", "low-pass 0.15 s")
+    assert rows_from_json(json.dumps([dataclasses.asdict(row)])) == [row]
+
+
+def test_record_marks_how_a_step_ran_differently_apart_from_its_setting(stage3_ds):
+    rows = processing_rows(stage3_ds)
+    product = next(r for r in rows if r.stage == "product")
+    # Bin Average's divergence from seabirdscientific is an outcome on this cast, so the row's
+    # state does not depend on it and casts with and without it share one run.
+    assert product.state != CONFORMANCE_DIFFER
+    if product.outcome.split(" ", 1)[0].isdigit():
+        assert product.exception == BINAVG_KEPT_PARTLY_FLAGGED
+    else:
+        assert product.exception == ""
+
+
+def test_varies_values_are_per_cast_with_runs_and_suffixes(stage3_ds):
+    base = processing_rows(stage3_ds)
+    alphas = [0.1, 0.1, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.7]
+    labels = ["001", "002", "003", "004", "005", "006", "007", "008", "008b", "009"]
+    per_cast = [
+        next(
+            r
+            for r in _with(base, "celltm", setting=f"alpha={a:g} tau=7 s")
+            if r.step == "celltm"
+        )
+        for a in alphas
+    ]
+    runs = []
+    for label, row in zip(labels, per_cast, strict=True):
+        if runs and runs[-1].row.setting == row.setting:
+            runs[-1].last = label
+        else:
+            runs.append(Run(label, label, int(label[:3]), row))
+    summary = _varies(runs, per_cast)
+    assert summary["values"] == alphas
+
+
+def test_a_repeated_step_is_matched_by_its_variables(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    oxygen = next(r for r in base if r.step == "filter")
+    second = dataclasses.replace(
+        oxygen, setting="low-pass 0.03 s", variables="oxygen_raw_1"
+    )
+    with_both = [*base, second]
+    # Cast 4 has only the first filter: the second is "not applied" there, not shifted.
+    path = _cruise(tmp_path, [with_both, with_both, with_both, base])
+    meta = read_processing_tables(path)
+    filters = [s for _, _, ss in meta["stages"] for s in ss if s.step == "filter"]
+    assert [r.casts for r in filters[0].runs] == ["001–004"]
+    assert [(r.casts, r.row is None) for r in filters[1].runs] == [
+        ("001–003", False),
+        ("004", True),
+    ]
+
+
+def test_product_without_bin_average_is_not_called_one(stage3_ds):
+    ds = stage3_ds.copy()
+    ds.attrs["products_made"] = "down: split down"
+    ds.attrs.pop("products_bin_average_partly_flagged", None)
+    product = next(r for r in processing_rows(ds) if r.stage == "product")
+    assert product.step == "product (down)" and product.setting == "split down"
+    assert "bin_average" not in product.producer
+
+
+def test_one_cast_without_a_record_does_not_stop_the_compile(
+    odb_root, tmp_path, monkeypatch
+):
+    import ctdcast.processors.profiles as profiles
+
+    def broken(ds):
+        raise ValueError("odd attribute")
+
+    monkeypatch.setattr(profiles, "record_json", broken)
+    with pytest.warns(UserWarning, match="processing record not built"):
+        build_profiles(odb_root, tmp_path / "profiles.nc", force=True)
+    with xr.open_dataset(tmp_path / "profiles.nc", engine="netcdf4") as prof:
+        assert set(prof["processing_record"].values.astype(str)) == {""}
+
+
+def test_provenance_row_holds_the_sensors_and_processing_pages(odb_root):
+    from ctdcast.reports._navs import inventory_pills, nav_for
+
+    pills = inventory_pills(odb_root / "profiles.nc", None)
+    nav = nav_for(None, inventory=pills, inventory_current="processing.html")
+    rows = {r["label"]: r["pills"] for r in nav["rows"]}
+    assert [p["label"] for p in rows["Provenance:"]] == ["SBE sensors", "Processing"]
+    assert [p["state"] for p in rows["Provenance:"]] == ["link", "current"]
+    assert [p["label"] for p in nav["inventory"]] == ["profiles.nc"]
+
+
+def test_steps_are_numbered_in_the_order_they_ran(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    path = _cruise(tmp_path, [base, base])
+    meta = read_processing_tables(path)
+    steps = [s for _, _, ss in meta["stages"] for s in ss]
+    assert [s.number for s in steps] == list(range(1, len(steps) + 1))
+    # Stage order first, so the numbers run through the page top to bottom.
+    stage_rank = ["stage 1", "Sea-Bird", "stage 2", "stage 3", "product"]
+    ranks = [stage_rank.index(s.stage) for s in steps]
+    assert ranks == sorted(ranks)
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
+    keys = [int(k) for k in re.findall(r'class="order" data-sort="(\d+)"', html)]
+    assert keys == sorted(keys) and len(keys) == len(set(keys))
+
+
+def test_a_cnv_cast_records_how_stage_1_read_it(ds_011):
+    # OdB cast 011 from its CNV (the committed stage-1 fixture), read by SeaSenseLib.
+    rows = processing_rows(ds_011)
+    read = next(r for r in rows if r.stage == "stage 1")
+    assert read.setting == (
+        "with SeaSenseLib 0.6.0 (SbeCnvReader); normalise (CNV → canonical names)"
+    )
+    assert read.outcome == "mixsed2_011.cnv"
+    assert read.version == "ctdcast 0.1.0"
+    # The steps SBE Data Processing applied before the CNV follow, from its header.
+    assert any(r.stage == "Sea-Bird" for r in rows)
+
+
+def test_a_cast_without_a_record_is_listed_not_called_unapplied(stage3_ds, tmp_path):
+    base = processing_rows(stage3_ds)
+    # Cast 3's record could not be built at the compile (stored as an empty list).
+    path = _cruise(tmp_path, [base, base, [], base, base])
+    meta = read_processing_tables(path)
+    assert (meta["no_record_casts"], meta["no_record_count"]) == ("003", 1)
+    for _, _, steps in meta["stages"]:
+        for s in steps:
+            # No "not applied" row for it, and no run spans it.
+            assert [r.casts for r in s.runs] == ["001–002", "004–005"]
+            assert all(r.row is not None for r in s.runs)
+    html = generate_processing_page(path, tmp_path / "p.html").read_text(
+        encoding="utf-8"
+    )
+    assert "no processing record: <strong>003</strong>" in html
+    assert html.index("could not be built") < html.index("no processing record:")
+
+
+def test_page_without_a_record_still_counts_the_casts(tmp_path):
+    path = tmp_path / "old.nc"
+    xr.Dataset(
+        {
+            "cast_number": ("N_PROF", [1, 1, 2, 2]),
+            "cast_direction": ("N_PROF", np.array(["down", "up"] * 2, dtype=object)),
+        }
+    ).to_netcdf(path)
+    assert read_processing_tables(path)["n_casts"] == 2

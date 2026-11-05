@@ -37,7 +37,7 @@ from ctdcast.processors.history import (
     add_processing_level,
     append_history,
 )
-from ctdcast.processors.products import make_product
+from ctdcast.processors.products import describe_product_steps, make_product
 from ctdcast.processors.sensor_catalog import read_cast_sensor_catalog
 from ctdcast.processors.stage_layout import (
     group_by_cast,
@@ -226,11 +226,20 @@ def _make_products(
 def _stamp_product_divergence(
     ds: xr.Dataset, made: list[tuple[dict, xr.Dataset | None]]
 ) -> None:
-    """Record on the stage-3 file each product's Bin Average that kept part of a flagged scan.
+    """Record on the stage-3 file the products made, and each Bin Average that kept part of a flagged scan.
 
-    The cast page reads it (the products themselves are separate files), so the divergence from
+    ``products_made`` names every product made and its steps, so the cast's processing record
+    lists the product whether or not anything was flagged.  The cast page reads the partly
+    flagged count (the products themselves are separate files), so the divergence from
     seabirdscientific is shown where the cast's processing is.
     """
+    made_lines = [
+        f"{product['name']}: {describe_product_steps(product.get('steps', []))}"
+        for product, out in made
+        if out is not None
+    ]
+    if made_lines:
+        ds.attrs["products_made"] = " | ".join(made_lines)
     lines = [
         f"{product['name']}: {out.attrs['bin_average_partly_flagged']}"
         for product, out in made

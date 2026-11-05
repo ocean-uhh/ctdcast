@@ -198,6 +198,10 @@ include = ["ctdcast*"]
 "ctdcast/processors/filtering.py"    = 89
 "ctdcast/processors/products.py"     = 93
 "ctdcast/config/layout.py"           = 94
+# New in rep/processing-provenance, seeded a point under what they measured: the per-cast
+# processing record 98.8 (it is what profiles.nc and both pages are drawn from), the page 98.6.
+"ctdcast/analysis/processing_record.py" = 98
+"ctdcast/reports/processing.py"      = 98
 "ctdcast/config/loader.py"           = 99
 "ctdcast/config/sbe_steps.py"        = 96
 "ctdcast/analysis/sbe_compare.py"    = 86

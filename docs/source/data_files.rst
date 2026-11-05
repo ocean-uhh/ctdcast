@@ -246,6 +246,15 @@ Compiled on a 1 dbar pressure grid, dimensions ``N_PROF × pressure``:
      - Practical salinity on the 1 dbar grid.
    * - ``ctd_oxygen`` / ``ctd_oxygen_1``
      - Dissolved oxygen in µmol kg⁻¹ on the 1 dbar grid.
+   * - ``processing_record``
+     - The cast's processing steps, as a JSON list (the same on its down and up profiles): one
+       entry per step with ``stage``, ``step``, ``producer``, ``version``, ``setting`` (what was
+       configured), ``outcome`` (what it did on this cast), ``exception`` (a fixed phrase when the
+       step ran differently from its setting on this cast: Loop Edit without its soak test, Bin
+       Average keeping the good values of a partly flagged scan), ``variables``, and how the
+       setting compares with SBE's documented value (``state``, ``reference``, ``source``).  Built from
+       the stage file's ``history`` and per-variable attributes, so it holds only what the file
+       records; ``processing.html`` is drawn from it.
 
 Each cast contributes **two** profiles — downcast and upcast — so ``N_PROF`` is
 twice the cast count. The LADCP product has one profile per cast, so the two

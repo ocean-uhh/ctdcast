@@ -7,6 +7,10 @@
 <title>{% block title %}CTD Report{% endblock %}</title>
 <style>
 {{ css | safe }}
+/* Phone browsers enlarge text in wide blocks ("text autosizing"), so the same
+   class rendered at different sizes in a full-width section and in a half-width
+   cell.  Keep every size as the stylesheet sets it. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Package-local (NOT in vendored emit_css): opt-in figure-debug overlay, shown only when
    CTDCAST_REPORT_DEBUG is set. */
 .debug {

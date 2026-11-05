@@ -82,6 +82,7 @@ _EXPECTED_PROFILE_VARS: frozenset[str] = frozenset(
         "sensor_turbidity",
         "sensor_user_polynomial",
         "source_data_mode",
+        "processing_record",
         "source_file",
         "source_stage",
         "source_tracking_id",

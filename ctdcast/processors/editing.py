@@ -54,7 +54,7 @@ Configuration, a step in ``data_processing.steps``::
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 import xarray as xr
@@ -308,6 +308,9 @@ def apply_wild_edit(
 #: What ``loop_edit_flag`` holds.
 LOOP_EDIT_FLAG = "loop_edit_flag"
 
+#: How a cast's record starts when Loop Edit ran it without the soak test.
+SOAK_NOT_APPLIED = "surface soak not applied"
+
 
 @dataclass(frozen=True)
 class LoopEdit:
@@ -332,6 +335,10 @@ class LoopEdit:
         number: offset it by that pressure, in dbar; False: no offset.
     exclude_flagged : bool
         Keep the marks of an earlier Loop Edit.
+    starts_below : str
+        What to do with a cast whose recording is below the soak window before it is in it (a
+        yo-yo cut into casts at depth): ``"skip"`` runs it without the soak test, as there is no
+        soak to remove; ``"fail"`` refuses the cast.
     """
 
     min_velocity: float
@@ -342,6 +349,7 @@ class LoopEdit:
     max_depth: float
     deck_pressure: bool | float
     exclude_flagged: bool
+    starts_below: str = "skip"
 
     def describe(self) -> str:
         """Return the parameters as one line, for attributes and ``history``."""
@@ -353,7 +361,8 @@ class LoopEdit:
         )
         soak = (
             f"surface_soak min_depth={self.min_depth:g} max_depth={self.max_depth:g} "
-            f"deck_pressure={self.deck_pressure if isinstance(self.deck_pressure, bool) else f'{self.deck_pressure:g} dbar'}"
+            f"deck_pressure={self.deck_pressure if isinstance(self.deck_pressure, bool) else f'{self.deck_pressure:g} dbar'} "
+            f"starts_below={self.starts_below}"
             if self.surface_soak
             else "no surface soak"
         )
@@ -367,8 +376,9 @@ def resolve_loop_edit(params: object) -> LoopEdit:
     ----------
     params : dict
         ``min_velocity`` (default 0.25 dbar/s), or ``mean_speed_percent`` with ``window_seconds``
-        (default 300); ``surface_soak: {min_depth, max_depth, deck_pressure}`` (default 5, 20,
-        true), or ``surface_soak: false``; ``exclude_flagged`` (default true).
+        (default 300); ``surface_soak: {min_depth, max_depth, deck_pressure, starts_below}``
+        (default 5, 20, true, ``skip``), or ``surface_soak: false``; ``exclude_flagged`` (default
+        true).
 
     Returns
     -------
@@ -402,10 +412,11 @@ def resolve_loop_edit(params: object) -> LoopEdit:
             "mean_speed_percent in (0, 100]"
         )
     soak = params.get("surface_soak", {})
+    below = "skip"
     if soak is False:
         on, lo, hi, deck = False, 0.0, 0.0, False
     elif isinstance(soak, dict):
-        extra = set(soak) - {"min_depth", "max_depth", "deck_pressure"}
+        extra = set(soak) - {"min_depth", "max_depth", "deck_pressure", "starts_below"}
         if extra:
             raise ValueError(f"loopedit.surface_soak: unknown key(s) {sorted(extra)}")
         on = True
@@ -418,6 +429,11 @@ def resolve_loop_edit(params: object) -> LoopEdit:
             raise ValueError(
                 "loopedit.surface_soak: max_depth is shallower than min_depth"
             )
+        below = soak.get("starts_below", "skip")
+        if below not in ("skip", "fail"):
+            raise ValueError(
+                f"loopedit.surface_soak.starts_below: expected skip or fail, got {below!r}"
+            )
     else:
         raise ValueError(
             f"loopedit.surface_soak: expected a mapping or false, got {soak!r}"
@@ -427,7 +443,7 @@ def resolve_loop_edit(params: object) -> LoopEdit:
         raise ValueError(
             f"loopedit.exclude_flagged: expected true or false, got {excl!r}"
         )
-    return LoopEdit(vmin, pct, window, on, lo, hi, deck, excl)
+    return LoopEdit(vmin, pct, window, on, lo, hi, deck, excl, below)
 
 
 def _latitude(ds: xr.Dataset) -> float | None:
@@ -437,6 +453,94 @@ def _latitude(ds: xr.Dataset) -> float | None:
             if np.isfinite(lat).any():
                 return float(np.nanmean(lat))
     return None
+
+
+def _filled(pressure: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return *pressure* with NaNs interpolated (as Loop Edit runs on it), and where it was finite."""
+    p = np.asarray(pressure, dtype=float)
+    finite = np.isfinite(p)
+    if finite.any() and not finite.all():
+        idx = np.arange(p.size)
+        p = p.copy()
+        p[~finite] = np.interp(idx[~finite], idx[finite], p[finite])
+    return p, finite
+
+
+def _soak_search(
+    p: np.ndarray,
+    params: LoopEdit,
+    latitude: float,
+    excluded: np.ndarray | None,
+) -> tuple[str, str]:
+    """Return ``(kind, why)`` seabirdscientific's soak search would be empty on *p*.
+
+    *kind* is ``""`` when the search finds a soak, ``"shallow"`` when the cast never goes below
+    the window, ``"starts_below"`` when the recording is below the window before it is in it.
+
+    Mirrors ``seabirdscientific.processing._find_depth_peaks``: it searches from the first scan
+    in the soak window to the first scan below it, skipping scans an earlier Loop Edit marked when
+    ``exclude_flagged``, and the window is offset as ``deck_pressure`` says.
+    """
+    d = sbs_conversion.depth_from_pressure(p, latitude)
+    deck = params.deck_pressure
+    if deck is True:
+        shift = float(d[0])
+    elif deck is False:
+        shift = 0.0
+    else:
+        shift = float(sbs_conversion.depth_from_pressure(np.array([deck]), latitude)[0])
+    lo, hi = params.min_depth + shift, params.max_depth + shift
+    ok = np.ones(d.size, dtype=bool)
+    if excluded is not None and params.exclude_flagged:
+        ok = ~np.asarray(excluded, dtype=bool)
+    in_window, below = (d > lo) & (d < hi) & ok, (d > hi) & ok
+    if not below.any():
+        deepest = float(np.max(p[ok])) if ok.any() else float("nan")
+        return "shallow", (
+            f"the cast never goes deeper than the soak window (deepest {deepest:.1f} dbar)"
+        )
+    if not in_window.any() or np.argmax(in_window) >= np.argmax(below):
+        return "starts_below", (
+            f"the recording starts below the soak window (at {float(p[0]):.1f} dbar)"
+        )
+    return "", ""
+
+
+def soak_window_reached(
+    pressure: np.ndarray,
+    params: LoopEdit,
+    latitude: float,
+    excluded: np.ndarray | None = None,
+) -> bool:
+    """Return whether the cast has a surface soak for Loop Edit to look for.
+
+    The soak test needs a scan between ``min_depth`` and ``max_depth`` (offset as
+    ``deck_pressure`` says) before the first scan below ``max_depth``, leaving out scans an
+    earlier Loop Edit marked when ``exclude_flagged``, as seabirdscientific's search does.  A
+    recording that starts below the window (the logging began at depth, even if the package rose
+    into the window later), or a cast that never goes below it, has no surface soak for that
+    search to find; seabirdscientific's ``loop_edit`` then fails on an empty search.
+
+    Parameters
+    ----------
+    pressure : numpy.ndarray
+        Sea pressure, dbar; NaNs are interpolated, as Loop Edit runs on it.
+    params : LoopEdit
+        The resolved parameters.
+    latitude : float
+        For the depth conversion.
+    excluded : numpy.ndarray, optional
+        Scans an earlier Loop Edit marked.
+
+    Returns
+    -------
+    bool
+        True when an unmarked scan lies in the soak window before the first unmarked scan below.
+    """
+    p, finite = _filled(pressure)
+    if not finite.any():
+        return False
+    return _soak_search(p, params, latitude, excluded)[0] == ""
 
 
 def loop_edit_mask(
@@ -466,24 +570,29 @@ def loop_edit_mask(
     numpy.ndarray
         Boolean, true at the scans marked.
     """
-    p = np.asarray(pressure, dtype=float)
-    finite = np.isfinite(p)
+    p, finite = _filled(pressure)
     if not finite.any():
         return np.ones(p.size, dtype=bool)
-    if not finite.all():
-        idx = np.arange(p.size)
-        p = p.copy()
-        p[~finite] = np.interp(idx[~finite], idx[finite], p[finite])
     flag = np.zeros(p.size)
     if excluded is not None:
         flag[np.asarray(excluded, dtype=bool)] = sbs_processing.FLAG_VALUE
     lo, hi, deck = params.min_depth, params.max_depth, params.deck_pressure
-    if not params.surface_soak:
+    soak = params.surface_soak and _soak_search(p, params, latitude, excluded)[0] == ""
+    if not soak:
         # seabirdscientific still looks for the start of the downcast between the soak depths
         # when the soak test is off, and with both at 0 finds nothing to search.  Searching up
-        # to the deepest scan makes the downcast start at the shallowest scan before it.
+        # to the deepest scan makes the downcast start at the shallowest scan before it.  A
+        # cast that never sits in the soak window (its recording starts below it) has no soak
+        # to remove, and is run the same way.  The deepest scan is the deepest seabirdscientific
+        # searches, so scans it leaves out (exclude_flagged) are left out here too.
         d = sbs_conversion.depth_from_pressure(p, latitude)
-        lo, hi, deck = 0.0, float(np.max(d)) * (1.0 - 1e-9), False
+        ok = (
+            flag != sbs_processing.FLAG_VALUE
+            if params.exclude_flagged
+            else np.ones(d.size, bool)
+        )
+        deepest = float(np.max(d[ok])) if ok.any() else float(np.max(d))
+        lo, hi, deck = 0.0, deepest * (1.0 - 1e-9), False
     elif not isinstance(deck, bool):
         # An explicit deck pressure: offset the soak window by its depth.
         shift = float(sbs_conversion.depth_from_pressure(np.array([deck]), latitude)[0])
@@ -496,7 +605,7 @@ def loop_edit_mask(
         params.min_velocity,
         params.window_seconds,
         params.mean_speed_percent or 20.0,
-        params.surface_soak,
+        soak,
         lo,
         hi,
         deck,
@@ -513,8 +622,14 @@ def apply_loop_edit(
     interval: float,
     *,
     excluded: np.ndarray | None = None,
+    cast_label: str | None = None,
 ) -> tuple[xr.Dataset, np.ndarray]:
     """Apply Loop Edit to one cast: mark whole scans, keep every value.
+
+    A cast whose recording is below the soak window before it is in it has no soak to remove: with
+    ``surface_soak.starts_below: skip`` (the default) it runs without the soak test and the reason
+    is recorded on ``loop_edit_flag`` and in ``history``; with ``fail`` it is refused.  A cast that
+    never goes below the window runs without the soak test either way, with its reason recorded.
 
     The marks are written as ``loop_edit_flag`` (1 where marked) and as QARTOD 4 in every
     variable that has a ``_qc``; the parameters are recorded on ``loop_edit_flag`` and in
@@ -530,6 +645,8 @@ def apply_loop_edit(
         Scan interval, seconds.
     excluded : numpy.ndarray, optional
         Scans an earlier Loop Edit marked.
+    cast_label : str, optional
+        The cast's id (``"051"``, ``"122b"``), for the error message.
 
     Returns
     -------
@@ -540,15 +657,33 @@ def apply_loop_edit(
     Raises
     ------
     ValueError
-        On malformed parameters, or no ``pressure``.
+        On malformed parameters, no ``pressure``, or (with ``starts_below: fail``) a cast whose
+        recording starts below the soak window.
     """
-    p = resolve_loop_edit(params)
+    configured = p = resolve_loop_edit(params)
     if "pressure" not in ds:
         raise ValueError("loopedit: the cast has no pressure")
     lat = _latitude(ds)
-    mask = loop_edit_mask(
-        ds["pressure"].values, p, interval, 0.0 if lat is None else lat, excluded
+    lat0 = 0.0 if lat is None else lat
+    soak_note = ""
+    filled, finite = _filled(ds["pressure"].values)
+    kind, reason = (
+        _soak_search(filled, p, lat0, excluded)
+        if p.surface_soak and finite.any()
+        else ("", "")
     )
+    if kind:
+        # A cast that never goes below the window has no soak test to run either way; only a
+        # recording that starts below it is what starts_below decides.
+        if p.starts_below == "fail" and kind == "starts_below":
+            raise ValueError(
+                f"loopedit: cast {cast_label or '?'}: {reason}, so the soak test cannot run "
+                "(surface_soak.starts_below: fail)"
+            )
+        soak_note = f"{SOAK_NOT_APPLIED}: {reason}"
+        p = replace(p, surface_soak=False)
+    mask = loop_edit_mask(ds["pressure"].values, p, interval, lat0, excluded)
+    described = configured.describe() + (f"; {soak_note}" if soak_note else "")
     ds = ds.copy()
     method = f"seabirdscientific {_version()} processing.loop_edit"
     ds[LOOP_EDIT_FLAG] = (
@@ -560,8 +695,9 @@ def apply_loop_edit(
             "flag_meanings": "not_marked marked",
             "comment": "Pressure reversal, too slow along the leg, or surface soak; every "
             "value is kept and flagged QARTOD 4 in its _qc.",
-            "loop_edit": p.describe(),
+            "loop_edit": configured.describe(),
             "loop_edit_method": method,
+            **({"loop_edit_soak_not_applied": soak_note} if soak_note else {}),
         },
     )
     flagged = []
@@ -573,7 +709,7 @@ def apply_loop_edit(
         _raise_flag(values, mask, QARTOD_FAIL)
         ds[qc] = (ds[qc].dims, values, ds[qc].attrs)
         flagged.append(name)
-    note = f"loopedit: {p.describe()}; marked {int(mask.sum())} of {mask.size} scans"
+    note = f"loopedit: {described}; marked {int(mask.sum())} of {mask.size} scans"
     if lat is None:
         note += "; no latitude in the cast, depth computed at latitude 0"
     append_history(ds.attrs, note, stage="stage3")
