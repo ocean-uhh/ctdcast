@@ -23,9 +23,9 @@ If you have SBE CNV files and want cast pages, an index and a map immediately::
 
 ``ctdcast draft`` reads the CNV files to netCDF (stage 1), compiles ``profiles.nc`` and
 builds the cast pages, the index, the map, the sensors page and the processing page in one
-step.  No ``config.yaml`` is needed.  Sections and time series pages stay empty, because they
-need a groupings file that says which casts belong together; for those, use the full workflow
-below.
+step.  No ``config.yaml`` is needed.  It builds no section or time-series pages (their index
+pages are empty): those need a groupings file that says which casts belong together; for
+those, use the full workflow below.
 
 ----
 
@@ -53,9 +53,10 @@ or from source, which also gives you the demo:
 Land coastlines on the interactive maps need the optional ``maps`` extra (cartopy and
 shapely): ``pip install -e ".[maps]"``.  Without it the maps draw over a lat/lon graticule.
 
-To check a source checkout, build the demo report from the committed fixture casts.  They
-are already processed, so only the compile and the report run, and the compiled file goes to a
-work folder (``demo_work/``) rather than into the fixtures:
+To check a source checkout, build a demo report from the committed fixture casts.  They are
+stage-1 files: ``--stage profiles`` compiles and reports them without running stages 2 and 3
+(which would write into the fixtures), and the compiled file goes to a work folder
+(``demo_work/``):
 
 .. code-block:: bash
 
@@ -208,9 +209,11 @@ See :doc:`report_output` for a description of what each page contains.
 Updating mid-cruise
 -------------------
 
-``run`` is incremental: a stage file is rebuilt only when it is missing or its input is newer, ``profiles.nc``
-only when a cast file is newer, and a page only when the files it is drawn from are newer.
-After new casts arrive, run it again:
+``run`` is incremental.  A stage-1 file is read only when it is missing (``--force`` reads
+a replaced raw file again); a stage-2 or stage-3 file is rebuilt when its input is newer;
+``profiles.nc`` when a cast file is newer; a cast, section or time-series page when the files
+it is drawn from are newer.  The cruise-wide pages (summary, casts, sensors, processing, …)
+are rebuilt on every run.  After new casts arrive, run it again:
 
 .. code-block:: bash
 
@@ -218,8 +221,8 @@ After new casts arrive, run it again:
 
 The new casts are processed and get their pages; ``profiles.nc`` is recompiled, so the
 section, time series and summary pages are rebuilt with them.  A config change is not a newer
-file: after changing the processing steps or thresholds, add ``--force`` (or ``--only`` for a
-few casts).
+file: after changing the processing steps or thresholds, add ``--force`` (with ``--only`` to
+limit it to a few casts).
 
 ----
 

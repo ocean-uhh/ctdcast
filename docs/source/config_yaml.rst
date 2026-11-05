@@ -192,7 +192,8 @@ How the report figures look.  Every key is optional.
        at the full slot width, so only the ratio counts.
    * - ``clean_spines``
      - ``true``
-     - Hide the top and right axis lines on section, time-series and LADCP panels.
+     - Hide the top and right axis lines on the profile, section, time-series and LADCP
+       panels.
 
 .. code-block:: yaml
 

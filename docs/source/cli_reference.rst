@@ -13,8 +13,9 @@ ctdcast draft
 ---------------
 
 Quick look: read CNV files (stage 1), compile ``profiles.nc``, and build the cast pages, index,
-map, sensors and processing pages in one step.  No ``config.yaml`` required.  Section and time
-series pages stay empty: they need a groupings file saying which casts belong together.
+map, sensors and processing pages in one step.  No ``config.yaml`` required.  No section or
+time-series pages are built (their index pages are empty): they need a groupings file saying
+which casts belong together.
 
 .. code-block:: text
 
@@ -34,9 +35,9 @@ series pages stay empty: they need a groupings file saying which casts belong to
                       (ctd_salinity, else ctd_salinity_1) is outside it are left out
                       of the cast-page plots
      --trim-soak      Leave the surface soak and back-on-deck records out of the
-                      cast-page plots, found as stage 2 finds them (last scan above
+                      cast-page plots, with stage 2's default rules (last scan above
                       10 dbar before the descent, searched back 20 s; the deck from
-                      the pressure of the last 20 s)
+                      the pressure of the last 20 s; processing.trim is not read)
                       (both plotting filters only; the netCDF files are not changed)
      --force          Regenerate existing pages regardless of modification times
      --dry-run        Print what would be done without writing any files
@@ -112,7 +113,8 @@ sections/timeseries groups from ``profiles.nc``) in the target directory.
                            then offer to auto-detect sections/timeseries
      --auto-section        Re-run section/timeseries detection from an existing
                            config and write ctd_groupings_draft.yaml (an existing
-                           draft is overwritten only with --force).  Reads
+                           draft is overwritten with --force, or after asking in a
+                           terminal).  Reads
                            <ctd_root>/profiles.nc, or data.profiles_nc when set;
                            does not touch config.yaml.
      --force               Overwrite existing files
@@ -208,7 +210,7 @@ are absent is silently skipped.
      --pattern GLOB    Filename glob for CNV files (default: from config, else '*.cnv');
                        not used for .hex
 
-   (The former ``--cast`` spelling still works as a deprecated alias for ``--only``.)
+   (The former --cast spelling still works as a deprecated alias for --only.)
 
    stage 2 trim tuning (all optional; the defaults are the documented behaviour):
      --near-surface-dbar D    Pressure threshold for the last near-surface crossing
@@ -229,8 +231,9 @@ to the config.
 Stage 1 reads the raw ``.hex`` or CNV files to per-cast netCDF; stage 2 flags the soak and
 deck records and applies the clock block; stage 3 applies the conductivity slope and offset,
 the ``data_processing`` steps, salinity, SBE 43 oxygen and QC, then makes the products (LADCP
-has no stage 2 or 3); ``profiles`` compiles the per-cast files into the gridded files.  A stage
-file is rebuilt only when it is missing or its input is newer.
+has no stage 2 or 3); ``profiles`` compiles the per-cast files into the gridded files.  A
+stage-1 file is read only when it is missing (``--force`` reads a replaced raw file again); a
+stage-2 or stage-3 file, or ``profiles.nc``, is rebuilt when its input is newer.
 
 **Examples**::
 
@@ -274,7 +277,7 @@ Convert raw data to netCDF inputs without generating HTML.
      --force          Overwrite existing output files
      --dry-run        Print what would be done without writing any files
 
-   (The former ``--cast`` spelling still works as a deprecated alias for ``--only``.)
+   (The former --cast spelling still works as a deprecated alias for --only.)
 
 **Examples**::
 
@@ -319,20 +322,20 @@ Generate HTML pages from existing netCDF inputs.  Does not run any conversion.
                       (ctd_salinity, else ctd_salinity_1) is outside it are left out
                       of the cast-page plots
      --trim-soak      Leave the surface soak and back-on-deck records out of the
-                      cast-page plots, found as stage 2 finds them (last scan above
+                      cast-page plots, with stage 2's default rules (last scan above
                       10 dbar before the descent, searched back 20 s; the deck from
-                      the pressure of the last 20 s)
-     --dbar-step N    Plot every Nth dbar level from profiles.nc in section and
-                      timeseries figures (default: 1, full resolution).  The
-                      compiled product always stores 1 dbar; this thins the plot,
-                      not the data
+                      the pressure of the last 20 s; processing.trim is not read)
+     --dbar-step N    Plot every Nth pressure level from profiles.nc in section and
+                      timeseries figures (default: 1, every level).  This thins the
+                      plot, not the data; the grid is set by processing.profiles_dbar
      --drop-stub      Drop cast-page sections whose figures all failed to render.
                       By default such a section stays visible as a warning, so a
                       failed figure is noticed rather than silently absent
 
-   A page is rebuilt only when the files it is drawn from are newer, so ``--sal``,
-   ``--trim-soak`` and ``--drop-stub`` change an up-to-date page only with ``--force``.
-   A top-level ``force: true`` in the config does the same as ``--force``.
+   A cast, section or time-series page is rebuilt only when the files it is drawn
+   from are newer, so --sal, --trim-soak and --drop-stub change an up-to-date page
+   only with --force; the cruise-wide pages are rebuilt on every run.  A top-level
+   force: true in the config does the same as --force.
    The process exits non-zero if any requested page fails to build.
    The former ``--stations`` and ``--cast`` spellings still work as hidden,
    deprecated aliases for ``--casts`` and ``--only``; they emit a warning.

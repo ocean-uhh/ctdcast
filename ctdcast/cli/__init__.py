@@ -27,7 +27,7 @@ Typical mid-cruise workflow:
   ctdcast process config.yaml --stage 2 3       soak/deck flags, QC + calibration
   ctdcast process config.yaml --stage profiles  compile profiles.nc (+ ladcp_profiles.nc)
   ctdcast report config.yaml                    generate HTML reports
-  ctdcast run config.yaml                       every stage from raw, then all HTML
+  ctdcast run config.yaml                       every stage, then the HTML
 
 Run 'ctdcast <command> --help' for command-specific options.
 """

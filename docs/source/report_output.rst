@@ -115,7 +115,8 @@ Sections, each shown only when it applies:
    * - Diagnostics
      - Pressure against time; primary minus secondary T and S; downcast minus upcast.
    * - QC flags
-     - A histogram of the QARTOD flags, the gross-range thresholds applied, and the flag
+     - The distribution of each variable's values (grey all data, colour the data kept, a
+       dashed line at each gross-range threshold), then the thresholds applied and the flag
        counts per variable.
 
 Appendices: **(A) Sensors**, **(B) File provenance** (cast, data mode, processing stage and
@@ -247,7 +248,7 @@ One page per named section, against distance along the section:
    * - T–S diagrams
      - The section's water masses in temperature–salinity space.
 
-The fields use discrete colorbars with 12 levels (limits overridable with ``display.vmin`` /
+The fields use discrete colorbars with 20 levels (the T–S diagrams 12; limits overridable with ``display.vmin`` /
 ``vmax``, see :doc:`config_yaml`).  Bathymetry is shown as a filled grey polygon when a GEBCO
 file is available.
 

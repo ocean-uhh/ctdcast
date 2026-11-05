@@ -53,9 +53,10 @@ Processing stages:
   profiles: compile the casts into profiles.nc on a pressure grid
            (processing.profiles_dbar, default 1)
 
-A stage file is rebuilt only when it is missing or its input is newer; --force
-rebuilds every one.  Paths (ctd_root, hex_dir, cnv_dir, ctd_raw_format,
-ladcp_root, ladcp_dir) are read from the config YAML.
+A stage-1 file is read only when it is missing; a stage-2 or stage-3 file, or
+profiles.nc, is rebuilt when its input is newer.  --force rebuilds every one.
+Paths (ctd_root, hex_dir, cnv_dir, ctd_raw_format, ladcp_root, ladcp_dir) are
+read from the config YAML.
 
 Examples:
   ctdcast process config.yaml --stage 1

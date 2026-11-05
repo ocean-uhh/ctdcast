@@ -113,9 +113,10 @@ Examples:
         dest="trim_soak",
         help=(
             "Leave the surface soak and the back-on-deck records out of the cast page "
-            "plots, found as stage 2 finds them (the last scan above 10 dbar before the "
-            "descent, searched back 20 s; the deck by the pressure of the last 20 s).  "
-            "The netCDF files are not changed; an up-to-date page is rebuilt only with --force."
+            "plots, found with stage 2's default rules (the last scan above 10 dbar before "
+            "the descent, searched back 20 s; the deck from the pressure of the last 20 s; "
+            "processing.trim is not read).  The netCDF files are not changed; an up-to-date "
+            "page is rebuilt only with --force."
         ),
     )
 

@@ -29,8 +29,9 @@ has a ``cruise_info`` block, the two are merged and ``config.yaml``'s values win
 
 Both keys are optional.  If absent, the report falls back to the ``cruise``
 attribute of the first netCDF file (defaulting to ``"UNKCRUISE"`` if that
-attribute is not set), and the ship shows as ``"UNK"`` on cast pages and is left blank on
-the cruise-wide pages.
+attribute is not set), and the ship falls back to the file's ``ship``, ``platform`` or
+``vessel`` attribute, then to ``"UNK"`` on cast, section and time-series pages; the summary
+pages leave it blank.
 
 Top-level key: ``sections``
 

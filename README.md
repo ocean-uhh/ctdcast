@@ -54,15 +54,18 @@ ctdcast run config.yaml           # every stage from the raw files, then the rep
 for the recommended first-cruise workflow, the [config reference](https://ocean-uhh.github.io/ctdcast/config_yaml.html)
 and the [CLI reference](https://ocean-uhh.github.io/ctdcast/cli_reference.html).
 
-To check a source checkout, build the demo report from the committed fixture casts (they are
-already processed, so only the compile and the report run):
+To check a source checkout, build a demo report from the committed fixture casts. They are
+stage-1 files, so `--stage profiles` compiles and reports them without running stages 2–3
+(which would write into the fixtures):
 
 ```bash
 ctdcast run config_demo.yaml --stage profiles   # writes demo_report/index.html
 ```
 
-The demo's files come with the repository, not with `pip install`; the
-[example report](https://ocean-uhh.github.io/ctdcast/_static/demo/index.html) shows its output.
+The demo's files come with the repository, not with `pip install`. The published
+[example report](https://ocean-uhh.github.io/ctdcast/_static/demo/index.html) is made from the
+same casts by `scripts/make_demo.py`, which also runs stage 2 and QC, so it shows the QC tables
+the local one lacks.
 
 ## Python API
 

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import xarray as xr
 import yaml
 
+from ctdcast.config.layout import processing_view
 from ctdcast.config.report_config import ReportConfig
 from ctdcast.identity import cast_id_from_name
 from ctdcast.processors.profiles import build_profiles
@@ -47,9 +48,13 @@ GEBCO_NC = REPO.parent / "cruiseplan" / "data" / "bathymetry" / "GEBCO_2025.nc"
 
 
 def _demo_processing() -> dict:
-    """Read the ``processing`` block from ``config_demo.yaml`` (the single declaration)."""
+    """Return the stage settings from ``config_demo.yaml`` (the single declaration).
+
+    Read through :func:`ctdcast.config.layout.processing_view`, as the CLI reads a config, so
+    the top-level ``preferred_sensor`` / ``qc`` blocks reach the stages.
+    """
     with CONFIG_DEMO.open() as f:
-        return (yaml.safe_load(f) or {}).get("processing") or {}
+        return processing_view(yaml.safe_load(f) or {})
 
 
 def _fixed_generated_at() -> str:
@@ -88,7 +93,7 @@ def _build_stage3(nc_dir: Path, root: Path, cruise_cfg: dict) -> None:
     (stage 3), so the demo cast pages show the QC panel — flag counts, the
     thresholds table, and the distribution histograms — from a real ``_qc``.  Then
     applies the preferred-sensor stamp and builds the plain composites from
-    ``cruise_cfg`` (``config_demo.yaml``'s ``processing`` block), so the demo shows
+    ``cruise_cfg`` (``config_demo.yaml``'s stage settings), so the demo shows
     ``ctd_temperature`` / ``ctd_salinity`` / ``conductivity`` beside the ``_1`` / ``_2``
     channels and the per-cast preferred choice.
     """

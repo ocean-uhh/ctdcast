@@ -14,8 +14,9 @@ def build_parser(
     _epilog = """
 Converts raw CNV files to netCDF via seasenselib, then generates station pages,
 an index page, and a Leaflet map — all in one step with no config.yaml required.
-Section and time-series pages stay empty: they need a groupings file saying which
-casts belong together (use a config.yaml and `ctdcast run` for those).
+No section or time-series pages are built (their index pages are empty): they
+need a groupings file saying which casts belong together, so use a config.yaml
+and `ctdcast run` for those.
 
 Examples:
   # Quick look at today's casts:
@@ -113,9 +114,10 @@ Examples:
         default=False,
         help=(
             "Leave the surface soak and the back-on-deck records out of the cast page "
-            "plots, found as stage 2 finds them (the last scan above 10 dbar before the "
-            "descent, searched back 20 s; the deck by the pressure of the last 20 s).  "
-            "The netCDF files are not changed; an up-to-date page is rebuilt only with --force."
+            "plots, found with stage 2's default rules (the last scan above 10 dbar before "
+            "the descent, searched back 20 s; the deck from the pressure of the last 20 s; "
+            "processing.trim is not read).  The netCDF files are not changed; an up-to-date "
+            "page is rebuilt only with --force."
         ),
     )
     parser.add_argument(

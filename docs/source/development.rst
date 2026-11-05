@@ -67,7 +67,7 @@ Processing switches
 
 ``CTDCAST_CONFIG_DIR``
    The per-user folder the institution and platform registries are read from (default
-   ``~/.config/ctdcast``); see :doc:`registries`.
+   ``$XDG_CONFIG_HOME/ctdcast``, else ``~/.config/ctdcast``); see :doc:`registries`.
 
 ----
 
@@ -75,12 +75,14 @@ The demo report
 ---------------
 
 ``scripts/make_demo.py`` rebuilds the published demo in ``docs/source/_static/demo/`` from the
-committed fixture casts, writing its stage files to a temporary folder.  Run it from the repository
-root after a change to the report pages, and commit the result:
+committed fixture casts: it runs stage 2 and QC in a temporary folder, recompiles
+``tests/fixtures/profiles_demo.nc`` (a committed fixture the tests read), and builds the report.
+The maps get bathymetry from ``../cruiseplan/data/bathymetry/GEBCO_2025.nc`` when that file
+exists.  Run it from the repository root after a change to the report pages, and commit both:
 
 .. code-block:: bash
 
    python scripts/make_demo.py
 
-``ctdcast run config_demo.yaml --stage profiles`` builds the same report locally, into
-``demo_report/``, with the compiled file in ``demo_work/``.
+``ctdcast run config_demo.yaml --stage profiles`` builds a report from the same casts into
+``demo_report/`` (the compiled file in ``demo_work/``), without stage 2 or QC.

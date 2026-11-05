@@ -90,8 +90,10 @@ Each file covers one CTD cast.  The required dimension and variables are:
    * - ``ctd_temperature`` / ``ctd_temperature_1`` / ``ctd_temperature_2``
      - In-situ temperature in °C (ITS-90). Plain name for single-sensor instruments; ``_1``/``_2`` suffix for dual-sensor rigs.
    * - ``ctd_salinity`` / ``ctd_salinity_1`` / ``ctd_salinity_2``
-     - Practical salinity (PSS-78), derived by ctdcast from C, T and P with TEOS-10.  Stored
-       with ``units: "1"``, as CF writes a dimensionless quantity.
+     - Practical salinity (PSS-78).  A ``.hex`` cast's is derived by ctdcast from C, T and P
+       with TEOS-10; a CNV cast keeps Sea-Bird's (``sal00``, ``sal11``) until a stage-3 step
+       changes C, T or P, when stage 3 derives it again.  Stored with ``units: "1"``, as CF
+       writes a dimensionless quantity.
    * - ``ctd_oxygen`` / ``ctd_oxygen_1`` / ``ctd_oxygen_2``
      - Dissolved oxygen in µmol kg⁻¹.
    * - ``ctd_fluor``
@@ -279,8 +281,9 @@ recorded in ``pressure_spacing_dbar``), dimensions ``N_PROF × pressure``.  Per 
    * - ``max_pressure_dbar``
      - The deepest pressure of the cast.
    * - ``gebco_depth_m``
-     - Water depth at the cast position from GEBCO, when the compile was given a file
-       (``ctdcast process --gebco``).
+     - Water depth at the cast position from GEBCO when the compile was given a file
+       (``ctdcast process --stage profiles --gebco``), NaN otherwise; ``ctdcast run`` passes
+       no file.
    * - ``<var>_<parameter>``
      - A correction parameter that differs between casts (for example a per-cast cell thermal
        mass ``alpha``), one value per profile; when every cast agrees it is an attribute of the
